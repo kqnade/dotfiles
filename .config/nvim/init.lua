@@ -1,0 +1,7 @@
+require('impatient')
+require('coc')
+require('settings')
+require('plugins')
+require('keymaps')
+require('scripts')
+require('snippets')
