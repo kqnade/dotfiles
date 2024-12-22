@@ -5,8 +5,9 @@
   home.homeDirectory = "/home/kqnade";
   home.stateVersion = "24.11"; # Please read the comment before changing.
   home.packages = with pkgs; [
-    gh
     ghq
+    gh
+    glab
     delta
     tmux
     eza

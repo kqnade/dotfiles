@@ -21,6 +21,7 @@
 
     extraConfig = {
       credential."https://github.com".helper = "!gh auth git-credential";
+      credential."https://gitlab.com".helper = "!glab auth git-credential";
       pull = {
         ff = "only";
 	rebase = true;

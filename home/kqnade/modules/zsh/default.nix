@@ -2,7 +2,6 @@
 {
   programs.zsh = {
     enable = true;
-    defaultKeymap = "vicmd";
     shellAliases = {
       ls = "eza -G --group-directories-first --git --icons=always";
       la = "eza -la --group-directories-first --icons=always";
@@ -23,11 +22,13 @@
       ];
     };
     initExtra = ''
+      bindkey -v
       bindkey              '^I'         menu-complete
       bindkey "$terminfo[kcbt]" reverse-menu-complete
       zstyle ':completion:*' completer _expand _complete _ignored _approximate _expand_alias
       zstyle ':autocomplete:*' default-context curcontext 
       zstyle ':autocomplete:*' min-input 0
+      unsetopt AUTO_NAME_DIRS
       autoload -Uz compinit
       compinit
     '';
