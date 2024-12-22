@@ -13,6 +13,8 @@
     bat
     fd
     mise
+    fzf
+    fzy
   ];
 
   programs.home-manager.enable = true;
