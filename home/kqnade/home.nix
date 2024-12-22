@@ -18,8 +18,8 @@
   programs.home-manager.enable = true;
 
   imports = [
-    ./modules/git.nix
-    ./modules/zsh.nix
+    ./modules/git
+    ./modules/zsh
     ./modules/nixvim
   ];
 
