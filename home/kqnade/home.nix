@@ -8,7 +8,6 @@
     ghq
     gh
     glab
-    delta
     eza
     bat
     fd

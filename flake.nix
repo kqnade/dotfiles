@@ -56,7 +56,6 @@
           nixvim.homeManagerModules.nixvim
         ];
       };
-
     };
   };
 }

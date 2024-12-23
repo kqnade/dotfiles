@@ -2,6 +2,7 @@
 {
   programs.git = {
     enable = true;
+    lfs.enable = true;
     userName = "kqnade";
     userEmail = "git@k4na.de";
 
@@ -19,24 +20,26 @@
       signByDefault = true;
     };
 
+    delta.enable = true;
+
     extraConfig = {
       credential."https://github.com".helper = "!gh auth git-credential";
       credential."https://gitlab.com".helper = "!glab auth git-credential";
       pull = {
         ff = "only";
-	rebase = true;
+        rebase = true;
       };
       init = {
         defaultBranch = "main";
       };
       rebase = {
         autoStash = true;
-	autoSquash = true;
+        autoSquash = true;
       };
       url = {
         "https*//github.com" = {
           insteadOf = "git://github.com";
-	};
+        };
       };
       commit = {
         gpgSign = true;
@@ -44,7 +47,6 @@
       tag = {
         gpgSign = true;
       };
-      
     };
   };
 }
