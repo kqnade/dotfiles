@@ -8,6 +8,7 @@
       g = "git";
       vi = "nvim";
       vim = "nvim";
+      cat = "bat";
     };
     syntaxHighlighting.enable = true;
     enableCompletion = false;
