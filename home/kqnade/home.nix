@@ -9,11 +9,9 @@
     gh
     glab
     delta
-    tmux
     eza
     bat
     fd
-    mise
     fzf
     fzy
   ];
