@@ -32,7 +32,7 @@
       zenith = nixos.lib.nixosSystem {
         system = "x86_64-linux";
         modules = [
-	  nixos-wsl.nixosModules.wsl
+          nixos-wsl.nixosModules.wsl
           ./hosts/zenith-configuration.nix
         ];
       };
