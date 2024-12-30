@@ -12,6 +12,13 @@
   wsl.enable = true;
   wsl.defaultUser = "kqnade";
 
+  environment.systemPackages = [
+    pkgs.wget
+  ];
+  programs.nix-ld = {
+    enable = true;
+  };
+
   # Do NOT change this value unless you have manually inspected all the changes it would make to your configuration,
   # and migrated your data accordingly.
   #
