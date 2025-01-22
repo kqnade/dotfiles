@@ -1,5 +1,31 @@
 {...}:
 {
+  opts = {
+    # Search
+    ignorecase = true;
+    smartcase = true;
+    wrapscan = true;
+    # Editor
+    expandtab = true;
+    tabstop = 2;
+    shiftwidth = 2;
+    smartindent = true;
+    hidden = true;
+    updatetime = 100;
+    swapfile = true;
+    undofile = true;
+    # Show
+    mouse = "a";
+    showmode = false;
+    number = true;
+    cursorline = true;
+    termguicolors = true;
+    linebreak = true;
+    showbreak = "\\";
+    breakat = " 	;:,!?";
+    whichwrap = "b,s,h,l,<,>,[,],~";
+    breakindent = true;
+  };
   globals = {
     did_install_default_menus = false;
     did_install_syntax_menu = false;
