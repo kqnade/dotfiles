@@ -2,9 +2,7 @@
 {
   imports =
     [
-      ./../modules/users.nix
-      ./../modules/system.nix
-      ./../modules/packages.nix
+      ./../modules
     ];
 
   networking.hostName = "Zenith";

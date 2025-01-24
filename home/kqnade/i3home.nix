@@ -23,15 +23,15 @@
         "${mod}+v" = "split v";
         "${mod}+s" = "split h";
 
-	"${mod}+h" = "focus left";
-	"${mod}+j" = "focus down";
-	"${mod}+k" = "focus up";
-	"${mod}+l" = "focus right";
+	      "${mod}+h" = "focus left";
+	      "${mod}+j" = "focus down";
+	      "${mod}+k" = "focus up";
+	      "${mod}+l" = "focus right";
 
-	"${mod}+Shift+h" = "exec --no-startup-id killall -v .autotiling-wrapped; move left; exec --no-startup-id autotiling &";
-	"${mod}+Shift+j" = "exec --no-startup-id killall -v .autotiling-wrapped; move down; exec --no-startup-id autotiling &";
-	"${mod}+Shift+k" = "exec --no-startup-id killall -v .autotiling-wrapped; move up; exec --no-startup-id autotiling &";
-	"${mod}+Shift+l" = "exec --no-startup-id killall -v .autotiling-wrapped; move right; exec --no-startup-id autotiling &";
+	      "${mod}+Shift+h" = "exec --no-startup-id killall -v .autotiling-wrapped; move left; exec --no-startup-id autotiling &";
+	      "${mod}+Shift+j" = "exec --no-startup-id killall -v .autotiling-wrapped; move down; exec --no-startup-id autotiling &";
+	      "${mod}+Shift+k" = "exec --no-startup-id killall -v .autotiling-wrapped; move up; exec --no-startup-id autotiling &";
+	      "${mod}+Shift+l" = "exec --no-startup-id killall -v .autotiling-wrapped; move right; exec --no-startup-id autotiling &";
         
         
       });

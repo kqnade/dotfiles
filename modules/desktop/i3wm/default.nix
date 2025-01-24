@@ -1,5 +1,8 @@
 {lib, ...}:
 {
+  imports = [
+    ./i3packages.nix
+  ];
   services.xserver = {
     enable = true;
     autorun = false;

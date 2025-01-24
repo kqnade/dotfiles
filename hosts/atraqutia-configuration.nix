@@ -3,9 +3,7 @@
   imports =
     [
       ./hardconf/versapro-hardware-configuration.nix
-      ./../modules/users.nix
-      ./../modules/system.nix
-      ./../modules/packages.nix
+      ./../modules
     ];
 
   boot.loader.systemd-boot.enable = true;
