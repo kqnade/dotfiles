@@ -5,8 +5,6 @@
     wget
     git
     zsh
-    gcc
-    gnumake
   ];
 
   programs.mtr.enable = true;
