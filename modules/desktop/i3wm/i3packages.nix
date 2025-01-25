@@ -4,5 +4,7 @@
     kitty
     firefox
     rofi
+    discord
+    spotify
   ];
 }
