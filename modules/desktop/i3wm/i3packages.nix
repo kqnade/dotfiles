@@ -6,5 +6,6 @@
     rofi
     discord
     spotify
+    bitwarden-desktop
   ];
 }
