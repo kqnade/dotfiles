@@ -1,10 +1,8 @@
 {...}:
 {
   imports = [
+    ./editor
+    ./tool
     ./themes.nix
-
-    ./lualine.nix
-
-    ./neo-tree.nix
   ];
 }
