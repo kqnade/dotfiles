@@ -1,4 +1,4 @@
-{lib, pkgs, ...}:
+{ lib, pkgs, ... }:
 {
   plugins = {
     lsp.servers.nixd = {
@@ -14,6 +14,15 @@
 
       formatters = {
         nixfmt.command = lib.getExe pkgs.nixfmt-rfc-style;
+      };
+    };
+    lint = {
+      lintersByFt = {
+        nix = [ "statix" ];
+      };
+
+      linters = {
+        statix.cmd = lib.getExe pkgs.statix;
       };
     };
   };
