@@ -1,9 +1,8 @@
-{...}:
 {
   plugins.toggleterm = {
     enable = true;
     settings = {
-      
+
     };
     lazyLoad = {
       settings = {

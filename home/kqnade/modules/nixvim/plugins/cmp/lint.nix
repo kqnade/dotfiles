@@ -1,4 +1,3 @@
-{ ... }:
 {
   plugins.lint = {
     enable = true;

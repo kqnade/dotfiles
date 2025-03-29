@@ -1,4 +1,4 @@
-{...}:
+{ ... }:
 {
   programs.zsh = {
     enable = true;
@@ -15,11 +15,33 @@
     zplug = {
       enable = true;
       plugins = [
-        { name = "zsh-users/zsh-history-substring-search"; tags = [as:plugin]; }
-        { name = "b4b4r07/enhancd"; tags = [from:github use:init.sh]; }
-        { name = "mafredri/zsh-async"; tags = [from:github]; }
-        { name = "sindresorhus/pure"; tags = [use:pure.zsh from:github as:theme]; }
-        { name = "marlonrichert/zsh-autocomplete"; tags = [use:zsh-autocomplete.plugin.zsh];}
+        {
+          name = "zsh-users/zsh-history-substring-search";
+          tags = [ "as:plugin" ];
+        }
+        {
+          name = "b4b4r07/enhancd";
+          tags = [
+            "from:github"
+            "use:init.sh"
+          ];
+        }
+        {
+          name = "mafredri/zsh-async";
+          tags = [ "from:github" ];
+        }
+        {
+          name = "sindresorhus/pure";
+          tags = [
+            "use:pure.zsh"
+            "from:github"
+            "as:theme"
+          ];
+        }
+        {
+          name = "marlonrichert/zsh-autocomplete";
+          tags = [ "use:zsh-autocomplete.plugin.zsh" ];
+        }
       ];
     };
     initExtra = ''

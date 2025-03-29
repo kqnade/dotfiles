@@ -1,4 +1,3 @@
-{ ... }:
 {
   keymaps = [
     # neo-tree

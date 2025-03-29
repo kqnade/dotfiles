@@ -1,4 +1,3 @@
-{...}:
 {
   plugins.lualine = {
     enable = true;
@@ -20,10 +19,14 @@
         globalstatus = true;
       };
       sections = {
-        lualine_a = ["mode"];
-        lualine_b = ["branch"];
-        lualine_c = ["filename" "diff"];
-        lualine_x = ["diagnostics"
+        lualine_a = [ "mode" ];
+        lualine_b = [ "branch" ];
+        lualine_c = [
+          "filename"
+          "diff"
+        ];
+        lualine_x = [
+          "diagnostics"
           {
             __unkeyed-1 = {
               __raw = ''
@@ -73,7 +76,7 @@
             sep = " ) ";
           }
         ];
-        lualine_z = [{__unkeyed-1 = "location";}];
+        lualine_z = [ { __unkeyed-1 = "location"; } ];
       };
       tabline = {
         lualine_a = [
@@ -84,7 +87,7 @@
             };
           }
         ];
-        lualine_z = ["tabs"];
+        lualine_z = [ "tabs" ];
       };
       winbar = {
         lualine_c = [
@@ -104,4 +107,3 @@
     };
   };
 }
-

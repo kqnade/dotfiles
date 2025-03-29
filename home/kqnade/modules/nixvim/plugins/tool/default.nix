@@ -1,4 +1,3 @@
-{ ... }:
 {
   imports = [
     ./neo-tree.nix

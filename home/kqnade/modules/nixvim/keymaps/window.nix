@@ -1,4 +1,3 @@
-{ ... }:
 {
   keymaps = [
     # window focus move

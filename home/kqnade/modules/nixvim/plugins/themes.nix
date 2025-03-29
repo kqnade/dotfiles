@@ -1,4 +1,3 @@
-{...}:
 {
   colorschemes.catppuccin = {
     enable = true;
@@ -14,8 +13,11 @@
         treesitter = true;
       };
       styles = {
-        booleans = ["bold" "italic"];
-        conditionals = ["bold"];
+        booleans = [
+          "bold"
+          "italic"
+        ];
+        conditionals = [ "bold" ];
       };
       term_colors = true;
     };
