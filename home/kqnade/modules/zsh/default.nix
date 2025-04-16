@@ -8,6 +8,7 @@
       vi = "nvim";
       vim = "nvim";
       cat = "bat";
+      ccd = "cd ~ && clear";
     };
     syntaxHighlighting.enable = true;
     enableCompletion = false;
