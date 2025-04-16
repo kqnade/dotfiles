@@ -40,6 +40,7 @@
             "exec --no-startup-id killall -v .autotiling-wrapped; move up; exec --no-startup-id autotiling &";
           "${mod}+Shift+l" =
             "exec --no-startup-id killall -v .autotiling-wrapped; move right; exec --no-startup-id autotiling &";
+
         };
       };
   };

@@ -4,6 +4,7 @@
     [
       ./hardconf/versapro-hardware-configuration.nix
       ./../modules
+      ./../modules/desktop/audio.nix
       ./../modules/desktop/i3wm
     ];
 
@@ -12,7 +13,6 @@
 
   networking.hostName = "Beltox";
   networking.networkmanager.enable = true;
-
   console = {
     keyMap = "jp106";
   };
