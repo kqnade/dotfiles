@@ -1,6 +1,7 @@
 {
   imports = [
     ./cpp.nix
+    ./go.nix
     ./java.nix
     ./lua.nix
     ./markdown.nix
