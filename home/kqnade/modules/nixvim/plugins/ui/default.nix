@@ -1,7 +1,7 @@
 {
   imports = [
     ./lualine.nix
-    ./noice.nix
+    ./notify.nix
     ./indent-blankline.nix
     ./treesitter.nix
   ];
