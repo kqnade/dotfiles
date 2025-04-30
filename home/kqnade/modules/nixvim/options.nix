@@ -24,6 +24,7 @@
     breakat = " 	;:,!?";
     whichwrap = "b,s,h,l,<,>,[,],~";
     breakindent = true;
+    laststatus = 3;
   };
   globals = {
     did_install_default_menus = false;
