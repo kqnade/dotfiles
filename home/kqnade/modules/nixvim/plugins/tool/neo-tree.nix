@@ -7,5 +7,8 @@
       "git_status"
       "filesystem"
     ];
+    window = {
+      width = 35;
+    };
   };
 }
