@@ -31,5 +31,16 @@
         desc = "ToggleTerm: toggle terminal (vertical mode)";
       };
     }
+    {
+      action = "<CMD>AerialNavToggle<CR>";
+      key = "<C-m>";
+      mode = "n";
+      options = {
+        silent = true;
+        noremap = true;
+        desc = "Aerial: Toggle aerial navigation window";
+      };
+    }
+
   ];
 }
