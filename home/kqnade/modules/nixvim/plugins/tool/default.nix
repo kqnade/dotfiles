@@ -1,6 +1,7 @@
 {
   imports = [
     ./aerial.nix
+    ./autoclose.nix
     ./dashboard.nix
     ./fidget.nix
     ./gitsigns.nix
