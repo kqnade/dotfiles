@@ -1,13 +1,13 @@
 {
   plugins = {
     indent-blankline = {
-      enable = false;
+      enable = true;
       settings = {
         indent = {
           char = "│"; # "│" or "▎"
           tab_char = "│";
         };
-        scope.enabled = false;
+        scope.enabled = true;
         exclude = {
           buftypes = [
             "terminal"
