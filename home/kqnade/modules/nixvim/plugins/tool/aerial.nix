@@ -3,6 +3,7 @@
     enable = true;
     settings = {
       attach_mode = "global";
+      show_guides = true;
       autojump = true;
       backends = [
         "treesitter"
@@ -18,7 +19,7 @@
         "unsupported"
       ];
       highlight_on_hover = true;
-      highlight_on_jump = 350;
+      highlight_on_jump = 400;
       float = {
         relative = "win";
       };

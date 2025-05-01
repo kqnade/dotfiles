@@ -41,6 +41,15 @@
         desc = "Aerial: Toggle aerial navigation window";
       };
     }
-
+    {
+      action = "<CMD>AerialToggle<CR>";
+      key = "<C-\\>";
+      mode = "n";
+      options = {
+        silent = true;
+        noremap = true;
+        desc = "Aerial: Toggle aerial window";
+      };
+    }
   ];
 }
