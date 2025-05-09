@@ -40,6 +40,9 @@
             "exec --no-startup-id killall -v .autotiling-wrapped; move up; exec --no-startup-id autotiling &";
           "${mod}+Shift+l" =
             "exec --no-startup-id killall -v .autotiling-wrapped; move right; exec --no-startup-id autotiling &";
+          "XF86AudioRaiseVolume" = "exec pamixer -i 5";
+          "XF86AudioMute" = "exec pamixer mute";
+          "XF86AudioLowerVolume" = "exec pamixer -d 5";
 
         };
       };
