@@ -8,5 +8,6 @@
     ./nix.nix
     ./ruby.nix
     ./typescript.nix
+    ./zig.nix
   ];
 }
