@@ -14,6 +14,7 @@
       fd
       fzf
       fzy
+      direnv
     ];
     sessionVariables = {
       GPG_KEYID = "3FB8AE32BA2DF93E54C640A0228245D67A8FDBC1";
@@ -26,5 +27,6 @@
     ./modules/git
     ./modules/zsh
     ./modules/nixvim
+    ./modules/direnv.nix
   ];
 }
