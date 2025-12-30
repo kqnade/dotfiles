@@ -1,8 +1,9 @@
 export LANG="en_US.UTF-8"
-export EDITOR="nvim"
-export VISUAL="nvim"
+export EDITOR="vim"
+export VISUAL="vim"
 export GPG_TTY=$(tty)
 export SSH_AUTH_SOCK=$(gpgconf --list-dirs agent-ssh-socket)
+
 
 gpg-connect-agent updatestartuptty /bye > /dev/null 2>&1
 
@@ -31,6 +32,8 @@ bindkey '^[[B' history-substring-search-down
 alias g='git'
 alias p='paru'
 alias p-clean='paru -Sc && paru -c'
+alias vi='vim'
+alias v='vim'
 
 if [[ $(command -v eza) ]]; then
     alias ls='eza --icons --git'
@@ -40,7 +43,6 @@ if [[ $(command -v eza) ]]; then
 fi
 
 unalias gh 2>/dev/null
-
 gh() {
     if [[ -t 0 && -z "$GH_TOKEN" ]]; then
         if pass github/token >/dev/null 2>&1; then

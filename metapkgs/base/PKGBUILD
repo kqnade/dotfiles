@@ -9,7 +9,7 @@ depends=(
   'gnupg'
   'zsh'
   'chezmoi'
-  'neovim'
+  'vim'
   'sheldon'
   'git-delta'
   'git-lfs'

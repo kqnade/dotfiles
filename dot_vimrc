@@ -1,0 +1,131 @@
+let g:loaded_gzip              = 1
+let g:loaded_tar               = 1
+let g:loaded_tarPlugin         = 1
+let g:loaded_zip               = 1
+let g:loaded_zipPlugin         = 1
+let g:loaded_rrhelper          = 1
+let g:loaded_2html_plugin      = 1
+let g:loaded_vimball           = 1
+let g:loaded_vimballPlugin     = 1
+let g:loaded_getscript         = 1
+let g:loaded_getscriptPlugin   = 1
+let g:loaded_netrw             = 1
+let g:loaded_netrwPlugin       = 1
+let g:loaded_netrwSettings     = 1
+let g:loaded_netrwFileHandlers = 1
+
+" Colemak assign
+" cursor movement
+nnoremap m h|xnoremap m h|onoremap m h|
+nnoremap n j|xnoremap n j|onoremap n j|
+nnoremap e k|xnoremap e k|onoremap e k|
+nnoremap i l|xnoremap i l|onoremap i l|
+" word jump
+nnoremap l b|xnoremap l b|onoremap l b|
+nnoremap L B|xnoremap L B|onoremap L l|
+nnoremap u e|xnoremap u e|onoremap u e|
+nnoremap U E|xnoremap U E|onoremap U E|
+nnoremap y w|xnoremap y w|onoremap y w|
+nnoremap Y W|xnoremap Y W|onoremap Y W|
+" Insert/Append
+nnoremap s i|
+nnoremap S I|
+nnoremap t a|
+nnoremap T A|
+" Undo/Redo
+nnoremap z u|xnoremap z :<C-U>undo<CR>|
+nnoremap gz U|xnoremap gz :<C-U>undo<CR>|
+nnoremap Z <C-R>|xnoremap Z :<C-U>redo<CR>|
+" Visual
+nnoremap a v|xnoremap a v|
+nnoremap A V|xnoremap A V|
+nnoremap ga gv
+" Make insert/add work also in visual line mode like in visual block mode
+xnoremap <silent> <expr> s (mode() =~# "[V]" ? "\<C-V>0o$I" : "I")
+xnoremap <silent> <expr> S (mode() =~# "[V]" ? "\<C-V>0o$I" : "I")
+xnoremap <silent> <expr> t (mode() =~# "[V]" ? "\<C-V>0o$A" : "A")
+xnoremap <silent> <expr> T (mode() =~# "[V]" ? "\<C-V>0o$A" : "A")
+" Cut/Copy/Paste
+nnoremap x x|xnoremap x d|
+nnoremap c y|xnoremap c y|
+nnoremap v p|xnoremap v p|
+nnoremap X dd|xnoremap X d|
+nnoremap C yy|xnoremap C y|
+nnoremap V P|xnoremap V P|
+nnoremap gv gp|xnoremap gv gp|
+nnoremap gV gP|xnoremap gV gP|
+" Change
+nnoremap w c|xnoremap w c|
+nnoremap W C|xnoremap W C|
+nnoremap ww cc|
+" ESC to nohl
+nnoremap <silent> <ESC><ESC> :nohlsearch<CR>
+" window split
+nnoremap sv :<C-u>vs<CR>
+nnoremap ss :<C-u>sp<CR>
+" tab manage
+nnoremap st :<C-u>tabnew<CR>
+nnoremap sn gt
+nnoremap sp gT
+nnoremap sq :<C-u>q<CR>
+" window move
+nnoremap <C-h> <C-w>h
+nnoremap <C-n> <C-w>j
+nnoremap <C-e> <C-w>k
+nnoremap <C-i> <C-w>l
+
+" keybind for terminal
+tnoremap <ESC> <C-\><C-n>
+" auto close brackets
+imap { {}<LEFT>
+imap [ []<LEFT>
+imap ( ()<LEFT>
+
+" last cursol point
+if has("autocmd")
+    autocmd BufReadPost *
+    \ if line("'\"") > 0 && line ("'\"") <= line("$") |
+    \   exe "normal! g'\"" |
+    \ endif
+endif
+
+" auto reload vimrc
+augroup source-vimrc
+  autocmd!
+  autocmd BufWritePost *vimrc source $MYVIMRC | set foldmethod=marker
+  autocmd BufWritePost *gvimrc if has('gui_running') source $MYGVIMRC
+augroup END
+
+" misc settings
+
+set noswapfile
+set ruler
+set cursorline
+set cursorcolumn
+set cmdheight=1
+set laststatus=2
+set statusline=%<%f\ %m%r%h%w%{'['.(&fenc!=''?&fenc:&enc).']['.&ff.']'}%=%l,%c%V%8P
+set title
+set wildmenu
+set showcmd
+set smartcase
+set hlsearch
+set background=dark
+set expandtab
+set incsearch
+set hidden
+set list
+set listchars=tab:>\ ,extends:<
+set number
+set relativenumber
+set showmatch
+set autoindent
+set tabstop=2
+set shiftwidth=2
+set smarttab
+set whichwrap=b,s,h,l,<,>,[,]
+set fillchars+=vert:\
+
+syntax on
+
+
