@@ -34,6 +34,7 @@ alias p='paru'
 alias p-clean='paru -Sc && paru -c'
 alias vi='vim'
 alias v='vim'
+alias copilot='bunx @github/copilot'
 
 if [[ $(command -v eza) ]]; then
     alias ls='eza --icons --git'
