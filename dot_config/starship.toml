@@ -1,10 +1,42 @@
+add_newline = true
+
+format = """
+$directory$git_branch$git_status$cmd_duration$status$line_break$character"""
+
 [character]
-success_symbol = "[❯](bold magenta)"
-error_symbol = "[❯](bold red)"
+success_symbol = "[❯](magenta)"
+error_symbol = "[❯](red)"
+vicmd_symbol = "[❮](cyan)"
 
 [directory]
-style = "bold cyan"
+style = "bold blue"
+truncation_length = 0
+fish_style_pwd_dir_length = 0
+truncate_to_repo = false
 
 [git_branch]
+format = "[$branch]($style) "
+style = "magenta"
 symbol = ""
-style = "bold magenta"
+
+[git_status]
+format = "([$all_status$ahead_behind]($style) )"
+style = "gray"
+modified = "*"
+untracked = "?"
+stashed = "≡"
+ahead = "⇡"
+behind = "⇣"
+
+[cmd_duration]
+format = "[$duration]($style) "
+style = "yellow"
+min_time = 2000
+
+[line_break]
+disabled = false
+
+[status]
+disabled = false
+symbol = "✘"
+format = "[$symbol]($style) "
