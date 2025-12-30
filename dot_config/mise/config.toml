@@ -4,6 +4,7 @@ fzf = "latest"
 fd = "latest"
 ripgrep = "latest"
 bat = "latest"
+starship = "latest"
 
 [settings]
 activate_aggressive = true

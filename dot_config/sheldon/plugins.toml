@@ -1,12 +1,5 @@
 shell = "zsh"
 
-[plugins.zsh-async]
-github = "mafredri/zsh-async"
-
-[plugins.pure]
-github = "sindresorhus/pure"
-use = ["pure.zsh"]
-
 [plugins.zsh-autosuggestions]
 github = "zsh-users/zsh-autosuggestions"
 

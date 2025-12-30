@@ -1,8 +1,8 @@
 export LANG="en_US.UTF-8"
 export EDITOR="nvim"
 export VISUAL="nvim"
-export SSH_AUTH_SOCK=$(gpgconf --list-dirs agent-ssh-socket)
 export GPG_TTY=$(tty)
+export SSH_AUTH_SOCK=$(gpgconf --list-dirs agent-ssh-socket)
 
 gpg-connect-agent updatestartuptty /bye > /dev/null 2>&1
 
@@ -11,43 +11,52 @@ compinit
 
 eval "$(mise activate zsh)"
 eval "$(sheldon source)"
+eval "$(starship init zsh)"
 
 HISTFILE="$HOME/.zsh_history"
 HISTSIZE=100000
 SAVEHIST=100000
 
-setopt share_history
-setopt hist_ignore_all_dups
-setopt hist_reduce_blanks
+setopt share_history           # 履歴を他セッションと共有
+setopt hist_ignore_all_dups    # 重複を記録しない
+setopt hist_reduce_blanks      # 余白を詰める
+setopt auto_cd                 # ディレクトリ名のみで移動
+setopt auto_pushd              # cd 時にスタックに積む
+setopt pushd_ignore_dups       # スタックの重複防止
 
-setopt auto_cd
-setopt auto_pushd
-setopt pushd_ignore_dups
-
-bindkey -e
+bindkey -e                     # Emacs キーバインド
 bindkey '^[[A' history-substring-search-up
 bindkey '^[[B' history-substring-search-down
 
-if [[ $(command -v eza) ]]; then
-  alias ls='eza --icons --git'
-  alias ll='eza -alF --icons --git'
-  alias la='eza -a --icons --git'
-  alias lt='eza -T --icons --git'
-fi
-
+alias g='git'
 alias p='paru'
 alias p-clean='paru -Sc && paru -c'
-alias g='git'
 
-alias gh='if pass github/token >/dev/null 2>&1; then GH_TOKEN=$(pass github/token) command gh "$@"; else command gh "$@"; fi'
+if [[ $(command -v eza) ]]; then
+    alias ls='eza --icons --git'
+    alias ll='eza -alF --icons --git'
+    alias la='eza -a --icons --git'
+    alias lt='eza -T --icons --git'
+fi
+
+unalias gh 2>/dev/null
+
+gh() {
+    if [[ -t 0 && -z "$GH_TOKEN" ]]; then
+        if pass github/token >/dev/null 2>&1; then
+            export GH_TOKEN=$(pass github/token)
+        fi
+    fi
+    command gh "$@"
+}
 
 function ghq-fzf-navigation() {
-  local src=$(ghq list --full-path | fzf --height 40% --reverse --query="$LBUFFER")
-  if [ -n "$src" ]; then
-    BUFFER="cd $src"
-    zle accept-line
-  fi
-  zle -R -c
+    local src=$(ghq list --full-path | fzf --height 40% --reverse --query="$LBUFFER")
+    if [ -n "$src" ]; then
+        BUFFER="cd $src"
+        zle accept-line
+    fi
+    zle -R -c
 }
 zle -N ghq-fzf-navigation
 bindkey '^g' ghq-fzf-navigation

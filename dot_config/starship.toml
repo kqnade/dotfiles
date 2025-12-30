@@ -1,0 +1,10 @@
+[character]
+success_symbol = "[❯](bold magenta)"
+error_symbol = "[❯](bold red)"
+
+[directory]
+style = "bold cyan"
+
+[git_branch]
+symbol = ""
+style = "bold magenta"
