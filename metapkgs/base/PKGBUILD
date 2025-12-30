@@ -1,0 +1,23 @@
+pkgname=base-env
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="My declarative base environment"
+arch=('any')
+depends=(
+  'mise'
+  'ghq'
+  'gnupg'
+  'zsh'
+  'chezmoi'
+  'neovim'
+  'sheldon'
+  'git-delta'
+  'git-lfs'
+  'github-cli'
+  'glab'
+)
+
+package() {
+  install -d "$pkgdir/usr/share/doc/$pkgname"
+  echo "Applied: base-env" > "$pkgdir/usr/share/doc/$pkgname/README"
+}

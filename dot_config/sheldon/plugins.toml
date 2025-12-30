@@ -1,0 +1,22 @@
+shell = "zsh"
+
+[plugins.zsh-async]
+github = "mafredri/zsh-async"
+
+[plugins.pure]
+github = "sindresorhus/pure"
+use = ["pure.zsh"]
+
+[plugins.zsh-autosuggestions]
+github = "zsh-users/zsh-autosuggestions"
+
+[plugins.zsh-history-substring-search]
+github = "zsh-users/zsh-history-substring-search"
+
+[plugins.enhancd]
+github = "b4b4r07/enhancd"
+[plugins.enhancd.hooks]
+pre = "export ENHANCD_FILTER='fzf --height 40% --reverse'"
+
+[plugins.zsh-syntax-highlighting]
+github = "zsh-users/zsh-syntax-highlighting"

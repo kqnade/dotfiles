@@ -1,0 +1,11 @@
+pkgbase = base-env
+	pkgdesc = My declarative base environment
+	pkgver = 1.0.0
+	pkgrel = 1
+	arch = any
+	depends = mise-bin
+	depends = ghq
+	depends = gnupg
+	depends = zsh
+
+pkgname = base-env

@@ -1,0 +1,58 @@
+[user]
+	name = kqnade
+	email = git@k4na.de
+	signingkey = F19A8A2277AE1A97
+
+[alias]
+	ci = commit
+	co = checkout
+	br = branch
+	st = status
+	last = log -1 HEAD
+	sub = "submodule update --remote --merge"
+
+[core]
+	pager = delta
+
+[interactive]
+	diffFilter = delta --color-only
+
+[delta]
+	enable = true
+	navigate = true
+	light = false
+
+[merge]
+	conflictstyle = zdiff3
+
+[pull]
+	ff = only
+	rebase = true
+
+[init]
+	defaultBranch = main
+
+[rebase]
+	autoStash = true
+	autoSquash = true
+
+[commit]
+	gpgSign = true
+
+[tag]
+	gpgSign = true
+
+[url "https://github.com/"]
+	insteadOf = git://github.com/
+
+[credential "https://github.com"]
+	helper = !gh auth git-credential
+
+[credential "https://gitlab.com"]
+	helper = !glab auth git-credential
+
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true

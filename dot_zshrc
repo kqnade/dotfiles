@@ -1,0 +1,48 @@
+export LANG="en_US.UTF-8"
+export EDITOR="nvim"
+export VISUAL="nvim"
+export GPG_TTY=$(tty)
+
+autoload -Uz compinit
+compinit
+eval "$(mise activate zsh)"
+eval "$(sheldon source)"
+
+HISTFILE="$HOME/.zsh_history"
+HISTSIZE=100000
+SAVEHIST=100000
+
+setopt share_history
+setopt hist_ignore_all_dups
+setopt hist_reduce_blanks
+
+setopt auto_cd
+setopt auto_pushd
+setopt pushd_ignore_dups
+
+bindkey -e
+
+bindkey '^[[A' history-substring-search-up
+bindkey '^[[B' history-substring-search-down
+
+if [[ $(command -v eza) ]]; then
+  alias ls='eza --icons --git'
+  alias ll='eza -alF --icons --git'
+  alias la='eza -a --icons --git'
+  alias lt='eza -T --icons --git'
+fi
+
+alias p='paru'
+alias p-clean='paru -Sc && paru -c'
+alias g='git'
+
+function ghq-fzf-navigation() {
+  local src=$(ghq list > /dev/null | fzf --height 40% --reverse --query="$LBUFFER")
+  if [ -n "$src" ]; then
+    BUFFER="cd $(ghq root)/$src"
+    zle accept-line
+  fi
+  zle -R -c
+}
+zle -N ghq-fzf-navigation
+bindkey '^g' ghq-fzf-navigation

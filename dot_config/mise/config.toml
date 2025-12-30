@@ -1,0 +1,9 @@
+[tools]
+eza = "latest"
+fzf = "latest"
+fd = "latest"
+ripgrep = "latest"
+bat = "latest"
+
+[settings]
+activate_aggressive = true
