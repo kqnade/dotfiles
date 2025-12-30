@@ -17,6 +17,7 @@ depends=(
   'glab'
   'openssh'
   'pinentry'
+  'pass'
 )
 
 package() {

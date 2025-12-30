@@ -39,7 +39,7 @@ alias p='paru'
 alias p-clean='paru -Sc && paru -c'
 alias g='git'
 
-alias gh='GH_TOKEN=$(pass github/token) gh'
+alias gh='if pass github/token >/dev/null 2>&1; then GH_TOKEN=$(pass github/token) command gh "$@"; else command gh "$@"; fi'
 
 function ghq-fzf-navigation() {
   local src=$(ghq list --full-path | fzf --height 40% --reverse --query="$LBUFFER")
