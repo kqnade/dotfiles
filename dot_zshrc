@@ -29,12 +29,17 @@ bindkey -e                     # Emacs キーバインド
 bindkey '^[[A' history-substring-search-up
 bindkey '^[[B' history-substring-search-down
 
+zstyle ':fzf-tab:*' fzf-flags --height=40% --layout=reverse --border
+zstyle ':fzf-tab:complete: cd:*' fzf-preview 'ls -la $realpath'
+
 alias g='git'
 alias p='paru'
 alias p-clean='paru -Sc && paru -c'
 alias vi='vim'
 alias v='vim'
 alias copilot='bunx @github/copilot'
+alias ca='chezmoi apply'
+alias ce='chezmoi edit'
 
 if [[ $(command -v eza) ]]; then
     alias ls='eza --icons --git'
@@ -53,13 +58,43 @@ gh() {
     command gh "$@"
 }
 
-function ghq-fzf-navigation() {
-    local src=$(ghq list --full-path | fzf --height 40% --reverse --query="$LBUFFER")
-    if [ -n "$src" ]; then
-        BUFFER="cd $src"
-        zle accept-line
+# ghq + fzf + git情報表示
+gg() {
+  local selected repo_path
+
+  selected=$(ghq list | fzf \
+    --prompt="📁 Repository > " \
+    --height=70% \
+    --reverse \
+    --border \
+    --preview="
+      repo=\$(ghq list --full-path --exact {})
+      echo '📂 Path: '\$repo
+      echo ''
+      if [ -d \"\$repo/. git\" ]; then
+        cd \$repo
+        echo '🌿 Branch: '\$(git branch --show-current 2>/dev/null)
+        echo '📊 Status:'
+        git status -sb 2>/dev/null
+        echo ''
+        echo '📝 Recent commits:'
+        git log --oneline -5 2>/dev/null
+      else
+        ls -la \$repo
+      fi
+    " \
+    --preview-window=right:60%:wrap
+  )
+
+  if [ -n "$selected" ]; then
+    repo_path="$(ghq root)/$selected"
+    cd "$repo_path"
+    echo "✅ Moved to: $repo_path"
+
+    # Git情報を表示
+    if [ -d ". git" ]; then
+      echo "🌿 Branch: $(git branch --show-current)"
+      git status -sb
     fi
-    zle -R -c
+  fi
 }
-zle -N ghq-fzf-navigation
-bindkey '^g' ghq-fzf-navigation

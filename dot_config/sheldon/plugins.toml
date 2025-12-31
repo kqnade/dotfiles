@@ -11,5 +11,9 @@ github = "b4b4r07/enhancd"
 [plugins.enhancd.hooks]
 pre = "export ENHANCD_FILTER='fzf --height 40% --reverse'"
 
+[plugins. fzf-tab]
+github = "Aloxaf/fzf-tab"
+
+
 [plugins.zsh-syntax-highlighting]
 github = "zsh-users/zsh-syntax-highlighting"
