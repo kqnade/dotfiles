@@ -38,6 +38,7 @@ alias p-clean='paru -Sc && paru -c'
 alias vi='vim'
 alias v='vim'
 alias copilot='bunx @github/copilot'
+alias cat='bat --paging=never'
 alias ca='chezmoi apply'
 alias ce='chezmoi edit'
 
@@ -58,7 +59,6 @@ gh() {
     command gh "$@"
 }
 
-# ghq + fzf + git情報表示
 gg() {
   local selected repo_path
 
