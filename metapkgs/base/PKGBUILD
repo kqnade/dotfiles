@@ -5,6 +5,7 @@ pkgdesc="My declarative base environment"
 arch=('any')
 depends=(
   'mise'
+  'libyaml'
   'ghq'
   'gnupg'
   'zsh'
