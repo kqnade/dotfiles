@@ -95,9 +95,9 @@ map("n", "sn", "gt", { desc = "Next tab" })
 map("n", "sp", "gT", { desc = "Previous tab" })
 map("n", "sq", "<cmd>q<CR>", { desc = "Close window" })
 
--- ─── Window Navigation (Colemak: C-m/n/e/i) ────────────────
--- Note: <C-m> is same as <CR> in terminal, so we use it carefully
-map("n", "<C-m>", "<C-w>h", { desc = "Move to left window" })
+-- ─── Window Navigation (Colemak: C-h/n/e/i) ────────────────
+-- Note: <C-m> conflicts with <CR>, using <C-h> instead
+map("n", "<C-h>", "<C-w>h", { desc = "Move to left window" })
 map("n", "<C-n>", "<C-w>j", { desc = "Move to lower window" })
 map("n", "<C-e>", "<C-w>k", { desc = "Move to upper window" })
 map("n", "<C-i>", "<C-w>l", { desc = "Move to right window" })
@@ -110,7 +110,7 @@ map("n", "<M-e>", "<cmd>resize +5<CR>", { desc = "Increase height" })
 
 -- ─── Terminal Mode ─────────────────────────────────────────
 map("t", "<Esc><Esc>", "<C-\\><C-n>", { desc = "Exit terminal mode" })
-map("t", "<C-m>", "<cmd>wincmd h<CR>", { desc = "Move to left window" })
+map("t", "<C-h>", "<cmd>wincmd h<CR>", { desc = "Move to left window" })
 map("t", "<C-n>", "<cmd>wincmd j<CR>", { desc = "Move to lower window" })
 map("t", "<C-e>", "<cmd>wincmd k<CR>", { desc = "Move to upper window" })
 map("t", "<C-i>", "<cmd>wincmd l<CR>", { desc = "Move to right window" })

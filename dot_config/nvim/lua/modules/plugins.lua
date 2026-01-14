@@ -369,17 +369,34 @@ local plugins = {
     event = "VeryLazy",
     opts = {},
   },
-  {
-    "numToStr/Comment.nvim",
-    keys = {
-      { "gc", mode = { "n", "v" }, desc = "Comment toggle linewise" },
-      { "gb", mode = { "n", "v" }, desc = "Comment toggle blockwise" },
-    },
-    opts = {},
-  },
-}
+   {
+     "numToStr/Comment.nvim",
+     keys = {
+       { "gc", mode = { "n", "v" }, desc = "Comment toggle linewise" },
+       { "gb", mode = { "n", "v" }, desc = "Comment toggle blockwise" },
+     },
+     opts = {},
+   },
 
--- Setup lazy.nvim
+   -- ═══════════════════════════════════════════════════════════
+   -- ║                      TERMINAL                           ║
+   -- ═══════════════════════════════════════════════════════════
+   {
+     "akinsho/toggleterm.nvim",
+     version = "*",
+     keys = {
+       { "<leader>tt", "<cmd>ToggleTerm<CR>", desc = "Toggle terminal" },
+       { "<leader>tf", "<cmd>ToggleTerm direction=float<CR>", desc = "Toggle float terminal" },
+       { "<leader>th", "<cmd>ToggleTerm direction=horizontal<CR>", desc = "Toggle horizontal terminal" },
+       { "<leader>tv", "<cmd>ToggleTerm direction=vertical<CR>", desc = "Toggle vertical terminal" },
+     },
+     config = function()
+       require("modules.configs.ui.toggleterm")
+     end,
+   },
+ }
+ 
+ -- Setup lazy.nvim
 require("lazy").setup(plugins, {
   defaults = {
     lazy = true,
