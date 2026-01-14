@@ -19,6 +19,7 @@ depends=(
   'openssh'
   'pinentry'
   'pass'
+  'opencode'
 )
 
 package() {
