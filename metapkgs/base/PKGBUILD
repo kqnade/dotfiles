@@ -1,5 +1,5 @@
 pkgname=base-env
-pkgver=1.0.0
+pkgver=20260114
 pkgrel=1
 pkgdesc="My declarative base environment"
 arch=('any')
@@ -21,7 +21,17 @@ depends=(
   'pinentry'
   'pass'
   'opencode'
+  # Neovim dependencies
+  'tree-sitter'
+  'tree-sitter-cli'
+  'luarocks'
+  'lua51'
 )
+
+# Always use latest versions
+pkgver() {
+  date +%Y%m%d
+}
 
 package() {
   install -d "$pkgdir/usr/share/doc/$pkgname"

@@ -1,4 +1,10 @@
 [tools]
+# Languages
+node = "lts"
+python = "latest"
+go = "latest"
+
+# CLI tools
 eza = "latest"
 fzf = "latest"
 fd = "latest"
