@@ -1,3 +1,4 @@
 metapkgs/
 .gitignore
 README.md
+dot_config/nvim/README.md
