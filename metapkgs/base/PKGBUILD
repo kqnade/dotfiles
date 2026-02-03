@@ -1,5 +1,5 @@
 pkgname=base-env
-pkgver=20260114
+pkgver=20260203
 pkgrel=1
 pkgdesc="My declarative base environment"
 arch=('any')
@@ -20,7 +20,7 @@ depends=(
   'openssh'
   'pinentry'
   'pass'
-  'opencode'
+  "claude-code"
   # Neovim dependencies
   'tree-sitter'
   'tree-sitter-cli'
