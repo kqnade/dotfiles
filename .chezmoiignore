@@ -1,4 +1,5 @@
 metapkgs/
 .gitignore
 README.md
+CLAUDE.md
 dot_config/nvim/README.md
