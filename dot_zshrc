@@ -40,6 +40,7 @@ alias v='vim'
 alias cat='bat --paging=never'
 alias ca='chezmoi apply'
 alias ce='chezmoi edit'
+alias cl='bunx claude-code'
 
 if [[ $(command -v eza) ]]; then
     alias ls='eza --icons --git'
