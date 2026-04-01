@@ -9,6 +9,7 @@ alias cat='bat --paging=never'
 alias ca='chezmoi apply'
 alias ce='chezmoi edit'
 alias cl='claude'
+alias rm="gomi"
 
 if [[ $(command -v eza) ]]; then
     alias ls='eza --icons --git'
