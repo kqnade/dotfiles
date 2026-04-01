@@ -1,0 +1,35 @@
+{
+  "cleanupPeriodDays": 14,
+  "env": {
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "75",
+    "DISABLE_NON_ESSENTIAL_MODEL_CALLS": "1"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(cargo *)",
+      "Bash(go *)",
+      "Bash(zig *)",
+      "Bash(npm *)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(git push --force *)"
+    ],
+    "defaultMode": "default"
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bunx -y ccstatusline@latest",
+    "padding": 0
+  },
+  "enabledPlugins": {
+    "github@claude-plugins-official": true,
+    "gopls-lsp@claude-plugins-official": true,
+    "everything-claude-code@everything-claude-code": true
+  },
+  "language": "Friendly Japanese",
+  "spinnerTipsEnabled": false,
+  "verbose": false,
+  "includeCoAuthoredBy": true
+}

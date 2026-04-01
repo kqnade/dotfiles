@@ -1,3 +1,5 @@
+alias please='sudo $(fc -ln -1)'
+alias path='echo $PATH | tr ":" "\n"'
 alias g='git'
 alias p='paru'
 alias p-clean='paru -Sc && paru -c'
