@@ -1,7 +1,9 @@
 gg() {
   local selected repo_path
 
-  echo git > /tmp/gg_mode
+  local mode_file
+  mode_file=$(mktemp)
+  echo git > "$mode_file"
   selected=$(ghq list | fzf \
     --query="$1" \
     --prompt="📁 Repository > " \
@@ -10,7 +12,7 @@ gg() {
     --border \
     --preview="
       repo=\$(ghq root)/{}
-      mode=\$(cat /tmp/gg_mode 2>/dev/null || echo git)
+      mode=\$(cat $mode_file 2>/dev/null || echo git)
       echo '📂 Path: '\$repo
       echo ''
       if [ \"\$mode\" = 'ls' ]; then
@@ -33,9 +35,9 @@ gg() {
     " \
     --preview-window=right:60%:wrap \
     --preview-label=" [Tab: git/ls] " \
-    --bind="tab:execute-silent([ \$(cat /tmp/gg_mode) = git ] && echo ls > /tmp/gg_mode || echo git > /tmp/gg_mode)+refresh-preview"
+    --bind="tab:execute-silent([ \$(cat $mode_file) = git ] && echo ls > $mode_file || echo git > $mode_file)+refresh-preview"
   )
-  rm -f /tmp/gg_mode
+  rm -f "$mode_file"
 
   if [ -n "$selected" ]; then
     repo_path="$(ghq root)/$selected"
