@@ -68,17 +68,16 @@ gg() {
     --reverse \
     --border \
     --preview="
-      repo=\$(ghq list --full-path --exact {})
+      repo=\$(ghq root)/{}
       echo '📂 Path: '\$repo
       echo ''
-      if [ -d \"\$repo/. git\" ]; then
-        cd \$repo
-        echo '🌿 Branch: '\$(git branch --show-current 2>/dev/null)
+      if [ -d \"\$repo/.git\" ]; then
+        echo '🌿 Branch: '\$(git -C \$repo branch --show-current 2>/dev/null)
         echo '📊 Status:'
-        git status -sb 2>/dev/null
+        git -C \$repo status -sb 2>/dev/null
         echo ''
         echo '📝 Recent commits:'
-        git log --oneline -5 2>/dev/null
+        git -C \$repo log --oneline -5 2>/dev/null
       else
         ls -la \$repo
       fi
@@ -92,7 +91,7 @@ gg() {
     echo "✅ Moved to: $repo_path"
 
     # Git情報を表示
-    if [ -d ". git" ]; then
+    if [ -d ".git" ]; then
       echo "🌿 Branch: $(git branch --show-current)"
       git status -sb
     fi
