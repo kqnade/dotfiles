@@ -1,0 +1,291 @@
+{
+  "version": 3,
+  "lines": [
+    [
+      {
+        "id": "bac421ba-1b06-4445-a616-fdd4e44660cb",
+        "type": "git-root-dir",
+        "color": "green",
+        "metadata": {
+          "hideNoGit": "true"
+        }
+      },
+      {
+        "id": "71119afa-1823-4171-8705-0bb4473a580b",
+        "type": "separator"
+      },
+      {
+        "id": "a5eca3d1-c73e-4a74-9875-b2d50e93627a",
+        "type": "git-branch",
+        "color": "magenta",
+        "metadata": {
+          "hideNoGit": "true",
+          "linkToGitHub": "true"
+        }
+      },
+      {
+        "id": "2fabd6fb-050f-4460-ae76-3dc0c74c992c",
+        "type": "custom-text",
+        "customText": " "
+      },
+      {
+        "id": "8bebb35b-0ac0-4ae3-b848-e68803c4c0ed",
+        "type": "git-changes",
+        "color": "yellow",
+        "metadata": {
+          "hideNoGit": "true"
+        }
+      },
+      {
+        "id": "6447e0ae-107a-4b62-bafb-579c42f615da",
+        "type": "flex-separator",
+        "color": ""
+      },
+      {
+        "id": "a35c457e-8c97-4d5d-8647-58be9d9f9872",
+        "type": "current-working-dir",
+        "metadata": {
+          "abbreviateHome": "true"
+        }
+      }
+    ],
+    [
+      {
+        "id": "88d96fbc-b96f-4094-851a-3aa8a6c7a345",
+        "type": "model",
+        "color": "brightBlue"
+      },
+      {
+        "id": "ddbd8d20-6c66-47d8-a984-146213c7af39",
+        "type": "separator"
+      },
+      {
+        "id": "ea830ed5-0d77-49b1-82e2-c998b7d88944",
+        "type": "thinking-effort",
+        "color": "brightBlue"
+      },
+      {
+        "id": "099000d3-91fc-4549-b3e2-9a553e42a27e",
+        "type": "separator"
+      },
+      {
+        "id": "8367c983-3f14-4d11-a5cc-adbce5511e34",
+        "type": "output-style",
+        "color": "brightBlue"
+      },
+      {
+        "id": "7b0f86c3-a017-498b-814d-9dc568ab8020",
+        "type": "flex-separator"
+      },
+      {
+        "id": "54adc494-de70-4610-afb7-5f49bf77862c",
+        "type": "context-bar",
+        "color": "cyan",
+        "metadata": {
+          "display": "progress"
+        }
+      },
+      {
+        "id": "b133840e-a39f-4fbd-ab5c-e9a1385c6cc7",
+        "type": "separator"
+      },
+      {
+        "id": "507cd8d7-a5ef-409c-8522-6a7343845496",
+        "type": "context-length",
+        "color": "cyan"
+      }
+    ],
+    [
+      {
+        "id": "c446a270-3c2b-4a5c-90d7-c1f0c70e3c1b",
+        "type": "session-name",
+        "color": "brightYellow"
+      },
+      {
+        "id": "e400acfe-5d06-4d4d-aef0-a2f785f18368",
+        "type": "flex-separator"
+      },
+      {
+        "id": "c7504d1c-a662-4731-a9ea-c965b6fdfe43",
+        "type": "session-clock"
+      },
+      {
+        "id": "96c11562-f53a-4e97-8cb2-8f8ab0d37cc3",
+        "type": "separator"
+      },
+      {
+        "id": "da5c3e3e-6f58-41de-8e2a-70e7689567d0",
+        "type": "session-cost"
+      },
+      {
+        "id": "2111f3e0-5d10-47ff-8c42-2eaa41e29f85",
+        "type": "separator"
+      },
+      {
+        "id": "4bf52614-8fab-42f3-812c-94dbed412044",
+        "type": "free-memory",
+        "color": "brightMagenta"
+      }
+    ],
+    [
+      {
+        "id": "7feea406-b127-4dbf-8c50-09dc2ffe6560",
+        "type": "custom-text",
+        "customText": "Token       ["
+      },
+      {
+        "id": "2a1c0d2f-f610-429e-a53c-54dddc8599e8",
+        "type": "tokens-cached",
+        "color": "magenta"
+      },
+      {
+        "id": "e57ef4ac-515a-43ba-a475-3ed5fa1babd1",
+        "type": "custom-text",
+        "customText": " / "
+      },
+      {
+        "id": "87fc2426-75d7-4660-a2c9-754c5fa134da",
+        "type": "tokens-input",
+        "color": "green"
+      },
+      {
+        "id": "b3755913-8a0d-401b-8f1e-b0febaf32a2c",
+        "type": "custom-text",
+        "customText": " / "
+      },
+      {
+        "id": "794a871d-7c06-42ed-a367-b2691ce5a181",
+        "type": "tokens-output",
+        "color": "blue"
+      },
+      {
+        "id": "92918be4-4744-4c03-b013-6ac05be3c018",
+        "type": "custom-text",
+        "customText": " / "
+      },
+      {
+        "id": "fc6ce498-2962-47bd-92bc-7d769bfa8190",
+        "type": "tokens-total",
+        "color": "yellow"
+      },
+      {
+        "id": "f3ffef3b-549f-47bc-8e2c-ff41f8366528",
+        "type": "custom-text",
+        "customText": "]"
+      },
+      {
+        "id": "24eb501d-6e6a-41e4-9039-2b7660ac03f7",
+        "type": "flex-separator"
+      },
+      {
+        "id": "02e2d701-631d-4e25-ab19-62563831dec4",
+        "type": "session-usage",
+        "metadata": {
+          "display": "progress-short"
+        }
+      },
+      {
+        "id": "8a89b7e2-a204-4293-bff9-abc28d6966c6",
+        "type": "separator"
+      },
+      {
+        "id": "351f0e96-ac8a-4d43-979c-ba7a5f73a1b4",
+        "type": "custom-text",
+        "customText": "       "
+      },
+      {
+        "id": "29d8444a-a5ff-4631-8ec5-d5a286cfaee0",
+        "type": "reset-timer",
+        "metadata": {
+          "display": "progress-short"
+        }
+      }
+    ],
+    [
+      {
+        "id": "a3271a19-9f5a-4b68-a3d1-383b54c751a9",
+        "type": "custom-text",
+        "customText": "Token Speed ["
+      },
+      {
+        "id": "8c5dc81b-fd09-4e40-913d-c6a51bc766e6",
+        "type": "input-speed",
+        "metadata": {
+          "windowSeconds": "60"
+        },
+        "color": "green"
+      },
+      {
+        "id": "4e58abca-05f4-4d52-a868-6a3a93d4a854",
+        "type": "custom-text",
+        "customText": " / "
+      },
+      {
+        "id": "218a4153-ed13-44a9-9e25-0f1d574d3cfc",
+        "type": "output-speed",
+        "metadata": {
+          "windowSeconds": "60"
+        },
+        "color": "blue"
+      },
+      {
+        "id": "f19b8677-504f-45a8-bf57-7cf1fcdc21c8",
+        "type": "custom-text",
+        "customText": " / "
+      },
+      {
+        "id": "5f1faf1d-bb79-496c-8c3f-e82132c052d4",
+        "type": "total-speed",
+        "metadata": {
+          "windowSeconds": "60"
+        },
+        "color": "yellow"
+      },
+      {
+        "id": "0a70e053-8f1c-4b32-8673-455f35b012bd",
+        "type": "custom-text",
+        "customText": "]"
+      },
+      {
+        "id": "34f27b41-7ccd-434d-809c-d551b7bb88eb",
+        "type": "flex-separator"
+      },
+      {
+        "id": "350bf217-231f-41b4-b0af-bdbecc99118f",
+        "type": "weekly-usage",
+        "metadata": {
+          "display": "progress-short"
+        }
+      },
+      {
+        "id": "be5b6b48-a953-4a1c-abaf-29ed0d38f6ad",
+        "type": "separator"
+      },
+      {
+        "id": "06ca93be-69eb-4da5-9753-e6ce077b5074",
+        "type": "weekly-reset-timer",
+        "metadata": {
+          "display": "progress-short"
+        },
+        "color": "brightBlue"
+      }
+    ]
+  ],
+  "flexMode": "full",
+  "compactThreshold": 60,
+  "colorLevel": 1,
+  "inheritSeparatorColors": false,
+  "globalBold": false,
+  "powerline": {
+    "enabled": false,
+    "separators": [
+      ""
+    ],
+    "separatorInvertBackground": [
+      false
+    ],
+    "startCaps": [],
+    "endCaps": [],
+    "autoAlign": false
+  }
+}
