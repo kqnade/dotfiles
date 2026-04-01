@@ -38,6 +38,21 @@ mise install
 | sheldon | Zshプラグイン管理 | `dot_config/sheldon/plugins.toml` |
 | starship | プロンプト | `dot_config/starship.toml` |
 
+### Zsh Structure (`dot_config/zsh/`)
+
+```
+zsh/
+├── aliases.zsh          # エイリアス全般
+└── functions/
+    ├── ccd.zsh          # cd + clear
+    ├── gh.zsh           # gh wrapper (pass経由でGH_TOKEN注入)
+    ├── gg.zsh           # ghqリポジトリfzf選択・移動
+    ├── ghq.zsh          # ghq wrapper (get/clone/create後に自動cd、removeサブコマンド)
+    └── mkcd.zsh         # mkdir + cd
+```
+
+`.zshrc` から `~/.config/zsh/**/*.zsh` を一括 source。新しい関数は `functions/` にファイルを追加するだけ。
+
 ### Neovim Structure (`dot_config/nvim/`)
 
 ```
@@ -71,5 +86,8 @@ Vim/Neovimの設定変更時は、このマッピングを維持すること。
 
 - **LSPサーバー追加**: `dot_config/nvim/lua/modules/configs/lsp/init.lua`
 - **フォーマッター追加**: `dot_config/nvim/lua/modules/configs/editor/conform.lua`
-- **Zshエイリアス**: `dot_zshrc`
+- **Zshエイリアス**: `dot_config/zsh/aliases.zsh`
+- **Zsh関数追加**: `dot_config/zsh/functions/<name>.zsh` を作成
+- **Claude設定**: `dot_claude/settings.json`
+- **Claudeルール**: `dot_claude/rules/`
 - **依存パッケージ**: `metapkgs/base/PKGBUILD`
