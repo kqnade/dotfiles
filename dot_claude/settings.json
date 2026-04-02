@@ -26,10 +26,20 @@
   "enabledPlugins": {
     "github@claude-plugins-official": true,
     "gopls-lsp@claude-plugins-official": true,
-    "everything-claude-code@everything-claude-code": true
+    "everything-claude-code@everything-claude-code": true,
+    "skill-codex@skill-codex": true
+  },
+  "extraKnownMarketplaces": {
+    "skill-codex": {
+      "source": {
+        "source": "github",
+        "repo": "skills-directory/skill-codex"
+      }
+    }
   },
   "language": "Friendly Japanese",
   "spinnerTipsEnabled": false,
   "verbose": false,
+  "effortLevel": "high",
   "includeCoAuthoredBy": true
 }
