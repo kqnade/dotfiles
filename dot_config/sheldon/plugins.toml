@@ -14,6 +14,9 @@ pre = "export ENHANCD_FILTER='fzf --height 40% --reverse'"
 [plugins. fzf-tab]
 github = "Aloxaf/fzf-tab"
 
-
 [plugins.zsh-syntax-highlighting]
 github = "zsh-users/zsh-syntax-highlighting"
+
+[plugins.wt]
+github = "kqnade/wt"
+use = ["wt.sh"]
