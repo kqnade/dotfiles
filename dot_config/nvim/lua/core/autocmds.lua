@@ -52,7 +52,7 @@ autocmd("VimResized", {
 })
 
 -- ─── FileType Settings ─────────────────────────────────────
-local filetype = augroup("FileType", { clear = true })
+local filetype = augroup("UserFileType", { clear = true })
 
 -- Close these filetypes with 'q'
 autocmd("FileType", {

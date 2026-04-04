@@ -3,11 +3,6 @@
 -- │              Optimized for speed & Colemak                │
 -- ╰──────────────────────────────────────────────────────────╯
 
--- NOTE: Neovim 0.11.x has a bug causing E1155 error from runtime/syntax/syntax.vim
--- This is a known issue and doesn't affect functionality.
--- Workaround: Create an alias: alias nvim='nvim --cmd "au! syntaxset"'
--- Or wait for Neovim patch release.
-
 -- Disable built-in plugins for faster startup
 local disabled_built_ins = {
   "gzip",
