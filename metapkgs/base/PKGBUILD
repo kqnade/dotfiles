@@ -1,5 +1,5 @@
 pkgname=base-env
-pkgver=20260203
+pkgver=20260404
 pkgrel=1
 pkgdesc="My declarative base environment"
 arch=('any')
