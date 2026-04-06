@@ -30,7 +30,8 @@ local plugins = {
   -- ║                     COLORSCHEME                          ║
   -- ═══════════════════════════════════════════════════════════
   {
-    "olimorris/onedarkpro.nvim",
+    "catppuccin/nvim",
+    name = "catppuccin",
     lazy = false,
     priority = 1000,
     config = function()
@@ -306,17 +307,6 @@ local plugins = {
     event = "VimEnter",
     config = function()
       require("modules.configs.ui.alpha")
-    end,
-  },
-  {
-    "folke/noice.nvim",
-    event = "VeryLazy",
-    dependencies = {
-      "MunifTanjim/nui.nvim",
-      "rcarriga/nvim-notify",
-    },
-    config = function()
-      require("modules.configs.ui.noice")
     end,
   },
   {

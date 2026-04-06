@@ -26,9 +26,6 @@ lint.linters_by_ft = {
   sh = { "shellcheck" },
   bash = { "shellcheck" },
 
-  -- Lua
-  lua = { "selene" },
-
   -- YAML
   yaml = { "yamllint" },
 

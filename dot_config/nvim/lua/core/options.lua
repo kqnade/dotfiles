@@ -17,7 +17,7 @@ end
 opt.updatetime = 200
 opt.timeoutlen = 300
 opt.redrawtime = 1500
-opt.lazyredraw = false -- disabled for noice.nvim compatibility
+opt.lazyredraw = false
 
 -- ─── File Handling ─────────────────────────────────────────
 opt.swapfile = false

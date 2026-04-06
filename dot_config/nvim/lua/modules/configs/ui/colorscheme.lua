@@ -1,44 +1,41 @@
 -- ╭──────────────────────────────────────────────────────────╮
 -- │                      Colorscheme                          │
--- │                       OneDark                             │
+-- │                      Catppuccin                           │
 -- ╰──────────────────────────────────────────────────────────╯
 
-require("onedarkpro").setup({
-  colors = {}, -- Override default colors
-  highlights = {}, -- Override default highlights
+require("catppuccin").setup({
+  flavour = "mocha",
+  transparent_background = true,
+  custom_highlights = function()
+    return {
+      NormalFloat = { bg = "NONE" },
+      FloatBorder = { bg = "NONE" },
+    }
+  end,
   styles = {
-    types = "NONE",
-    methods = "NONE",
-    numbers = "NONE",
-    strings = "NONE",
-    comments = "italic",
-    keywords = "bold,italic",
-    constants = "NONE",
-    functions = "NONE",
-    operators = "NONE",
-    variables = "NONE",
-    parameters = "NONE",
-    conditionals = "italic",
-    virtual_text = "NONE",
+    comments = { "italic" },
+    conditionals = { "italic" },
+    keywords = { "bold", "italic" },
   },
-  filetypes = {
-    all = true,
-  },
-  plugins = {
-    all = true,
-  },
-  options = {
-    cursorline = true,
-    transparency = false,
-    terminal_colors = true,
-    lualine_transparency = false,
-    highlight_inactive_windows = false,
+  integrations = {
+    cmp = true,
+    gitsigns = true,
+    mason = true,
+    neotest = true,
+    notify = true,
+    treesitter = true,
+    telescope = { enabled = true },
+    which_key = true,
+    native_lsp = {
+      enabled = true,
+      underlines = {
+        errors = { "undercurl" },
+        hints = { "undercurl" },
+        warnings = { "undercurl" },
+        information = { "undercurl" },
+      },
+    },
   },
 })
 
--- Apply the colorscheme
-vim.cmd("colorscheme onedark")
-
--- Inherit background from Kitty (no bg override, keeps terminal's color)
-vim.api.nvim_set_hl(0, "Normal", { bg = "NONE" })
-vim.api.nvim_set_hl(0, "NormalNC", { bg = "NONE" })
+vim.cmd("colorscheme catppuccin")
