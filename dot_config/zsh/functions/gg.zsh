@@ -37,7 +37,7 @@ gg() {
     --preview-label=" [Tab: git/ls] " \
     --bind="tab:execute-silent([ \$(cat $mode_file) = git ] && echo ls > $mode_file || echo git > $mode_file)+refresh-preview"
   )
-  rm -f "$mode_file"
+  command rm -f "$mode_file"
 
   if [ -n "$selected" ]; then
     repo_path="$(ghq root)/$selected"
