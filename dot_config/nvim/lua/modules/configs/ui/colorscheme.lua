@@ -10,6 +10,8 @@ require("catppuccin").setup({
     return {
       NormalFloat = { bg = "NONE" },
       FloatBorder = { bg = "NONE" },
+      StatusLine = { bg = "NONE" },
+      StatusLineNC = { bg = "NONE" },
     }
   end,
   styles = {
