@@ -98,6 +98,7 @@ augroup END
 
 " misc settings
 
+set shortmess+=F
 set noswapfile
 set ruler
 set cursorline

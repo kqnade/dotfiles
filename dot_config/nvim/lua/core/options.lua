@@ -114,7 +114,7 @@ opt.foldlevelstart = 99
 opt.foldenable = true
 
 -- ─── Misc ──────────────────────────────────────────────────
-opt.shortmess:append("sI")
+opt.shortmess:append("sIF")
 opt.iskeyword:append("-")
 opt.formatoptions:remove({ "c", "r", "o" })
 opt.sessionoptions = { "buffers", "curdir", "tabpages", "winsize", "help", "globals", "skiprtp", "folds" }
