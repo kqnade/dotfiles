@@ -2,6 +2,8 @@ font-family = UDEV Gothic NFLG
 font-size = 12
 window-padding-x = 12
 window-padding-y = 12
-background-opacity = 0.6
+background-opacity = 0.8
 cursor-style = block
 shell-integration-features = no-cursor
+
+theme = "Nord"
