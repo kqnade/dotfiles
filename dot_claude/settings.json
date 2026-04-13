@@ -4,6 +4,7 @@
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "75",
     "DISABLE_NON_ESSENTIAL_MODEL_CALLS": "1"
   },
+  "includeCoAuthoredBy": true,
   "permissions": {
     "allow": [
       "Bash(git *)",
@@ -27,7 +28,8 @@
     "github@claude-plugins-official": true,
     "gopls-lsp@claude-plugins-official": true,
     "everything-claude-code@everything-claude-code": true,
-    "skill-codex@skill-codex": true
+    "skill-codex@skill-codex": true,
+    "coderabbit@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "skill-codex": {
@@ -39,7 +41,6 @@
   },
   "language": "Friendly Japanese",
   "spinnerTipsEnabled": false,
-  "verbose": false,
   "effortLevel": "high",
-  "includeCoAuthoredBy": true
+  "verbose": false
 }
