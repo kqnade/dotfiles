@@ -1,8 +1,10 @@
 [tools]
 # Languages
 node = "lts"
-python = "latest"
+python = "3.12"
 go = "latest"
+ruby = "latest"
+lua = "latest"
 
 # CLI tools
 eza = "latest"
@@ -12,6 +14,7 @@ ripgrep = "latest"
 bat = "latest"
 starship = "latest"
 bun = "latest"
+tree-sitter = "latest"
 
 [settings]
 activate_aggressive = true
