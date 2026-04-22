@@ -4,6 +4,11 @@
 --   vim.fn['skkeleton#config']({ kanaTable = 'my-azik' })
 
 return {
+  -- SKK制御キー（romテーブルから必要なものを引き継ぐ）
+  [" "] = "henkanFirst",    -- スペースで変換開始
+  l = "katakana",           -- lでカタカナモード
+  ["/"] = "abbrev",         -- /でアブレビエーション検索
+
   -- 基本
   a = { "あ" },
   i = { "い" },
@@ -185,7 +190,7 @@ return {
   di = { "ぢ" },
   du = { "づ" },
   de = { "で" },
-  do = { "ど" },
+  ["do"] = { "ど" },
   dz = { "だん" },
   dn = { "だん" },
   dk = { "ぢん" },

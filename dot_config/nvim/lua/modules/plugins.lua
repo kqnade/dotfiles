@@ -370,7 +370,10 @@ local plugins = {
    {
      "vim-skk/skkeleton",
      event = "InsertEnter",
-     dependencies = { "vim-denops/denops.vim" },
+     dependencies = {
+       "vim-denops/denops.vim",
+       "rinx/cmp-skkeleton",
+     },
      config = function()
        require("modules.configs.editor.skkeleton")
      end,
