@@ -35,6 +35,7 @@ local ensure_installed = {
   "regex",
   "markdown",
   "markdown_inline",
+  "latex",
   "query",
   "diff",
   "gitcommit",
@@ -109,25 +110,25 @@ vim.keymap.set("x", "<BS>", function()
 end, { desc = "Decrement treesitter selection" })
 
 -- ─── Rainbow Delimiters ──────────────────────────────────────
-local rainbow_ok, rainbow_delimiters = pcall(require, "rainbow-delimiters")
-if rainbow_ok then
-  vim.g.rainbow_delimiters = {
-    strategy = {
-      [""] = rainbow_delimiters.strategy["global"],
-      vim = rainbow_delimiters.strategy["local"],
-    },
-    query = {
-      [""] = "rainbow-delimiters",
-      lua = "rainbow-blocks",
-    },
-    highlight = {
-      "RainbowDelimiterRed",
-      "RainbowDelimiterYellow",
-      "RainbowDelimiterBlue",
-      "RainbowDelimiterOrange",
-      "RainbowDelimiterGreen",
-      "RainbowDelimiterViolet",
-      "RainbowDelimiterCyan",
-    },
-  }
-end
+vim.g.rainbow_delimiters = {
+  strategy = {
+    [""] = function(bufnr)
+      local ok, parser = pcall(vim.treesitter.get_parser, bufnr)
+      if not ok or not parser then return end
+      return require("rainbow-delimiters.strategy.global")
+    end,
+  },
+  query = {
+    [""] = "rainbow-delimiters",
+    lua = "rainbow-blocks",
+  },
+  highlight = {
+    "RainbowDelimiterRed",
+    "RainbowDelimiterYellow",
+    "RainbowDelimiterBlue",
+    "RainbowDelimiterOrange",
+    "RainbowDelimiterGreen",
+    "RainbowDelimiterViolet",
+    "RainbowDelimiterCyan",
+  },
+}
