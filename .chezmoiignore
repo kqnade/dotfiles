@@ -3,3 +3,6 @@ metapkgs/
 README.md
 CLAUDE.md
 dot_config/nvim/README.md
+{{ if ne .chezmoi.os "darwin" -}}
+Brewfile
+{{- end }}
