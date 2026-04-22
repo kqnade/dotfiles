@@ -27,6 +27,38 @@ local function lsp_clients()
 end
 
 
+-- SKK モード状態追跡 (nil = 無効, "hira" / "kata" / "ascii" = 有効)
+local skk_mode = nil
+
+local function get_skk_mode()
+  local ok, m = pcall(vim.fn["skkeleton#mode"])
+  return ok and m or "hira"
+end
+
+vim.api.nvim_create_autocmd("User", {
+  pattern = "skkeleton-enable-post",
+  callback = function()
+    skk_mode = get_skk_mode()
+    require("lualine").refresh()
+  end,
+})
+
+vim.api.nvim_create_autocmd("User", {
+  pattern = "skkeleton-disable-post",
+  callback = function()
+    skk_mode = nil
+    require("lualine").refresh()
+  end,
+})
+
+vim.api.nvim_create_autocmd("User", {
+  pattern = "skkeleton-mode-changed",
+  callback = function()
+    skk_mode = get_skk_mode()
+    require("lualine").refresh()
+  end,
+})
+
 require("lualine").setup({
   options = {
     icons_enabled = true,
@@ -66,9 +98,8 @@ require("lualine").setup({
             ["EX"]       = "EX ",
           }
           local mode_str = map[str] or str:sub(1, 3)
-          if vim.fn.exists("*skkeleton#is_enabled") == 1 and vim.fn["skkeleton#is_enabled"]() == 1 then
-            local skk = vim.fn["skkeleton#mode"]()
-            local skk_str = ({ hira = "かな", kata = "カナ", ascii = "ASC" })[skk] or "SKK"
+          if skk_mode then
+            local skk_str = ({ hira = "かな", kata = "カナ", ascii = "ASC" })[skk_mode] or "SKK"
             return mode_str .. " / " .. skk_str
           end
           return mode_str
