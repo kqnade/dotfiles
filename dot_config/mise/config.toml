@@ -14,7 +14,11 @@ ripgrep = "latest"
 bat = "latest"
 starship = "latest"
 bun = "latest"
+deno = "latest"
 tree-sitter = "latest"
 
 [settings]
 activate_aggressive = true
+
+[settings.ruby]
+compile = false
