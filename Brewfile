@@ -27,4 +27,4 @@ brew "pass"
 brew "gomi"
 
 # Fonts
-cask "font-udev-gothic-nf"
+cask "font-udev-gothic"
