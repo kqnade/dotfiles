@@ -367,6 +367,14 @@ local plugins = {
      },
      opts = {},
    },
+   {
+     "vim-skk/skkeleton",
+     event = "InsertEnter",
+     dependencies = { "vim-denops/denops.vim" },
+     config = function()
+       require("modules.configs.editor.skkeleton")
+     end,
+   },
 
    -- ═══════════════════════════════════════════════════════════
    -- ║                      TERMINAL                           ║
