@@ -122,6 +122,7 @@ cmp.setup({
   },
 
   sources = cmp.config.sources({
+    { name = "skkeleton", priority = 1100 },
     { name = "lazydev", group_index = 0 }, -- lazydev for Neovim Lua API
     { name = "nvim_lsp", priority = 1000 },
     { name = "luasnip", priority = 750 },
