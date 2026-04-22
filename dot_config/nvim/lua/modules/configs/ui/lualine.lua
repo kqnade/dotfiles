@@ -26,6 +26,7 @@ local function lsp_clients()
   return " " .. table.concat(names, ", ")
 end
 
+
 require("lualine").setup({
   options = {
     icons_enabled = true,
@@ -50,7 +51,27 @@ require("lualine").setup({
       {
         "mode",
         fmt = function(str)
-          return str:sub(1, 1)
+          local map = {
+            ["NORMAL"]   = "NOR",
+            ["INSERT"]   = "INS",
+            ["VISUAL"]   = "VIS",
+            ["V-LINE"]   = "V-L",
+            ["V-BLOCK"]  = "V-B",
+            ["SELECT"]   = "SEL",
+            ["S-LINE"]   = "S-L",
+            ["S-BLOCK"]  = "S-B",
+            ["REPLACE"]  = "REP",
+            ["COMMAND"]  = "CMD",
+            ["TERMINAL"] = "TER",
+            ["EX"]       = "EX ",
+          }
+          local mode_str = map[str] or str:sub(1, 3)
+          if vim.fn.exists("*skkeleton#is_enabled") == 1 and vim.fn["skkeleton#is_enabled"]() == 1 then
+            local skk = vim.fn["skkeleton#mode"]()
+            local skk_str = ({ hira = "かな", kata = "カナ", ascii = "ASC" })[skk] or "SKK"
+            return mode_str .. " / " .. skk_str
+          end
+          return mode_str
         end,
       },
     },

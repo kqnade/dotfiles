@@ -49,6 +49,7 @@ local plugins = {
     lazy = false, -- 常に読み込む（他プラグインの依存関係のため）
     dependencies = {
       "HiPhish/rainbow-delimiters.nvim",
+      "nvim-treesitter/nvim-treesitter-context",
     },
     config = function()
       require("modules.configs.treesitter")
@@ -338,6 +339,19 @@ local plugins = {
     config = function()
       require("modules.configs.ui.todo-comments")
     end,
+  },
+  {
+    "DanilaMihailov/beacon.nvim",
+    event = { "BufReadPost", "BufNewFile" },
+    opts = {},
+  },
+  {
+    "TaDaa/vimade",
+    event = { "BufReadPost", "BufNewFile" },
+    opts = {
+      recipe = { "default", { animate = true } },
+      ncmode = "windows",
+    },
   },
 
   -- ═══════════════════════════════════════════════════════════
