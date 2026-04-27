@@ -109,6 +109,13 @@ vim.keymap.set("x", "<BS>", function()
   end
 end, { desc = "Decrement treesitter selection" })
 
+-- ─── Treesitter Context ──────────────────────────────────────
+require("treesitter-context").setup({
+  max_lines = 3,
+  trim_scope = "outer",
+  mode = "cursor",
+})
+
 -- ─── Rainbow Delimiters ──────────────────────────────────────
 vim.g.rainbow_delimiters = {
   strategy = {

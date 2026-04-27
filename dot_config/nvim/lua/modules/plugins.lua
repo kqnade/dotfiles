@@ -49,6 +49,7 @@ local plugins = {
     lazy = false, -- 常に読み込む（他プラグインの依存関係のため）
     dependencies = {
       "HiPhish/rainbow-delimiters.nvim",
+      "nvim-treesitter/nvim-treesitter-context",
     },
     config = function()
       require("modules.configs.treesitter")
@@ -339,6 +340,19 @@ local plugins = {
       require("modules.configs.ui.todo-comments")
     end,
   },
+  {
+    "DanilaMihailov/beacon.nvim",
+    event = { "BufReadPost", "BufNewFile" },
+    opts = {},
+  },
+  {
+    "TaDaa/vimade",
+    event = { "BufReadPost", "BufNewFile" },
+    opts = {
+      recipe = { "default", { animate = true } },
+      ncmode = "windows",
+    },
+  },
 
   -- ═══════════════════════════════════════════════════════════
   -- ║                       EDITING                            ║
@@ -370,7 +384,10 @@ local plugins = {
    {
      "vim-skk/skkeleton",
      event = "InsertEnter",
-     dependencies = { "vim-denops/denops.vim" },
+     dependencies = {
+       "vim-denops/denops.vim",
+       "rinx/cmp-skkeleton",
+     },
      config = function()
        require("modules.configs.editor.skkeleton")
      end,

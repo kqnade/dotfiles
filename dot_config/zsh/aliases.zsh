@@ -1,8 +1,13 @@
 alias please='sudo $(fc -ln -1)'
 alias path='echo $PATH | tr ":" "\n"'
 alias g='git'
-alias p='paru'
-alias p-clean='paru -Sc && paru -c'
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  alias p='brew'
+  alias p-clean='brew cleanup'
+else
+  alias p='paru'
+  alias p-clean='paru -Sc && paru -c'
+fi
 alias vi='vim'
 alias v='vim'
 alias cat='bat --paging=never'

@@ -1,10 +1,10 @@
 # dotfiles
 
-**chezmoi** を使用して管理されている、Arch Linux 向けの宣言的な環境設定群です。
+**chezmoi** を使用して管理されている、Arch Linux / macOS 向けの宣言的な環境設定群です。
 
 ## 概要
 
-このリポジトリは、Zsh、Vim、Git などのツールを、一貫性のあるモダンな環境として構築するための設定を管理しています。
+Zsh、Vim、Git などのツールを一貫性のあるモダンな環境として構築するための設定を管理しています。
 
 主な特徴：
 
@@ -14,44 +14,67 @@
 * **starship**: 高度にカスタマイズされたプロンプト。
 * **Vim**: Colemak 配列に最適化されたカスタムキーバインド。
 
-## 必須条件
-
-* **OS**: Arch Linux
-* **パッケージ**: `base-devel`, `git`
-
 ## セットアップ
 
 このリポジトリは、ソースディレクトリが `~/ghq/github.com/kqnade/dotfiles` に配置されていることを想定しています。
 
-### 1. 依存パッケージのインストール
+### Arch Linux
+
+#### 1. 依存パッケージのインストール
 
 独自のメタパッケージ `base-env` を使用して、必要なツールを一括でインストールします。
 
 ```bash
 cd metapkgs/base
 makepkg -si
-
 ```
 
 これにより、`chezmoi`, `mise`, `sheldon`, `zsh`, `vim`, `ghq` などが導入されます。
 
-### 2. 設定の適用
-
-chezmoi を初期化し、設定をホームディレクトリに適用します。
+#### 2. 設定の適用
 
 ```bash
 chezmoi init --apply kqnade
-
 ```
 
-### 3. ツールのインストール
-
-mise を使用して、必要なバイナリ（`eza`, `fzf`, `ripgrep`, `bat` など）をインストールします。
+#### 3. ツールのインストール
 
 ```bash
 mise install
-
 ```
+
+---
+
+### macOS
+
+#### 1. Homebrew のインストール
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+#### 2. chezmoi の初期化と設定の適用
+
+```bash
+brew install chezmoi
+chezmoi init --apply kqnade
+```
+
+#### 3. Homebrew パッケージの一括インストール
+
+chezmoi apply 後に `~/Brewfile` が展開されるので、それを使って一括インストールします。
+
+```bash
+brew bundle
+```
+
+#### 4. ツールのインストール
+
+```bash
+mise install
+```
+
+---
 
 ## 主な機能と設定
 
@@ -60,7 +83,7 @@ mise install
 * `sheldon` によるプラグイン管理（autosuggestions, syntax-highlighting, enhancd 等）。
 * `fzf-tab` による補完のプレビュー。
 * **`gg` 関数**: `ghq` 管理下のリポジトリを `fzf` で検索・プレビューし、ディレクトリを高速移動。
-* エイリアス: `ls` (`eza`), `cat` (`bat`), `vi` (`vim`), `p` (`paru`)。
+* エイリアス: `ls` (`eza`), `cat` (`bat`), `vi` (`vim`), `p` (`brew` / `paru`)。
 
 ### Vim (`.vimrc`)
 

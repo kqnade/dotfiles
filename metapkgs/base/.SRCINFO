@@ -18,5 +18,6 @@ pkgbase = base-env
 	depends = openssh
 	depends = pinentry
 	depends = pass
+	depends = ttf-udev-gothic-nf
 
 pkgname = base-env

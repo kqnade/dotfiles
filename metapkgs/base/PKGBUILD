@@ -20,11 +20,7 @@ depends=(
   'openssh'
   'pinentry'
   'pass'
-  # Neovim dependencies
-  'tree-sitter'
-  'tree-sitter-cli'
-  'luarocks'
-  'lua51'
+  'ttf-udev-gothic-nf'
 )
 
 # Always use latest versions
