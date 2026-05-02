@@ -6,6 +6,44 @@
 # Skip non-interactive shells (scp, rsync, etc.).
 [[ $- != *i* ]] && return
 
+# ---------------------------------------------------------------------------
+# MSYS2 bootstrap
+# Non-login shells skip /etc/profile, leaving /usr/bin out of PATH and the
+# inherited Windows PATH stuck in `;`-separated form. Source /etc/profile
+# explicitly so coreutils (uname, ls, ...) resolve and PATH gets converted
+# to MSYS2's `:`-separated `/c/...` form. $MSYSTEM is set by MSYS2 itself.
+# Windows-side tooling (mise, scoop shims, Linuxbrew) is intentionally NOT
+# activated here — mise/scoop are Windows binaries that emit Windows-style
+# PATH which clobbers the MSYS2 PATH and breaks command lookup. Use those
+# from PowerShell instead.
+# ---------------------------------------------------------------------------
+if [[ -n "$MSYSTEM" ]]; then
+  if [[ -r /etc/profile ]]; then
+    source /etc/profile
+  fi
+
+  export LANG="en_US.UTF-8"
+  export EDITOR="vim"
+  export VISUAL="vim"
+
+  HISTFILE="$HOME/.bash_history"
+  HISTSIZE=100000
+  HISTFILESIZE=100000
+  HISTCONTROL=ignoreboth:erasedups
+  shopt -s histappend checkwinsize
+  shopt -s autocd globstar 2>/dev/null
+
+  for f in /usr/share/bash-completion/bash_completion /etc/bash_completion; do
+    [[ -r "$f" ]] && { source "$f"; break; }
+  done
+
+  if [[ -r "$HOME/.config/zsh/aliases.zsh" ]]; then
+    source "$HOME/.config/zsh/aliases.zsh"
+  fi
+
+  return
+fi
+
 export LANG="en_US.UTF-8"
 export EDITOR="vim"
 export VISUAL="vim"
@@ -23,11 +61,6 @@ elif [[ -x /home/linuxbrew/.linuxbrew/bin/brew ]]; then
   eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 elif [[ -x "$HOME/.linuxbrew/bin/brew" ]]; then
   eval "$($HOME/.linuxbrew/bin/brew shellenv)"
-fi
-
-# scoop shims (visible to MSYS2 bash when HOME == %USERPROFILE%)
-if [[ -d "$HOME/scoop/shims" ]]; then
-  export PATH="$HOME/scoop/shims:$PATH"
 fi
 
 export GPG_TTY=$(tty)
