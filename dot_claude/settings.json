@@ -41,6 +41,7 @@
   },
   "language": "Friendly Japanese",
   "spinnerTipsEnabled": false,
-  "effortLevel": "high",
+  "model": "claude-opus-4-7",
+  "effortLevel": "xhigh",
   "verbose": false
 }
