@@ -5,8 +5,14 @@
 # Environment
 # ---------------------------------------------------------------------------
 $env:LANG    = 'en_US.UTF-8'
-$env:EDITOR  = 'vim'
-$env:VISUAL  = 'vim'
+
+# Editor preference: nvim > vim > notepad. Resolved at profile-load time so a
+# late-loading PATH entry from `mise activate` is also considered.
+$preferredEditor = if (Get-Command nvim -ErrorAction SilentlyContinue) { 'nvim' }
+                   elseif (Get-Command vim -ErrorAction SilentlyContinue) { 'vim' }
+                   else { 'notepad' }
+$env:EDITOR = $preferredEditor
+$env:VISUAL = $preferredEditor
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding           = [System.Text.Encoding]::UTF8
@@ -62,8 +68,11 @@ if (Get-Command bat -ErrorAction SilentlyContinue) {
     Set-Alias -Name cat -Value bat -Option AllScope
 }
 
-if (Get-Command vim -ErrorAction SilentlyContinue) {
-    Set-Alias -Name vi -Value vim -Option AllScope
+if ($preferredEditor -ne 'notepad') {
+    Set-Alias -Name vi  -Value $preferredEditor -Option AllScope
+    if ($preferredEditor -eq 'nvim') {
+        Set-Alias -Name vim -Value $preferredEditor -Option AllScope
+    }
 }
 
 # Package manager shortcut (scoop on Windows)

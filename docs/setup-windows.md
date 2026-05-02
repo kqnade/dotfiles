@@ -36,9 +36,13 @@ buckets / apps が一括インストールされます（次回以降は manifes
 
 ## 4. ツールのインストール
 
+CLI ツール群と言語ランタイムは scoop ではなく mise で precompiled バイナリとして取得します：
+
 ```powershell
 mise install
 ```
+
+`dot_config/mise/config.toml.tmpl` の Windows レンダリングは、source build が必要な `lua` / `ruby` を自動的に除外しています。
 
 ## 5. PowerShell プロファイルの読み込み確認
 

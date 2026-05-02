@@ -3,10 +3,15 @@
 node = "lts"
 python = "3.12"
 go = "latest"
+{{- if ne .chezmoi.os "windows" }}
+# ruby (ruby-build) and lua (vfox-lua) require source builds that fail on
+# Windows without a Unix toolchain. Limit to non-Windows to keep the mise
+# install path precompiled-only on Windows.
 ruby = "latest"
 lua = "latest"
+{{- end }}
 
-# CLI tools
+# CLI tools (all available as precompiled binaries on every supported OS)
 eza = "latest"
 fzf = "latest"
 fd = "latest"
