@@ -1,0 +1,144 @@
+# PowerShell profile (managed by chezmoi)
+# Path on Windows: $HOME\Documents\PowerShell\Microsoft.PowerShell_profile.ps1
+
+# ---------------------------------------------------------------------------
+# Environment
+# ---------------------------------------------------------------------------
+$env:LANG    = 'en_US.UTF-8'
+$env:EDITOR  = 'vim'
+$env:VISUAL  = 'vim'
+
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding           = [System.Text.Encoding]::UTF8
+
+# Add user-local bin paths
+$extraPaths = @(
+    "$HOME\.local\bin",
+    "$HOME\.bun\bin",
+    "$HOME\scoop\shims"
+) | Where-Object { Test-Path $_ }
+foreach ($p in $extraPaths) {
+    if (-not ($env:Path -split ';' -contains $p)) {
+        $env:Path = "$p;$env:Path"
+    }
+}
+
+# ---------------------------------------------------------------------------
+# Tooling activation
+# ---------------------------------------------------------------------------
+if (Get-Command mise -ErrorAction SilentlyContinue) {
+    mise activate pwsh | Out-String | Invoke-Expression
+}
+
+if (Get-Command starship -ErrorAction SilentlyContinue) {
+    Invoke-Expression (& starship init powershell)
+}
+
+# ---------------------------------------------------------------------------
+# PSReadLine — history & keybindings
+# ---------------------------------------------------------------------------
+if (Get-Module -ListAvailable PSReadLine) {
+    Import-Module PSReadLine
+
+    Set-PSReadLineOption -EditMode Emacs
+    Set-PSReadLineOption -HistoryNoDuplicates
+    Set-PSReadLineOption -HistorySearchCursorMovesToEnd
+    Set-PSReadLineOption -PredictionSource HistoryAndPlugin
+    Set-PSReadLineOption -PredictionViewStyle ListView
+
+    Set-PSReadLineKeyHandler -Key UpArrow   -Function HistorySearchBackward
+    Set-PSReadLineKeyHandler -Key DownArrow -Function HistorySearchForward
+}
+
+# ---------------------------------------------------------------------------
+# Aliases
+# ---------------------------------------------------------------------------
+if (Get-Command eza -ErrorAction SilentlyContinue) {
+    Set-Alias -Name ls -Value eza -Option AllScope
+    function ll { eza -la --icons --group-directories-first @Args }
+}
+
+if (Get-Command bat -ErrorAction SilentlyContinue) {
+    Set-Alias -Name cat -Value bat -Option AllScope
+}
+
+if (Get-Command vim -ErrorAction SilentlyContinue) {
+    Set-Alias -Name vi -Value vim -Option AllScope
+}
+
+# Package manager shortcut (scoop on Windows)
+if (Get-Command scoop -ErrorAction SilentlyContinue) {
+    Set-Alias -Name p -Value scoop -Option AllScope
+}
+
+# ---------------------------------------------------------------------------
+# Functions (parity with dot_config/zsh/functions/)
+# ---------------------------------------------------------------------------
+
+# mkcd: create a directory and cd into it
+function mkcd {
+    param([Parameter(Mandatory)] [string] $Path)
+    New-Item -ItemType Directory -Force -Path $Path | Out-Null
+    Set-Location -Path $Path
+}
+
+# ccd: cd then clear
+function ccd {
+    param([Parameter(Mandatory)] [string] $Path)
+    Set-Location -Path $Path
+    Clear-Host
+}
+
+# gg: fzf-driven ghq repository switcher
+function gg {
+    param([string] $Query = '')
+
+    if (-not (Get-Command ghq -ErrorAction SilentlyContinue)) {
+        Write-Error 'ghq is not installed.'
+        return
+    }
+    if (-not (Get-Command fzf -ErrorAction SilentlyContinue)) {
+        Write-Error 'fzf is not installed.'
+        return
+    }
+
+    $selected = ghq list | fzf --query="$Query" `
+        --prompt='Repository > ' `
+        --height=70% --reverse --border `
+        --preview="powershell -NoProfile -Command `"`$repo = (ghq root) + '\' + '{}'; if (Test-Path (Join-Path `$repo '.git')) { git -C `$repo log --oneline -10 } else { Get-ChildItem `$repo }`"" `
+        --preview-window=right:60%:wrap
+
+    if (-not [string]::IsNullOrWhiteSpace($selected)) {
+        $repoPath = Join-Path (ghq root) $selected
+        Set-Location -Path $repoPath
+        Write-Host "Moved to: $repoPath" -ForegroundColor Green
+        if (Test-Path (Join-Path $repoPath '.git')) {
+            $branch = git branch --show-current 2>$null
+            Write-Host "Branch: $branch" -ForegroundColor Cyan
+            git status -sb
+        }
+    }
+}
+
+# Auto-cd after `ghq get|clone|create`
+function ghq {
+    param(
+        [Parameter(Position = 0)] [string] $Subcommand,
+        [Parameter(ValueFromRemainingArguments = $true)] [string[]] $Rest
+    )
+
+    & (Get-Command ghq.exe -ErrorAction Stop).Source $Subcommand @Rest
+    $code = $LASTEXITCODE
+
+    if ($code -eq 0 -and ($Subcommand -in @('get', 'clone', 'create'))) {
+        $target = $Rest[-1]
+        if ($target) {
+            $repoPath = & (Get-Command ghq.exe).Source list --full-path --exact $target 2>$null
+            if ($repoPath) {
+                Set-Location -Path $repoPath
+                Write-Host "Moved to: $repoPath" -ForegroundColor Green
+            }
+        }
+    }
+    return $code
+}

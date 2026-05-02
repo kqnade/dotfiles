@@ -1,0 +1,31 @@
+# Ubuntu / Debian apt packages (parallel to Brewfile / metapkgs/base/PKGBUILD).
+# Consumed by scripts/install-linux.sh on the sudo path.
+# One package per line, '#' starts a comment.
+
+# Shell
+zsh
+
+# Editors
+vim
+neovim
+
+# Version control & related
+git
+git-lfs
+openssh-client
+
+# GPG / pass
+gnupg
+pass
+pinentry-curses
+
+# Core CLI utilities (modern replacements where available in apt)
+curl
+ca-certificates
+build-essential
+ripgrep
+fd-find
+bat
+
+# Fonts (UDEVGothic NF is not in apt — installed manually by the script)
+fonts-noto-cjk

@@ -4,7 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Arch Linux向けのdotfilesリポジトリ。**chezmoi**で管理され、**Colemakキーボードレイアウト**に最適化されている。
+Arch Linux / Ubuntu (Debian) / macOS / Windows 向けの dotfiles リポジトリ。**chezmoi**で管理され、**Colemakキーボードレイアウト**に最適化されている。OS / ディストリビューション / sudo 利用可否ごとの差分は `.chezmoiignore` のテンプレート分岐 (`.chezmoi.os` / `.chezmoi.osRelease.id` / `.chezmoi.osRelease.idLike`) と `scripts/install-linux.sh` のランタイム判定で制御する。
+
+### Install path matrix
+
+| 環境 | エントリポイント | 使う manifest |
+|------|-----------------|--------------|
+| Arch (sudo) | `metapkgs/base/PKGBUILD` または `scripts/install-linux.sh` | metapkgs |
+| Ubuntu/Debian (sudo) | `scripts/install-linux.sh` | `Aptfile` + mise |
+| 非 sudo な Linux | `FORCE_NOSUDO=1 bash scripts/install-linux.sh` | Linuxbrew + `Brewfile` |
+| macOS | `brew bundle` | `Brewfile` |
+| Windows | `chezmoi apply`（auto 経由で `run_onchange_install-scoop-packages.ps1`） | `scoopfile.json` |
 
 ## Commands
 
@@ -28,6 +38,8 @@ mise install
 
 - `dot_<file>` → `~/.<file>` (例: `dot_zshrc` → `~/.zshrc`)
 - `dot_config/` → `~/.config/`
+- `Documents/` → `~/Documents/` (Windows の PowerShell プロファイル等で使用)
+- `run_onchange_*.tmpl` → 内容変更時に一度だけ実行される chezmoi スクリプト
 
 ### Core Tools
 
@@ -35,8 +47,12 @@ mise install
 |------|---------|--------|
 | chezmoi | dotfiles管理 | `.chezmoi.toml.tmpl` |
 | mise | ツール/ランタイム管理 | `dot_config/mise/config.toml` |
-| sheldon | Zshプラグイン管理 | `dot_config/sheldon/plugins.toml` |
-| starship | プロンプト | `dot_config/starship.toml` |
+| sheldon | Zshプラグイン管理 (Linux/macOS) | `dot_config/sheldon/plugins.toml` |
+| starship | プロンプト (全OS) | `dot_config/starship.toml` |
+| scoop | パッケージ管理 (Windows) | `scoopfile.json` |
+| Brewfile | パッケージ管理 (macOS / 非sudo Linux=Linuxbrew) | `Brewfile` |
+| Aptfile | パッケージ管理 (Ubuntu/Debian sudo) | `Aptfile` |
+| metapkgs | パッケージ管理 (Arch sudo) | `metapkgs/base/PKGBUILD` |
 
 ### Zsh Structure (`dot_config/zsh/`)
 
@@ -52,6 +68,15 @@ zsh/
 ```
 
 `.zshrc` から `~/.config/zsh/**/*.zsh` を一括 source。新しい関数は `functions/` にファイルを追加するだけ。
+
+### PowerShell Structure (Windows)
+
+```
+Documents/PowerShell/
+└── Microsoft.PowerShell_profile.ps1.tmpl   # mise/starship 起動 + エイリアス + 関数
+```
+
+zsh 関数 (`gg`, `mkcd`, `ccd`, `ghq` ラッパ) と機能パリティを保つ PowerShell 版を同ファイル内に定義する。
 
 ### Neovim Structure (`dot_config/nvim/`)
 

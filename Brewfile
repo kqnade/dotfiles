@@ -1,3 +1,8 @@
+# Portable Brewfile — works on:
+#   - macOS Homebrew
+#   - Linuxbrew (non-sudo Linux fallback; see scripts/install-linux.sh)
+# macOS-only entries are gated under OS.mac?.
+
 # Core environment
 brew "chezmoi"
 brew "mise"
@@ -20,11 +25,19 @@ brew "neovim"
 
 # GPG / SSH
 brew "gnupg"
-brew "pinentry-mac"
 brew "pass"
 
 # CLI tools
 brew "gomi"
+brew "ripgrep"
+brew "fd"
+brew "bat"
+brew "eza"
+brew "fzf"
+brew "starship"
 
-# Fonts
-cask "font-udev-gothic"
+if OS.mac?
+  # macOS-only: pinentry GUI for GPG and font casks
+  brew "pinentry-mac"
+  cask "font-udev-gothic"
+end

@@ -1,0 +1,28 @@
+{{- if eq .chezmoi.os "windows" -}}
+# Install scoop packages declared in scoopfile.json.
+# This script runs only on Windows and only when scoopfile.json changes.
+# scoopfile.json hash: {{ include "scoopfile.json" | sha256sum }}
+
+$ErrorActionPreference = 'Stop'
+
+# Bootstrap scoop if missing
+if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
+    Write-Host 'Installing scoop...' -ForegroundColor Cyan
+    Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force
+    Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+}
+
+# Ensure git exists before importing buckets
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    scoop install git
+}
+
+$manifest = Join-Path '{{ .chezmoi.sourceDir }}' 'scoopfile.json'
+if (-not (Test-Path $manifest)) {
+    Write-Warning "scoopfile.json not found at $manifest"
+    exit 0
+}
+
+Write-Host "Importing scoop manifest from $manifest" -ForegroundColor Cyan
+scoop import $manifest
+{{ end -}}

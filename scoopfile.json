@@ -1,0 +1,29 @@
+{
+  "buckets": [
+    { "Name": "main",   "Source": "https://github.com/ScoopInstaller/Main" },
+    { "Name": "extras", "Source": "https://github.com/ScoopInstaller/Extras" }
+  ],
+  "apps": [
+    { "Name": "chezmoi",  "Source": "main" },
+    { "Name": "mise",     "Source": "main" },
+    { "Name": "starship", "Source": "main" },
+
+    { "Name": "git",      "Source": "main" },
+    { "Name": "delta",    "Source": "main" },
+    { "Name": "git-lfs",  "Source": "main" },
+    { "Name": "gh",       "Source": "main" },
+    { "Name": "glab",     "Source": "main" },
+    { "Name": "ghq",      "Source": "main" },
+
+    { "Name": "vim",      "Source": "main" },
+    { "Name": "neovim",   "Source": "main" },
+
+    { "Name": "fzf",      "Source": "main" },
+    { "Name": "ripgrep",  "Source": "main" },
+    { "Name": "fd",       "Source": "main" },
+    { "Name": "bat",      "Source": "main" },
+    { "Name": "eza",      "Source": "main" },
+
+    { "Name": "gpg4win",  "Source": "extras" }
+  ]
+}
