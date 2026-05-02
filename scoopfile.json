@@ -12,6 +12,9 @@
     { "Name": "git",     "Source": "main" },
     { "Name": "git-lfs", "Source": "main" },
     { "Name": "neovim",  "Source": "main" },
-    { "Name": "gpg4win", "Source": "extras" }
+    { "Name": "gpg4win", "Source": "extras" },
+
+    { "Name": "lua",  "Source": "main" },
+    { "Name": "ruby", "Source": "main" }
   ]
 }
