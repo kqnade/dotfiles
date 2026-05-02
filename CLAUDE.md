@@ -72,6 +72,7 @@ mise install
 zsh/
 ├── aliases.zsh          # エイリアス全般
 └── functions/
+    ├── ccc.zsh          # git-ccc: staged diff → claude -p で gitmoji 付きコミットメッセージ自動生成
     ├── ccd.zsh          # cd + clear
     ├── gh.zsh           # gh wrapper (pass経由でGH_TOKEN注入)
     ├── gg.zsh           # ghqリポジトリfzf選択・移動

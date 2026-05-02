@@ -46,10 +46,20 @@ if (Get-Command starship -ErrorAction SilentlyContinue) {
 if (Get-Module -ListAvailable PSReadLine) {
     Import-Module PSReadLine
 
+    # CompletionPredictor feeds the "Plugin" half of HistoryAndPlugin. Without
+    # any predictor module loaded, PSReadLine throws an NRE on every prompt.
+    if (Get-Module -ListAvailable CompletionPredictor) {
+        Import-Module CompletionPredictor
+    }
+
     Set-PSReadLineOption -EditMode Emacs
     Set-PSReadLineOption -HistoryNoDuplicates
     Set-PSReadLineOption -HistorySearchCursorMovesToEnd
-    Set-PSReadLineOption -PredictionSource HistoryAndPlugin
+    if (Get-Module CompletionPredictor) {
+        Set-PSReadLineOption -PredictionSource HistoryAndPlugin
+    } else {
+        Set-PSReadLineOption -PredictionSource History
+    }
     Set-PSReadLineOption -PredictionViewStyle ListView
 
     Set-PSReadLineKeyHandler -Key UpArrow   -Function HistorySearchBackward
@@ -60,8 +70,9 @@ if (Get-Module -ListAvailable PSReadLine) {
 # Aliases
 # ---------------------------------------------------------------------------
 if (Get-Command eza -ErrorAction SilentlyContinue) {
-    Set-Alias -Name ls -Value eza -Option AllScope
-    function ll { eza -la --icons --group-directories-first @Args }
+    Remove-Item Alias:ls -Force -ErrorAction SilentlyContinue
+    function ls { eza --icons --git @Args }
+    function ll { eza -la --icons --git --group-directories-first @Args }
 }
 
 if (Get-Command bat -ErrorAction SilentlyContinue) {
@@ -79,6 +90,26 @@ if ($preferredEditor -ne 'notepad') {
 if (Get-Command scoop -ErrorAction SilentlyContinue) {
     Set-Alias -Name p -Value scoop -Option AllScope
 }
+
+# Simple aliases (parity with dot_config/zsh/aliases.zsh)
+if (Get-Command git -ErrorAction SilentlyContinue) {
+    Set-Alias -Name g -Value git -Option AllScope
+}
+
+if ($preferredEditor -ne 'notepad') {
+    Set-Alias -Name v -Value $preferredEditor -Option AllScope
+}
+
+if (Get-Command chezmoi -ErrorAction SilentlyContinue) {
+    function ca { chezmoi apply @Args }
+    function ce { chezmoi edit @Args }
+}
+
+if (Get-Command claude -ErrorAction SilentlyContinue) {
+    Set-Alias -Name cl -Value claude -Option AllScope
+}
+
+function path { $env:Path -split ';' }
 
 # ---------------------------------------------------------------------------
 # Functions (parity with dot_config/zsh/functions/)
@@ -150,4 +181,62 @@ function ghq {
         }
     }
     return $code
+}
+
+# git-ccc: AI-generated conventional commit (parity with dot_config/zsh/functions/ccc.zsh)
+function git-ccc {
+    if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+        Write-Error 'git is not installed.'
+        return
+    }
+    if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
+        Write-Error 'claude CLI is not installed.'
+        return
+    }
+
+    $diff = (git diff --staged) | Out-String
+    if ([string]::IsNullOrWhiteSpace($diff)) {
+        Write-Host "No staged changes. Run 'git add' first."
+        return
+    }
+
+    $log = (git log --oneline -50) | Out-String
+
+    Write-Host 'Generating commit message...'
+
+    $prompt = @'
+Generate a conventional commit message with a gitmoji prefix for the git diff below.
+Use the recent commits as style reference to stay consistent.
+
+Format: <emoji> <type>: <description>
+
+Gitmoji mapping:
+  feat     → ✨
+  fix      → 🐛
+  refactor → ♻️
+  docs     → 📝
+  test     → ✅
+  chore    → 🔧
+  perf     → ⚡️
+  ci       → 👷
+  style    → 🎨
+  revert   → ⏪️
+  build    → 📦
+
+Rules:
+- Output the commit message ONLY (no explanation, no markdown, no code block)
+- Use imperative mood (e.g. 'add', 'fix', 'update')
+- Keep it under 72 characters
+'@
+
+    $payload = "== Recent commits (for style reference) ==`n$log`n== Git diff ==`n$diff"
+    $msg = ($payload | claude -p $prompt | Out-String).Trim()
+
+    if ([string]::IsNullOrWhiteSpace($msg)) {
+        Write-Error 'Failed to generate commit message.'
+        return
+    }
+
+    Write-Host "Message: $msg"
+    git commit -m $msg
 }
