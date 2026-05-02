@@ -64,6 +64,7 @@ mise install
 | Brewfile | パッケージ管理 (macOS / 非sudo Linux=Linuxbrew) | `Brewfile` |
 | Aptfile | パッケージ管理 (Ubuntu/Debian sudo) | `Aptfile` |
 | metapkgs | パッケージ管理 (Arch sudo) | `metapkgs/base/PKGBUILD` |
+| MSYS2 | Windows での Linux ライク bash 環境 | scoop `msys2` + `dot_bashrc.tmpl` |
 
 ### Zsh Structure (`dot_config/zsh/`)
 
@@ -79,6 +80,18 @@ zsh/
 ```
 
 `.zshrc` から `~/.config/zsh/**/*.zsh` を一括 source。新しい関数は `functions/` にファイルを追加するだけ。
+
+### Bash Structure (`dot_bashrc.tmpl`)
+
+`dot_zshrc` の bash 版。Linux/macOS で bash を使う場面と、**Windows の MSYS2** で
+`%USERPROFILE%` を `$HOME` に統一したときに同じ `.bashrc` が読まれることを想定。
+
+`aliases.zsh` は bash 互換構文で書かれているため bashrc から直接 source して共有。
+ただし `dot_config/zsh/functions/*.zsh` は zsh 固有のイディオム
+(`read -q`, `${@[-1]}` など) を含むため bash では source しない。
+
+MSYS2 の HOME を Windows ホームに揃える手順は `docs/setup-windows.md` の
+「6. MSYS2 で Linux ライクな bash 環境」を参照。
 
 ### PowerShell Structure (Windows)
 

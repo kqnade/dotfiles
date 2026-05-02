@@ -14,6 +14,8 @@
     { "Name": "neovim",  "Source": "main" },
     { "Name": "gpg4win", "Source": "extras" },
 
+    { "Name": "msys2", "Source": "main" },
+
     { "Name": "lua",  "Source": "main" },
     { "Name": "ruby", "Source": "main" }
   ]

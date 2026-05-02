@@ -1,0 +1,84 @@
+# ~/.bashrc — managed by chezmoi.
+# Mirrors dot_zshrc as closely as bash supports. On Windows this is read by
+# MSYS2's bash when MSYS2 is configured to use %USERPROFILE% as $HOME (see
+# docs/setup-windows.md).
+
+# Skip non-interactive shells (scp, rsync, etc.).
+[[ $- != *i* ]] && return
+
+export LANG="en_US.UTF-8"
+export EDITOR="vim"
+export VISUAL="vim"
+
+# ---------------------------------------------------------------------------
+# Homebrew (macOS) / Linuxbrew (non-sudo Linux fallback)
+# ---------------------------------------------------------------------------
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  if [[ -x /opt/homebrew/bin/brew ]]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+  elif [[ -x /usr/local/bin/brew ]]; then
+    eval "$(/usr/local/bin/brew shellenv)"
+  fi
+elif [[ -x /home/linuxbrew/.linuxbrew/bin/brew ]]; then
+  eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+elif [[ -x "$HOME/.linuxbrew/bin/brew" ]]; then
+  eval "$($HOME/.linuxbrew/bin/brew shellenv)"
+fi
+
+# scoop shims (visible to MSYS2 bash when HOME == %USERPROFILE%)
+if [[ -d "$HOME/scoop/shims" ]]; then
+  export PATH="$HOME/scoop/shims:$PATH"
+fi
+
+export GPG_TTY=$(tty)
+export PATH="$HOME/.local/bin:$HOME/.bun/bin:$PATH"
+
+if command -v gpgconf &>/dev/null; then
+  export SSH_AUTH_SOCK=$(gpgconf --list-dirs agent-ssh-socket)
+  gpg-connect-agent updatestartuptty /bye > /dev/null 2>&1
+fi
+
+# ---------------------------------------------------------------------------
+# bash options
+# ---------------------------------------------------------------------------
+HISTFILE="$HOME/.bash_history"
+HISTSIZE=100000
+HISTFILESIZE=100000
+HISTCONTROL=ignoreboth:erasedups
+
+shopt -s histappend
+shopt -s checkwinsize
+shopt -s autocd 2>/dev/null
+shopt -s globstar 2>/dev/null
+
+# bash-completion (varies by distro; quietly skip if not present)
+for f in /usr/share/bash-completion/bash_completion /etc/bash_completion; do
+  [[ -r "$f" ]] && { source "$f"; break; }
+done
+
+# ---------------------------------------------------------------------------
+# Tooling activation
+# ---------------------------------------------------------------------------
+if command -v mise &>/dev/null; then
+  eval "$(mise activate bash)"
+fi
+
+if command -v starship &>/dev/null; then
+  eval "$(starship init bash)"
+fi
+
+if command -v fzf &>/dev/null; then
+  # bash 5.1+ supports `fzf --bash`; older fzf releases ship a separate script.
+  if fzf --bash >/dev/null 2>&1; then
+    eval "$(fzf --bash)"
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# Shared aliases (bash-compatible subset of dot_config/zsh/aliases.zsh)
+# zsh-only function files under dot_config/zsh/functions/ are NOT sourced —
+# they use zsh idioms (zsh-style read -q, ${@[-1]}) that won't run in bash.
+# ---------------------------------------------------------------------------
+if [[ -r "$HOME/.config/zsh/aliases.zsh" ]]; then
+  source "$HOME/.config/zsh/aliases.zsh"
+fi
