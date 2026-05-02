@@ -21,7 +21,7 @@ config.window_padding = {
 	top = 12,
 	bottom = 12,
 }
-config.window_background_opacity = 0.6
+config.window_background_opacity = 0.8
 
 -- Cursor
 config.default_cursor_style = "SteadyBlock"
@@ -50,6 +50,10 @@ if wezterm.target_triple:find("windows") then
 	-- crashes when switching to Japanese input; turning it off makes wezterm
 	-- fall back to standard Windows text input, which is stable.
 	config.use_ime = false
+
+	-- Acrylic backdrop gives a blurred translucent window, matching
+	-- ghostty's `background-blur = true`.
+	config.win32_system_backdrop = "Acrylic"
 
 	config.default_prog = { "pwsh.exe", "-NoLogo" }
 
