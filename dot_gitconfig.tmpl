@@ -3,6 +3,13 @@
 	email = git@k4na.de
 	signingkey = F19A8A2277AE1A97
 
+[ghq]
+{{- if eq .chezmoi.os "windows" }}
+	root = Z:/
+{{- else }}
+	root = ~/ghq
+{{- end }}
+
 [alias]
 	ci = commit
 	co = checkout
