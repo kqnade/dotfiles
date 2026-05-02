@@ -33,4 +33,58 @@ config.window_decorations = "INTEGRATED_BUTTONS|RESIZE"
 config.audible_bell = "Disabled"
 config.window_close_confirmation = "NeverPrompt"
 
+-- ---------------------------------------------------------------------------
+-- Per-OS shell setup
+-- On Windows, default to PowerShell and expose a launcher menu (Ctrl+Shift+L)
+-- with MSYS2 UCRT64 and auto-discovered WSL distros, so switching between
+-- environments doesn't require a separate Windows Terminal.
+-- ---------------------------------------------------------------------------
+if wezterm.target_triple:find("windows") then
+	local home = os.getenv("USERPROFILE") or ""
+	local msys2_bash = home .. "\\scoop\\apps\\msys2\\current\\usr\\bin\\bash.exe"
+
+	config.default_prog = { "pwsh.exe", "-NoLogo" }
+
+	local launch_menu = {
+		{ label = "PowerShell",     args = { "pwsh.exe", "-NoLogo" } },
+		{ label = "Command Prompt", args = { "cmd.exe" } },
+		{
+			label = "MSYS2 UCRT64",
+			args = { msys2_bash, "--login", "-i" },
+			set_environment_variables = {
+				MSYSTEM = "UCRT64",
+				CHERE_INVOKING = "1",
+			},
+		},
+	}
+
+	-- Auto-discover WSL distros at config-load time. `wsl.exe -l -q` outputs
+	-- UTF-16 LE with a BOM, so strip the BOM and null padding before splitting.
+	local ok, stdout, _ = wezterm.run_child_process({ "wsl.exe", "-l", "-q" })
+	if ok and stdout then
+		stdout = stdout:gsub("^\255\254", ""):gsub("\0", "")
+		for distro in stdout:gmatch("[^\r\n]+") do
+			local trimmed = distro:gsub("^%s+", ""):gsub("%s+$", "")
+			if trimmed ~= "" then
+				table.insert(launch_menu, {
+					label = "WSL: " .. trimmed,
+					args = { "wsl.exe", "-d", trimmed },
+				})
+			end
+		end
+	end
+
+	config.launch_menu = launch_menu
+
+	config.keys = {
+		{
+			key = "L",
+			mods = "CTRL|SHIFT",
+			action = wezterm.action.ShowLauncherArgs({
+				flags = "FUZZY|LAUNCH_MENU_ITEMS",
+			}),
+		},
+	}
+end
+
 return config
