@@ -75,13 +75,3 @@ which starship          # 同上
 
 > **補足**: MSYS2 は複数のサブシステム（MSYS / UCRT64 / MINGW64 / CLANG64）を持ちますが、
 > 日常開発には **MSYS2 UCRT64** ショートカットからの起動を推奨します。
-
-### MSYS2 を再インストールした場合
-
-scoop reinstall などで `nsswitch.conf` が初期状態に戻った場合は：
-
-```powershell
-chezmoi apply --force
-```
-
-で `run_onchange_setup-msys2.ps1` を再実行できます。
