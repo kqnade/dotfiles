@@ -68,7 +68,9 @@ if wezterm.target_triple:find("windows") then
 			if trimmed ~= "" then
 				table.insert(launch_menu, {
 					label = "WSL: " .. trimmed,
-					args = { "wsl.exe", "-d", trimmed },
+					-- --cd ~ starts in the WSL user's $HOME instead of the
+					-- Windows-side cwd that wezterm inherits.
+					args = { "wsl.exe", "-d", trimmed, "--cd", "~" },
 				})
 			end
 		end
