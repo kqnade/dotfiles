@@ -46,6 +46,11 @@ if wezterm.target_triple:find("windows") then
 	local home = os.getenv("USERPROFILE") or ""
 	local msys2_bash = home .. "\\scoop\\apps\\msys2\\current\\usr\\bin\\bash.exe"
 
+	-- Disable wezterm's IME integration on Windows. The custom IME hook
+	-- crashes when switching to Japanese input; turning it off makes wezterm
+	-- fall back to standard Windows text input, which is stable.
+	config.use_ime = false
+
 	config.default_prog = { "pwsh.exe", "-NoLogo" }
 
 	local launch_menu = {
