@@ -29,6 +29,9 @@ config.default_cursor_style = "SteadyBlock"
 -- Window decorations: integrate traffic light buttons into tab bar
 config.window_decorations = "INTEGRATED_BUTTONS|RESIZE"
 
+-- Color scheme: match nvim's Catppuccin Mocha for consistency across UIs.
+config.color_scheme = "Catppuccin Mocha"
+
 -- Misc
 config.audible_bell = "Disabled"
 config.window_close_confirmation = "NeverPrompt"

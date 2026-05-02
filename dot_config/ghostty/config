@@ -6,4 +6,4 @@ background-opacity = 0.8
 cursor-style = block
 shell-integration-features = no-cursor
 
-theme = "Nord"
+theme = "catppuccin-mocha"
