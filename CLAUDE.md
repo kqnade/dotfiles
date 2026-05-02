@@ -95,7 +95,7 @@ zsh/
 #### MSYS2 HOME 統一の自動化
 
 `run_onchange_setup-msys2.ps1.tmpl` が `chezmoi apply` 時に scoop 配下の
-`%USERPROFILE%\scoop\apps\msys2\current\msys64\etc\nsswitch.conf` を編集し、
+`%USERPROFILE%\scoop\apps\msys2\current\etc\nsswitch.conf` を編集し、
 `db_home: windows` を設定。これにより MSYS2 の `$HOME` が
 `%USERPROFILE%` に揃い、chezmoi が配置した `~/.bashrc` がそのまま読まれる。
 **管理者権限不要**（scoop 管理下のためユーザー所有）。
