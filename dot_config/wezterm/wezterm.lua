@@ -2,7 +2,16 @@ local wezterm = require("wezterm")
 local config = wezterm.config_builder()
 
 -- Font
-config.font = wezterm.font("UDEV Gothic NFLG")
+-- Fallback chain: prefer UDEVGothic NF where available, then any
+-- JetBrainsMono Nerd Font (scoop's nerd-fonts bucket on Windows), then
+-- the OS's default monospace font as a last resort. wezterm picks the
+-- first one that resolves.
+config.font = wezterm.font_with_fallback({
+	"UDEV Gothic NFLG",
+	"UDEVGothic NF",
+	"JetBrainsMono Nerd Font",
+	"Cascadia Code",
+})
 config.font_size = 12.0
 
 -- Window
