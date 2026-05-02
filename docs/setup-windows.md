@@ -57,45 +57,31 @@ mise install
 
 ## 6. MSYS2 で Linux ライクな bash 環境
 
-Windows でも開発感覚を Linux/macOS に揃えるため、MSYS2（scoop で導入済）を
-`%USERPROFILE%` を `$HOME` として使うように設定します。これで chezmoi が
-配置した `~/.bashrc` がそのまま読まれます。
+`chezmoi apply` は以下を自動セットアップします：
 
-### MSYS2 の HOME を Windows ユーザーホームに統一
+- **`dot_bash_profile`** → `~/.bash_profile` に配置（ログインシェル時に `~/.bashrc` を読む）
+- **`dot_bashrc.tmpl`** → `~/.bashrc` に配置（mise / starship / fzf 起動 + aliases 読込）
+- **`run_onchange_setup-msys2.ps1.tmpl`** → scoop 配下の MSYS2 の
+  `etc\nsswitch.conf` を `db_home: windows` に書き換え（admin 不要、scoop 管理下なのでユーザー所有）
 
-`C:\Users\<user>\.bash_profile` を作成し、bash 起動時に `~/.bashrc` を読むようにします
-（chezmoi の `dot_bashrc.tmpl` で `~/.bashrc` は配置されているので、`bash_profile`
-だけ手動で 1 回作成）：
-
-```powershell
-@'
-# Source ~/.bashrc on login shells too.
-[[ -r ~/.bashrc ]] && source ~/.bashrc
-'@ | Set-Content -Encoding UTF8 $HOME\.bash_profile
-```
-
-そして MSYS2 がデフォルトで使う `/home/<user>` ではなく Windows ホーム
-(`C:\Users\<user>`) を `$HOME` に使わせるため、`C:\msys64\etc\nsswitch.conf`
-を編集して以下のように設定します（管理者権限が必要）：
-
-```
-db_home: windows
-```
-
-これで MSYS2 の bash を起動すると `$HOME` が `/c/Users/<user>` になり、chezmoi 管理下の
-`.bashrc` / `.gitconfig` / `.config/zsh/aliases.zsh` などが自動で利用できます。
-
-### 動作確認
-
-スタートメニューから「MSYS2 UCRT64」（または MSYS2 MINGW64）を起動：
+つまり Windows 機の初回 `chezmoi apply` 後、**手動セットアップは何もありません**。
+MSYS2 を起動すると：
 
 ```bash
-echo $HOME              # /c/Users/<user> となるはず
-which mise              # /c/Users/<user>/scoop/shims/mise.exe
+echo $HOME              # /c/Users/<user>
+which mise              # /c/Users/<user>/scoop/shims/mise
 which starship          # 同上
-mise --version
 ```
 
-> **補足**: MSYS2 は複数の "サブシステム"（MSYS / UCRT64 / MINGW64 / CLANG64）
-> を持ちますが、日常開発には **UCRT64** が推奨されます。スタートメニューでは
-> "MSYS2 UCRT64" を起動してください。
+> **補足**: MSYS2 は複数のサブシステム（MSYS / UCRT64 / MINGW64 / CLANG64）を持ちますが、
+> 日常開発には **MSYS2 UCRT64** ショートカットからの起動を推奨します。
+
+### MSYS2 を再インストールした場合
+
+scoop reinstall などで `nsswitch.conf` が初期状態に戻った場合は：
+
+```powershell
+chezmoi apply --force
+```
+
+で `run_onchange_setup-msys2.ps1` を再実行できます。

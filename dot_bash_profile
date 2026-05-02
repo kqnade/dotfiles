@@ -1,0 +1,4 @@
+# Source ~/.bashrc on login shells too. Bash invokes only one of
+# .bash_profile / .bash_login / .profile for login shells, so we forward
+# explicitly. Harmless on systems where the user defaults to zsh.
+[[ -r ~/.bashrc ]] && source ~/.bashrc

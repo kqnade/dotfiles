@@ -81,7 +81,7 @@ zsh/
 
 `.zshrc` から `~/.config/zsh/**/*.zsh` を一括 source。新しい関数は `functions/` にファイルを追加するだけ。
 
-### Bash Structure (`dot_bashrc.tmpl`)
+### Bash Structure (`dot_bashrc.tmpl` + `dot_bash_profile`)
 
 `dot_zshrc` の bash 版。Linux/macOS で bash を使う場面と、**Windows の MSYS2** で
 `%USERPROFILE%` を `$HOME` に統一したときに同じ `.bashrc` が読まれることを想定。
@@ -90,8 +90,15 @@ zsh/
 ただし `dot_config/zsh/functions/*.zsh` は zsh 固有のイディオム
 (`read -q`, `${@[-1]}` など) を含むため bash では source しない。
 
-MSYS2 の HOME を Windows ホームに揃える手順は `docs/setup-windows.md` の
-「6. MSYS2 で Linux ライクな bash 環境」を参照。
+`dot_bash_profile` はログインシェル起動時に `.bashrc` を読み込むためのフォワーダー。
+
+#### MSYS2 HOME 統一の自動化
+
+`run_onchange_setup-msys2.ps1.tmpl` が `chezmoi apply` 時に scoop 配下の
+`%USERPROFILE%\scoop\apps\msys2\current\msys64\etc\nsswitch.conf` を編集し、
+`db_home: windows` を設定。これにより MSYS2 の `$HOME` が
+`%USERPROFILE%` に揃い、chezmoi が配置した `~/.bashrc` がそのまま読まれる。
+**管理者権限不要**（scoop 管理下のためユーザー所有）。
 
 ### PowerShell Structure (Windows)
 

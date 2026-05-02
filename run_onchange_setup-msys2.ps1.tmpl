@@ -1,0 +1,41 @@
+{{- if eq .chezmoi.os "windows" -}}
+# Configure MSYS2 to use the Windows %USERPROFILE% as $HOME so that the
+# chezmoi-managed ~/.bashrc and ~/.gitconfig resolve identically inside
+# MSYS2 bash and PowerShell. The scoop-installed MSYS2 lives entirely
+# under the user profile, so editing nsswitch.conf needs no admin.
+#
+# Idempotent: bails out if db_home is already set to windows.
+# Re-run with `chezmoi apply --force` after a fresh MSYS2 reinstall.
+
+$ErrorActionPreference = 'Stop'
+
+$msys2Root = Join-Path $env:USERPROFILE 'scoop\apps\msys2\current\msys64'
+$nsswitch  = Join-Path $msys2Root 'etc\nsswitch.conf'
+
+if (-not (Test-Path $nsswitch)) {
+    Write-Host "MSYS2 not installed at $msys2Root — skipping nsswitch.conf bridge." -ForegroundColor DarkGray
+    return
+}
+
+$lines = Get-Content -LiteralPath $nsswitch
+
+if ($lines | Where-Object { $_ -match '^\s*db_home:\s*windows\b' }) {
+    Write-Host "MSYS2 nsswitch.conf already uses Windows home." -ForegroundColor DarkGray
+    return
+}
+
+$desired = 'db_home: windows'
+$found   = $false
+$updated = foreach ($line in $lines) {
+    if ($line -match '^\s*#?\s*db_home:') {
+        $found = $true
+        $desired
+    } else {
+        $line
+    }
+}
+if (-not $found) { $updated += $desired }
+
+Set-Content -LiteralPath $nsswitch -Value $updated -Encoding ASCII
+Write-Host "MSYS2 nsswitch.conf → 'db_home: windows' (HOME unified with USERPROFILE)" -ForegroundColor Cyan
+{{ end -}}
