@@ -1,0 +1,23 @@
+{{- if eq .chezmoi.os "windows" -}}
+# Set XDG_CONFIG_HOME as a user-scope environment variable so Windows-native
+# tools (Neovim, etc.) find their configs under ~/.config/, matching the
+# Linux/macOS layout that chezmoi places. Without this, Neovim falls back to
+# %LOCALAPPDATA%\nvim and ignores the chezmoi-managed config entirely.
+#
+# Idempotent: bails out if the user-scope value already matches.
+
+$ErrorActionPreference = 'Stop'
+
+$desired = Join-Path $env:USERPROFILE '.config'
+$current = [Environment]::GetEnvironmentVariable('XDG_CONFIG_HOME', 'User')
+
+if ($current -eq $desired) {
+    Write-Host "XDG_CONFIG_HOME already set to $desired." -ForegroundColor DarkGray
+    return
+}
+
+[Environment]::SetEnvironmentVariable('XDG_CONFIG_HOME', $desired, 'User')
+$env:XDG_CONFIG_HOME = $desired
+Write-Host "XDG_CONFIG_HOME -> $desired (User scope)" -ForegroundColor Cyan
+Write-Host "Restart shells / GUI apps to pick up the new value." -ForegroundColor DarkGray
+{{ end -}}
