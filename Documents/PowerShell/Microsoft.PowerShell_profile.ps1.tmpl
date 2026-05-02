@@ -160,27 +160,55 @@ function gg {
     }
 }
 
-# Auto-cd after `ghq get|clone|create`
-function ghq {
-    param(
-        [Parameter(Position = 0)] [string] $Subcommand,
-        [Parameter(ValueFromRemainingArguments = $true)] [string[]] $Rest
-    )
+# Auto-cd after `ghq get|clone|create`. Only define when ghq is on PATH so a
+# missing install fails with a clean "command not found" instead of a confusing
+# error from inside the wrapper.
+if (Get-Command ghq -ErrorAction SilentlyContinue) {
+    function ghq {
+        param(
+            [Parameter(Position = 0)] [string] $Subcommand,
+            [Parameter(ValueFromRemainingArguments = $true)] [string[]] $Rest
+        )
 
-    & (Get-Command ghq.exe -ErrorAction Stop).Source $Subcommand @Rest
-    $code = $LASTEXITCODE
+        if ($Subcommand -eq 'list') {
+            # `ghq.root = Z:/` on Windows means ghq walks the drive root and hits
+            # OS-managed protected dirs ($RECYCLE.BIN, System Volume Information).
+            # Strip only those two specific Permission-denied warnings; preserve
+            # any other stderr output (real errors on actual repos).
+            & (Get-Command ghq.exe -ErrorAction Stop).Source list @Rest 2>&1 |
+                ForEach-Object {
+                    if ($_ -is [System.Management.Automation.ErrorRecord]) {
+                        $msg = $_.ToString()
+                        if ($msg -match 'Permission denied' -and
+                            $msg -match '(\$RECYCLE\.BIN|System Volume Information)') {
+                            return
+                        }
+                        $Host.UI.WriteErrorLine($msg)
+                        return
+                    }
+                    $_
+                }
+        } else {
+            & (Get-Command ghq.exe -ErrorAction Stop).Source $Subcommand @Rest
+        }
+        $code = $LASTEXITCODE
 
-    if ($code -eq 0 -and ($Subcommand -in @('get', 'clone', 'create'))) {
-        $target = $Rest[-1]
-        if ($target) {
-            $repoPath = & (Get-Command ghq.exe).Source list --full-path --exact $target 2>$null
-            if ($repoPath) {
-                Set-Location -Path $repoPath
-                Write-Host "Moved to: $repoPath" -ForegroundColor Green
+        if ($code -eq 0 -and ($Subcommand -in @('get', 'clone', 'create'))) {
+            $target = $Rest[-1]
+            if ($target) {
+                $repoPath = & (Get-Command ghq.exe).Source list --full-path --exact $target 2>$null
+                if ($repoPath) {
+                    Set-Location -Path $repoPath
+                    Write-Host "Moved to: $repoPath" -ForegroundColor Green
+                }
             }
         }
+
+        # Preserve original ghq exit code without emitting it to the pipeline.
+        # `return $code` would print 0 to stdout — PowerShell's `return` is an
+        # output statement, unlike zsh where it just sets $?.
+        $global:LASTEXITCODE = $code
     }
-    return $code
 }
 
 # git-ccc: AI-generated conventional commit (parity with dot_config/zsh/functions/ccc.zsh)
