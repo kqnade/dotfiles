@@ -1,0 +1,13 @@
+{{/*
+SKK dictionaries from skk-dev/dict.
+Downloaded into ~/.skk/ on all OSes (Linux/macOS/Windows). The files are
+EUC-JP encoded plain text and large (L alone is ~4.5 MB), so they are fetched
+on demand via chezmoi externals instead of being committed to the repo.
+*/}}
+{{- $dicts := list "L" "geo" "propernoun" "assoc" "JIS3_4" "law" "emoji" -}}
+{{- range $dicts }}
+[".skk/SKK-JISYO.{{ . }}"]
+    type = "file"
+    url = "https://github.com/skk-dev/dict/raw/refs/heads/master/SKK-JISYO.{{ . }}"
+    refreshPeriod = "168h"
+{{ end -}}
