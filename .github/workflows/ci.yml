@@ -1,0 +1,92 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  templates:
+    name: render templates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install chezmoi
+        run: |
+          sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: render every *.tmpl
+        run: |
+          set -eu
+          fail=0
+          while IFS= read -r f; do
+            echo "::group::$f"
+            if ! chezmoi execute-template --source "$PWD" < "$f" >/dev/null; then
+              echo "::error file=$f::template render failed"
+              fail=1
+            fi
+            echo "::endgroup::"
+          done < <(find . -name '*.tmpl' -not -path './.git/*' | sort)
+          exit "$fail"
+
+  apply-dry-run:
+    name: apply --dry-run (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install chezmoi (linux)
+        if: runner.os == 'Linux'
+        run: |
+          sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: install chezmoi (macos)
+        if: runner.os == 'macOS'
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+          HOMEBREW_NO_INSTALL_CLEANUP: "1"
+        run: brew install chezmoi
+
+      - name: install chezmoi (windows)
+        if: runner.os == 'Windows'
+        run: choco install chezmoi -y --no-progress
+
+      - name: dry-run apply (unix)
+        if: runner.os != 'Windows'
+        run: |
+          dest="$RUNNER_TEMP/cm-dest"
+          mkdir -p "$dest"
+          chezmoi --source "$PWD" --destination "$dest" \
+            apply --dry-run --verbose --exclude=externals
+
+      - name: dry-run apply (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $dest = Join-Path $env:RUNNER_TEMP "cm-dest"
+          New-Item -ItemType Directory -Force -Path $dest | Out-Null
+          chezmoi --source "$PWD" --destination $dest `
+            apply --dry-run --verbose --exclude=externals
+
+  shellcheck:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ludeeus/action-shellcheck@2.0.0
+        env:
+          SHELLCHECK_OPTS: -e SC1091
+        with:
+          scandir: ./scripts
+          severity: warning
