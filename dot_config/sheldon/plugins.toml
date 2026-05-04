@@ -1,5 +1,14 @@
 shell = "zsh"
 
+# Extra completions. The actual completion functions live under src/, and
+# they must be on fpath BEFORE compinit. dot_zshrc adds this same path
+# manually pre-compinit; sheldon's apply=fpath is kept so updates stay
+# centralized (the duplicate fpath entry is deduped by `typeset -aU fpath`).
+[plugins.zsh-completions]
+github = "zsh-users/zsh-completions"
+dir = "src"
+apply = ["fpath"]
+
 [plugins.zsh-autosuggestions]
 github = "zsh-users/zsh-autosuggestions"
 
@@ -14,6 +23,11 @@ pre = "export ENHANCD_FILTER='fzf --height 40% --reverse'"
 [plugins.fzf-tab]
 github = "Aloxaf/fzf-tab"
 
+# fzf-powered git: ga / gd / glo / grh / gcb / gbd / ...
+[plugins.forgit]
+github = "wfxr/forgit"
+
+# Must be loaded last among plugins that wrap zle widgets.
 [plugins.zsh-syntax-highlighting]
 github = "zsh-users/zsh-syntax-highlighting"
 

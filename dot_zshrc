@@ -23,6 +23,15 @@ if command -v gpgconf &>/dev/null; then
   gpg-connect-agent updatestartuptty /bye > /dev/null 2>&1
 fi
 
+# zsh-completions ships extra completion functions; they must be added to
+# fpath BEFORE compinit. sheldon clones the repo for us; we just point fpath
+# at its src/ directory here.
+typeset -aU fpath
+_sheldon_data="${XDG_DATA_HOME:-$HOME/.local/share}/sheldon"
+[[ -d $_sheldon_data/repos/github.com/zsh-users/zsh-completions/src ]] \
+  && fpath=("$_sheldon_data/repos/github.com/zsh-users/zsh-completions/src" $fpath)
+unset _sheldon_data
+
 autoload -Uz compinit
 compinit
 
