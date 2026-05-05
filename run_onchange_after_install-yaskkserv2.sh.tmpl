@@ -3,11 +3,12 @@
 # yaskkserv2 setup (cross-platform).
 #
 # Steps (idempotent):
-#   1. Ensure cargo is on PATH.
-#   2. cargo install yaskkserv2 from upstream if binaries are missing.
-#   3. Rebuild merged dictionary when any SKK-JISYO.* source is newer than
+#   1. Ensure the yaskkserv2 binaries are present:
+#        - macOS:  delphinus/yaskkserv2 brew tap (HEAD build) — Brewfile.
+#        - Linux:  cargo install from upstream when missing.
+#   2. Rebuild merged dictionary when any SKK-JISYO.* source is newer than
 #      ~/.skk/dictionary.yaskkserv2.
-#   4. Install + (re)start the per-user service:
+#   3. Install + (re)start the per-user service:
 #        - macOS:  launchd agent under ~/Library/LaunchAgents
 #        - Linux:  systemd user unit under ~/.config/systemd/user
 #
@@ -24,34 +25,50 @@ DICT="$SKK_DIR/dictionary.yaskkserv2"
 LISTEN_HOST="127.0.0.1"
 LISTEN_PORT="1178"
 
+{{- if eq .chezmoi.os "darwin" }}
+GOOGLE_CACHE_DIR="$HOME/Library/Caches/yaskkserv2"
+{{- else }}
+GOOGLE_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/yaskkserv2"
+{{- end }}
+GOOGLE_CACHE="$GOOGLE_CACHE_DIR/google.cache"
+mkdir -p "$GOOGLE_CACHE_DIR"
+
 # ---------------------------------------------------------------------------
-# 1. Locate cargo
+# 1. Locate / install yaskkserv2 binaries
 # ---------------------------------------------------------------------------
+# Brew on macOS / Linuxbrew put binaries in their own prefix.
+# cargo installs go to ~/.cargo/bin.
 export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
-if ! command -v cargo >/dev/null 2>&1; then
-  warn "cargo not found in PATH; skipping yaskkserv2 setup"
-  warn "(install via Brewfile/Aptfile/PKGBUILD then re-run \`chezmoi apply\`)"
-  exit 0
+if [[ -x /opt/homebrew/bin/brew ]]; then
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+elif [[ -x /usr/local/bin/brew ]]; then
+  eval "$(/usr/local/bin/brew shellenv)"
+elif [[ -x "$HOME/.linuxbrew/bin/brew" ]]; then
+  eval "$("$HOME/.linuxbrew/bin/brew" shellenv)"
 fi
 
-# Make sure cargo's bin dir is where we expect installs to land.
-CARGO_BIN="${CARGO_HOME:-$HOME/.cargo}/bin"
-mkdir -p "$CARGO_BIN"
-
-# ---------------------------------------------------------------------------
-# 2. Install yaskkserv2 if missing
-# ---------------------------------------------------------------------------
 if ! command -v yaskkserv2 >/dev/null 2>&1 \
    || ! command -v yaskkserv2_make_dictionary >/dev/null 2>&1; then
+{{- if eq .chezmoi.os "darwin" }}
+  warn "yaskkserv2 binaries not found — expected from delphinus/yaskkserv2 tap."
+  warn "Re-run \`brew bundle --file=$(chezmoi source-path)/Brewfile\` and try again."
+  exit 0
+{{- else }}
+  if ! command -v cargo >/dev/null 2>&1; then
+    warn "cargo not found in PATH; skipping yaskkserv2 setup"
+    warn "(install via Aptfile/PKGBUILD/Brewfile then re-run \`chezmoi apply\`)"
+    exit 0
+  fi
   log "Installing yaskkserv2 via cargo (this may take a few minutes)..."
   cargo install --locked --git https://github.com/wachikun/yaskkserv2 --bins
+{{- end }}
 fi
 
 YASKK_BIN="$(command -v yaskkserv2)"
 MAKE_DICT_BIN="$(command -v yaskkserv2_make_dictionary)"
 
 # ---------------------------------------------------------------------------
-# 3. (Re)build dictionary
+# 2. (Re)build dictionary
 # ---------------------------------------------------------------------------
 SOURCES=()
 for d in L geo propernoun assoc JIS3_4 law; do
@@ -85,12 +102,22 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 4. Service registration
+# 3. Service registration
 # ---------------------------------------------------------------------------
+# Common server flags (used by both launchd and systemd).
+COMMON_ARGS=(
+  --no-daemonize
+  "--listen-address=$LISTEN_HOST"
+  "--port=$LISTEN_PORT"
+  --google-japanese-input=notfound
+  "--google-cache-filename=$GOOGLE_CACHE"
+)
+
 {{- if eq .chezmoi.os "darwin" }}
 PLIST="$HOME/Library/LaunchAgents/com.user.yaskkserv2.plist"
 mkdir -p "$(dirname "$PLIST")" "$HOME/Library/Logs"
 
+# Refined KeepAlive: restart on crash, but not when we tell it to stop.
 cat > "$PLIST" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -101,15 +128,18 @@ cat > "$PLIST" <<EOF
   <key>ProgramArguments</key>
   <array>
     <string>$YASKK_BIN</string>
-    <string>--no-daemonize</string>
-    <string>--listen-address=$LISTEN_HOST</string>
-    <string>--port=$LISTEN_PORT</string>
+$(printf '    <string>%s</string>\n' "${COMMON_ARGS[@]}")
     <string>$DICT</string>
   </array>
   <key>RunAtLoad</key>
   <true/>
   <key>KeepAlive</key>
-  <true/>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+    <key>Crashed</key>
+    <true/>
+  </dict>
   <key>StandardOutPath</key>
   <string>$HOME/Library/Logs/yaskkserv2.log</string>
   <key>StandardErrorPath</key>
@@ -136,7 +166,7 @@ Description=yaskkserv2 — local SKK dictionary server
 After=network.target
 
 [Service]
-ExecStart=$YASKK_BIN --no-daemonize --listen-address=$LISTEN_HOST --port=$LISTEN_PORT $DICT
+ExecStart=$YASKK_BIN ${COMMON_ARGS[*]} $DICT
 Restart=on-failure
 RestartSec=2
 
@@ -150,7 +180,7 @@ EOF
   log "yaskkserv2 systemd user unit enabled (port $LISTEN_PORT)."
 else
   warn "systemd user session not available; start yaskkserv2 manually:"
-  warn "  $YASKK_BIN --listen-address=$LISTEN_HOST --port=$LISTEN_PORT $DICT"
+  warn "  $YASKK_BIN ${COMMON_ARGS[*]} $DICT"
 fi
 {{- end }}
 {{ end -}}

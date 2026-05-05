@@ -40,15 +40,19 @@ mise install
 
 ## 4. SKK 辞書サーバ (yaskkserv2)
 
-`run_onchange_after_install-yaskkserv2.sh.tmpl` が `chezmoi apply` 時に：
+`Brewfile` で `delphinus/yaskkserv2` tap から HEAD ビルドの `yaskkserv2` /
+`yaskkserv2_make_dictionary` をインストール（rust は brew が build deps として
+内部処理）。続いて `run_onchange_after_install-yaskkserv2.sh.tmpl` が：
 
-1. `cargo install --git https://github.com/wachikun/yaskkserv2 --bins` で
-   `yaskkserv2` / `yaskkserv2_make_dictionary` を `~/.cargo/bin` に配置
-   （Brewfile の `rust` が前提）
-2. `~/.skk/SKK-JISYO.{L,geo,propernoun,assoc,JIS3_4,law,emoji}` をマージして
+1. `~/.skk/SKK-JISYO.{L,geo,propernoun,assoc,JIS3_4,law}` をマージして
    `~/.skk/dictionary.yaskkserv2` を生成
-3. `~/Library/LaunchAgents/com.user.yaskkserv2.plist` を配置 →
+2. `~/Library/LaunchAgents/com.user.yaskkserv2.plist` を配置 →
    `launchctl bootstrap` で `127.0.0.1:1178` に常駐
+
+起動引数：
+- `--google-japanese-input=notfound`: 辞書未収録語を Google 日本語入力で補完
+- `--google-cache-filename=~/Library/Caches/yaskkserv2/google.cache`: 補完結果のキャッシュ
+- `KeepAlive` は `Crashed:true / SuccessfulExit:false`（明示停止時は再起動しない）
 
 Neovim の skkeleton はこのサーバを参照する設定（`sources = { "skk_server" }`）。
 **macSKK** の `設定 → 辞書 → SKKServ` で `127.0.0.1:1178` を指定すると、

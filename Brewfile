@@ -37,11 +37,18 @@ brew "eza"
 brew "fzf"
 brew "starship"
 
-# SKK input — yaskkserv2 build deps (cargo) and runtime
-brew "rust"
-
 if OS.mac?
   # macOS-only: pinentry GUI for GPG and font casks
   brew "pinentry-mac"
   cask "font-udev-gothic"
+
+  # SKK dictionary server (delphinus/yaskkserv2 tap, HEAD build).
+  # Brew handles rust as a build-only dependency internally.
+  tap "delphinus/yaskkserv2"
+  brew "yaskkserv2", args: ["HEAD"]
+else
+  # Linuxbrew (non-sudo Linux): yaskkserv2 is built from source via
+  # `cargo install` in run_onchange_after_install-yaskkserv2.sh,
+  # so we need rust on PATH.
+  brew "rust"
 end
