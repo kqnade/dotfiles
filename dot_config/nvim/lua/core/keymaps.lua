@@ -95,18 +95,19 @@ map("n", "sn", "gt", { desc = "Next tab" })
 map("n", "sp", "gT", { desc = "Previous tab" })
 map("n", "sq", "<cmd>q<CR>", { desc = "Close window" })
 
--- ─── Window Navigation (Colemak: C-h/n/e/i) ────────────────
--- Note: <C-m> conflicts with <CR>, using <C-h> instead
+-- ─── Window Navigation (Colemak-DH: C-h/n/e/i) ──────────────
+-- <C-m>/<C-i> would alias <CR>/<Tab> on terminals without Kitty
+-- Keyboard Protocol (e.g. Windows Terminal), so use <C-h> for left.
 map("n", "<C-h>", "<C-w>h", { desc = "Move to left window" })
 map("n", "<C-n>", "<C-w>j", { desc = "Move to lower window" })
 map("n", "<C-e>", "<C-w>k", { desc = "Move to upper window" })
 map("n", "<C-i>", "<C-w>l", { desc = "Move to right window" })
 
--- ─── Window Resize (Alt + m/n/e/i) ──────────────────────────
-map("n", "<M-m>", "<cmd>vertical resize -5<CR>", { desc = "Decrease width" })
-map("n", "<M-i>", "<cmd>vertical resize +5<CR>", { desc = "Increase width" })
-map("n", "<M-n>", "<cmd>resize -5<CR>", { desc = "Decrease height" })
-map("n", "<M-e>", "<cmd>resize +5<CR>", { desc = "Increase height" })
+-- ─── Window Resize (Alt + m/n/e/i, mirrors pane navigation) ──
+map("n", "<M-m>", "<cmd>vertical resize -5<CR>", { desc = "Resize: narrower" })
+map("n", "<M-n>", "<cmd>resize -5<CR>",          { desc = "Resize: shorter" })
+map("n", "<M-e>", "<cmd>resize +5<CR>",          { desc = "Resize: taller" })
+map("n", "<M-i>", "<cmd>vertical resize +5<CR>", { desc = "Resize: wider" })
 
 -- ─── Terminal Mode ─────────────────────────────────────────
 map("t", "<Esc><Esc>", "<C-\\><C-n>", { desc = "Exit terminal mode" })
@@ -124,13 +125,13 @@ map("n", "<leader>bd", "<cmd>bdelete<CR>", { desc = "Delete buffer" })
 map("v", "<", "<gv", opts)
 map("v", ">", ">gv", opts)
 
--- ─── Move Lines ────────────────────────────────────────────
-map("n", "<A-n>", "<cmd>m .+1<CR>==", { desc = "Move line down" })
-map("n", "<A-e>", "<cmd>m .-2<CR>==", { desc = "Move line up" })
-map("v", "<A-n>", ":m '>+1<CR>gv=gv", { desc = "Move selection down" })
-map("v", "<A-e>", ":m '<-2<CR>gv=gv", { desc = "Move selection up" })
-map("i", "<A-n>", "<Esc><cmd>m .+1<CR>==gi", { desc = "Move line down" })
-map("i", "<A-e>", "<Esc><cmd>m .-2<CR>==gi", { desc = "Move line up" })
+-- ─── Move Lines (Alt+Shift + n/e to avoid resize conflict) ──
+map("n", "<M-N>", "<cmd>m .+1<CR>==",        { desc = "Move line down" })
+map("n", "<M-E>", "<cmd>m .-2<CR>==",        { desc = "Move line up" })
+map("v", "<M-N>", ":m '>+1<CR>gv=gv",        { desc = "Move selection down" })
+map("v", "<M-E>", ":m '<-2<CR>gv=gv",        { desc = "Move selection up" })
+map("i", "<M-N>", "<Esc><cmd>m .+1<CR>==gi", { desc = "Move line down" })
+map("i", "<M-E>", "<Esc><cmd>m .-2<CR>==gi", { desc = "Move line up" })
 
 -- ─── Quickfix ──────────────────────────────────────────────
 map("n", "[q", "<cmd>cprevious<CR>", { desc = "Previous quickfix" })
