@@ -1,12 +1,42 @@
 add_newline = true
 
-format = """
-$directory$git_branch$git_status$cmd_duration$status$line_break$character"""
+format = """[\\[](gray)$os $username[@](gray)$hostname${custom.wsl}[\\]](gray) $directory$git_branch$git_status$cmd_duration$status$line_break$character"""
 
 [character]
 success_symbol = "[❯](magenta)"
 error_symbol = "[❯](red)"
 vicmd_symbol = "[❮](cyan)"
+
+[os]
+disabled = false
+format = "[$symbol]($style)"
+style = "bold cyan"
+
+[os.symbols]
+Arch = "󰣇"
+Ubuntu = ""
+Debian = ""
+Macos = ""
+Windows = ""
+Linux = ""
+
+[username]
+show_always = true
+format = "[$user]($style)"
+style_user = "bold green"
+style_root = "bold red"
+
+[hostname]
+ssh_only = false
+format = "[$hostname]($style)"
+style = "bold green"
+
+[custom.wsl]
+description = "WSL indicator"
+when = '[ -n "$WSL_DISTRO_NAME" ]'
+command = 'echo wsl'
+format = "[\\(wsl\\)]($style)"
+style = "bold yellow"
 
 [directory]
 style = "bold blue"
