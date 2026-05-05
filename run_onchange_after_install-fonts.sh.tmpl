@@ -1,0 +1,51 @@
+{{- if eq .chezmoi.os "linux" -}}
+#!/usr/bin/env bash
+# Install UDEVGothic NF (yuru7/udev-gothic) into ~/.local/share/fonts so
+# that all Linux paths share the same primary font as macOS (Brewfile cask)
+# and Arch sudo (metapkgs ttf-udev-gothic-nf). Idempotent — bails out if
+# any UDEVGothic variant is already discoverable via fc-list.
+#
+# Runs as a chezmoi `after` script so apt/pacman has provided unzip
+# and fontconfig by the time we get here.
+
+set -euo pipefail
+
+if ! command -v fc-list >/dev/null 2>&1; then
+  echo "==> fontconfig not installed; skipping UDEVGothic install" >&2
+  exit 0
+fi
+
+if fc-list 2>/dev/null | grep -qi 'udevgothic'; then
+  exit 0
+fi
+
+if ! command -v unzip >/dev/null 2>&1; then
+  echo "==> unzip not found; skipping UDEVGothic install" >&2
+  exit 0
+fi
+
+api="https://api.github.com/repos/yuru7/udev-gothic/releases/latest"
+url="$(curl -fsSL "${api}" \
+  | grep -Eo '"browser_download_url"[[:space:]]*:[[:space:]]*"[^"]*UDEVGothic_NF_v[^"]+\.zip"' \
+  | head -n1 \
+  | sed -E 's/.*"(https:[^"]+)".*/\1/')"
+
+if [[ -z "${url}" ]]; then
+  echo "==> Could not resolve UDEVGothic NF release URL; skipping" >&2
+  exit 0
+fi
+
+font_dir="${HOME}/.local/share/fonts"
+mkdir -p "${font_dir}"
+
+tmp="$(mktemp -d)"
+trap 'rm -rf "${tmp}"' EXIT
+
+echo "==> Downloading ${url}"
+curl -fsSL "${url}" -o "${tmp}/font.zip"
+unzip -q "${tmp}/font.zip" -d "${tmp}/font"
+find "${tmp}/font" -name '*.ttf' -exec cp {} "${font_dir}/" \;
+
+fc-cache -f "${font_dir}" >/dev/null 2>&1 || true
+echo "==> UDEVGothic NF installed in ${font_dir}"
+{{ end -}}

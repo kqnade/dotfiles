@@ -80,13 +80,50 @@ jobs:
             apply --dry-run --verbose --exclude=externals
 
   shellcheck:
-    name: shellcheck
-    runs-on: ubuntu-latest
+    name: shellcheck (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: ludeeus/action-shellcheck@2.0.0
-        env:
-          SHELLCHECK_OPTS: -e SC1091
-        with:
-          scandir: ./scripts
-          severity: warning
+
+      - name: install chezmoi + shellcheck
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            sudo apt-get update -y
+            sudo apt-get install -y --no-install-recommends shellcheck
+            sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+          else
+            brew install shellcheck chezmoi
+          fi
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: render shell templates and lint
+        shell: bash
+        run: |
+          set -eu
+          mkdir -p .rendered
+          for f in run_onchange_*.sh.tmpl; do
+            [[ -f "$f" ]] || continue
+            out=".rendered/${f%.tmpl}"
+            chezmoi execute-template --source "$PWD" < "$f" > "$out"
+            if [[ ! -s "$out" ]]; then
+              rm -f "$out"
+            fi
+          done
+
+          targets=()
+          for s in scripts/*.sh; do
+            [[ -f "$s" ]] && targets+=("$s")
+          done
+          for r in .rendered/*.sh; do
+            [[ -f "$r" ]] && targets+=("$r")
+          done
+          if [[ ${#targets[@]} -gt 0 ]]; then
+            shellcheck -e SC1091 -S warning "${targets[@]}"
+          else
+            echo "no shell targets to lint on $RUNNER_OS"
+          fi

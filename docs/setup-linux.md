@@ -10,6 +10,12 @@
 
 リポジトリは ghq 規約に従って `~/ghq/github.com/kqnade/dotfiles` に配置することを想定しています。
 
+`chezmoi apply` を実行すると、`run_onchange_setup-linux.sh.tmpl` が
+自動で `scripts/install-linux.sh` を呼び出すため、初回・更新時とも
+このコマンド 1 つで完結します（CI など TTY 不在の環境ではスキップ）。
+さらに `run_onchange_after_install-fonts.sh.tmpl` が UDEVGothic NF
+を `~/.local/share/fonts` に配置し、4 OS で同一フォントを共有します。
+
 ---
 
 ## Arch Linux

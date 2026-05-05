@@ -1,0 +1,24 @@
+{{- if eq .chezmoi.os "linux" -}}
+#!/usr/bin/env bash
+# Linux bootstrap: delegates to scripts/install-linux.sh for distro-aware
+# package installation (Arch + sudo / Debian + sudo / Linuxbrew fallback).
+#
+# Skipped in CI or any non-interactive context because the sudo paths
+# would block on a password prompt.
+#
+# Re-runs whenever any source manifest below changes.
+# install-linux.sh: {{ include "scripts/install-linux.sh" | sha256sum }}
+# Aptfile:          {{ include "Aptfile" | sha256sum }}
+# Brewfile:         {{ include "Brewfile" | sha256sum }}
+# PKGBUILD:         {{ include "metapkgs/base/PKGBUILD" | sha256sum }}
+
+set -euo pipefail
+
+if [[ "${CI:-}" == "true" ]] || [[ ! -t 0 ]]; then
+  echo "==> Skipping Linux bootstrap (CI or non-interactive shell)" >&2
+  exit 0
+fi
+
+REPO_ROOT="{{ .chezmoi.sourceDir }}"
+exec bash "${REPO_ROOT}/scripts/install-linux.sh"
+{{ end -}}
