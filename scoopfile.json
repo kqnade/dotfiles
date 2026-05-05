@@ -13,7 +13,6 @@
     { "Name": "git-lfs", "Source": "main" },
     { "Name": "ghq",     "Source": "main" },
     { "Name": "neovim",  "Source": "main" },
-    { "Name": "wezterm", "Source": "extras" },
     { "Name": "gpg4win", "Source": "extras" },
 
     { "Name": "msys2", "Source": "main" },

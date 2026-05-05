@@ -51,7 +51,7 @@ mise install
 ```
 
 > Windows では `dot_zshrc`, `dot_config/zsh/`, `dot_config/sheldon/`,
-> `dot_config/ghostty/`, `dot_config/kitty/`, `private_dot_gnupg/` は
+> `dot_config/ghostty/`, `private_dot_gnupg/` は
 > `.chezmoiignore` で除外され、PowerShell プロファイル
 > (`Documents/PowerShell/Microsoft.PowerShell_profile.ps1`) が代わりに展開されます。
 
