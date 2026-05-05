@@ -1,0 +1,133 @@
+{{- if eq .chezmoi.os "darwin" -}}
+#!/usr/bin/env bash
+# macOS bootstrap: install Homebrew + Brewfile and apply user defaults.
+# Idempotent — re-runs whenever this file's rendered contents change.
+# Brewfile hash (forces re-run when Brewfile changes): {{ include "Brewfile" | sha256sum }}
+
+set -euo pipefail
+
+log() { printf '\033[1;36m==>\033[0m %s\n' "$*"; }
+
+# ---------------------------------------------------------------------------
+# Homebrew + Brewfile
+# ---------------------------------------------------------------------------
+if ! command -v brew >/dev/null 2>&1; then
+  log "Installing Homebrew..."
+  NONINTERACTIVE=1 /bin/bash -c \
+    "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+fi
+
+if [[ -x /opt/homebrew/bin/brew ]]; then
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+elif [[ -x /usr/local/bin/brew ]]; then
+  eval "$(/usr/local/bin/brew shellenv)"
+fi
+
+log "Running brew bundle..."
+brew bundle --file="${HOME}/Brewfile"
+
+# ---------------------------------------------------------------------------
+# macOS defaults
+# ---------------------------------------------------------------------------
+log "Applying macOS defaults..."
+
+# --- NSGlobalDomain ---
+defaults write NSGlobalDomain AppleShowAllExtensions -bool true
+defaults write NSGlobalDomain AppleMiniaturizeOnDoubleClick -bool false
+defaults write NSGlobalDomain AppleActionOnDoubleClick -string "Minimize"
+defaults write NSGlobalDomain AppleMenuBarVisibleInFullscreen -bool false
+defaults write NSGlobalDomain AppleReduceDesktopTinting -bool true
+# F1/F2... を標準ファンクションキーとして使う
+defaults write NSGlobalDomain com.apple.keyboard.fnState -bool true
+# トラックパッド
+defaults write NSGlobalDomain com.apple.trackpad.scaling -float 1.5
+defaults write NSGlobalDomain com.apple.trackpad.forceClick -bool true
+# 長押しで特殊文字メニューを無効化（Vim/連打用）
+defaults write NSGlobalDomain ApplePressAndHoldEnabled -bool false
+# キーリピート高速化
+defaults write NSGlobalDomain KeyRepeat -int 2
+defaults write NSGlobalDomain InitialKeyRepeat -int 15
+# Tab で全 UI 要素にフォーカス（チェックボックス等含む）
+defaults write NSGlobalDomain AppleKeyboardUIMode -int 3
+# Open/Save パネルを常に展開
+defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode -bool true
+defaults write NSGlobalDomain NSNavPanelExpandedStateForSaveMode2 -bool true
+# 新規ドキュメントを iCloud ではなくローカルに保存
+defaults write NSGlobalDomain NSDocumentSaveNewDocumentsToCloud -bool false
+
+# --- Dock ---
+defaults write com.apple.dock autohide -bool true
+defaults write com.apple.dock magnification -bool true
+defaults write com.apple.dock largesize -int 61
+defaults write com.apple.dock tilesize -int 26
+defaults write com.apple.dock orientation -string "left"
+defaults write com.apple.dock mineffect -string "genie"
+defaults write com.apple.dock show-recents -bool false
+defaults write com.apple.dock showAppExposeGestureEnabled -bool false
+defaults write com.apple.dock showLaunchpadGestureEnabled -bool true
+# Mission Control: Space を最近使った順で自動並び替えしない / Expose でアプリ単位にグループ化しない
+defaults write com.apple.dock mru-spaces -bool false
+defaults write com.apple.dock expose-group-apps -bool false
+
+# --- Finder ---
+defaults write com.apple.finder AppleShowAllFiles -bool true
+defaults write com.apple.finder FXPreferredViewStyle -string "icnv"
+defaults write com.apple.finder FXRemoveOldTrashItems -bool true
+defaults write com.apple.finder NewWindowTarget -string "PfHm"
+defaults write com.apple.finder ShowExternalHardDrivesOnDesktop -bool true
+defaults write com.apple.finder ShowHardDrivesOnDesktop -bool false
+defaults write com.apple.finder ShowMountedServersOnDesktop -bool true
+defaults write com.apple.finder ShowRemovableMediaOnDesktop -bool true
+defaults write com.apple.finder _FXSortFoldersFirst -bool true
+# パスバー・ステータスバー
+defaults write com.apple.finder ShowPathbar -bool true
+defaults write com.apple.finder ShowStatusBar -bool true
+# 拡張子変更時の警告を抑止
+defaults write com.apple.finder FXEnableExtensionChangeWarning -bool false
+# 検索のデフォルトを「現在のフォルダ」
+defaults write com.apple.finder FXDefaultSearchScope -string "SCcf"
+# タイトルバーにフルパス
+defaults write com.apple.finder _FXShowPosixPathInTitle -bool true
+# グループビューを名前順
+defaults write com.apple.finder FXArrangeGroupViewBy -string "Name"
+# アイコン表示の自動整列を名前順に（書き換え失敗時は無視）
+/usr/libexec/PlistBuddy -c "Set :FK_DefaultIconViewSettings:arrangeBy name" \
+  "${HOME}/Library/Preferences/com.apple.finder.plist" 2>/dev/null || true
+
+# --- メニューバー時計 ---
+defaults write com.apple.menuextra.clock ShowAMPM -bool true
+defaults write com.apple.menuextra.clock ShowDate -int 0
+defaults write com.apple.menuextra.clock ShowDayOfWeek -bool true
+
+# --- トラックパッド: タップでクリック ---
+defaults write com.apple.AppleMultitouchTrackpad Clicking -bool true
+defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad Clicking -bool true
+
+# --- Stage Manager 無効 + デスクトップアイコン非表示 ---
+defaults write com.apple.WindowManager GloballyEnabled -bool false
+defaults write com.apple.WindowManager HideDesktop -bool true
+
+# --- 通知センター: プレビュー要約を無効 ---
+defaults write com.apple.ncprefs summarize_previews -int 0
+
+# --- スクリーンショット ---
+mkdir -p "${HOME}/Downloads/Screenshots"
+defaults write com.apple.screencapture location -string "${HOME}/Downloads/Screenshots"
+defaults write com.apple.screencapture type -string "png"
+defaults write com.apple.screencapture disable-shadow -bool true
+
+# --- TextEdit: プレーンテキスト + UTF-8 ---
+defaults write com.apple.TextEdit RichText -int 0
+defaults write com.apple.TextEdit PlainTextEncoding -int 4
+defaults write com.apple.TextEdit PlainTextEncodingForWrite -int 4
+
+# --- ~/Library を Finder 上で常時表示 ---
+chflags nohidden "${HOME}/Library"
+
+log "Restarting affected services..."
+killall Dock 2>/dev/null || true
+killall Finder 2>/dev/null || true
+killall SystemUIServer 2>/dev/null || true
+
+log "macOS bootstrap complete."
+{{ end -}}
