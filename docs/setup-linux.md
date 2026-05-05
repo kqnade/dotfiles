@@ -16,6 +16,13 @@
 さらに `run_onchange_after_install-fonts.sh.tmpl` が UDEVGothic NF
 を `~/.local/share/fonts` に配置し、4 OS で同一フォントを共有します。
 
+`run_onchange_after_install-yaskkserv2.sh.tmpl` が `cargo` で
+`yaskkserv2` をビルド → `~/.skk/dictionary.yaskkserv2` を生成 →
+systemd user unit (`yaskkserv2.service`) を有効化し、`127.0.0.1:1178`
+で SKK 辞書サーバを常駐させます。Neovim の skkeleton はこのサーバを
+参照します。systemd が無い環境では手動起動コマンドが警告として表示
+されます。
+
 ---
 
 ## Arch Linux

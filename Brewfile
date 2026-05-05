@@ -37,6 +37,9 @@ brew "eza"
 brew "fzf"
 brew "starship"
 
+# SKK input — yaskkserv2 build deps (cargo) and runtime
+brew "rust"
+
 if OS.mac?
   # macOS-only: pinentry GUI for GPG and font casks
   brew "pinentry-mac"

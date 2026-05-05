@@ -38,6 +38,25 @@ chezmoi init --apply kqnade
 mise install
 ```
 
+## 4. SKK 辞書サーバ (yaskkserv2)
+
+`run_onchange_after_install-yaskkserv2.sh.tmpl` が `chezmoi apply` 時に：
+
+1. `cargo install --git https://github.com/wachikun/yaskkserv2 --bins` で
+   `yaskkserv2` / `yaskkserv2_make_dictionary` を `~/.cargo/bin` に配置
+   （Brewfile の `rust` が前提）
+2. `~/.skk/SKK-JISYO.{L,geo,propernoun,assoc,JIS3_4,law,emoji}` をマージして
+   `~/.skk/dictionary.yaskkserv2` を生成
+3. `~/Library/LaunchAgents/com.user.yaskkserv2.plist` を配置 →
+   `launchctl bootstrap` で `127.0.0.1:1178` に常駐
+
+Neovim の skkeleton はこのサーバを参照する設定（`sources = { "skk_server" }`）。
+**macSKK** の `設定 → 辞書 → SKKServ` で `127.0.0.1:1178` を指定すると、
+nvim と macOS IME で同じ辞書サーバを共有できます。
+
+ログ: `~/Library/Logs/yaskkserv2.{log,err}`
+停止: `launchctl bootout gui/$(id -u)/com.user.yaskkserv2`
+
 ## 補足: 現在の `defaults` を参照する
 
 新しい設定を script に追加したいときの確認手順：

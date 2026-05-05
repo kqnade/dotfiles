@@ -65,6 +65,21 @@ mise install
 | Aptfile | パッケージ管理 (Ubuntu/Debian sudo) | `Aptfile` |
 | metapkgs | パッケージ管理 (Arch sudo) | `metapkgs/base/PKGBUILD` |
 | MSYS2 | Windows での Linux ライク bash 環境 | scoop `msys2` + `dot_bashrc.tmpl` |
+| yaskkserv2 | ローカル SKK 辞書サーバ (Linux/macOS) | `run_onchange_after_install-yaskkserv2.sh.tmpl` |
+
+### SKK Input (skkeleton + yaskkserv2)
+
+Neovim の `skkeleton` は `127.0.0.1:1178` の SKK サーバ越しに辞書参照する。
+辞書サーバ `yaskkserv2` は `cargo` 経由で各マシンにビルドし、ユーザサービスとして常駐：
+
+- macOS: launchd agent (`~/Library/LaunchAgents/com.user.yaskkserv2.plist`)
+- Linux: systemd user unit (`~/.config/systemd/user/yaskkserv2.service`)
+
+辞書ソース (`~/.skk/SKK-JISYO.{L,geo,propernoun,assoc,JIS3_4,law}`) は
+`.chezmoiexternal.toml.tmpl` で skk-dev/dict から取得され、
+`yaskkserv2_make_dictionary` でマージされた `~/.skk/dictionary.yaskkserv2`
+（アーキ依存・バイナリ）が生成される。再ビルドはソースファイルが新しい
+ときのみ。macSKK も同じサーバを共有可能（macSKK 設定 → 辞書 → SKKServ）。
 
 ### Zsh Structure (`dot_config/zsh/`)
 

@@ -9,7 +9,11 @@ vim.api.nvim_create_autocmd("User", {
     local azik_table = dofile(vim.fn.stdpath("config") .. "/skk/my-azik.lua")
     vim.fn["skkeleton#register_kanatable"]("rom", azik_table, false)
     vim.fn["skkeleton#config"]({
-      globalDictionaries = { "~/.skk/SKK-JISYO.L" },
+      sources = { "skk_server" },
+      skkServerHost = "127.0.0.1",
+      skkServerPort = 1178,
+      skkServerReqEnc = "euc-jp",
+      skkServerResEnc = "euc-jp",
       eggLikeNewline = true,
       keepState = false,
     })

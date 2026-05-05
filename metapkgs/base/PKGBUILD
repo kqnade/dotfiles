@@ -1,5 +1,5 @@
 pkgname=base-env
-pkgver=20260407
+pkgver=20260505
 pkgrel=1
 pkgdesc="My declarative base environment"
 arch=('any')
@@ -21,8 +21,11 @@ depends=(
   'openssh'
   'pinentry'
   'pass'
-  'ttf-udev-gothic-nf'
+  'rust'
 )
+# Note: UDEVGothic NF is installed by run_onchange_after_install-fonts.sh
+# (downloaded from yuru7/udev-gothic releases) — keeps Arch + sudo path on
+# pacman-only deps without requiring an AUR helper.
 
 # Always use latest versions
 pkgver() {

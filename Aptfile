@@ -29,5 +29,9 @@ ripgrep
 fd-find
 bat
 
+# Rust toolchain (used to build yaskkserv2 from source)
+cargo
+rustc
+
 # Fonts (UDEVGothic NF is not in apt — installed manually by the script)
 fonts-noto-cjk
