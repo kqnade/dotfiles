@@ -31,6 +31,9 @@ alias ca='chezmoi apply'
 alias ce='chezmoi edit'
 alias cl='claude'
 
+# tmux: attach to the default session, or create it on first run.
+alias tm='tmux new-session -A -s main'
+
 # ---------------------------------------------------------------------------
 # Modern CLI shims
 # Ubuntu/Debian ship `bat` as `batcat` and `fd` as `fdfind` to avoid name

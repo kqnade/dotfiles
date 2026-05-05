@@ -9,6 +9,7 @@ depends=(
   'ghq'
   'gnupg'
   'zsh'
+  'tmux'
   'chezmoi'
   'vim'
   'neovim'

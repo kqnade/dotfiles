@@ -10,6 +10,7 @@ brew "sheldon"
 
 # Shell
 brew "zsh"
+brew "tmux"
 
 # Version control
 brew "git"

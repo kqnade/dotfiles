@@ -56,6 +56,7 @@ check_tool git
 check_tool nvim     "neovim"
 check_tool gh
 check_tool ghq
+check_tool tmux
 check_tool gpg
 check_tool pass
 

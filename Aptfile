@@ -4,6 +4,7 @@
 
 # Shell
 zsh
+tmux
 
 # Editors
 vim
