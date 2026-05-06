@@ -45,7 +45,7 @@ if OS.mac?
   # SKK dictionary server (delphinus/yaskkserv2 tap, HEAD build).
   # Brew handles rust as a build-only dependency internally.
   tap "delphinus/yaskkserv2"
-  brew "yaskkserv2", args: ["HEAD"]
+  brew "delphinus/yaskkserv2/yaskkserv2", args: ["HEAD"]
 else
   # Linuxbrew (non-sudo Linux): yaskkserv2 is built from source via
   # `cargo install` in run_onchange_after_install-yaskkserv2.sh,
