@@ -95,10 +95,11 @@ map("n", "sn", "gt", { desc = "Next tab" })
 map("n", "sp", "gT", { desc = "Previous tab" })
 map("n", "sq", "<cmd>q<CR>", { desc = "Close window" })
 
--- ─── Window Navigation (Colemak-DH: C-h/n/e/i) ──────────────
--- <C-m>/<C-i> would alias <CR>/<Tab> on terminals without Kitty
--- Keyboard Protocol (e.g. Windows Terminal), so use <C-h> for left.
-map("n", "<C-h>", "<C-w>h", { desc = "Move to left window" })
+-- ─── Window Navigation (Colemak-DH: C-m/n/e/i) ──────────────
+-- Requires Kitty Keyboard Protocol so <C-m>/<C-i> are distinguished
+-- from <CR>/<Tab>. Supported by Kitty, Ghostty, WezTerm, foot,
+-- iTerm2, Alacritty (>=0.13), and Windows Terminal Preview (>=1.22).
+map("n", "<C-m>", "<C-w>h", { desc = "Move to left window" })
 map("n", "<C-n>", "<C-w>j", { desc = "Move to lower window" })
 map("n", "<C-e>", "<C-w>k", { desc = "Move to upper window" })
 map("n", "<C-i>", "<C-w>l", { desc = "Move to right window" })
@@ -111,7 +112,7 @@ map("n", "<M-i>", "<cmd>vertical resize +5<CR>", { desc = "Resize: wider" })
 
 -- ─── Terminal Mode ─────────────────────────────────────────
 map("t", "<Esc><Esc>", "<C-\\><C-n>", { desc = "Exit terminal mode" })
-map("t", "<C-h>", "<cmd>wincmd h<CR>", { desc = "Move to left window" })
+map("t", "<C-m>", "<cmd>wincmd h<CR>", { desc = "Move to left window" })
 map("t", "<C-n>", "<cmd>wincmd j<CR>", { desc = "Move to lower window" })
 map("t", "<C-e>", "<cmd>wincmd k<CR>", { desc = "Move to upper window" })
 map("t", "<C-i>", "<cmd>wincmd l<CR>", { desc = "Move to right window" })

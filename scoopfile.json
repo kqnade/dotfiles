@@ -1,13 +1,15 @@
 {
   "buckets": [
-    { "Name": "main",   "Source": "https://github.com/ScoopInstaller/Main" },
-    { "Name": "extras", "Source": "https://github.com/ScoopInstaller/Extras" }
+    { "Name": "main",     "Source": "https://github.com/ScoopInstaller/Main" },
+    { "Name": "extras",   "Source": "https://github.com/ScoopInstaller/Extras" },
+    { "Name": "versions", "Source": "https://github.com/ScoopInstaller/Versions" }
   ],
   "apps": [
     { "Name": "chezmoi", "Source": "main" },
     { "Name": "mise",    "Source": "main" },
 
-    { "Name": "vcredist2022", "Source": "extras" },
+    { "Name": "vcredist2022",             "Source": "extras"   },
+    { "Name": "windows-terminal-preview", "Source": "versions" },
 
     { "Name": "git",     "Source": "main" },
     { "Name": "git-lfs", "Source": "main" },
