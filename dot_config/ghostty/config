@@ -7,4 +7,4 @@ background-blur = true
 cursor-style = block
 shell-integration-features = no-cursor
 
-theme = "catppuccin-mocha"
+theme = "Catppuccin Mocha"
