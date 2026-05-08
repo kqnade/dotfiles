@@ -86,7 +86,7 @@ jobs:
     env:
       FORCE_NOSUDO: "1"
       PIXI_HOME: ${{ github.workspace }}/.pixi-home
-      PIXI_CACHE_DIR: ${{ runner.temp }}/pixi-cache
+      PIXI_CACHE_DIR: /tmp/pixi-cache
     steps:
       - uses: actions/checkout@v4
 
