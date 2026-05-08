@@ -108,7 +108,8 @@ jobs:
           export PATH="$PIXI_HOME/bin:$HOME/.local/bin:$PATH"
           missing=0
           for cmd in \
-            chezmoi sheldon starship \
+            chezmoi mise sheldon starship \
+            zsh git git-lfs \
             ghq gh glab delta \
             eza rg fd bat fzf \
             nvim vim \
@@ -116,13 +117,29 @@ jobs:
             gomi cargo rustc \
             pass; do
             if command -v "$cmd" >/dev/null 2>&1; then
-              printf '✓ %-12s → %s\n' "$cmd" "$(command -v "$cmd")"
+              # Confirm pixi-managed binaries land under PIXI_HOME (or pass under
+              # ~/.local/bin) — surfaces silent shadowing by system packages.
+              resolved="$(command -v "$cmd")"
+              printf '✓ %-12s → %s\n' "$cmd" "$resolved"
             else
               echo "::error::missing $cmd in PATH"
               missing=$((missing + 1))
             fi
           done
           exit "$missing"
+
+      - name: chezmoi apply --dry-run (pixi-managed chezmoi)
+        # Validates that the templates render against this dotfiles repo
+        # under the pixi-installed chezmoi binary. run_onchange_setup-linux
+        # bails out under CI=true; externals are excluded to avoid pulling
+        # SKK dictionaries during CI.
+        run: |
+          set -eu
+          export PATH="$PIXI_HOME/bin:$HOME/.local/bin:$PATH"
+          dest="$RUNNER_TEMP/cm-dest"
+          mkdir -p "$dest"
+          chezmoi --source "$PWD" --destination "$dest" \
+            apply --dry-run --verbose --exclude=externals
 
   shellcheck:
     name: shellcheck (${{ matrix.os }})

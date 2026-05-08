@@ -155,8 +155,12 @@ channels = ["conda-forge"]
 
 [envs.cli-tools.dependencies]
 chezmoi   = "*"
+mise      = "*"
 sheldon   = "*"
 starship  = "*"
+zsh       = "*"
+git       = "*"
+git-lfs   = "*"
 go-ghq    = "*"
 gh        = "*"
 glab      = "*"
@@ -179,8 +183,12 @@ rust      = "*"
 # whole env's expose step.
 [envs.cli-tools.exposed]
 chezmoi           = "chezmoi"
+mise              = "mise"
 sheldon           = "sheldon"
 starship          = "starship"
+zsh               = "zsh"
+git               = "git"
+"git-lfs"         = "git-lfs"
 ghq               = "ghq"
 gh                = "gh"
 glab              = "glab"
