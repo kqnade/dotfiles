@@ -2,21 +2,18 @@ export LANG="en_US.UTF-8"
 export EDITOR="vim"
 export VISUAL="vim"
 
-# Homebrew (macOS) / Linuxbrew (non-sudo Linux fallback)
+# Homebrew (macOS only)
 if [[ "$(uname -s)" == "Darwin" ]]; then
   if [[ -x /opt/homebrew/bin/brew ]]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
   elif [[ -x /usr/local/bin/brew ]]; then
     eval "$(/usr/local/bin/brew shellenv)"
   fi
-elif [[ -x /home/linuxbrew/.linuxbrew/bin/brew ]]; then
-  eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-elif [[ -x "$HOME/.linuxbrew/bin/brew" ]]; then
-  eval "$($HOME/.linuxbrew/bin/brew shellenv)"
 fi
 
 export GPG_TTY=$(tty)
-export PATH="$HOME/.local/bin:$HOME/.bun/bin:$PATH"
+# pixi (non-sudo Linux package manager) bin dir is prepended when present.
+export PATH="$HOME/.pixi/bin:$HOME/.local/bin:$HOME/.bun/bin:$PATH"
 
 if command -v gpgconf &>/dev/null; then
   export SSH_AUTH_SOCK=$(gpgconf --list-dirs agent-ssh-socket)

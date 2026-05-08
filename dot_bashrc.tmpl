@@ -12,10 +12,10 @@
 # inherited Windows PATH stuck in `;`-separated form. Source /etc/profile
 # explicitly so coreutils (uname, ls, ...) resolve and PATH gets converted
 # to MSYS2's `:`-separated `/c/...` form. $MSYSTEM is set by MSYS2 itself.
-# Windows-side tooling (mise, scoop shims, Linuxbrew) is intentionally NOT
-# activated here — mise/scoop are Windows binaries that emit Windows-style
-# PATH which clobbers the MSYS2 PATH and breaks command lookup. Use those
-# from PowerShell instead.
+# Windows-side tooling (mise, scoop shims) is intentionally NOT activated
+# here — they are Windows binaries that emit Windows-style PATH, which
+# clobbers the MSYS2 PATH and breaks command lookup. Use them from
+# PowerShell instead.
 # ---------------------------------------------------------------------------
 if [[ -n "$MSYSTEM" ]]; then
   if [[ -r /etc/profile ]]; then
@@ -49,7 +49,7 @@ export EDITOR="vim"
 export VISUAL="vim"
 
 # ---------------------------------------------------------------------------
-# Homebrew (macOS) / Linuxbrew (non-sudo Linux fallback)
+# Homebrew (macOS only) — non-sudo Linux uses pixi instead, see ~/.pixi/bin.
 # ---------------------------------------------------------------------------
 if [[ "$(uname -s)" == "Darwin" ]]; then
   if [[ -x /opt/homebrew/bin/brew ]]; then
@@ -57,14 +57,10 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
   elif [[ -x /usr/local/bin/brew ]]; then
     eval "$(/usr/local/bin/brew shellenv)"
   fi
-elif [[ -x /home/linuxbrew/.linuxbrew/bin/brew ]]; then
-  eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-elif [[ -x "$HOME/.linuxbrew/bin/brew" ]]; then
-  eval "$($HOME/.linuxbrew/bin/brew shellenv)"
 fi
 
 export GPG_TTY=$(tty)
-export PATH="$HOME/.local/bin:$HOME/.bun/bin:$PATH"
+export PATH="$HOME/.pixi/bin:$HOME/.local/bin:$HOME/.bun/bin:$PATH"
 
 if command -v gpgconf &>/dev/null; then
   export SSH_AUTH_SOCK=$(gpgconf --list-dirs agent-ssh-socket)

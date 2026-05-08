@@ -79,6 +79,50 @@ jobs:
           chezmoi --source "$PWD" --destination $dest `
             apply --dry-run --verbose --exclude=externals
 
+  non-sudo-linux:
+    name: non-sudo install path (pixi)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      FORCE_NOSUDO: "1"
+      PIXI_HOME: ${{ github.workspace }}/.pixi-home
+      PIXI_CACHE_DIR: ${{ runner.temp }}/pixi-cache
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: cache pixi envs
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PIXI_HOME }}
+          key: pixi-${{ runner.os }}-${{ hashFiles('scripts/install-linux.sh') }}
+          restore-keys: |
+            pixi-${{ runner.os }}-
+
+      - name: run scripts/install-linux.sh
+        run: bash scripts/install-linux.sh
+
+      - name: verify installed binaries
+        run: |
+          set -eu
+          export PATH="$PIXI_HOME/bin:$HOME/.local/bin:$PATH"
+          missing=0
+          for cmd in \
+            chezmoi sheldon starship \
+            ghq gh glab delta \
+            eza rg fd bat fzf \
+            nvim vim \
+            gpg gpg-agent gpgconf pinentry \
+            gomi cargo rustc \
+            pass; do
+            if command -v "$cmd" >/dev/null 2>&1; then
+              printf '✓ %-12s → %s\n' "$cmd" "$(command -v "$cmd")"
+            else
+              echo "::error::missing $cmd in PATH"
+              missing=$((missing + 1))
+            fi
+          done
+          exit "$missing"
+
   shellcheck:
     name: shellcheck (${{ matrix.os }})
     strategy:

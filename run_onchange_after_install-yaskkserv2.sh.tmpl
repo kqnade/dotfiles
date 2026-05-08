@@ -36,15 +36,13 @@ mkdir -p "$GOOGLE_CACHE_DIR"
 # ---------------------------------------------------------------------------
 # 1. Locate / install yaskkserv2 binaries
 # ---------------------------------------------------------------------------
-# Brew on macOS / Linuxbrew put binaries in their own prefix.
-# cargo installs go to ~/.cargo/bin.
-export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
+# Brew on macOS puts binaries in its own prefix; on non-sudo Linux we get
+# rust/cargo from pixi (~/.pixi/bin). cargo installs go to ~/.cargo/bin.
+export PATH="$HOME/.cargo/bin:$HOME/.pixi/bin:$HOME/.local/bin:$PATH"
 if [[ -x /opt/homebrew/bin/brew ]]; then
   eval "$(/opt/homebrew/bin/brew shellenv)"
 elif [[ -x /usr/local/bin/brew ]]; then
   eval "$(/usr/local/bin/brew shellenv)"
-elif [[ -x "$HOME/.linuxbrew/bin/brew" ]]; then
-  eval "$("$HOME/.linuxbrew/bin/brew" shellenv)"
 fi
 
 if ! command -v yaskkserv2 >/dev/null 2>&1 \
