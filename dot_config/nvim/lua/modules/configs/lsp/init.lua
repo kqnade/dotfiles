@@ -275,9 +275,60 @@ local servers = {
       },
     },
   },
+  ruby_lsp = {
+    init_options = {
+      formatter = "auto",
+      linters = { "rubocop" },
+    },
+  },
 
   -- Java
   jdtls = {},
+
+  -- Kotlin
+  kotlin_language_server = {},
+
+  -- C# / .NET
+  omnisharp = {
+    settings = {
+      FormattingOptions = {
+        EnableEditorConfigSupport = true,
+        OrganizeImports = true,
+      },
+      RoslynExtensionsOptions = {
+        EnableAnalyzersSupport = true,
+        EnableImportCompletion = true,
+        AnalyzeOpenDocumentsOnly = true,
+      },
+    },
+  },
+
+  -- PowerShell
+  powershell_es = {
+    bundle_path = vim.fn.stdpath("data") .. "/mason/packages/powershell-editor-services",
+    settings = {
+      powershell = {
+        codeFormatting = {
+          preset = "OTBS",
+          autoCorrectAliases = true,
+          useCorrectCasing = true,
+          trimWhitespaceAroundPipe = true,
+        },
+      },
+    },
+  },
+
+  -- Clojure / Lisp family
+  clojure_lsp = {},
+
+  -- ESLint (lint LSP for JS/TS — replaces nvim-lint eslint_d)
+  eslint = {
+    settings = {
+      run = "onType",
+      problems = { shortenToSingleLine = true },
+      workingDirectories = { mode = "auto" },
+    },
+  },
 
   -- JSON
   jsonls = {
@@ -324,6 +375,69 @@ local ensure_installed = vim.tbl_keys(servers)
 require("mason-lspconfig").setup({
   ensure_installed = ensure_installed,
   automatic_installation = true,
+})
+
+-- ─── Mason Tool Installer (formatters / linters / DAP) ──────
+require("mason-tool-installer").setup({
+  ensure_installed = {
+    -- Go
+    "gofumpt",
+    "goimports",
+    "golangci-lint",
+
+    -- Lua
+    "stylua",
+    "luacheck",
+
+    -- JS/TS/Web (eslint is provided via LSP, no eslint_d here)
+    "prettierd",
+    "js-debug-adapter",
+
+    -- Python
+    "ruff",
+    "black",
+    "mypy",
+    "debugpy",
+
+    -- Ruby
+    "rubocop",
+
+    -- Shell
+    "shellcheck",
+    "shfmt",
+
+    -- YAML / Docker / GitHub Actions
+    "yamllint",
+    "hadolint",
+    "actionlint",
+
+    -- C / C++
+    "clang-format",
+    "cpplint",
+    "codelldb",
+
+    -- Java
+    "google-java-format",
+    "java-debug-adapter",
+    "java-test",
+
+    -- Kotlin
+    "ktlint",
+
+    -- C# / .NET
+    "csharpier",
+    "netcoredbg",
+
+    -- Clojure / Lisp
+    "cljfmt",
+    "clj-kondo",
+
+    -- SQL / TOML
+    "sql-formatter",
+    "taplo",
+  },
+  auto_update = false,
+  run_on_start = true,
 })
 
 -- ─── Configure Servers with vim.lsp.config ──────────────────

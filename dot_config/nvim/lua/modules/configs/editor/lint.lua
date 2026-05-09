@@ -6,12 +6,7 @@
 local lint = require("lint")
 
 lint.linters_by_ft = {
-  -- JavaScript/TypeScript
-  javascript = { "eslint_d" },
-  typescript = { "eslint_d" },
-  javascriptreact = { "eslint_d" },
-  typescriptreact = { "eslint_d" },
-  vue = { "eslint_d" },
+  -- JavaScript/TypeScript (diagnostics provided by `eslint` LSP)
 
   -- Python
   python = { "ruff", "mypy" },
@@ -19,8 +14,23 @@ lint.linters_by_ft = {
   -- Go
   go = { "golangcilint" },
 
-  -- Ruby
+  -- Ruby (diagnostics also provided by ruby_lsp + solargraph)
   ruby = { "rubocop" },
+
+  -- Lua
+  lua = { "luacheck" },
+
+  -- C / C++
+  c = { "cpplint" },
+  cpp = { "cpplint" },
+
+  -- Kotlin
+  kotlin = { "ktlint" },
+
+  -- Clojure / Lisp
+  clojure = { "clj-kondo" },
+  clojurescript = { "clj-kondo" },
+  edn = { "clj-kondo" },
 
   -- Shell
   sh = { "shellcheck" },

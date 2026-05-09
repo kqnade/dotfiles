@@ -34,6 +34,19 @@ require("conform").setup({
     -- Java
     java = { "google-java-format" },
 
+    -- Kotlin
+    kotlin = { "ktlint" },
+
+    -- C# / .NET
+    cs = { "csharpier" },
+
+    -- PowerShell (formatting handled by powershell_es LSP)
+
+    -- Clojure / Lisp
+    clojure = { "cljfmt" },
+    clojurescript = { "cljfmt" },
+    edn = { "cljfmt" },
+
     -- Web
     html = { "prettierd", "prettier", stop_after_first = true },
     css = { "prettierd", "prettier", stop_after_first = true },

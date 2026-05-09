@@ -79,6 +79,7 @@ local plugins = {
     dependencies = {
       "williamboman/mason.nvim",
       "williamboman/mason-lspconfig.nvim",
+      "WhoIsSethDaniel/mason-tool-installer.nvim",
       "j-hui/fidget.nvim",
       "folke/lazydev.nvim",
       "b0o/schemastore.nvim", -- JSON/YAML schemas
