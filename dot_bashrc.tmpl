@@ -90,6 +90,11 @@ done
 # ---------------------------------------------------------------------------
 if command -v mise &>/dev/null; then
   eval "$(mise activate bash)"
+  # mise's go plugin force-exports GOBIN=<mise_install_dir>/bin and the
+  # upstream has no flag to disable it. That env var leaks into Mason (nvim)
+  # and breaks its sandboxed `go install` of gopls/gofumpt/goimports. Drop
+  # it here so `go install` falls back to GOPATH/bin.
+  unset GOBIN
 fi
 
 if command -v starship &>/dev/null; then
