@@ -10,6 +10,12 @@
 
 set -euo pipefail
 
+# On non-sudo Debian/Ubuntu the apt packages (fontconfig, unzip) live under
+# ~/.sideapt/usr and aren't on PATH by default. Activate sideapt if present.
+if [[ -x "$HOME/.local/bin/sideapt" ]]; then
+  eval "$("$HOME/.local/bin/sideapt" env 2>/dev/null)" || true
+fi
+
 if ! command -v fc-list >/dev/null 2>&1; then
   echo "==> fontconfig not installed; skipping UDEVGothic install" >&2
   exit 0

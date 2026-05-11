@@ -105,14 +105,22 @@ FORCE_NOSUDO=1 bash scripts/install-linux.sh
 4. `Aptfile` を読み込み `sideapt install <pkgs...>` で `~/.sideapt/usr` 配下に非 root 展開
 5. `install_supplementary_debian` を呼び出し、`chezmoi` / `mise` を `~/.local/bin` に導入してから `mise use -g` で `starship`, `sheldon`, `ghq`, `gh`, `glab`, `eza`, `delta` を一括導入
 
-`dot_zshrc` / `dot_bashrc.tmpl` には `eval "$(sideapt env)"` が組み込まれているため、`chezmoi apply` 後に新しいシェルセッションでそのまま `~/.sideapt/usr/{bin,sbin}` と `~/.local/bin` が PATH に通ります。
+`dot_zshrc` / `dot_bashrc.tmpl` には `eval "$(sideapt env)"` が組み込まれているため、`chezmoi apply` 後に新しいシェルセッションでそのまま `~/.sideapt/usr/{bin,sbin}` と `~/.local/bin` が PATH に通ります。**初回はまだ `~/.bashrc` が配置されていないので、その場で activate してから chezmoi を呼ぶ必要があります**：
 
 ```bash
-chezmoi init --apply kqnade
+eval "$($HOME/.local/bin/sideapt env)"
+export PATH="$HOME/.local/bin:$PATH"
+chezmoi init --source . --apply
+
+# mise は GitHub API を叩くので、匿名 rate limit (60req/h) を回避するために
+# GITHUB_TOKEN を渡してから走らせる
+export GITHUB_TOKEN=<your-token>   # or: gh auth token
 mise install
 ```
 
 > NOTE: sideapt は `preinst`/`postinst` などの maintainer scripts、setuid バイナリ、systemd unit を扱えません。`gnupg`/`pass`/`pinentry-curses` などの CLI 系は問題なく動きますが、サービス系を必要とするパッケージは別途用意してください。
+>
+> 同じ理由で `gcc`/`cargo`/`unzip` などはバイナリとして `~/.sideapt/usr/bin` に展開されるため、`chezmoi apply` の中で動く `run_onchange_after_install-fonts.sh.tmpl`（UDEVGothic のために `unzip` を使う）や `run_onchange_after_install-yaskkserv2.sh.tmpl`（`cargo` を使う）は冒頭で `sideapt env` を eval してから動きます。
 
 ---
 

@@ -144,14 +144,17 @@ install_debian_nosudo() {
     Supplementary tools live in \$HOME/.local/bin (and mise's shims).
     Both are wired in dot_zshrc / dot_bashrc via 'eval "\$(sideapt env)"'.
 
-    \$HOME/.local/bin is NOT on PATH in the current shell yet. Next steps:
+    Activate the new env in the current shell (or open a new shell) before
+    continuing:
 
+      eval "\$(\$HOME/.local/bin/sideapt env)"
       export PATH="\$HOME/.local/bin:\$PATH"
       chezmoi init --source . --apply
-      mise install
 
-    After 'chezmoi apply' lays down ~/.bashrc / ~/.zshrc, open a new shell
-    to pick up sideapt env and PATH automatically.
+    Then, with a GitHub token to avoid anonymous rate limits on mise:
+
+      export GITHUB_TOKEN=<your-token>   # or: gh auth token
+      mise install
 EOF
 }
 
@@ -235,6 +238,10 @@ install_sideapt() {
     sideapt init   || warn "sideapt init failed"
     sideapt update || warn "sideapt update failed (apt may be too old; system index will be used)"
   fi
+
+  # Activate sideapt env so subsequent install steps (and tools chezmoi
+  # invokes from run_onchange scripts) can find gcc/cargo/unzip/etc.
+  eval "$(sideapt env 2>/dev/null)" || true
 }
 
 write_pixi_global_manifest() {
