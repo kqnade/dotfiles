@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # Bootstrap script for Linux. Auto-detects distribution and sudo availability,
-# then delegates to one of three paths:
+# then delegates to one of four paths:
 #
-#   1. Arch (+ sudo)            → metapkgs/base via makepkg
-#   2. Debian/Ubuntu (+ sudo)   → apt + Aptfile + supplementary installers
-#   3. No sudo (any distro)     → pixi (conda-forge) under $HOME, build cache in /tmp
+#   1. Arch (+ sudo)             → metapkgs/base via makepkg
+#   2. Debian/Ubuntu (+ sudo)    → apt + Aptfile + supplementary installers
+#   3. Debian/Ubuntu (no sudo)   → sideapt + Aptfile + supplementary installers
+#   4. Other distro (no sudo)    → pixi (conda-forge) under $HOME, fallback
 #
 # Usage:
 #   bash scripts/install-linux.sh                # auto-detect
-#   FORCE_NOSUDO=1 bash scripts/install-linux.sh # force the pixi path
+#   FORCE_NOSUDO=1 bash scripts/install-linux.sh # force the no-sudo path
 #
 # This script is intentionally idempotent — re-running it should be a no-op
 # when everything is already installed.
@@ -108,14 +109,52 @@ install_debian() {
 }
 
 # ---------------------------------------------------------------------------
-# Path 3: No sudo  → pixi (conda-forge) under $HOME, build cache in /tmp
+# Path 3: Debian/Ubuntu without sudo  → sideapt + Aptfile + supplementary
+# ---------------------------------------------------------------------------
+# sideapt fetches the same .deb packages we would `apt-get install` and
+# extracts them into $HOME/.sideapt/usr. Combined with `install_supplementary_debian`
+# (which already targets $HOME/.local/bin and never invokes sudo), this gives
+# us the same toolchain as the sudo path without root.
+
+install_apt_packages_via_sideapt() {
+  local pkgs=()
+  while IFS= read -r line; do
+    line="${line%%#*}"
+    line="$(echo "$line" | xargs)"
+    [[ -z "$line" ]] && continue
+    pkgs+=("$line")
+  done < Aptfile
+
+  log "Installing ${#pkgs[@]} packages via sideapt..."
+  sideapt install "${pkgs[@]}" \
+    || warn "sideapt install reported failures — packages requiring maintainer scripts/setuid/systemd may be unusable."
+}
+
+install_debian_nosudo() {
+  log "Detected Debian/Ubuntu without sudo — using sideapt."
+  install_sideapt
+  command -v sideapt >/dev/null 2>&1 \
+    || die "sideapt is not on PATH after install — cannot continue."
+  install_apt_packages_via_sideapt
+  install_supplementary_debian
+
+  cat <<EOF
+
+sideapt extracted apt packages under \$HOME/.sideapt/usr.
+Supplementary tools live in \$HOME/.local/bin (and mise's shims).
+Both are wired in dot_zshrc / dot_bashrc via 'eval "\$(sideapt env)"'.
+EOF
+}
+
+# ---------------------------------------------------------------------------
+# Path 4: No sudo, non-Debian  → pixi (conda-forge) fallback under $HOME
 # ---------------------------------------------------------------------------
 # Build/extract is throw-away (PIXI_CACHE_DIR=/tmp/${USER}-pixi-cache); all
 # permanent artifacts live under $HOME/.pixi. Mirrors Brewfile's tool list,
 # minus pass (not in conda-forge) which is installed from source separately.
 
 install_pixi() {
-  log "No sudo available — installing via pixi (cache in /tmp, prefix in \$HOME/.pixi)."
+  log "No sudo available on a non-Debian host — installing via pixi (cache in /tmp, prefix in \$HOME/.pixi)."
 
   : "${PIXI_HOME:=$HOME/.pixi}"
   : "${PIXI_CACHE_DIR:=/tmp/${USER:-$(id -un)}-pixi-cache}"
@@ -134,7 +173,6 @@ install_pixi() {
   pixi global sync || warn "pixi global sync had failures — re-run after fixing 'pixi global list'."
 
   install_pass_from_source
-  install_sideapt
 
   cat <<EOF
 
@@ -144,9 +182,9 @@ Add to PATH (already wired in dot_zshrc / dot_bashrc):
 EOF
 }
 
-# sideapt: non-root apt wrapper. Only useful on Debian/Ubuntu hosts where
-# apt-get/apt-cache/dpkg-deb exist; skipped silently elsewhere. Lets us pull
-# .deb packages into $HOME/.sideapt/usr without sudo as a complement to pixi.
+# sideapt: non-root apt wrapper. Clones the repo, builds the bash wrapper
+# into $HOME/.local/bin, and initializes the private apt index under
+# $HOME/.sideapt. Only meaningful on Debian/Ubuntu hosts.
 install_sideapt() {
   command -v apt-get  >/dev/null 2>&1 || return 0
   command -v dpkg-deb >/dev/null 2>&1 || return 0
@@ -278,7 +316,15 @@ main() {
   log "Distribution: $distro"
 
   if ! has_sudo; then
-    install_pixi
+    case "$distro" in
+      ubuntu|debian|linuxmint|pop)
+        install_debian_nosudo
+        ;;
+      *)
+        warn "No sudo on '$distro' — falling back to pixi."
+        install_pixi
+        ;;
+    esac
     return
   fi
 

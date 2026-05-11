@@ -1,12 +1,13 @@
 # Linux セットアップ
 
-`scripts/install-linux.sh` が `/etc/os-release` と sudo 利用可否を自動判定し、以下の 3 経路に分岐します。
+`scripts/install-linux.sh` が `/etc/os-release` と sudo 利用可否を自動判定し、以下の 4 経路に分岐します。
 
 | 経路 | 条件 | パッケージ manifest |
 |------|------|---------------------|
 | Arch | `arch` / `manjaro` / `endeavouros` + sudo | `metapkgs/base/PKGBUILD` |
-| Debian 系 | `ubuntu` / `debian` / `linuxmint` / `pop` + sudo | `Aptfile` + `mise` |
-| Linuxbrew | sudo 不可（または `FORCE_NOSUDO=1`） | `Brewfile`（`OS.mac?` ガード済） |
+| Debian 系 (sudo) | `ubuntu` / `debian` / `linuxmint` / `pop` + sudo | `Aptfile` + `mise` |
+| Debian 系 (非 sudo) | `ubuntu` / `debian` / `linuxmint` / `pop` で sudo 不可（または `FORCE_NOSUDO=1`） | [sideapt](https://github.com/kqnade/sideapt) + `Aptfile` を `~/.sideapt/usr` に展開 + 補助は `~/.local/bin` & `mise` |
+| pixi (フォールバック) | 上記いずれにも該当しない非 sudo 環境 | `scripts/install-linux.sh` がインライン生成する `pixi-global.toml`（conda-forge） |
 
 リポジトリは ghq 規約に従って `~/ghq/github.com/kqnade/dotfiles` に配置することを想定しています。
 
@@ -86,9 +87,9 @@ mise install
 
 ---
 
-## 非 sudo な Linux 環境 (Linuxbrew)
+## 非 sudo な Debian / Ubuntu 環境 (sideapt)
 
-共有サーバや権限のない環境では Linuxbrew を `$HOME/.linuxbrew` にインストールし、`Brewfile` で必要なツールを揃えます。
+HPC クラスタや共有サーバなど sudo が取れない Debian/Ubuntu では、[sideapt](https://github.com/kqnade/sideapt)（`apt download` + `dpkg-deb -x` を `~/.sideapt/usr` に展開する非 root ラッパ）で同じ `Aptfile` を非 root 導入します。`chezmoi`/`mise`/`starship`/`sheldon` などの apt 外ツールは sudo 経路と全く同じ supplementary installer (`~/.local/bin` + mise) を使い回します。
 
 ```bash
 git clone https://github.com/kqnade/dotfiles.git ~/ghq/github.com/kqnade/dotfiles
@@ -96,15 +97,34 @@ cd ~/ghq/github.com/kqnade/dotfiles
 FORCE_NOSUDO=1 bash scripts/install-linux.sh
 ```
 
-スクリプトは sudo 不可を検出すると以下を行います：
+スクリプトは sudo 不可 + Debian/Ubuntu を検出すると以下を行います：
 
-1. `git clone https://github.com/Homebrew/brew $HOME/.linuxbrew/Homebrew`
-2. `$HOME/.linuxbrew/bin/brew shellenv` を eval
-3. `brew bundle --file=./Brewfile` を実行
+1. sideapt リポジトリを `~/ghq/github.com/kqnade/sideapt` に `git clone --depth=1`
+2. `make install PREFIX=$HOME/.local` で `~/.local/bin/sideapt` をビルド
+3. `sideapt init && sideapt update` で `~/.sideapt/apt` のプライベート apt インデックスを初期化
+4. `Aptfile` を読み込み `sideapt install <pkgs...>` で `~/.sideapt/usr` 配下に非 root 展開
+5. `install_supplementary_debian` を呼び出し、`chezmoi` / `mise` を `~/.local/bin` に導入してから `mise use -g` で `starship`, `sheldon`, `ghq`, `gh`, `glab`, `eza`, `delta` を一括導入
 
-`dot_zshrc` には `$HOME/.linuxbrew/bin/brew shellenv` の自動読み込みが入っているため、`chezmoi apply` 後に新しい zsh セッションでそのまま brew パスが通ります。
+`dot_zshrc` / `dot_bashrc.tmpl` には `eval "$(sideapt env)"` が組み込まれているため、`chezmoi apply` 後に新しいシェルセッションでそのまま `~/.sideapt/usr/{bin,sbin}` と `~/.local/bin` が PATH に通ります。
 
 ```bash
 chezmoi init --apply kqnade
 mise install
 ```
+
+> NOTE: sideapt は `preinst`/`postinst` などの maintainer scripts、setuid バイナリ、systemd unit を扱えません。`gnupg`/`pass`/`pinentry-curses` などの CLI 系は問題なく動きますが、サービス系を必要とするパッケージは別途用意してください。
+
+---
+
+## その他 distro の非 sudo フォールバック (pixi)
+
+`/etc/os-release` の ID が Debian/Ubuntu 系でない非 sudo 環境では、[pixi](https://pixi.sh) を `$HOME/.pixi` に置いて conda-forge から必要ツールを揃えるフォールバック経路に入ります。ビルドキャッシュは `/tmp/${USER}-pixi-cache` に置かれ、永続物はすべて `$HOME/.pixi` 配下に収まります。
+
+スクリプトはこの経路で以下を行います：
+
+1. `curl -fsSL https://pixi.sh/install.sh | bash`（`PIXI_HOME=$HOME/.pixi`、`PIXI_NO_PATH_UPDATE=1`）
+2. `$HOME/.pixi/manifests/pixi-global.toml` を生成（`chezmoi`, `mise`, `sheldon`, `starship`, `zsh`, `git`, `ghq`, `gh`, `glab`, `delta`, `eza`, `ripgrep`, `fd`, `bat`, `fzf`, `nvim`, `vim`, `gpg`, `pinentry`, `gomi`, `rust` などを `cli-tools` env に集約）
+3. `pixi global sync` で `$HOME/.pixi/bin` 配下にバイナリを expose
+4. password-store (`pass`) は conda-forge に無いため、`make install PREFIX=$HOME/.local` でソースビルド
+
+> NOTE: conda-forge 版 Neovim のエディタ本体は `nvim` パッケージ（`neovim` は Python クライアントの `pynvim`）。`fzf-tmux` バイナリは conda-forge `fzf` に同梱されないため expose 対象外です。
