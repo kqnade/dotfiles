@@ -134,6 +134,7 @@ install_pixi() {
   pixi global sync || warn "pixi global sync had failures — re-run after fixing 'pixi global list'."
 
   install_pass_from_source
+  install_sideapt
 
   cat <<EOF
 
@@ -141,6 +142,42 @@ pixi is installed under $PIXI_HOME (build cache: $PIXI_CACHE_DIR).
 Add to PATH (already wired in dot_zshrc / dot_bashrc):
   export PATH="\$HOME/.pixi/bin:\$PATH"
 EOF
+}
+
+# sideapt: non-root apt wrapper. Only useful on Debian/Ubuntu hosts where
+# apt-get/apt-cache/dpkg-deb exist; skipped silently elsewhere. Lets us pull
+# .deb packages into $HOME/.sideapt/usr without sudo as a complement to pixi.
+install_sideapt() {
+  command -v apt-get  >/dev/null 2>&1 || return 0
+  command -v dpkg-deb >/dev/null 2>&1 || return 0
+  command -v git      >/dev/null 2>&1 || { warn "sideapt needs git; skipping."; return 0; }
+  command -v make     >/dev/null 2>&1 || { warn "sideapt needs make; skipping."; return 0; }
+
+  local repo_dir="$HOME/ghq/github.com/kqnade/sideapt"
+  local bin="$HOME/.local/bin"
+  mkdir -p "$bin"
+
+  if [[ ! -d "$repo_dir/.git" ]]; then
+    log "Cloning sideapt → $repo_dir"
+    mkdir -p "$(dirname "$repo_dir")"
+    if ! git clone --depth=1 https://github.com/kqnade/sideapt "$repo_dir"; then
+      warn "sideapt clone failed; skipping."
+      return 0
+    fi
+  fi
+
+  if [[ ! -x "$bin/sideapt" ]] || [[ "$repo_dir/bin/sideapt" -nt "$bin/sideapt" ]]; then
+    log "Installing sideapt → $bin/sideapt"
+    make -C "$repo_dir" install PREFIX="$HOME/.local" >/dev/null \
+      || { warn "sideapt make install failed."; return 0; }
+  fi
+
+  export PATH="$bin:$PATH"
+  if [[ ! -d "$HOME/.sideapt/apt" ]]; then
+    log "Initializing sideapt (~/.sideapt) and fetching index..."
+    sideapt init   || warn "sideapt init failed"
+    sideapt update || warn "sideapt update failed (apt may be too old; system index will be used)"
+  fi
 }
 
 write_pixi_global_manifest() {

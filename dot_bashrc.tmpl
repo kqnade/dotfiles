@@ -62,6 +62,10 @@ fi
 export GPG_TTY=$(tty)
 export PATH="$HOME/.pixi/bin:$HOME/.local/bin:$HOME/.bun/bin:$PATH"
 
+# sideapt: non-root apt wrapper (Debian/Ubuntu hosts without sudo).
+# Prepends ~/.sideapt/usr to PATH/LD_LIBRARY_PATH/MANPATH/PKG_CONFIG_PATH.
+command -v sideapt >/dev/null 2>&1 && eval "$(sideapt env)"
+
 if command -v gpgconf &>/dev/null; then
   export SSH_AUTH_SOCK=$(gpgconf --list-dirs agent-ssh-socket)
   gpg-connect-agent updatestartuptty /bye > /dev/null 2>&1
