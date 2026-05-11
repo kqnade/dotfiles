@@ -140,9 +140,18 @@ install_debian_nosudo() {
 
   cat <<EOF
 
-sideapt extracted apt packages under \$HOME/.sideapt/usr.
-Supplementary tools live in \$HOME/.local/bin (and mise's shims).
-Both are wired in dot_zshrc / dot_bashrc via 'eval "\$(sideapt env)"'.
+==> Done. sideapt extracted apt packages under \$HOME/.sideapt/usr.
+    Supplementary tools live in \$HOME/.local/bin (and mise's shims).
+    Both are wired in dot_zshrc / dot_bashrc via 'eval "\$(sideapt env)"'.
+
+    \$HOME/.local/bin is NOT on PATH in the current shell yet. Next steps:
+
+      export PATH="\$HOME/.local/bin:\$PATH"
+      chezmoi init --source . --apply
+      mise install
+
+    After 'chezmoi apply' lays down ~/.bashrc / ~/.zshrc, open a new shell
+    to pick up sideapt env and PATH automatically.
 EOF
 }
 
@@ -176,9 +185,16 @@ install_pixi() {
 
   cat <<EOF
 
-pixi is installed under $PIXI_HOME (build cache: $PIXI_CACHE_DIR).
-Add to PATH (already wired in dot_zshrc / dot_bashrc):
-  export PATH="\$HOME/.pixi/bin:\$PATH"
+==> Done. pixi is installed under $PIXI_HOME (build cache: $PIXI_CACHE_DIR).
+
+    \$HOME/.pixi/bin is NOT on PATH in the current shell yet. Next steps:
+
+      export PATH="\$HOME/.pixi/bin:\$HOME/.local/bin:\$PATH"
+      chezmoi init --source . --apply
+      mise install
+
+    After 'chezmoi apply' lays down ~/.bashrc / ~/.zshrc, open a new shell
+    to pick up the PATH automatically.
 EOF
 }
 
@@ -202,6 +218,9 @@ install_sideapt() {
       warn "sideapt clone failed; skipping."
       return 0
     fi
+  else
+    log "Updating sideapt repo (git pull)..."
+    git -C "$repo_dir" pull --ff-only --quiet || warn "sideapt git pull failed; using current checkout."
   fi
 
   if [[ ! -x "$bin/sideapt" ]] || [[ "$repo_dir/bin/sideapt" -nt "$bin/sideapt" ]]; then
