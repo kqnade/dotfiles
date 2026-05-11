@@ -113,8 +113,9 @@ export PATH="$HOME/.local/bin:$PATH"
 chezmoi init --source . --apply
 
 # mise は GitHub API を叩くので、匿名 rate limit (60req/h) を回避するために
-# GITHUB_TOKEN を渡してから走らせる
-export GITHUB_TOKEN=<your-token>   # or: gh auth token
+# GITHUB_TOKEN を渡してから走らせる。`gh auth token` の出力末尾の改行を
+# 除かないと mise が `InvalidHeaderValue` で panic するので `tr -d` を噛ます。
+export GITHUB_TOKEN="$(gh auth token | tr -d '[:space:]')"
 mise install
 ```
 

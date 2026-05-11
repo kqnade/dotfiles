@@ -151,9 +151,11 @@ install_debian_nosudo() {
       export PATH="\$HOME/.local/bin:\$PATH"
       chezmoi init --source . --apply
 
-    Then, with a GitHub token to avoid anonymous rate limits on mise:
+    Then, with a GitHub token to avoid anonymous rate limits on mise.
+    NOTE: pipe through 'tr -d' to strip stray whitespace — a trailing
+    newline crashes mise with InvalidHeaderValue at src/github.rs:557.
 
-      export GITHUB_TOKEN=<your-token>   # or: gh auth token
+      export GITHUB_TOKEN="\$(gh auth token | tr -d '[:space:]')"
       mise install
 EOF
 }
@@ -242,6 +244,22 @@ install_sideapt() {
   # Activate sideapt env so subsequent install steps (and tools chezmoi
   # invokes from run_onchange scripts) can find gcc/cargo/unzip/etc.
   eval "$(sideapt env 2>/dev/null)" || true
+  _activate_sideapt_multiarch
+}
+
+# sideapt env exports CPATH=~/.sideapt/usr/include but Debian splits its
+# headers under the multiarch dir (~/.sideapt/usr/include/x86_64-linux-gnu),
+# and libs under ~/.sideapt/usr/lib/x86_64-linux-gnu. Without these, gcc
+# fails on '#include <bits/libc-header-start.h>'. Mirror the same logic in
+# dot_zshrc / dot_bashrc.tmpl and run_onchange scripts.
+_activate_sideapt_multiarch() {
+  local marc
+  marc="$(dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || true)"
+  [[ -z "$marc" ]] && return 0
+  [[ -d "$HOME/.sideapt/usr/include/$marc" ]] \
+    && export CPATH="$HOME/.sideapt/usr/include/$marc:${CPATH-}"
+  [[ -d "$HOME/.sideapt/usr/lib/$marc" ]] \
+    && export LIBRARY_PATH="$HOME/.sideapt/usr/lib/$marc:${LIBRARY_PATH-}"
 }
 
 write_pixi_global_manifest() {

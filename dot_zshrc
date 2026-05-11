@@ -17,7 +17,19 @@ export PATH="$HOME/.pixi/bin:$HOME/.local/bin:$HOME/.bun/bin:$PATH"
 
 # sideapt: non-root apt wrapper (Debian/Ubuntu hosts without sudo).
 # Prepends ~/.sideapt/usr to PATH/LD_LIBRARY_PATH/MANPATH/PKG_CONFIG_PATH.
-command -v sideapt >/dev/null 2>&1 && eval "$(sideapt env)"
+# Also fills in the Debian multiarch include/lib dirs (sideapt env only sets
+# the parent), without which gcc can't find <bits/libc-header-start.h>.
+if command -v sideapt >/dev/null 2>&1; then
+  eval "$(sideapt env)"
+  _sa_marc="$(dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || true)"
+  if [[ -n "$_sa_marc" && -d "$HOME/.sideapt/usr/include/$_sa_marc" ]]; then
+    export CPATH="$HOME/.sideapt/usr/include/$_sa_marc:${CPATH-}"
+  fi
+  if [[ -n "$_sa_marc" && -d "$HOME/.sideapt/usr/lib/$_sa_marc" ]]; then
+    export LIBRARY_PATH="$HOME/.sideapt/usr/lib/$_sa_marc:${LIBRARY_PATH-}"
+  fi
+  unset _sa_marc
+fi
 
 if command -v gpgconf &>/dev/null; then
   export SSH_AUTH_SOCK=$(gpgconf --list-dirs agent-ssh-socket)
