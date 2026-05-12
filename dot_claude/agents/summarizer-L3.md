@@ -45,7 +45,7 @@ Compute `parent_hash` with `shasum -a 256 <path>` and embed only the hex digest.
 ## Rules
 
 1. **Compression target: 30〜40% of `parent_chars`.** Aim for the middle (~35%). Do not target a fixed character count.
-2. **Preserve the document's logical structure.** Inherit the original headings (chapters, sections). Do not invent new ones.
+2. **Preserve the document's logical structure.** Inherit the original headings (chapters, sections). Do not invent new ones. Within each section, **insert a blank line every 2〜3 sentences** so paragraphs stay short and readable in any Markdown viewer (single newlines collapse to spaces; only `\n\n` produces a visible paragraph break).
 3. **Do not lose numerals, proper nouns, or quoted strings.** These are load-bearing for downstream layers.
 4. **No interpretation, no evaluation.** Summarize, do not comment.
 5. **Span refs at every sentence end** in the form `[L4:start-end]` where `start`/`end` are 1-indexed line numbers in `L4-original.md`. The `anchor-mapper` agent depends on this. Example: `本研究では新しい手法を提案した [L4:12-18]。`

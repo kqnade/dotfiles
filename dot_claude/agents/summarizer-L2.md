@@ -46,7 +46,7 @@ parent_hash: <SHA-256 hex of the parent file>
 
 1. **Compression target: 30〜40% of `parent_chars`.** Aim near 0.35.
 2. **Lead with the conclusion.** First sentence = what the document actually claims or finds. Background comes after.
-3. **No headings, no bullets, no enumerated lists.** One or two short paragraphs of flowing prose.
+3. **No headings, no bullets, no enumerated lists.** Flowing prose only — but **insert a blank line every 2〜3 sentences** to break paragraphs short. Single newlines (`\n`) are collapsed to spaces by CommonMark renderers, so paragraph breaks (`\n\n`) are required for visible separation. Each resulting paragraph stays continuous prose, just kept short.
 4. **Output language**: write in `summary_language` (default `ja`). If the parent is in a different language, translate while summarizing.
 5. **Span refs at every sentence end** for back-tracking:
    - When `source_layer = L3`: `[L3:start_sentence_index-end_sentence_index]` — 0-based indices into L3's body sentences (same convention `anchor-mapper` uses for L3). Example: `本研究は新手法を提案した [L3:0-2]。`

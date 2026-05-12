@@ -50,7 +50,7 @@ parent_hash: <SHA-256 hex of the parent file>
 3. **Strip ornaments.** Drop hedging, transitional phrases, and modifiers that are not load-bearing.
 4. **Strip span refs** inherited from L2/L3 (`[L3:...]`, `[L4:...]`). L1 carries no anchors.
 5. **Output language**: write in `summary_language` (default `ja`). For Japanese: no 体言止め, no bullets, no headings — natural prose with proper verb endings. For other languages: same spirit (no fragments, no decoration).
-6. **Single paragraph.** No internal line breaks.
+6. **Paragraph breaks every 2〜3 sentences.** Insert a blank line after every 2〜3 sentences to keep paragraphs short. This is a renderer-independent readability rule — single newlines (`\n`) are not enough since CommonMark collapses them to spaces. Use blank lines (`\n\n`). Each resulting paragraph should still flow as continuous prose, just kept short.
 7. Word choice matters more here than in lower layers — that is why this agent runs on `sonnet`. Pick precise verbs.
 8. If parent is `L4`, treat it like a long-form summarization task: extract the most important claim and supporting detail.
 
