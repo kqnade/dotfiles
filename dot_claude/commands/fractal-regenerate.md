@@ -1,60 +1,71 @@
 ---
-description: Regenerate a layer (and all its upstream layers) of an existing fractal summary. Usage: /fractal-regenerate <slug> <layer> [--output-dir <dir>]
+description: Regenerate the upstream (more-compressed) layers of an existing fractal summary after editing one by hand. Usage: /fractal-regenerate [<dir>] <layer>
 allowed-tools: ["Read", "Write", "Edit", "Bash", "Agent"]
-argument-hint: <slug> <L0|L1|L2|L3> [--output-dir <dir>]
+argument-hint: [<dir>] <L0|L1|L2|L3>
 ---
 
 # /fractal-regenerate
 
-Regenerate a specific layer of an existing fractal summary, then cascade to all upstream (more-compressed) layers.
+Cascade regeneration after a manual edit. The named layer is the one **you just edited**; every more-compressed layer above it is regenerated from your edit.
+
+See `/fractal-summarize` for the full design and pipeline. This command is the partial-regeneration entry point.
 
 ## Arguments
 
-User-supplied: `$ARGUMENTS`
+`$ARGUMENTS`, parsed as up to two positional tokens:
 
-Parse as: `<slug> <layer> [--output-dir <dir>]`
+- The token matching `^L[0-3]$` is the layer name.
+- The other token (if any) is the directory; defaults to `.`.
 
-- **`<slug>`** (required): the directory name under `<output-dir>/`.
-- **`<layer>`** (required): one of `L0`, `L1`, `L2`, `L3`. (You cannot regenerate `L4` — that is the source of truth.)
-- **`--output-dir <dir>`** (optional, default `./docs`): resolved relative to CWD.
+```
+/fractal-regenerate L2              # CWD, edited L2
+/fractal-regenerate ~/papers/x L2   # ~/papers/x, edited L2
+```
 
 ## Pipeline
 
-### Step 1 — Verify the directory exists
+### Step 1 — Verify the directory
 
-`<output-dir>/<slug>/` must exist and contain at least `L4-original.md` and `meta.json`. If not, print an error pointing the user to `/fractal-summarize` for first-time generation.
+`<dir>/` must exist and contain at least `L4-original.md` and `meta.json`. If not, point the user at `/fractal-summarize`.
 
 ### Step 2 — Determine the regeneration chain
 
-The `<layer>` argument names the layer the user **just edited by hand**. That layer is left untouched. Everything **upstream** (more compressed; smaller `L` number) is regenerated, because each upstream layer derives from the one below it.
+The layer you edited is left untouched. Everything more compressed (smaller `L` number) is regenerated. Layers listed in `meta.json.skipped_layers` stay skipped — they are not re-introduced.
 
-| User edited | Regenerate (in this order) | Re-run `anchor-mapper`? |
-|-------------|----------------------------|-------------------------|
-| L3          | L2 → L1 → L0               | yes                     |
-| L2          | L1 → L0                    | no                      |
-| L1          | L0                         | no                      |
-| L0          | (nothing)                  | no                      |
+| Edited layer | Cascade (in order) | Re-run `anchor-mapper`? |
+|--------------|--------------------|-------------------------|
+| L3           | L2 → L1 → L0       | yes                     |
+| L2           | L1 → L0            | no                      |
+| L1           | L0                 | no                      |
+| L0           | (nothing)          | no                      |
 
-For `/fractal-regenerate <slug> L0`, print a message that there is nothing upstream to regenerate and exit.
+For `/fractal-regenerate L0`: print "nothing upstream of L0" and exit.
 
 ### Step 3 — Regenerate
 
-For each layer in the chain, invoke the corresponding `summarizer-L<n>` agent with the absolute path of `<output-dir>/<slug>/`. Then update `meta.json.last_regenerated.L<n>` to the current ISO-8601 timestamp. Do **not** overwrite the user's edited layer.
+For each layer in the cascade, in order:
+
+1. If the layer is in `meta.json.skipped_layers`, skip it (do not regenerate).
+2. Determine the parent: the closest non-skipped layer below the current one (`L4` if all intervening layers are skipped).
+3. Invoke the corresponding `summarizer-L<n>` agent with the absolute `<dir>/` and the parent layer name.
+4. Update `meta.json.last_regenerated.L<n>` to the current ISO-8601 timestamp.
+
+The new `parent_hash` in each regenerated file's frontmatter automatically reflects the new content of its source layer.
 
 ### Step 4 — Anchors
 
-If L3 was regenerated, invoke `anchor-mapper` after L3 is written.
+If L3 was in the cascade and is **not** in `skipped_layers`, invoke `anchor-mapper`.
 
 ### Step 5 — Consistency check
 
-Always run `consistency-checker` after regeneration. Display its JSON output.
+Always invoke `consistency-checker` after regeneration. Display its JSON stdout.
 
 ### Step 6 — Stage but do not commit
 
 ```bash
-git add <output-dir>/<slug>/
+git add <dir>/
 ```
 
-Only inside a git repo. Do **not** commit.
+…only inside a git repo. **Never commit.**
 
-Print a short summary of which files changed and the consistency verdict.
+Print a short summary of which files changed plus the consistency verdict.
