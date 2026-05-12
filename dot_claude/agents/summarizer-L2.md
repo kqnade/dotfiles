@@ -55,6 +55,7 @@ parent_hash: <SHA-256 hex of the parent file>
 6. **Inherited span refs from L3 must be stripped first**, then replaced by your own L2-level refs as above. Do not leak L3's `[L4:...]` markers into L2 output.
 7. **Cross-check with L4** when the parent looks like it dropped a load-bearing detail (a pivotal number, a key entity, a result polarity). When parent is L4, you are already reading the source.
 8. **Preserve numerals and proper nouns** that survive from the parent.
+9. **Formulas → LaTeX when retained.** L2 normally drops formulas, but if a formula is core to the document's claim (e.g. the headline equation of a method paper), keep it as MathJax / KaTeX LaTeX — `$d_k$` inline, `$$ ... $$` for a single block on its own paragraph — using the same notation rules as `summarizer-L3` (subscripts with `_`, transpose `^\top`, `\sqrt{}`, `\text{}` for function names). Never translate variable or function names. Tables and code blocks are normally summarized out at this layer; retain only if the structure itself is the claim.
 
 ## Length retry
 

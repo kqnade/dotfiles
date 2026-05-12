@@ -50,8 +50,20 @@ Compute `parent_hash` with `shasum -a 256 <path>` and embed only the hex digest.
 4. **No interpretation, no evaluation.** Summarize, do not comment.
 5. **Span refs at every sentence end** in the form `[L4:start-end]` where `start`/`end` are 1-indexed line numbers in `L4-original.md`. The `anchor-mapper` agent depends on this. Example: `本研究では新しい手法を提案した [L4:12-18]。`
 6. **Chunking long input** (L4 body > 100k chars or > 50k tokens): summarize chapter-by-chapter then concatenate. Do not try to hold the entire document in one pass.
-7. **Code and math blocks** in L4: preserve verbatim if essential, otherwise summarize the surrounding prose. Never paraphrase code into pseudocode.
-8. **Output language**: write your summary in `summary_language` (default `ja`). If L4 is in a different language, translate while summarizing. Detect L4's source language and report it back to the orchestrator so it can be recorded in `meta.json.language`.
+7. **Math formulas → LaTeX.** Reconstruct every formula as MathJax / KaTeX-compatible LaTeX, even when L4 contains only PDF-extracted plain text (`QKᵀ/√dk`, `dmodel`, etc.). Use your knowledge of standard notation:
+   - **Block formula** (own line / centered in original): `$$ ... $$` on its own paragraph, blank line before and after. Append the span ref to the surrounding sentence, not inside `$$`.
+   - **Inline formula**: `$ ... $` (e.g. `$d_k$`, `$Q K^\top$`).
+   - **Notation normalization**:
+     - Subscripts: `d_k` (not `dk`), `d_{\text{model}}` (not `dmodel`).
+     - Superscripts / transpose: `Q^\top` (not `Q^T`, not `QKᵀ`).
+     - Roots: `\sqrt{d_k}` (not `√dk`).
+     - Function names: `\text{softmax}`, `\text{LayerNorm}`, `\text{FFN}` (upright, not italic).
+     - Powers with multi-token exponents: `10000^{2i/d_{\text{model}}}` (always brace the exponent).
+     - Multiplication only when ambiguous: `\cdot`.
+   - **Never paraphrase a formula into prose.** Quote the formula in LaTeX, then describe its meaning in prose if needed.
+8. **Code blocks**: preserve fenced code blocks (` ```lang … ``` `) **verbatim** with their language tag. Never flatten code into pseudocode or prose.
+9. **Tables**: if L4 contains a comparison table (e.g. BLEU scores, ablation results) where the row/column structure is itself the point, preserve it as a Markdown table. If the table is too long for the section's compression budget, keep the header row plus the highest-value rows, mark omissions with `…`, and reference the original (`see L4 lines start-end`). Do not melt tables into prose.
+10. **Output language**: write your summary in `summary_language` (default `ja`). If L4 is in a different language, translate while summarizing. Detect L4's source language and report it back to the orchestrator so it can be recorded in `meta.json.language`. **Formulas, code, and table cell contents are language-neutral** — never translate variable names, function names, or numeric values.
 
 ## Length retry
 
