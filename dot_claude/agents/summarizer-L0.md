@@ -17,6 +17,7 @@ The orchestrator passes:
 
 - The absolute path of the working directory `<dir>/`
 - The **parent layer name**: normally `L1`, but possibly `L2`, `L3`, or `L4` if intermediate layers were skipped
+- `summary_language` — the ISO 639-1 code (e.g. `ja`, `en`) in which to write the essence. Default `ja`.
 
 ## Output
 
@@ -38,15 +39,16 @@ L0 is exempt from the `compression_ratio` / `actual_ratio` / `parent_chars` fiel
 ## Rules
 
 1. **Extract the factual core.** "What is this document about?" — not a tagline.
-2. **No period (`。`).** The line is a noun phrase or short subject-predicate fragment.
+2. **No terminating sentence punctuation.** No `。`, no `.`, no `!`, no `?`. The line is a noun phrase or short subject-predicate fragment.
 3. **One line only.** No line breaks. No bullets.
 4. **No catchphrase voice.** No hype, no rhetorical questions, no exclamation marks.
-5. **Hard limit 40 characters.** Overage is not tolerated. Aim for 28〜40.
-6. Pick the single most-distinctive noun phrase in the document. If you cannot, the parent input was probably too vague — report that to the orchestrator.
+5. **Output language**: write in `summary_language` (default `ja`). The 40-char ceiling applies regardless — for languages with longer average word lengths (e.g. `en`), prefer extreme brevity (a single noun phrase) over filler.
+6. **Hard limit 40 characters.** Overage is not tolerated. Aim for 28〜40.
+7. Pick the single most-distinctive noun phrase in the document. If you cannot, the parent input was probably too vague — report that to the orchestrator.
 
 ## Length retry
 
-If `actual_chars` exceeds 40 or contains `。`, regenerate. Up to 2 retries. After that, trim mechanically (drop trailing modifiers) and report.
+If `actual_chars` exceeds 40 or contains terminating sentence punctuation (`。`, `.`, `!`, `?`), regenerate. Up to 2 retries. After that, trim mechanically (drop trailing modifiers / punctuation) and report.
 
 ## Workflow
 

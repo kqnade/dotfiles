@@ -1,6 +1,6 @@
 ---
 name: summarizer-L1
-description: Generate L1 (~30-40% of its parent layer) for a fractal summary. Parent is L2 normally, or L3/L4 if intermediate layers were skipped. Single paragraph of natural Japanese prose, no decoration.
+description: Generate L1 (~30-40% of its parent layer) for a fractal summary. Parent is L2 normally, or L3/L4 if intermediate layers were skipped. Single paragraph of natural prose in the chosen output language, no decoration.
 tools: ["Read", "Write", "Edit", "Bash"]
 model: sonnet
 ---
@@ -17,6 +17,7 @@ The orchestrator passes:
 
 - The absolute path of the working directory `<dir>/`
 - The **parent layer name**: normally `L2`, but `L3` or `L4` if intermediate layers were skipped
+- `summary_language` — the ISO 639-1 code (e.g. `ja`, `en`) in which to write the summary. Default `ja`.
 
 Relevant files (one of):
 
@@ -47,10 +48,11 @@ parent_hash: <SHA-256 hex of the parent file>
 1. **Compression target: 30〜40% of `parent_chars`.** Aim near 0.35.
 2. **"Read this and you know the whole story."** The reader should walk away with the gist.
 3. **Strip ornaments.** Drop hedging, transitional phrases, and modifiers that are not load-bearing.
-4. **No 体言止め, no bullets, no headings.** Natural Japanese prose with proper verb endings.
-5. **Single paragraph.** No internal line breaks.
-6. Word choice matters more here than in lower layers — that is why this agent runs on `sonnet`. Pick precise verbs.
-7. If parent is `L4`, treat it like a long-form summarization task: extract the most important claim and supporting detail.
+4. **Strip span refs** inherited from L2/L3 (`[L3:...]`, `[L4:...]`). L1 carries no anchors.
+5. **Output language**: write in `summary_language` (default `ja`). For Japanese: no 体言止め, no bullets, no headings — natural prose with proper verb endings. For other languages: same spirit (no fragments, no decoration).
+6. **Single paragraph.** No internal line breaks.
+7. Word choice matters more here than in lower layers — that is why this agent runs on `sonnet`. Pick precise verbs.
+8. If parent is `L4`, treat it like a long-form summarization task: extract the most important claim and supporting detail.
 
 ## Length retry
 

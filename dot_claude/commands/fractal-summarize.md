@@ -1,7 +1,7 @@
 ---
-description: Generate a 5-layer fractal summary in the current (or specified) directory. Each layer compresses the previous one to ~30-40%. Usage: /fractal-summarize [<dir>|<url>] [<dir>]
+description: Generate a 5-layer fractal summary in the current (or specified) directory. Each layer compresses the previous one to ~30-40%. Usage: /fractal-summarize [--lang <code>] [<dir>|<url>] [<dir>]
 allowed-tools: ["Read", "Write", "Edit", "Bash", "Agent"]
-argument-hint: [<dir>|<url>] [<dir>]
+argument-hint: [--lang <code>] [<dir>|<url>] [<dir>]
 ---
 
 # /fractal-summarize
@@ -16,7 +16,13 @@ When a layer would fall below an 80-character floor, that layer is skipped and t
 
 ## Arguments
 
-User-supplied: `$ARGUMENTS`. Parse as up to two positional args:
+User-supplied: `$ARGUMENTS`.
+
+**Flag** (may appear anywhere):
+
+- `--lang <code>` — ISO 639-1 code for the **summary** output language (L0〜L3). Default `ja`. The source document language is auto-detected and recorded separately.
+
+**Positional** (after extracting `--lang`):
 
 | Form                                   | Behavior                                       |
 |----------------------------------------|------------------------------------------------|
@@ -26,6 +32,14 @@ User-supplied: `$ARGUMENTS`. Parse as up to two positional args:
 | `<url> <dir>`                          | fetch URL into `<dir>`, then summarize         |
 
 A token is a URL iff it starts with `http://` or `https://`.
+
+Examples:
+
+```
+/fractal-summarize                                # ja, CWD
+/fractal-summarize --lang en                      # English summary, CWD
+/fractal-summarize https://example.com/x --lang en
+```
 
 ## Pipeline
 
@@ -114,13 +128,16 @@ generated_at: <ISO-8601 with timezone>
     "file": "<basename of the source file>",
     "path_or_url": "<URL from source.txt if URL mode, else ./<basename>>"
   },
-  "language": "<source language; default 'ja'>",
+  "language": "<detected source language; filled in after summarizer-L3 reports back>",
+  "summary_language": "<value of --lang, default 'ja'>",
   "created_at": "<ISO-8601 with timezone>",
   "last_regenerated": {},
   "skipped_layers": [],
   "anchors_skipped": false
 }
 ```
+
+`summary_language` controls the output language of L0〜L3. `language` is the auto-detected language of the **source** (L4); it is filled in once `summarizer-L3` (or, if L3 is skipped, the first non-skipped summarizer that reads L4) reports it.
 
 ### Step 7 — Layer cascade with pre-flight skip judgment
 
@@ -136,14 +153,16 @@ For each layer in `[L3, L2, L1]` (in order):
    - Invoke the corresponding `summarizer-L<n>` agent via the Agent tool, passing:
      - the absolute path of `<dir>/`
      - the parent layer name (= `last_present_layer`)
+     - `summary_language` (from `meta.json.summary_language`)
    - Wait for completion.
    - Read the new file's `actual_chars` from its frontmatter.
    - Update `last_present_layer = "L<n>"`, `last_present_chars = <new actual_chars>`.
    - Update `meta.json.last_regenerated.L<n>` to now.
+   - The first summarizer that reads L4 also reports the detected source language; write it into `meta.json.language` if not already set.
 
 Then for `L0`:
 
-- Always invoke `summarizer-L0`, passing the parent layer name (= `last_present_layer`).
+- Always invoke `summarizer-L0`, passing the parent layer name (= `last_present_layer`) and `summary_language`.
 - Update `meta.json.last_regenerated.L0`.
 
 If the orchestrator detects that a summarizer's reported `actual_ratio` falls outside `[0.25, 0.45]` after the agent's own retries, log a warning to the user but keep the file.
