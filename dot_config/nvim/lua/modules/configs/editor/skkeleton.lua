@@ -16,6 +16,12 @@ vim.api.nvim_create_autocmd("User", {
       skkServerResEnc = "euc-jp",
       eggLikeNewline = true,
       keepState = false,
+      -- AZIK で `;` を「っ」に当てているため、送り仮名トリガとなる
+      -- 「`;` の大文字版」を JIS(`+`) / US(`:`) 双方で `;` に正規化する
+      lowercaseMap = {
+        ["+"] = ";",
+        [":"] = ";",
+      },
     })
   end,
 })
