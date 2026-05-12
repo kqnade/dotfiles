@@ -105,27 +105,57 @@ jobs:
       - name: verify installed binaries
         run: |
           set -eu
-          export PATH="$PIXI_HOME/bin:$HOME/.local/bin:$PATH"
+          # sideapt env exposes ~/.sideapt/usr/bin (zsh, nvim, pass, rg, ...).
+          # mise shims expose tools installed by `mise use -g` in
+          # install_supplementary_debian (starship, sheldon, ghq, gh, glab,
+          # eza, delta) under their canonical names.
+          eval "$($HOME/.local/bin/sideapt env)" 2>/dev/null || true
+          export PATH="$HOME/.local/share/mise/shims:$PIXI_HOME/bin:$HOME/.local/bin:$PATH"
+
           missing=0
-          for cmd in \
-            chezmoi mise sheldon starship \
-            zsh git git-lfs \
-            ghq gh glab delta \
-            eza rg fd bat fzf \
-            nvim vim \
-            gpg gpg-agent gpgconf pinentry \
-            gomi cargo rustc \
-            pass; do
-            if command -v "$cmd" >/dev/null 2>&1; then
-              # Confirm pixi-managed binaries land under PIXI_HOME (or pass under
-              # ~/.local/bin) — surfaces silent shadowing by system packages.
-              resolved="$(command -v "$cmd")"
-              printf '✓ %-12s → %s\n' "$cmd" "$resolved"
-            else
-              echo "::error::missing $cmd in PATH"
-              missing=$((missing + 1))
-            fi
-          done
+          # Debian/Ubuntu apt ships `bat` and `fd-find` under aliased
+          # binary names (batcat, fdfind) to avoid collisions; accept
+          # either the canonical name or the Debian alias.
+          check() {
+            local cmd="$1"; shift
+            local c resolved
+            for c in "$cmd" "$@"; do
+              if resolved="$(command -v "$c" 2>/dev/null)"; then
+                printf '✓ %-12s → %s\n' "$cmd" "$resolved"
+                return 0
+              fi
+            done
+            echo "::error::missing $cmd in PATH"
+            missing=$((missing + 1))
+          }
+
+          check chezmoi
+          check mise
+          check sheldon
+          check starship
+          check zsh
+          check git
+          check git-lfs
+          check ghq
+          check gh
+          check glab
+          check delta
+          check eza
+          check rg
+          check fd fdfind
+          check bat batcat
+          check nvim
+          check vim
+          check gpg
+          check gpg-agent
+          check gpgconf
+          check pinentry
+          check cargo
+          check rustc
+          check pass
+          # NOTE: fzf and gomi are installed by `mise install` after
+          # chezmoi places ~/.config/mise/config.toml — they are not in
+          # scripts/install-linux.sh's bootstrap scope, so excluded here.
           exit "$missing"
 
       - name: chezmoi apply --dry-run (pixi-managed chezmoi)
