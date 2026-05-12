@@ -260,6 +260,11 @@ _activate_sideapt_multiarch() {
     && export CPATH="$HOME/.sideapt/usr/include/$marc:${CPATH-}"
   [[ -d "$HOME/.sideapt/usr/lib/$marc" ]] \
     && export LIBRARY_PATH="$HOME/.sideapt/usr/lib/$marc:${LIBRARY_PATH-}"
+  # The trailing `[[ ]] && export` returns non-zero when the dir is absent
+  # (first run, before sideapt installs anything). Under `set -e` that
+  # bubbles up through install_sideapt and kills the script before
+  # sideapt install runs.
+  return 0
 }
 
 write_pixi_global_manifest() {
