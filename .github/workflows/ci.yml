@@ -133,10 +133,9 @@ jobs:
           check mise
           check sheldon
           check starship
-          # Debian's `zsh` package ships the binary as `zsh5`; the bare
-          # `zsh` name is created by update-alternatives in postinst,
-          # which sideapt does not execute (no maintainer scripts).
-          check zsh zsh5
+          # install-linux.sh symlinks a canonical `zsh` into ~/.local/bin
+          # after sideapt install (sideapt skips update-alternatives).
+          check zsh
           check git
           check git-lfs
           check ghq

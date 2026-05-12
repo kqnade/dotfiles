@@ -136,6 +136,7 @@ install_debian_nosudo() {
   command -v sideapt >/dev/null 2>&1 \
     || die "sideapt is not on PATH after install — cannot continue."
   install_apt_packages_via_sideapt
+  _link_sideapt_alternatives
   install_supplementary_debian
 
   cat <<EOF
@@ -265,6 +266,37 @@ _activate_sideapt_multiarch() {
   # bubbles up through install_sideapt and kills the script before
   # sideapt install runs.
   return 0
+}
+
+# Some Debian/Ubuntu packages register their binary via update-alternatives
+# in postinst (zsh ships as /usr/bin/zsh5 with /usr/bin/zsh as the alternative
+# symlink, etc.). sideapt does not execute maintainer scripts, so the bare
+# canonical names never appear. Plant the symlinks ourselves under
+# ~/.local/bin (already on PATH) so shells, shebangs, and chsh-style consumers
+# find e.g. `zsh` without poking at sideapt's internal layout.
+_link_sideapt_alternatives() {
+  local bin="$HOME/.local/bin"
+  mkdir -p "$bin"
+
+  _link_first_existing() {
+    local linkname="$1"; shift
+    local target
+    for target in "$@"; do
+      if [[ -x "$target" ]]; then
+        ln -sf "$target" "$bin/$linkname"
+        log "Linked $bin/$linkname → $target"
+        return 0
+      fi
+    done
+    warn "could not locate a binary for '$linkname' under \$HOME/.sideapt"
+    return 0
+  }
+
+  _link_first_existing zsh \
+    "$HOME/.sideapt/usr/bin/zsh" \
+    "$HOME/.sideapt/usr/bin/zsh5" \
+    "$HOME/.sideapt/bin/zsh" \
+    "$HOME/.sideapt/bin/zsh5"
 }
 
 write_pixi_global_manifest() {
