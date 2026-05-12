@@ -133,7 +133,10 @@ jobs:
           check mise
           check sheldon
           check starship
-          check zsh
+          # Debian's `zsh` package ships the binary as `zsh5`; the bare
+          # `zsh` name is created by update-alternatives in postinst,
+          # which sideapt does not execute (no maintainer scripts).
+          check zsh zsh5
           check git
           check git-lfs
           check ghq
