@@ -54,7 +54,8 @@ For each layer in the cascade, in order:
 1. If the layer is in `meta.json.skipped_layers`, skip it (do not regenerate).
 2. Determine the parent: the closest non-skipped layer with a higher `L` number than the current one (falling back to L5 if all intervening layers are skipped).
 3. Invoke the corresponding `summarizer-L<n>` agent with the absolute `<dir>/`, the parent layer name, and `summary_language`.
-4. Update `meta.json.last_regenerated.L<n>` to the current ISO-8601 timestamp.
+4. **Inject the title banner** (`# {title}` + `## {title} — Layer {N}`) between the frontmatter and the body, exactly as `/fractal-summarize` Step 8b does.
+5. Update `meta.json.last_regenerated.L<n>` to the current ISO-8601 timestamp.
 
 The new `parent_hash` in each regenerated file's frontmatter automatically reflects the new content of its source layer.
 

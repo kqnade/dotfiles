@@ -10,26 +10,26 @@ Run the fractal-reader-style summarization pipeline on a document. The output di
 
 ## Design philosophy
 
-This pipeline is modelled after **fractal-reader.com**: the document is rendered at five reader-profile layers, not five fixed-ratio compressions.
+This pipeline is modelled after **fractal-reader.com**: the document is rendered at five reader-profile layers. **Each layer is a real summary written for its reader** — not a glossed copy of the parent. Lower layers select less content, change voice, and add accessibility scaffolding.
 
-| Layer | Reader profile | Compression vs parent | Generator model | Annotations |
-|-------|---------------|------------------------|------------------|-------------|
-| L5    | Original (full document) | — | (extraction only) | preserved as-is |
-| L4    | Graduate / Field-native | heavy (~15〜25% of L5 on long docs) | `opus[1m]` | none |
-| L3    | Upper-undergrad / Adjacent-field | ±30% of L4 (rewrite, not compress) | `sonnet` | light `{{d\|...}}` on acronyms |
-| L2    | High-school senior | ±30% of L3 (rewrite) | `sonnet` | heavy `{{d\|...}}`, some `{{s\|...}}` |
-| L1    | Middle school | ±30% of L2 (rewrite) | `haiku` | heavy `{{d\|...}}` and `{{s\|...}}` |
+| Layer | Reader profile | Voice & content selection | Generator model |
+|-------|---------------|-----------------------------|------------------|
+| L5    | Original (full document) | (extraction only) | — |
+| L4    | Graduate / Field-native | dense academic abridgment; native jargon; section numbering preserved; all equations, results, tables intact | `opus[1m]` |
+| L3    | Upper-undergrad / Adjacent-field | standard academic summary; light glosses on acronyms; all major sections preserved; equations intact | `sonnet` |
+| L2    | High-school senior | accessible academic; analogies for central concepts; central equations only, with plain-language framing; ablation detail dropped | `sonnet` |
+| L1    | Middle school | popular-science article voice; storytelling arc with everyday analogies; most equations dropped (described in prose); secondary tasks / hyperparameters / ablations dropped | `haiku` |
 
-The pass/fail criterion for each layer is **reader-fit** (a self-check inside each summarizer), not a numeric ratio. Only the L5→L4 step actually compresses content; L3/L2/L1 reshape the same scope for less-specialized readers.
+The pass/fail criterion for each layer is **reader-fit** (a self-check inside each summarizer), not a numeric ratio. Each layer compresses *whatever its reader does not need* and rewrites the rest in the appropriate voice. Size is a side effect of those decisions; the orchestrator does not enforce any compression target.
 
 ### Annotation grammar
 
-- `{{d| 短い定義}}` — inline gloss for a jargon term, written for the layer's reader profile.
-- `{{s| 補足説明}}` — supplemental context (one or two sentences) filling in background the reader is missing.
-- `{$ ... $}` — inline LaTeX math (brace-wrapped for fractal-reader compatibility).
+- `{{d| 短い定義}}` — inline gloss for a jargon term. Available at L3, L2, L1. Inline parenthetical glosses (`RNN（再帰型ニューラルネットワーク）`) are also acceptable and often more natural — each layer's summarizer picks the style that fits its voice.
+- `{{s| 補足説明}}` — supplemental context (one or two sentences) filling in background the reader is missing. Available at L2 and L1 only.
+- `{$ ... $}` — inline LaTeX math.
 - `{$$ ... $$}` — block LaTeX math, on its own paragraph.
 
-The brace-wrapped form is preserved by Markdown renderers that don't know about it, and recognized by fractal-reader (or any local renderer modelled on it).
+The brace-wrapped math form is preserved by Markdown renderers that don't know about it, and recognized by fractal-reader (or any local renderer modelled on it).
 
 ### Numbering
 
@@ -190,11 +190,34 @@ For each layer in `[L4, L3, L2, L1]` (in order):
      - the parent layer name (= `last_present_layer`)
      - `summary_language` (from `meta.json.summary_language`)
    - Wait for completion.
+   - **Inject the title banner** (see Step 8b below).
    - Update `last_present_layer = "L<n>"`.
    - Update `meta.json.last_regenerated.L<n>` to now.
    - The first summarizer that reads L5 also reports the detected source language; write it into `meta.json.language` if not already set.
 
 No ratio enforcement at the orchestrator. Each summarizer runs its own reader-fit self-check.
+
+### Step 8b — Title banner injection
+
+After each summarizer writes its layer file, the orchestrator inserts a fixed **title banner** between the YAML frontmatter and the body. The banner gives every layer a consistent fractal-reader-style header.
+
+Format (insert immediately after the second `---` line of the frontmatter, followed by a blank line):
+
+```markdown
+# {title}
+
+## {title} — Layer {N}
+
+```
+
+Where:
+
+- `{title}` = `meta.json.title`.
+- `{N}` = layer number (1〜4).
+
+L5 (`L5-original.md`) does **not** receive this banner — it is the raw extraction, and span refs in the upper layers are 1-indexed against L5's body as the summarizer reads it; injecting a banner would shift those line numbers.
+
+Implementation hint: split the file at the second `---`, insert the banner block, rejoin. The frontmatter is unchanged; the body now starts with the banner followed by what the summarizer wrote.
 
 ### Step 9 — Anchors and consistency check
 
