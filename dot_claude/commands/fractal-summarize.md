@@ -1,18 +1,39 @@
 ---
-description: Generate a 5-layer fractal summary in the current (or specified) directory. Each layer compresses the previous one to ~30-40%. Usage: /fractal-summarize [--lang <code>] [<dir>|<url>] [<dir>]
+description: Generate a fractal-reader-style 5-layer summary in the current (or specified) directory. Each layer is written for a different reader profile (L5=Original, L4=Graduate, L3=Undergrad, L2=High School, L1=Middle School). Usage: /fractal-summarize [--lang <code>] [<dir>|<url>] [<dir>]
 allowed-tools: ["Read", "Write", "Edit", "Bash", "Agent"]
 argument-hint: [--lang <code>] [<dir>|<url>] [<dir>]
 ---
 
 # /fractal-summarize
 
-Run the full fractal summarization pipeline on a document. The output directory **is** the input directory — there is no `slug` and no nested `docs/` folder.
+Run the fractal-reader-style summarization pipeline on a document. The output directory **is** the input directory — there is no `slug` and no nested `docs/` folder.
 
 ## Design philosophy
 
-Each layer compresses its parent to roughly **one-third** (target band: 30〜40%). Absolute character counts therefore scale with the source: a 30-page paper produces a longer L3 than a 1-page note, but the **density gradient between layers is constant**. That is what "fractal" means here — zoom out one step and the summary stays one-third the size, regardless of where you started.
+This pipeline is modelled after **fractal-reader.com**: the document is rendered at five reader-profile layers, not five fixed-ratio compressions.
 
-When a layer would fall below an 80-character floor, that layer is skipped and the next layer is generated from the most recent surviving parent. This keeps short documents from collapsing into pseudo-summaries that are indistinguishable from each other.
+| Layer | Reader profile | Compression vs parent | Generator model | Annotations |
+|-------|---------------|------------------------|------------------|-------------|
+| L5    | Original (full document) | — | (extraction only) | preserved as-is |
+| L4    | Graduate / Field-native | heavy (~15〜25% of L5 on long docs) | `opus[1m]` | none |
+| L3    | Upper-undergrad / Adjacent-field | ±30% of L4 (rewrite, not compress) | `sonnet` | light `{{d\|...}}` on acronyms |
+| L2    | High-school senior | ±30% of L3 (rewrite) | `sonnet` | heavy `{{d\|...}}`, some `{{s\|...}}` |
+| L1    | Middle school | ±30% of L2 (rewrite) | `haiku` | heavy `{{d\|...}}` and `{{s\|...}}` |
+
+The pass/fail criterion for each layer is **reader-fit** (a self-check inside each summarizer), not a numeric ratio. Only the L5→L4 step actually compresses content; L3/L2/L1 reshape the same scope for less-specialized readers.
+
+### Annotation grammar
+
+- `{{d| 短い定義}}` — inline gloss for a jargon term, written for the layer's reader profile.
+- `{{s| 補足説明}}` — supplemental context (one or two sentences) filling in background the reader is missing.
+- `{$ ... $}` — inline LaTeX math (brace-wrapped for fractal-reader compatibility).
+- `{$$ ... $$}` — block LaTeX math, on its own paragraph.
+
+The brace-wrapped form is preserved by Markdown renderers that don't know about it, and recognized by fractal-reader (or any local renderer modelled on it).
+
+### Numbering
+
+Note that **L5 is the largest** (the original) and **L1 is the simplest** (middle-school rewrite). This reverses the numbering of the previous pipeline. Files are renamed accordingly (`L5-original.md`, `L4-graduate.md`, `L3-undergrad.md`, `L2-highschool.md`, `L1-middleschool.md`).
 
 ## Arguments
 
@@ -20,7 +41,7 @@ User-supplied: `$ARGUMENTS`.
 
 **Flag** (may appear anywhere):
 
-- `--lang <code>` — ISO 639-1 code for the **summary** output language (L0〜L3). Default `ja`. The source document language is auto-detected and recorded separately.
+- `--lang <code>` — ISO 639-1 code for the **summary** output language (L1〜L4). Default `ja`. The source document language is auto-detected and recorded separately.
 
 **Positional** (after extracting `--lang`):
 
@@ -38,7 +59,7 @@ Examples:
 ```
 /fractal-summarize                                # ja, CWD
 /fractal-summarize --lang en                      # English summary, CWD
-/fractal-summarize https://example.com/x --lang en
+/fractal-summarize https://arxiv.org/pdf/1706.03762
 ```
 
 ## Pipeline
@@ -74,8 +95,8 @@ Skip this step if no URL was given.
 List `<dir>` and exclude generated artifacts:
 
 ```
-L0-essence.md  L1-tldr.md  L2-summary.md  L3-detailed.md
-L4-original.md  anchors.json  meta.json  source.txt
+L1-middleschool.md  L2-highschool.md  L3-undergrad.md  L4-graduate.md
+L5-original.md  anchors.json  meta.json  source.txt
 ```
 
 Of what remains, keep files with a supported extension: `.pdf`, `.md`, `.txt`, `.html`, `.htm`.
@@ -97,7 +118,7 @@ Check via `which` based on the source file's extension. **Do not silently fall b
 
 URL mode additionally needs `curl`.
 
-### Step 5 — Generate `L4-original.md`
+### Step 5 — Generate `L5-original.md`
 
 Extract to plain Markdown:
 
@@ -106,11 +127,11 @@ Extract to plain Markdown:
 - `.md` → copy body verbatim
 - `.txt` → wrap body verbatim
 
-Strip BOM, normalize line endings to LF, then write `<dir>/L4-original.md` with this frontmatter:
+Strip BOM, normalize line endings to LF, then write `<dir>/L5-original.md` with this frontmatter:
 
 ```yaml
 ---
-layer: L4
+layer: L5
 source_file: <basename of the source file>
 extracted_with: pdftotext-layout|defuddle|copy
 actual_chars: <wc -m of body>
@@ -122,14 +143,15 @@ generated_at: <ISO-8601 with timezone>
 
 ```json
 {
-  "title": "<H1 from L4 if present, else source basename without extension>",
+  "title": "<H1 from L5 if present, else source basename without extension>",
   "source": {
     "type": "pdf|md|html|txt",
     "file": "<basename of the source file>",
     "path_or_url": "<URL from source.txt if URL mode, else ./<basename>>"
   },
-  "language": "<detected source language; filled in after summarizer-L3 reports back>",
+  "language": "<detected source language; filled in by summarizer-L4>",
   "summary_language": "<value of --lang, default 'ja'>",
+  "schema_version": 3,
   "created_at": "<ISO-8601 with timezone>",
   "last_regenerated": {},
   "skipped_layers": [],
@@ -137,45 +159,52 @@ generated_at: <ISO-8601 with timezone>
 }
 ```
 
-`summary_language` controls the output language of L0〜L3. `language` is the auto-detected language of the **source** (L4); it is filled in once `summarizer-L3` (or, if L3 is skipped, the first non-skipped summarizer that reads L4) reports it.
+`summary_language` controls the output language of L1〜L4. `language` is the auto-detected language of the **source** (L5); it is filled in once `summarizer-L4` (or, if L4 is skipped, the first non-skipped summarizer that reads L5) reports it.
 
-### Step 7 — Layer cascade with pre-flight skip judgment
+`schema_version: 3` marks this as the fractal-reader-style pipeline.
 
-Maintain a variable `last_present_layer = "L4"` and `last_present_chars = <L4 actual_chars>`.
+### Step 7 — Skip judgment
 
-For each layer in `[L3, L2, L1]` (in order):
+Read `L5.actual_chars`. Set `skipped_layers` based on absolute size, not parent ratios:
 
-1. If `last_present_chars * 0.30 < 80`:
-   - Append the layer to `meta.json.skipped_layers`.
-   - Do **not** invoke its summarizer.
-   - Move on (last_present_* unchanged).
+| L5 size            | Generated layers                  | Skipped layers       |
+|--------------------|-----------------------------------|----------------------|
+| ≥ 1,500 chars      | L4, L3, L2, L1                    | (none)               |
+| 400〜1,499 chars   | L4 only                           | L3, L2, L1           |
+| < 400 chars        | (no layers — L5 stands alone)     | L4, L3, L2, L1       |
+
+Reason: below 1,500 chars there's no useful difference between Graduate and Middle School rewrites of the same content; below 400 chars there's nothing left to compress at L4 either.
+
+Record skipped layers in `meta.json.skipped_layers` immediately.
+
+### Step 8 — Layer cascade
+
+Maintain `last_present_layer = "L5"`.
+
+For each layer in `[L4, L3, L2, L1]` (in order):
+
+1. If the layer is in `skipped_layers`, do not invoke its summarizer.
 2. Otherwise:
-   - Invoke the corresponding `summarizer-L<n>` agent via the Agent tool, passing:
+   - Invoke `summarizer-L<n>` via the Agent tool, passing:
      - the absolute path of `<dir>/`
      - the parent layer name (= `last_present_layer`)
      - `summary_language` (from `meta.json.summary_language`)
    - Wait for completion.
-   - Read the new file's `actual_chars` from its frontmatter.
-   - Update `last_present_layer = "L<n>"`, `last_present_chars = <new actual_chars>`.
+   - Update `last_present_layer = "L<n>"`.
    - Update `meta.json.last_regenerated.L<n>` to now.
-   - The first summarizer that reads L4 also reports the detected source language; write it into `meta.json.language` if not already set.
+   - The first summarizer that reads L5 also reports the detected source language; write it into `meta.json.language` if not already set.
 
-Then for `L0`:
+No ratio enforcement at the orchestrator. Each summarizer runs its own reader-fit self-check.
 
-- Always invoke `summarizer-L0`, passing the parent layer name (= `last_present_layer`) and `summary_language`.
-- Update `meta.json.last_regenerated.L0`.
+### Step 9 — Anchors and consistency check
 
-If the orchestrator detects that a summarizer's reported `actual_ratio` falls outside `[0.25, 0.45]` after the agent's own retries, log a warning to the user but keep the file.
-
-### Step 8 — Anchors and consistency check
-
-If `L3` is **not** in `skipped_layers`, invoke `anchor-mapper`. Otherwise set `meta.json.anchors_skipped = true` and skip.
+If at least one of `L4`/`L3`/`L2` is present (not all in `skipped_layers`), invoke `anchor-mapper`. Otherwise set `meta.json.anchors_skipped = true` and skip.
 
 `anchor-mapper` and `consistency-checker` may run in parallel (independent inputs).
 
 Invoke `consistency-checker` regardless. Capture its stdout JSON and display it to the user verbatim.
 
-### Step 9 — Stage but do not commit
+### Step 10 — Stage but do not commit
 
 If CWD (or `<dir>`) is inside a git repo:
 
@@ -189,14 +218,14 @@ Display a tree summary:
 
 ```
 <dir>/
-├── <source-basename>      (original)
-├── source.txt             (URL mode only)
-├── L4-original.md         (NN chars)
-├── L3-detailed.md         (NN chars, ratio 0.34)
-├── L2-summary.md          (NN chars, ratio 0.36)
-├── L1-tldr.md             (NN chars, ratio 0.33)
-├── L0-essence.md          (NN chars)
-├── anchors.json           (M anchors)   [omitted if anchors_skipped]
+├── <source-basename>           (original)
+├── source.txt                  (URL mode only)
+├── L5-original.md              (NN chars)
+├── L4-graduate.md              (NN chars)         [Graduate reader]
+├── L3-undergrad.md             (NN chars)         [Undergrad reader]
+├── L2-highschool.md            (NN chars)         [High-school reader]
+├── L1-middleschool.md          (NN chars)         [Middle-school reader]
+├── anchors.json                (M anchors)        [omitted if anchors_skipped]
 └── meta.json
 ```
 
@@ -204,12 +233,12 @@ Followed by the consistency-checker JSON verdict.
 
 ## HTML extraction tool — selection rationale
 
-**defuddle** (kepano, Obsidian Web Clipper origin) is used via `npx -y defuddle parse <file> --markdown`. Reasons: actively maintained in 2026; multi-pass extraction adapts where Mozilla Readability gives up on modern sites; standardizes math, code, and footnotes — friendly to downstream summarization. Rust ports either embed a JS engine or are less feature-complete; via `npx` defuddle needs no global install.
+**defuddle** (kepano, Obsidian Web Clipper origin) is used via `npx -y defuddle parse <file> --markdown`. Reasons: actively maintained in 2026; multi-pass extraction adapts where Mozilla Readability gives up on modern sites; standardizes math, code, and footnotes — friendly to downstream summarization. Via `npx` defuddle needs no global install.
 
 ## Usage examples
 
 ```bash
-# Pattern 1 — fetch URL directly
+# Pattern 1 — fetch URL directly (academic paper)
 mkdir ~/papers/attention && cd ~/papers/attention
 claude
 > /fractal-summarize https://arxiv.org/pdf/1706.03762
@@ -227,17 +256,14 @@ claude
 > /fractal-summarize
 ```
 
-## Verifying the ratio behavior
+## Notes for paper workflows
 
-Manual check on two corpora:
-
-1. **Long doc (≥ 5,000 chars)**: pick a paper or long blog post, run the pipeline, then `grep '^actual_ratio:' L{1,2,3}-*.md`. Expect each value in `[0.25, 0.45]` and ideally near `0.35`.
-2. **Short doc (≈ 1,500 chars)**: pick a brief article, run the pipeline, `grep '^skipped_layers' meta.json` to see which layers got pre-empted by the 80-char floor. Inspect surviving layers' `actual_ratio` — they should still sit in band.
-
-Both should also produce a `consistency-checker` verdict of `ok: true` (modulo coverage warnings) without `ratio` issues.
+- `summarizer-L4` is configured to preserve citation keys, dataset/model/benchmark names, equation numbers, and theorem/proof structure — all the load-bearing artifacts a peer reviewer would look for.
+- All formulas across all layers use brace-wrapped LaTeX (`{$ ... $}` inline, `{$$ ... $$}` block) so they survive Markdown rendering and are recognized by fractal-reader-compatible viewers.
+- Anchors map every L4/L3/L2 sentence directly back to L5 line numbers — useful when L3 looks suspicious and you want to verify against the original.
 
 ## Notes
 
 - This command never commits. Inspect with `git diff --staged` and commit when satisfied.
-- For long sources (>50k tokens), `summarizer-L3` chunks by chapter automatically.
+- For long sources (>50k tokens), `summarizer-L4` chunks by chapter automatically.
 - Authentication-bearing URLs are not supported.
