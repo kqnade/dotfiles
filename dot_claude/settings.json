@@ -24,6 +24,15 @@
     "command": "bunx -y ccstatusline@latest",
     "padding": 0
   },
+  "mcpServers": {
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer ${GITHUB_PAT}"
+      }
+    }
+  },
   "enabledPlugins": {
     "github@claude-plugins-official": true,
     "gopls-lsp@claude-plugins-official": true,
