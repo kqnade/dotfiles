@@ -3,6 +3,7 @@
 node = "lts"
 python = "3.12"
 go = "latest"
+
 {{- if ne .chezmoi.os "windows" }}
 # ruby (ruby-build) and lua (vfox-lua) require source builds that fail on
 # Windows without a Unix toolchain. Limit to non-Windows to keep the mise
@@ -21,6 +22,9 @@ starship = "latest"
 bun = "latest"
 deno = "latest"
 tree-sitter = "latest"
+
+
+"github:mtane0412/coscli" = { version = "latest", exe = "cos" }
 
 [settings]
 activate_aggressive = true
