@@ -35,4 +35,5 @@ dot_zshrc
 dot_config/zsh/
 dot_config/sheldon/
 dot_config/ghostty/
+dot_config/op/
 {{- end }}

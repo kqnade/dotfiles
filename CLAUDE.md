@@ -69,7 +69,7 @@ mise install
 | metapkgs | パッケージ管理 (Arch sudo) | `metapkgs/base/PKGBUILD` |
 | MSYS2 | Windows での Linux ライク bash 環境 | scoop `msys2` + `dot_bashrc.tmpl` |
 | yaskkserv2 | ローカル SKK 辞書サーバ (Linux/macOS) | `run_onchange_after_install-yaskkserv2.sh.tmpl` |
-| 1Password CLI (`op`) | シークレット管理 (GitHub PAT 等) | デスクトップアプリ統合で生体認証アンロック。`dot_config/zsh/functions/{claude,gh}.zsh` が `op read 'op://Personal/GitHub/token'`（`$GITHUB_PAT_OP_REF` で上書き可）でトークン注入 |
+| 1Password CLI (`op`) | シークレット管理 (GitHub PAT 等) | デスクトップアプリ統合で生体認証アンロック。`gh` は `op plugin run -- gh` alias 経由 (`dot_config/private_op/private_plugins.sh` を `dot_zshrc` / `dot_bashrc.tmpl` で source、`private_plugins/private_gh.json` が item ID を保持)。`claude` は `dot_config/zsh/functions/claude.zsh` が `op read 'op://Personal/GitHub/token'`（`$GITHUB_PAT_OP_REF` で上書き可）で PAT 注入。**`private_` プレフィックスで 0600/0700 を強制** — op CLI は world-readable な plugin 設定を無視するため必須 |
 
 ### SKK Input (skkeleton + yaskkserv2)
 
@@ -94,7 +94,6 @@ zsh/
     ├── ccc.zsh          # git-ccc: staged diff → claude -p で gitmoji 付きコミットメッセージ自動生成
     ├── ccd.zsh          # cd + clear
     ├── claude.zsh       # claude wrapper (1Password経由でGITHUB_PERSONAL_ACCESS_TOKEN注入)
-    ├── gh.zsh           # gh wrapper (1Password経由でGH_TOKEN注入)
     ├── gg.zsh           # ghqリポジトリfzf選択・移動
     ├── ghq.zsh          # ghq wrapper (get/clone/create後に自動cd、removeサブコマンド)
     └── mkcd.zsh         # mkdir + cd
