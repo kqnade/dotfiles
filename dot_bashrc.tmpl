@@ -78,9 +78,14 @@ if command -v sideapt >/dev/null 2>&1; then
   unset _sa_marc
 fi
 
-if command -v gpgconf &>/dev/null; then
-  export SSH_AUTH_SOCK=$(gpgconf --list-dirs agent-ssh-socket)
-  gpg-connect-agent updatestartuptty /bye > /dev/null 2>&1
+# 1Password SSH agent
+if [[ -z "${SSH_AUTH_SOCK-}" ]]; then
+  case "$OSTYPE" in
+    darwin*) _op_sock="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock" ;;
+    linux*)  _op_sock="$HOME/.1password/agent.sock" ;;
+  esac
+  [[ -n "${_op_sock-}" && -S "$_op_sock" ]] && export SSH_AUTH_SOCK="$_op_sock"
+  unset _op_sock
 fi
 
 # ---------------------------------------------------------------------------

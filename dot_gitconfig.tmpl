@@ -1,7 +1,17 @@
 [user]
 	name = kqnade
 	email = git@k4na.de
-	signingkey = F19A8A2277AE1A97
+	signingkey = ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPRS6ZG6P/46d8Ad9Q1mvaPbnQWFIv2F3MYdp3z2sNNj
+
+[gpg]
+	format = ssh
+
+[gpg "ssh"]
+{{- if eq .chezmoi.os "darwin" }}
+	program = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign"
+{{- else if eq .chezmoi.os "linux" }}
+	program = "/opt/1Password/op-ssh-sign"
+{{- end }}
 
 [ghq]
 {{- if eq .chezmoi.os "windows" }}

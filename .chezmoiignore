@@ -35,5 +35,4 @@ dot_zshrc
 dot_config/zsh/
 dot_config/sheldon/
 dot_config/ghostty/
-private_dot_gnupg/
 {{- end }}

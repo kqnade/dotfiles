@@ -56,8 +56,7 @@ check_tool git
 check_tool nvim     "neovim"
 check_tool gh
 check_tool ghq
-check_tool gpg
-check_tool pass
+check_tool op       "1Password CLI"
 
 case "$uname_s" in
   Linux|Darwin)
@@ -119,19 +118,12 @@ if have gh; then
   fi
 fi
 
-if have pass; then
-  if pass ls >/dev/null 2>&1; then
-    ok "pass: store accessible"
+if have op; then
+  if op account list --format=json >/dev/null 2>&1 \
+     && [[ -n "$(op account list --format=json 2>/dev/null | tr -d '[:space:]')" ]]; then
+    ok "1Password CLI: account configured"
   else
-    warn "pass store missing or gpg key locked"
-  fi
-fi
-
-if have gpg; then
-  if gpg --list-secret-keys --with-colons 2>/dev/null | grep -q '^sec'; then
-    ok "gpg: secret key present"
-  else
-    warn "no gpg secret key — \`gpg --import\` your private key"
+    warn "1Password CLI installed but no account — sign in via desktop app integration or \`op account add\`"
   fi
 fi
 

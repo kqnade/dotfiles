@@ -51,8 +51,8 @@ mise install
 ```
 
 > Windows では `dot_zshrc`, `dot_config/zsh/`, `dot_config/sheldon/`,
-> `dot_config/ghostty/`, `private_dot_gnupg/` は
-> `.chezmoiignore` で除外され、PowerShell プロファイル
+> `dot_config/ghostty/` は `.chezmoiignore` で除外され、
+> PowerShell プロファイル
 > (`Documents/PowerShell/Microsoft.PowerShell_profile.ps1`) が代わりに展開されます。
 
 ## 6. MSYS2 で Linux ライクな bash 環境

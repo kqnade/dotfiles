@@ -106,6 +106,7 @@ install_debian() {
   log "Detected Debian/Ubuntu with sudo."
   install_apt_packages
   install_supplementary_debian
+  install_op_cli
 }
 
 # ---------------------------------------------------------------------------
@@ -138,6 +139,7 @@ install_debian_nosudo() {
   install_apt_packages_via_sideapt
   _link_sideapt_alternatives
   install_supplementary_debian
+  install_op_cli
 
   cat <<EOF
 
@@ -165,8 +167,9 @@ EOF
 # Path 4: No sudo, non-Debian  → pixi (conda-forge) fallback under $HOME
 # ---------------------------------------------------------------------------
 # Build/extract is throw-away (PIXI_CACHE_DIR=/tmp/${USER}-pixi-cache); all
-# permanent artifacts live under $HOME/.pixi. Mirrors Brewfile's tool list,
-# minus pass (not in conda-forge) which is installed from source separately.
+# permanent artifacts live under $HOME/.pixi. Mirrors Brewfile's tool list.
+# 1Password CLI (`op`) is not on conda-forge — installed separately from the
+# official static binary by install_op_cli below.
 
 install_pixi() {
   log "No sudo available on a non-Debian host — installing via pixi (cache in /tmp, prefix in \$HOME/.pixi)."
@@ -187,7 +190,7 @@ install_pixi() {
   log "Syncing pixi global environments (this may take a few minutes the first time)..."
   pixi global sync || warn "pixi global sync had failures — re-run after fixing 'pixi global list'."
 
-  install_pass_from_source
+  install_op_cli
 
   cat <<EOF
 
@@ -328,10 +331,9 @@ bat       = "*"
 fzf       = "*"
 nvim      = "*"
 vim       = "*"
-gnupg     = "*"
-pinentry  = "*"
 gomi      = "*"
 rust      = "*"
+unzip     = "*"
 
 # NOTE: conda-forge `neovim` is the Python client (pynvim); the editor lives
 # in `nvim`. `fzf-tmux` is intentionally NOT exposed — conda-forge `fzf`
@@ -356,34 +358,48 @@ bat               = "bat"
 fzf               = "fzf"
 nvim              = "nvim"
 vim               = "vim"
-gpg               = "gpg"
-"gpg-agent"       = "gpg-agent"
-gpgconf           = "gpgconf"
-gpgsm             = "gpgsm"
-pinentry          = "pinentry"
-"pinentry-curses" = "pinentry-curses"
 gomi              = "gomi"
 cargo             = "cargo"
 rustc             = "rustc"
+unzip             = "unzip"
 TOML
 }
 
-# password-store (pass) is not packaged on conda-forge. It's a self-contained
-# bash script — its Makefile just installs scripts under PREFIX, no compile.
-install_pass_from_source() {
-  command -v pass >/dev/null 2>&1 && return 0
-  if ! command -v make >/dev/null 2>&1 || ! command -v git >/dev/null 2>&1; then
-    warn "pass requires git + make on PATH; skipping (install them via system package manager)."
+# 1Password CLI (`op`) is not packaged on conda-forge / pacman / apt by default.
+# Download the official static binary from cache.agilebits.com into
+# $HOME/.local/bin so all four install paths share the same fallback. On hosts
+# where `op` is already provided by the 1Password desktop package or an AUR
+# build, this is a no-op.
+install_op_cli() {
+  command -v op >/dev/null 2>&1 && return 0
+
+  local arch tmp version url
+  case "$(uname -m)" in
+    x86_64|amd64)   arch=amd64 ;;
+    aarch64|arm64)  arch=arm64 ;;
+    *) warn "1Password CLI: unsupported arch $(uname -m); skipping."; return 0 ;;
+  esac
+  command -v curl  >/dev/null 2>&1 || { warn "op install needs curl; skipping.";  return 0; }
+  command -v unzip >/dev/null 2>&1 || { warn "op install needs unzip; skipping."; return 0; }
+
+  log "Fetching latest 1Password CLI version..."
+  version="$(curl -fsSL https://app-updates.agilebits.com/check/1/0/CLI2/en/2000000/N 2>/dev/null \
+             | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1)" || version=""
+  if [[ -z "$version" ]]; then
+    warn "Could not detect latest op version; skipping."
     return 0
   fi
-  log "Installing pass (passwordstore.org) from source → \$HOME/.local"
-  local tmp
+
+  mkdir -p "$HOME/.local/bin"
+  log "Installing 1Password CLI $version → \$HOME/.local/bin/op"
   tmp="$(mktemp -d)"
-  if git clone --depth=1 https://git.zx2c4.com/password-store "$tmp/password-store" \
-     && make -C "$tmp/password-store" install PREFIX="$HOME/.local" >/dev/null; then
-    log "pass installed."
+  url="https://cache.agilebits.com/dist/1P/op2/pkg/${version}/op_linux_${arch}_${version}.zip"
+  if curl -fsSL "$url" -o "$tmp/op.zip" \
+     && unzip -q "$tmp/op.zip" -d "$tmp" \
+     && install -m 0755 "$tmp/op" "$HOME/.local/bin/op"; then
+    log "1Password CLI installed."
   else
-    warn "pass install failed."
+    warn "1Password CLI install failed (URL: $url)."
   fi
   rm -rf "$tmp"
 }

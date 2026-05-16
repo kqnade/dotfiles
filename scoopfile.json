@@ -14,8 +14,8 @@
     { "Name": "git",     "Source": "main" },
     { "Name": "git-lfs", "Source": "main" },
     { "Name": "ghq",     "Source": "main" },
-    { "Name": "neovim",  "Source": "main" },
-    { "Name": "gpg4win", "Source": "extras" },
+    { "Name": "neovim",         "Source": "main" },
+    { "Name": "1password-cli",  "Source": "main" },
 
     { "Name": "msys2", "Source": "main" },
 

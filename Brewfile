@@ -21,10 +21,8 @@ brew "ghq"
 brew "vim"
 brew "neovim"
 
-# GPG / SSH
-brew "gnupg"
-brew "pass"
-brew "pinentry-mac"
+# Secrets / SSH
+cask "1password-cli"
 
 # CLI tools
 brew "gomi"

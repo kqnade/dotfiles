@@ -72,8 +72,9 @@ bash scripts/install-linux.sh
 
 `scripts/install-linux.sh` は以下を行います：
 
-- `Aptfile` に列挙された apt パッケージ（`zsh`, `vim`, `git`, `gnupg`, `pass`, `ripgrep`, `fd-find`, `bat` 等）の一括インストール
+- `Aptfile` に列挙された apt パッケージ（`zsh`, `vim`, `git`, `ripgrep`, `fd-find`, `bat` 等）の一括インストール
 - apt に無い／古いツール（`chezmoi`, `mise`, `starship`, `sheldon`, `ghq`, `gh`, `glab`, `eza`, `delta`）を `$HOME/.local/bin` および `mise` 経由で導入
+- 1Password CLI (`op`) を `cache.agilebits.com` の公式静的バイナリから `~/.local/bin/op` に配置（既に `op` が PATH 上にあれば no-op）
 
 ### 2. 設定の適用とツール導入
 
@@ -119,7 +120,7 @@ export GITHUB_TOKEN="$(gh auth token | tr -d '[:space:]')"
 mise install
 ```
 
-> NOTE: sideapt は `preinst`/`postinst` などの maintainer scripts、setuid バイナリ、systemd unit を扱えません。`gnupg`/`pass`/`pinentry-curses` などの CLI 系は問題なく動きますが、サービス系を必要とするパッケージは別途用意してください。
+> NOTE: sideapt は `preinst`/`postinst` などの maintainer scripts、setuid バイナリ、systemd unit を扱えません。`Aptfile` に列挙されている CLI 系は問題なく動きますが、サービス系を必要とするパッケージは別途用意してください。
 >
 > 同じ理由で `gcc`/`cargo`/`unzip` などはバイナリとして `~/.sideapt/usr/bin` に展開されるため、`chezmoi apply` の中で動く `run_onchange_after_install-fonts.sh.tmpl`（UDEVGothic のために `unzip` を使う）や `run_onchange_after_install-yaskkserv2.sh.tmpl`（`cargo` を使う）は冒頭で `sideapt env` を eval してから動きます。
 
@@ -132,8 +133,8 @@ mise install
 スクリプトはこの経路で以下を行います：
 
 1. `curl -fsSL https://pixi.sh/install.sh | bash`（`PIXI_HOME=$HOME/.pixi`、`PIXI_NO_PATH_UPDATE=1`）
-2. `$HOME/.pixi/manifests/pixi-global.toml` を生成（`chezmoi`, `mise`, `sheldon`, `starship`, `zsh`, `git`, `ghq`, `gh`, `glab`, `delta`, `eza`, `ripgrep`, `fd`, `bat`, `fzf`, `nvim`, `vim`, `gpg`, `pinentry`, `gomi`, `rust` などを `cli-tools` env に集約）
+2. `$HOME/.pixi/manifests/pixi-global.toml` を生成（`chezmoi`, `mise`, `sheldon`, `starship`, `zsh`, `git`, `ghq`, `gh`, `glab`, `delta`, `eza`, `ripgrep`, `fd`, `bat`, `fzf`, `nvim`, `vim`, `gomi`, `rust`, `unzip` などを `cli-tools` env に集約）
 3. `pixi global sync` で `$HOME/.pixi/bin` 配下にバイナリを expose
-4. password-store (`pass`) は conda-forge に無いため、`make install PREFIX=$HOME/.local` でソースビルド
+4. 1Password CLI (`op`) は conda-forge に無いため、`cache.agilebits.com` の公式静的バイナリを `~/.local/bin/op` に配置
 
 > NOTE: conda-forge 版 Neovim のエディタ本体は `nvim` パッケージ（`neovim` は Python クライアントの `pynvim`）。`fzf-tmux` バイナリは conda-forge `fzf` に同梱されないため expose 対象外です。

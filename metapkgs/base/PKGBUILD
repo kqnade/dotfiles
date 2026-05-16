@@ -7,7 +7,6 @@ depends=(
   'mise'
   'libyaml'
   'ghq'
-  'gnupg'
   'zsh'
   'chezmoi'
   'vim'
@@ -18,10 +17,14 @@ depends=(
   'github-cli'
   'glab'
   'openssh'
-  'pinentry'
-  'pass'
   'rust'
 )
+# Note: 1Password CLI (`op`) lives in AUR (`1password-cli`) and is not
+# installable via pacman alone. Install it manually with an AUR helper
+# (e.g. `yay -S 1password-cli`) or install the 1Password Linux desktop
+# package which bundles it. The supplementary installer in
+# scripts/install-linux.sh also drops a static `op` binary into
+# ~/.local/bin as a fallback.
 # Note: UDEVGothic NF is installed by run_onchange_after_install-fonts.sh
 # (downloaded from yuru7/udev-gothic releases) — keeps Arch + sudo path on
 # pacman-only deps without requiring an AUR helper.

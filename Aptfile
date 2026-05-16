@@ -14,11 +14,6 @@ git
 git-lfs
 openssh-client
 
-# GPG / pass
-gnupg
-pass
-pinentry-curses
-
 # Core CLI utilities (modern replacements where available in apt)
 curl
 ca-certificates

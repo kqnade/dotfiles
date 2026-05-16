@@ -6,7 +6,6 @@ pkgbase = base-env
 	depends = mise
 	depends = libyaml
 	depends = ghq
-	depends = gnupg
 	depends = zsh
 	depends = chezmoi
 	depends = vim
@@ -16,8 +15,6 @@ pkgbase = base-env
 	depends = github-cli
 	depends = glab
 	depends = openssh
-	depends = pinentry
-	depends = pass
 	depends = ttf-udev-gothic-nf
 
 pkgname = base-env
