@@ -14,6 +14,7 @@ style = "bold cyan"
 
 [os.symbols]
 Arch    = ""  # nf-linux-archlinux
+Fedora  = ""  # nf-linux-fedora
 Ubuntu  = ""  # nf-linux-ubuntu
 Debian  = ""  # nf-linux-debian
 Macos   = ""  # nf-fa-apple
