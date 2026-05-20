@@ -11,7 +11,7 @@
 >
 > 開発ツールは全て [mise](https://mise.jdx.dev) に寄せたため、OS 層で必要なのは「shell + git + ビルドツール + フォント + 常駐サービス」のみ。差分が薄くなったので Debian/Ubuntu 経路を sideapt/pixi も含めて削除しました。
 
-リポジトリは ghq 規約に従って `~/ghq/github.com/kqnade/dotfiles` に配置することを想定しています。
+リポジトリは ghq 規約に従って `~/repos/github.com/kqnade/dotfiles` に配置することを想定しています。
 
 `chezmoi apply` を実行すると `run_onchange_setup-linux.sh.tmpl` が
 自動で `scripts/install-linux.sh` を呼び出すため、初回・更新時とも
@@ -34,8 +34,8 @@ systemd user unit (`yaskkserv2.service`) を有効化し、`127.0.0.1:1178`
 
 ```bash
 sudo dnf install -y git curl
-git clone https://github.com/kqnade/dotfiles.git ~/ghq/github.com/kqnade/dotfiles
-cd ~/ghq/github.com/kqnade/dotfiles
+git clone https://github.com/kqnade/dotfiles.git ~/repos/github.com/kqnade/dotfiles
+cd ~/repos/github.com/kqnade/dotfiles
 bash scripts/install-linux.sh
 ```
 
@@ -88,8 +88,8 @@ WSL では Linux 版 1Password desktop が使えないため、Windows 側の na
 
 ```bash
 sudo pacman -Syu --needed --noconfirm git base-devel
-git clone https://github.com/kqnade/dotfiles.git ~/ghq/github.com/kqnade/dotfiles
-cd ~/ghq/github.com/kqnade/dotfiles
+git clone https://github.com/kqnade/dotfiles.git ~/repos/github.com/kqnade/dotfiles
+cd ~/repos/github.com/kqnade/dotfiles
 bash scripts/install-linux.sh
 ```
 

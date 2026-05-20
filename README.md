@@ -32,8 +32,8 @@ Linux はいずれも sudo 必須。`scripts/install-linux.sh` は `/etc/os-rele
 
 ```bash
 # 1. リポジトリ取得
-git clone https://github.com/kqnade/dotfiles ~/ghq/github.com/kqnade/dotfiles
-cd ~/ghq/github.com/kqnade/dotfiles
+git clone https://github.com/kqnade/dotfiles ~/repos/github.com/kqnade/dotfiles
+cd ~/repos/github.com/kqnade/dotfiles
 
 # 2. システムパッケージ + chezmoi + mise
 bash scripts/install-linux.sh

@@ -1,6 +1,6 @@
 # macOS セットアップ
 
-リポジトリは ghq 規約に従って `~/ghq/github.com/kqnade/dotfiles` に配置することを想定しています。
+リポジトリは ghq 規約に従って `~/repos/github.com/kqnade/dotfiles` に配置することを想定しています。
 
 ## 1. chezmoi の取得と適用
 

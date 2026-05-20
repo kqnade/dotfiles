@@ -3,7 +3,7 @@
 WSL を使う場合は [Linux セットアップ](./setup-linux.md) の手順がそのまま流用できます。
 ここではネイティブ Windows（PowerShell 7 + scoop）を前提とします。
 
-> **リポジトリ配置規約**: Linux/macOS の `~/ghq/github.com/kqnade/dotfiles`
+> **リポジトリ配置規約**: Linux/macOS の `~/repos/github.com/kqnade/dotfiles`
 > と概念的に揃え、Windows では `Z:\` (開発ドライブ) を ghq root 相当として
 > `Z:\github.com\kqnade\dotfiles` を使います。`.chezmoi.toml.tmpl` の
 > `sourceDir` はこの規約に基づき OS で自動分岐します。

@@ -28,7 +28,7 @@ OS 層は `zsh` / `git` / ビルドツール / フォント / 常駐サービス
 
 | OS | sourceDir |
 |----|-----------|
-| Linux / macOS | `~/ghq/github.com/kqnade/dotfiles` (ghq 規約) |
+| Linux / macOS | `~/repos/github.com/kqnade/dotfiles` (ghq 規約、root は `~/repos`) |
 | Windows | `Z:/github.com/kqnade/dotfiles` (`Z:\` を開発ドライブ = ghq root 相当として扱う) |
 
 新環境での初期化は `chezmoi init --source . --apply` をリポジトリ内で実行する。
