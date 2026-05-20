@@ -18,7 +18,12 @@ git-lfs = "latest"
 delta = "latest"
 difftastic = "latest"
 gitleaks = "latest"
+
+{{- $isWsl := and (eq .chezmoi.os "linux") (contains "microsoft" (.chezmoi.kernel.osrelease | default "" | lower)) -}}
+{{- if not $isWsl }}
+# WSL は Windows 側 scoop の op.exe を PATH 経由で叩くため Linux op CLI は不要。
 "1password-cli" = "latest"
+{{- end }}
 
 # ----------------------------------------------------------------------------
 # Modern CLI replacements

@@ -39,3 +39,9 @@ dot_config/op/
 {{ if not .features.neovim -}}
 dot_config/nvim/
 {{- end }}
+
+{{- /* WSL-only: ~/.local/bin/op shim that proxies to op.exe. Drop on non-WSL. */ -}}
+{{- $isWsl := and (eq .chezmoi.os "linux") (contains "microsoft" (.chezmoi.kernel.osrelease | default "" | lower)) -}}
+{{ if not $isWsl -}}
+dot_local/bin/executable_op
+{{- end }}

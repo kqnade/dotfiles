@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# WSL-only shim: proxy `op` to the Windows-side `op.exe` so existing code
+# (zsh functions, op plugin aliases) keeps working without touching call
+# sites. The Linux op CLI can't reach the Windows 1Password desktop for
+# biometric unlock, so we route through op.exe via WSL interop instead.
+#
+# Deployed only on WSL via .chezmoiignore — on non-WSL Linux / macOS the
+# native mise-managed `1password-cli` provides `op` directly.
+exec op.exe "$@"
