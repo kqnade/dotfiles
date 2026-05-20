@@ -1,10 +1,10 @@
 {{- $neovim := promptBoolOnce . "features.neovim" "Install Neovim, SKK dictionaries, and yaskkserv2 service" true -}}
 
-[data.features]
-neovim = {{ $neovim }}
-
 {{ if eq .chezmoi.os "windows" -}}
 sourceDir = "Z:/github.com/kqnade/dotfiles"
 {{- else -}}
 sourceDir = "~/repos/github.com/kqnade/dotfiles"
 {{- end }}
+
+[data.features]
+neovim = {{ $neovim }}
