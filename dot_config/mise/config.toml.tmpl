@@ -1,33 +1,79 @@
+# Global mise config — single source of truth for dev tools across all OSes.
+# OS package managers (dnf / pacman / brew) only carry shell + git + build
+# toolchain + fonts + system services. Everything else lives here.
 [tools]
-# Languages
-node = "lts"
-python = "3.12"
-go = "latest"
 
-{{- if ne .chezmoi.os "windows" }}
-# ruby (ruby-build) and lua (vfox-lua) require source builds that fail on
-# Windows without a Unix toolchain. Limit to non-Windows to keep the mise
-# install path precompiled-only on Windows.
-ruby = "latest"
-lua = "latest"
-{{- end }}
+# ----------------------------------------------------------------------------
+# Bootstrap / dotfiles management
+# (chezmoi is also dropped into ~/.local/bin by scripts/install-linux.sh so it
+#  can run before mise itself is installed; the mise-managed copy here keeps
+#  it current after bootstrap.)
+# ----------------------------------------------------------------------------
+chezmoi = "latest"
+sheldon = "latest"
+starship = "latest"
+ghq = "latest"
+gh = "latest"
+git-lfs = "latest"
+delta = "latest"
+difftastic = "latest"
+gitleaks = "latest"
+"1password-cli" = "latest"
 
-# CLI tools (all available as precompiled binaries on every supported OS)
+# ----------------------------------------------------------------------------
+# Modern CLI replacements
+# ----------------------------------------------------------------------------
 eza = "latest"
 fzf = "latest"
 fd = "latest"
 ripgrep = "latest"
 bat = "latest"
-starship = "latest"
-bun = "latest"
-deno = "latest"
+zoxide = "latest"
+sd = "latest"
+xh = "latest"
+yq = "latest"
+jq = "latest"
+just = "latest"
+atuin = "latest"
+btop = "latest"
+duf = "latest"
+dust = "latest"
+watchexec = "latest"
 tree-sitter = "latest"
 
+# gomi (trash CLI) and procs (process viewer) — explicit aqua backend.
+"aqua:babarot/gomi" = "latest"
+"aqua:dalance/procs" = "latest"
 
+# coscli (Tencent Cloud Object Storage CLI) — custom github backend.
 "github:mtane0412/coscli" = { version = "latest", exe = "cos" }
+
+# ----------------------------------------------------------------------------
+# Language runtimes + lint/format toolchains
+# ----------------------------------------------------------------------------
+go = "latest"
+rust = "latest"
+bun = "latest"
+uv = "latest"
+clang = "latest"
+shellcheck = "latest"
+shfmt = "latest"
+taplo = "latest"
+typos = "latest"
+
+# ----------------------------------------------------------------------------
+# AI / agent CLIs
+# ----------------------------------------------------------------------------
+claude = "latest"
+codex = "latest"
+opencode = "latest"
+
+# ----------------------------------------------------------------------------
+# Editor (opt-out via .chezmoi.toml.tmpl: features.neovim)
+# ----------------------------------------------------------------------------
+{{- if .features.neovim }}
+neovim = "latest"
+{{- end }}
 
 [settings]
 activate_aggressive = true
-
-[settings.ruby]
-compile = false

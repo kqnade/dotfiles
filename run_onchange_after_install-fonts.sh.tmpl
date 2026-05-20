@@ -1,26 +1,14 @@
 {{- if eq .chezmoi.os "linux" -}}
 #!/usr/bin/env bash
-# Install UDEVGothic NF (yuru7/udev-gothic) into ~/.local/share/fonts so
-# that all Linux paths share the same primary font as macOS (Brewfile cask)
-# and Arch sudo (metapkgs ttf-udev-gothic-nf). Idempotent — bails out if
-# any UDEVGothic variant is already discoverable via fc-list.
+# Install UDEVGothic NF (yuru7/udev-gothic) into ~/.local/share/fonts so that
+# all Linux paths share the same primary font as macOS (Brewfile cask) and
+# Arch sudo (metapkgs ttf-udev-gothic-nf). Idempotent — bails out if any
+# UDEVGothic variant is already discoverable via fc-list.
 #
-# Runs as a chezmoi `after` script so apt/pacman has provided unzip
+# Runs as a chezmoi `after` script so dnf/pacman has provided unzip
 # and fontconfig by the time we get here.
 
 set -euo pipefail
-
-# On non-sudo Debian/Ubuntu the apt packages (fontconfig, unzip) live under
-# ~/.sideapt/usr and aren't on PATH by default. Activate sideapt if present.
-if [[ -x "$HOME/.local/bin/sideapt" ]]; then
-  eval "$("$HOME/.local/bin/sideapt" env 2>/dev/null)" || true
-  _sa_marc="$(dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || true)"
-  [[ -n "$_sa_marc" && -d "$HOME/.sideapt/usr/include/$_sa_marc" ]] \
-    && export CPATH="$HOME/.sideapt/usr/include/$_sa_marc:${CPATH-}"
-  [[ -n "$_sa_marc" && -d "$HOME/.sideapt/usr/lib/$_sa_marc" ]] \
-    && export LIBRARY_PATH="$HOME/.sideapt/usr/lib/$_sa_marc:${LIBRARY_PATH-}"
-  unset _sa_marc
-fi
 
 if ! command -v fc-list >/dev/null 2>&1; then
   echo "==> fontconfig not installed; skipping UDEVGothic install" >&2

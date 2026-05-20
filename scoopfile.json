@@ -16,6 +16,7 @@
     { "Name": "ghq",     "Source": "main" },
     { "Name": "neovim",         "Source": "main" },
     { "Name": "1password-cli",  "Source": "main" },
+    { "Name": "npiperelay",     "Source": "main" },
 
     { "Name": "msys2", "Source": "main" },
 

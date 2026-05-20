@@ -6,23 +6,20 @@ README.md
 CLAUDE.md
 dot_config/nvim/README.md
 
-{{- /* Brewfile is for macOS Homebrew or non-sudo Linux Linuxbrew. */ -}}
-{{ if eq .chezmoi.os "windows" -}}
+{{- /* Brewfile is for macOS Homebrew only. */ -}}
+{{ if ne .chezmoi.os "darwin" -}}
 Brewfile
 {{- end }}
 
-{{- /* Aptfile is only meaningful on Debian-family distributions. */ -}}
-{{ if ne .chezmoi.os "linux" -}}
-Aptfile
-{{- end }}
-{{- $id := "" -}}{{- $idLike := "" -}}
+{{- /* Dnffile is consumed by scripts/install-linux.sh on Fedora — exclude on non-Fedora. */ -}}
+{{- $id := "" -}}
 {{- if eq .chezmoi.os "linux" -}}
   {{- $id = (.chezmoi.osRelease.id | default "") -}}
-  {{- $idLike = (index .chezmoi.osRelease "idLike" | default "") -}}
 {{- end }}
-{{ if and (eq .chezmoi.os "linux") (not (or (eq $id "ubuntu") (eq $id "debian") (contains "debian" $idLike))) -}}
-Aptfile
-{{ end }}
+{{ if ne $id "fedora" -}}
+Dnffile
+{{- end }}
+
 {{- /* Files only meaningful on Windows */ -}}
 {{ if ne .chezmoi.os "windows" -}}
 Documents/
@@ -36,4 +33,9 @@ dot_config/zsh/
 dot_config/sheldon/
 dot_config/ghostty/
 dot_config/op/
+{{- end }}
+
+{{- /* Neovim opt-out: strip nvim config and SKK dictionaries when disabled. */ -}}
+{{ if not .features.neovim -}}
+dot_config/nvim/
 {{- end }}
