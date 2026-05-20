@@ -20,7 +20,7 @@ chezmoi init --apply kqnade
 `run_onchange_setup-macos.sh.tmpl` が `chezmoi apply` のたびに：
 
 1. **Homebrew が無ければインストール**（Apple Silicon / Intel 両対応）
-2. `~/Brewfile` を `brew bundle` で適用（`Brewfile` の内容が変わると自動再実行）
+2. `Brewfile`（chezmoi の sourceDir 配下、`~` には展開しない）を `brew bundle` で適用（`Brewfile` の内容が変わると自動再実行）
 3. `defaults write` で macOS の各種設定を適用：
    - NSGlobalDomain: 拡張子表示、F-key 標準化、キーリピート高速化、トラックパッド速度
    - Dock: 左寄せ・自動非表示・サイズ・最近使ったアプリ非表示

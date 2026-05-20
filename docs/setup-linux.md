@@ -72,14 +72,21 @@ mise で rust が入った後に再度 apply すれば完了:
 chezmoi apply
 ```
 
-### WSL 補足: 1Password の SSH 認証・commit 署名
+### WSL 補足: 1Password / SSH の Windows 側委譲
 
-WSL では Linux 版 1Password desktop が使えないため、Windows 側の 1Password に直接アクセスする経路を使う：
+WSL では Linux 版 1Password desktop が使えないため、Windows 側のツールを **shim** 経由で透過に叩く構成にしている。`.chezmoiignore` が WSL を検出して以下を deploy:
 
-- **SSH 認証**: `dot_gitconfig.tmpl` が WSL 検出時に `core.sshCommand = "ssh.exe"` を立てる。git は Windows OpenSSH (`/mnt/c/Windows/System32/OpenSSH/ssh.exe`) を呼び、その先で Windows 側 1Password の SSH agent (`\\.\pipe\openssh-ssh-agent`) が応答する。socat / npiperelay 等のブリッジは不要。
-- **commit 署名**: `dot_gitconfig.tmpl` の `gpg.ssh.program` を `/mnt/c/Users/<name>/AppData/Local/Microsoft/WindowsApps/op-ssh-sign-wsl.exe` に向ける。これは Microsoft Store 版 1Password が公開する app-alias で、WSL の `/mnt/c` ACL を回避して直接実行できる。
+| `~/.local/bin/` | proxy 先 | 用途 |
+|-----------------|---------|------|
+| `op` | `op.exe` (scoop) | `op read ...`, `op plugin run` 等 |
+| `ssh` | `ssh.exe` (Windows OpenSSH) | 1Password Windows SSH agent と直結 |
+| `ssh-add` | `ssh-add.exe` | 鍵確認 (`ssh-add -l`) |
 
-Windows 側で **1Password → 設定 → 開発者 → "SSH エージェントを使用する"** を有効化しておくこと。`/mnt/c/Users/<name>/AppData/Local/Microsoft/WindowsApps/op-ssh-sign-wsl.exe --help` が表示されれば WSL 経路は確認済み。
+`~/.local/bin` は PATH 先頭側にあるので Linux native の `ssh` / `op` (もし入っていれば) を上書きする。git の SSH 呼び出しも結果として ssh.exe 経由になるので、`core.sshCommand` を別途設定する必要は無い。
+
+commit 署名のみ別経路で、`dot_gitconfig.tmpl` の `gpg.ssh.program` を `/mnt/c/Users/<name>/AppData/Local/Microsoft/WindowsApps/op-ssh-sign-wsl.exe` (Microsoft Store 版 1Password の app-alias) に向ける。
+
+Windows 側で **1Password → 設定 → 開発者 → "SSH エージェントを使用する"** を有効化しておくこと。`ssh-add -l` で 1Password の鍵が表示されれば WSL 経路は確認済み。
 
 ---
 

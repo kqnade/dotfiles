@@ -78,14 +78,17 @@ mise install           # mise の global tools をインストール
 | yaskkserv2 | ローカル SKK 辞書サーバ (Linux/macOS — macSKK + skkeleton 共用) | `run_onchange_after_install-yaskkserv2.sh.tmpl` |
 | 1Password CLI (`op`) | シークレット管理。**mise が `1password-cli` を扱える**ので個別 download は不要。`gh` は `op plugin run -- gh` alias 経由 (`dot_config/private_op/private_plugins.sh`) | `dot_config/private_op/` |
 
-### 1Password SSH (WSL)
+### 1Password / SSH (WSL)
 
-macOS / Linux desktop ではそれぞれ native socket (`~/Library/Group Containers/.../agent.sock` または `~/.1password/agent.sock`) を `SSH_AUTH_SOCK` に設定する (`dot_zshrc` / `dot_bashrc.tmpl`)。WSL は Linux 版 desktop app が無いので、`dot_gitconfig.tmpl` が WSL を検出して以下を立てる:
+macOS / Linux desktop ではそれぞれ native socket (`~/Library/Group Containers/.../agent.sock` または `~/.1password/agent.sock`) を `SSH_AUTH_SOCK` に設定する (`dot_zshrc` / `dot_bashrc.tmpl`)。WSL は Linux 版 desktop app が無いので、`~/.local/bin/` 配下の **shim** で Windows 側のバイナリを透過に叩く:
 
-- `core.sshCommand = "ssh.exe"` — git の SSH 呼び出しを Windows OpenSSH 経由にし、Windows 側 1Password agent (`\\.\pipe\openssh-ssh-agent`) を直接利用。
-- `gpg.ssh.program = /mnt/c/Users/<name>/AppData/Local/Microsoft/WindowsApps/op-ssh-sign-wsl.exe` — Microsoft Store 版 1Password が公開する app-alias 経由で SSH commit 署名。
+- `~/.local/bin/op` → `op.exe` (Windows scoop の 1Password CLI)
+- `~/.local/bin/ssh` → `ssh.exe` (Windows OpenSSH。1Password Windows SSH agent と直結)
+- `~/.local/bin/ssh-add` → `ssh-add.exe`
 
-socat / npiperelay のような UNIX socket bridge は不要。
+これらは `dot_local/bin/executable_*` として chezmoi 管理、`.chezmoiignore` で WSL 検出 (`.chezmoi.kernel.osrelease` に `microsoft` を含む) 時だけ deploy される。`mise` の `1password-cli` も WSL では除外 (shim が代替)。
+
+commit 署名は `dot_gitconfig.tmpl` の `gpg.ssh.program` を WSL では `/mnt/c/Users/<name>/AppData/Local/Microsoft/WindowsApps/op-ssh-sign-wsl.exe` (Microsoft Store 版 1Password の app-alias) に切り替え。socat / npiperelay のような UNIX socket bridge は不要。
 
 ### SKK Input (skkeleton + yaskkserv2)
 

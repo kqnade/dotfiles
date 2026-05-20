@@ -1,3 +1,4 @@
+{{- $isWsl := and (eq .chezmoi.os "linux") (contains "microsoft" (.chezmoi.kernel.osrelease | default "" | lower)) -}}
 metapkgs/
 scripts/
 docs/
@@ -6,42 +7,30 @@ README.md
 CLAUDE.md
 dot_config/nvim/README.md
 
-{{- /* Brewfile is for macOS Homebrew only. */ -}}
-{{ if ne .chezmoi.os "darwin" -}}
+# Package-manager manifests live in the repo only; scripts read them via
+# `.chezmoi.sourceDir`, never from $HOME.
 Brewfile
-{{- end }}
-
-{{- /* Dnffile is consumed by scripts/install-linux.sh on Fedora — exclude on non-Fedora. */ -}}
-{{- $id := "" -}}
-{{- if eq .chezmoi.os "linux" -}}
-  {{- $id = (.chezmoi.osRelease.id | default "") -}}
-{{- end }}
-{{ if ne $id "fedora" -}}
 Dnffile
-{{- end }}
+scoopfile.json
 
-{{- /* Files only meaningful on Windows */ -}}
 {{ if ne .chezmoi.os "windows" -}}
 Documents/
-scoopfile.json
-{{- end }}
+{{ end -}}
 
-{{- /* Files only meaningful on Linux / macOS */ -}}
 {{ if eq .chezmoi.os "windows" -}}
 dot_zshrc
 dot_config/zsh/
 dot_config/sheldon/
 dot_config/ghostty/
 dot_config/op/
-{{- end }}
+{{ end -}}
 
-{{- /* Neovim opt-out: strip nvim config and SKK dictionaries when disabled. */ -}}
 {{ if not .features.neovim -}}
 dot_config/nvim/
-{{- end }}
+{{ end -}}
 
-{{- /* WSL-only: ~/.local/bin/op shim that proxies to op.exe. Drop on non-WSL. */ -}}
-{{- $isWsl := and (eq .chezmoi.os "linux") (contains "microsoft" (.chezmoi.kernel.osrelease | default "" | lower)) -}}
 {{ if not $isWsl -}}
 dot_local/bin/executable_op
-{{- end }}
+dot_local/bin/executable_ssh
+dot_local/bin/executable_ssh-add
+{{ end -}}

@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# WSL-only shim — see ./executable_ssh for the rationale.
+exec ssh-add.exe "$@"

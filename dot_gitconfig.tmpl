@@ -36,11 +36,6 @@
 
 [core]
 	pager = delta
-{{- if $isWsl }}
-	# WSL: route SSH ops through Windows OpenSSH so 1Password's Windows SSH
-	# agent is reachable without a UNIX socket bridge.
-	sshCommand = "ssh.exe"
-{{- end }}
 
 [interactive]
 	diffFilter = delta --color-only
