@@ -22,12 +22,6 @@ ca-certificates
 unzip
 fontconfig
 
-# WSL → Windows 1Password SSH agent bridge (paired with scoop npiperelay).
-# 1Password also officially supports the ssh.exe-from-WSL route, but the
-# socat path keeps $SSH_AUTH_SOCK transparent for all native Linux tools
-# (git, ssh, scp, rsync, ...) without per-tool config.
-socat
-
 # Build toolchain (yaskkserv2 cargo build needs a C compiler; cargo itself
 # comes from mise's rust runtime)
 gcc

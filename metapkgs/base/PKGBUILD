@@ -17,9 +17,6 @@ depends=(
   'base-devel'
   'libyaml'
 
-  # WSL → Windows 1Password SSH agent bridge (paired with scoop npiperelay)
-  'socat'
-
   # Fonts + tools used by the font installer script
   'noto-fonts-cjk'
   'ttf-udev-gothic-nf'
