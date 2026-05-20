@@ -9,7 +9,7 @@ vicmd_symbol = "[❮](cyan)"
 
 [os]
 disabled = false
-format = "[$symbol]($style)"
+format = "[$symbol]($style) "
 style = "bold cyan"
 
 [os.symbols]
