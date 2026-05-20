@@ -65,11 +65,14 @@
 [tag]
 	gpgSign = true
 
-[url "https://github.com/"]
-	insteadOf = git://github.com/
+# `ghq get foo/bar` や bare な https clone を全部 SSH に rewrite。
+# 1Password agent (ssh.exe shim 経由) で auth 抜けるので HTTPS の
+# token 入力プロンプトが回避できる。
+[url "git@github.com:"]
+	insteadOf = https://github.com/
 
-[credential "https://github.com"]
-	helper = !gh auth git-credential
+[url "git@gitlab.com:"]
+	insteadOf = https://gitlab.com/
 
 [credential "https://gitlab.com"]
 	helper = !glab auth git-credential
