@@ -48,6 +48,13 @@ tree-sitter = "latest"
 # coscli (Tencent Cloud Object Storage CLI) — custom github backend.
 "github:mtane0412/coscli" = { version = "latest", exe = "cos" }
 
+{{- if eq .chezmoi.os "linux" }}
+# yaskkserv2: macOS は delphinus/yaskkserv2 brew tap で入れる (Apple Silicon
+# 対応バイナリが GitHub release に無いので)。Linux x86_64 は upstream release
+# が出ているので mise github backend で取る。
+"github:wachikun/yaskkserv2" = "latest"
+{{- end }}
+
 # ----------------------------------------------------------------------------
 # Language runtimes + lint/format toolchains
 # ----------------------------------------------------------------------------
