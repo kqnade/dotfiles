@@ -48,7 +48,7 @@ eval "$(mise activate zsh)"
 unset GOBIN
 eval "$(sheldon source)"
 eval "$(starship init zsh)"
-eval "$(zoxide init zsh)"
+eval "$(zoxide init zsh --cmd cd)"
 
 HISTFILE="$HOME/.zsh_history"
 HISTSIZE=100000
