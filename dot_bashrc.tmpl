@@ -110,6 +110,10 @@ if command -v starship &>/dev/null; then
   eval "$(starship init bash)"
 fi
 
+if command -v zoxide &>/dev/null; then
+  eval "$(zoxide init bash)"
+fi
+
 if command -v fzf &>/dev/null; then
   # bash 5.1+ supports `fzf --bash`; older fzf releases ship a separate script.
   if fzf --bash >/dev/null 2>&1; then
