@@ -54,7 +54,12 @@ if ! command -v yaskkserv2 >/dev/null 2>&1 \
   warn "yaskkserv2 binaries not found — expected from mise (github:wachikun/yaskkserv2)."
   warn "Run \`mise install\` then re-run \`chezmoi apply\`."
 {{- end }}
-  exit 0
+  # Exit non-zero so chezmoi does NOT record this run as successful. With
+  # exit 0 the run_onchange state hash would be saved and the script
+  # would be permanently skipped (until its content changes), leaving
+  # dictionary build + service registration undone on fresh machines
+  # where the first apply happens before `mise install`.
+  exit 1
 fi
 
 YASKK_BIN="$(command -v yaskkserv2)"
@@ -72,7 +77,9 @@ done
 if [[ ${#SOURCES[@]} -eq 0 ]]; then
   warn "No SKK-JISYO.* files in $SKK_DIR — chezmoi externals not yet fetched?"
   warn "Run \`chezmoi apply\` to populate them, then re-run this script."
-  exit 0
+  # See the binary-missing branch above: exit non-zero so this script
+  # stays "not yet successfully applied" and retries on the next apply.
+  exit 1
 fi
 
 needs_rebuild=0

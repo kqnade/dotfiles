@@ -10,18 +10,25 @@
 
 set -euo pipefail
 
+# Note on exit codes: chezmoi records a run_onchange script as successful
+# only when it exits 0. Any "skip because prerequisite missing / transient
+# error" path below must exit non-zero, otherwise the script is permanently
+# skipped on this hash even after the prerequisite is satisfied. The only
+# legitimate exit-0 path is "already installed" further down.
+
 if ! command -v fc-list >/dev/null 2>&1; then
   echo "==> fontconfig not installed; skipping UDEVGothic install" >&2
-  exit 0
+  exit 1
 fi
 
 if fc-list 2>/dev/null | grep -qi 'udevgothic'; then
+  # Genuine success: already installed, nothing to do.
   exit 0
 fi
 
 if ! command -v unzip >/dev/null 2>&1; then
   echo "==> unzip not found; skipping UDEVGothic install" >&2
-  exit 0
+  exit 1
 fi
 
 api="https://api.github.com/repos/yuru7/udev-gothic/releases/latest"
@@ -32,7 +39,7 @@ url="$(curl -fsSL "${api}" \
 
 if [[ -z "${url}" ]]; then
   echo "==> Could not resolve UDEVGothic NF release URL; skipping" >&2
-  exit 0
+  exit 1
 fi
 
 font_dir="${HOME}/.local/share/fonts"
