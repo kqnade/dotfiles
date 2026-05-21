@@ -1,0 +1,45 @@
+{
+  "$schema": "https://opencode.ai/tui.json",
+
+  "theme": "none",
+
+  "leader_timeout": 1000,
+
+  "scroll_speed": 2,
+  "scroll_acceleration": {
+    "enabled": false
+  },
+
+  "diff_style": "auto",
+  "mouse": true,
+
+  "attention": {
+    "enabled": true,
+    "notifications": true,
+    "sound": false
+  },
+
+  "keybinds": {
+    "leader": "ctrl+x",
+
+    "command_list": "ctrl+p",
+    "theme_list": "<leader>t",
+
+    "model_list": "<leader>m",
+    "model_provider_list": "ctrl+a",
+    "model_cycle_recent": "f2",
+    "model_cycle_recent_reverse": "shift+f2",
+
+    "agent_list": "<leader>a",
+    "agent_cycle": "tab",
+    "agent_cycle_reverse": "shift+tab",
+
+    "session_new": "<leader>n",
+    "session_list": "<leader>l",
+    "session_compact": "<leader>c",
+    "session_interrupt": "escape",
+
+    "sidebar_toggle": "<leader>b",
+    "editor_open": "<leader>e"
+  }
+}
