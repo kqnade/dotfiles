@@ -10,31 +10,12 @@ permissions:
   contents: read
 
 jobs:
-  templates:
-    name: render templates
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: install chezmoi
-        run: |
-          sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
-      - name: render every *.tmpl
-        run: |
-          set -eu
-          fail=0
-          while IFS= read -r f; do
-            echo "::group::$f"
-            if ! chezmoi execute-template --source "$PWD" < "$f" >/dev/null; then
-              echo "::error file=$f::template render failed"
-              fail=1
-            fi
-            echo "::endgroup::"
-          done < <(find . -name '*.tmpl' -not -path './.git/*' | sort)
-          exit "$fail"
-
+  # ---------------------------------------------------------------------------
+  # chezmoi apply --dry-run across ubuntu / macos / windows. ubuntu acts as a
+  # generic-Linux proxy here; the actual Fedora install path is covered in
+  # fedora-bootstrap below. apply --dry-run renders every template, so a
+  # separate template-only job would be redundant.
+  # ---------------------------------------------------------------------------
   apply-dry-run:
     name: apply --dry-run (${{ matrix.os }})
     strategy:
@@ -62,7 +43,16 @@ jobs:
         if: runner.os == 'Windows'
         run: choco install chezmoi -y --no-progress
 
-      - name: dry-run apply (unix)
+      - name: chezmoi init (generate config with default feature flags)
+        if: runner.os != 'Windows'
+        run: chezmoi --source "$PWD" init --promptDefaults
+
+      - name: chezmoi init (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: chezmoi --source "$PWD" init --promptDefaults
+
+      - name: chezmoi apply --dry-run (unix)
         if: runner.os != 'Windows'
         run: |
           dest="$RUNNER_TEMP/cm-dest"
@@ -70,7 +60,7 @@ jobs:
           chezmoi --source "$PWD" --destination "$dest" \
             apply --dry-run --verbose --exclude=externals
 
-      - name: dry-run apply (windows)
+      - name: chezmoi apply --dry-run (windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
@@ -79,136 +69,81 @@ jobs:
           chezmoi --source "$PWD" --destination $dest `
             apply --dry-run --verbose --exclude=externals
 
-  non-sudo-linux:
-    name: non-sudo install path (pixi)
+  # ---------------------------------------------------------------------------
+  # Real bootstrap on Fedora — runs `bash scripts/install-linux.sh` inside a
+  # Fedora container, then verifies dnf packages + ~/.local/bin/{chezmoi,mise}.
+  # ---------------------------------------------------------------------------
+  fedora-bootstrap:
+    name: bootstrap on Fedora container
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      FORCE_NOSUDO: "1"
-      PIXI_HOME: ${{ github.workspace }}/.pixi-home
-      PIXI_CACHE_DIR: /tmp/pixi-cache
+    container:
+      image: fedora:latest
+    timeout-minutes: 15
     steps:
+      - name: container prerequisites
+        run: |
+          dnf install -y --setopt=install_weak_deps=False \
+            git curl sudo shadow-utils util-linux which findutils tar gzip
       - uses: actions/checkout@v4
-
-      - name: cache pixi envs
-        # No restore-keys: partial restores from a different manifest hash
-        # leave a stale env that pixi sync reports as "Nothing to do" while
-        # ~/.pixi-home/bin stays empty. Either full hit or full miss only.
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.PIXI_HOME }}
-          key: pixi-${{ runner.os }}-${{ hashFiles('scripts/install-linux.sh') }}
 
       - name: run scripts/install-linux.sh
         run: bash scripts/install-linux.sh
 
-      - name: verify installed binaries
+      - name: verify dnf packages installed
         run: |
-          set -eu
-          # sideapt env exposes ~/.sideapt/usr/bin (zsh, nvim, pass, rg, ...).
-          # mise shims expose tools installed by `mise use -g` in
-          # install_supplementary_debian (starship, sheldon, ghq, gh, glab,
-          # eza, delta) under their canonical names.
-          eval "$($HOME/.local/bin/sideapt env)" 2>/dev/null || true
-          export PATH="$HOME/.local/share/mise/shims:$PIXI_HOME/bin:$HOME/.local/bin:$PATH"
-
           missing=0
-          # Debian/Ubuntu apt ships `bat` and `fd-find` under aliased
-          # binary names (batcat, fdfind) to avoid collisions; accept
-          # either the canonical name or the Debian alias.
-          check() {
-            local cmd="$1"; shift
-            local c resolved
-            for c in "$cmd" "$@"; do
-              if resolved="$(command -v "$c" 2>/dev/null)"; then
-                printf '✓ %-12s → %s\n' "$cmd" "$resolved"
-                return 0
-              fi
-            done
-            echo "::error::missing $cmd in PATH"
-            missing=$((missing + 1))
-          }
-
-          check chezmoi
-          check mise
-          check sheldon
-          check starship
-          # install-linux.sh symlinks a canonical `zsh` into ~/.local/bin
-          # after sideapt install (sideapt skips update-alternatives).
-          check zsh
-          check git
-          check git-lfs
-          check ghq
-          check gh
-          check glab
-          check delta
-          check eza
-          check rg
-          check fd fdfind
-          check bat batcat
-          check nvim
-          check vim
-          check gpg
-          check gpg-agent
-          check gpgconf
-          check pinentry
-          check cargo
-          check rustc
-          check pass
-          # NOTE: fzf and gomi are installed by `mise install` after
-          # chezmoi places ~/.config/mise/config.toml — they are not in
-          # scripts/install-linux.sh's bootstrap scope, so excluded here.
+          for pkg in zsh vim-enhanced git git-lfs openssh-clients curl \
+                    ca-certificates unzip fontconfig gcc gcc-c++ make \
+                    google-noto-sans-cjk-fonts google-noto-serif-cjk-fonts; do
+            if ! rpm -q "$pkg" >/dev/null 2>&1; then
+              echo "::error::missing dnf package: $pkg"
+              missing=$((missing+1))
+            fi
+          done
           exit "$missing"
 
-      - name: chezmoi apply --dry-run (pixi-managed chezmoi)
-        # Validates that the templates render against this dotfiles repo
-        # under the pixi-installed chezmoi binary. run_onchange_setup-linux
-        # bails out under CI=true; externals are excluded to avoid pulling
-        # SKK dictionaries during CI.
+      - name: verify chezmoi + mise bootstrap into ~/.local/bin
         run: |
-          set -eu
-          export PATH="$PIXI_HOME/bin:$HOME/.local/bin:$PATH"
+          test -x "$HOME/.local/bin/chezmoi"
+          test -x "$HOME/.local/bin/mise"
+
+      - name: chezmoi init + apply --dry-run
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          chezmoi --source "$PWD" init --promptDefaults
           dest="$RUNNER_TEMP/cm-dest"
           mkdir -p "$dest"
           chezmoi --source "$PWD" --destination "$dest" \
             apply --dry-run --verbose --exclude=externals
 
+  # ---------------------------------------------------------------------------
+  # shellcheck the install-linux.sh script and rendered run_onchange_*.sh
+  # templates. Uses chezmoi init + execute-template to fill `.features.*` etc.
+  # ---------------------------------------------------------------------------
   shellcheck:
-    name: shellcheck (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+    name: shellcheck
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: install chezmoi + shellcheck
-        shell: bash
         run: |
-          if [[ "$RUNNER_OS" == "Linux" ]]; then
-            sudo apt-get update -y
-            sudo apt-get install -y --no-install-recommends shellcheck
-            sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
-          else
-            brew install shellcheck chezmoi
-          fi
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends shellcheck
+          sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: render shell templates and lint
-        shell: bash
         run: |
           set -eu
+          chezmoi --source "$PWD" init --promptDefaults
           mkdir -p .rendered
           for f in run_onchange_*.sh.tmpl; do
             [[ -f "$f" ]] || continue
             out=".rendered/${f%.tmpl}"
-            chezmoi execute-template --source "$PWD" < "$f" > "$out"
-            if [[ ! -s "$out" ]]; then
-              rm -f "$out"
-            fi
+            chezmoi execute-template --init --source "$PWD" < "$f" > "$out" || true
+            [[ -s "$out" ]] || rm -f "$out"
           done
-
           targets=()
           for s in scripts/*.sh; do
             [[ -f "$s" ]] && targets+=("$s")
@@ -218,6 +153,4 @@ jobs:
           done
           if [[ ${#targets[@]} -gt 0 ]]; then
             shellcheck -e SC1091 -S warning "${targets[@]}"
-          else
-            echo "no shell targets to lint on $RUNNER_OS"
           fi

@@ -3,6 +3,8 @@
 	email = git@k4na.de
 	signingkey = ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPRS6ZG6P/46d8Ad9Q1mvaPbnQWFIv2F3MYdp3z2sNNj
 
+{{ $isWsl := and (eq .chezmoi.os "linux") (contains "microsoft" (.chezmoi.kernel.osrelease | default "" | lower)) -}}
+
 [gpg]
 	format = ssh
 
@@ -10,6 +12,8 @@
 	allowedSignersFile = ~/.config/git/allowed_signers
 {{- if eq .chezmoi.os "darwin" }}
 	program = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign"
+{{- else if $isWsl }}
+	program = "/mnt/c/Users/Yuzuki Kana/AppData/Local/Microsoft/WindowsApps/op-ssh-sign-wsl.exe"
 {{- else if eq .chezmoi.os "linux" }}
 	program = "/opt/1Password/op-ssh-sign"
 {{- end }}
@@ -18,7 +22,7 @@
 {{- if eq .chezmoi.os "windows" }}
 	root = Z:/
 {{- else }}
-	root = ~/ghq
+	root = ~/repos
 {{- end }}
 
 [alias]
@@ -61,11 +65,14 @@
 [tag]
 	gpgSign = true
 
-[url "https://github.com/"]
-	insteadOf = git://github.com/
+# `ghq get foo/bar` や bare な https clone を全部 SSH に rewrite。
+# 1Password agent (ssh.exe shim 経由) で auth 抜けるので HTTPS の
+# token 入力プロンプトが回避できる。
+[url "git@github.com:"]
+	insteadOf = https://github.com/
 
-[credential "https://github.com"]
-	helper = !gh auth git-credential
+[url "git@gitlab.com:"]
+	insteadOf = https://gitlab.com/
 
 [credential "https://gitlab.com"]
 	helper = !glab auth git-credential

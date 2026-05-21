@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
-# Bootstrap script for Linux. Auto-detects distribution and sudo availability,
-# then delegates to one of four paths:
+# Bootstrap script for Linux. Auto-detects the distribution and delegates to
+# one of two paths (both require sudo):
 #
-#   1. Arch (+ sudo)             → metapkgs/base via makepkg
-#   2. Debian/Ubuntu (+ sudo)    → apt + Aptfile + supplementary installers
-#   3. Debian/Ubuntu (no sudo)   → sideapt + Aptfile + supplementary installers
-#   4. Other distro (no sudo)    → pixi (conda-forge) under $HOME, fallback
+#   1. Arch    → metapkgs/base via makepkg
+#   2. Fedora  → dnf + Dnffile
+#
+# After system packages are installed, chezmoi and mise are dropped into
+# ~/.local/bin so the user can run `chezmoi init --apply` and `mise install`
+# to materialize the rest of the dev toolchain (which lives entirely in
+# dot_config/mise/config.toml — including language runtimes like rust).
+#
+# Idempotent: re-running is a no-op when everything is already in place.
 #
 # Usage:
-#   bash scripts/install-linux.sh                # auto-detect
-#   FORCE_NOSUDO=1 bash scripts/install-linux.sh # force the no-sudo path
-#
-# This script is intentionally idempotent — re-running it should be a no-op
-# when everything is already installed.
+#   bash scripts/install-linux.sh
 
 set -euo pipefail
 
@@ -23,9 +24,6 @@ log()  { printf '\033[1;36m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m!!\033[0m %s\n' "$*" >&2; }
 die()  { printf '\033[1;31mxx\033[0m %s\n' "$*" >&2; exit 1; }
 
-# ---------------------------------------------------------------------------
-# Detection
-# ---------------------------------------------------------------------------
 detect_distro() {
   if [[ -r /etc/os-release ]]; then
     # shellcheck disable=SC1091
@@ -36,16 +34,13 @@ detect_distro() {
   fi
 }
 
-has_sudo() {
-  [[ "${FORCE_NOSUDO:-0}" == "1" ]] && return 1
-  command -v sudo >/dev/null 2>&1 || return 1
-  sudo -n true >/dev/null 2>&1 && return 0
-  # Allow interactive sudo if a TTY is attached
-  [[ -t 0 ]] && sudo -v >/dev/null 2>&1
+require_sudo() {
+  command -v sudo >/dev/null 2>&1 || die "sudo not found; this dotfiles setup requires sudo on Linux."
+  sudo -v >/dev/null 2>&1 || die "sudo authentication failed."
 }
 
 # ---------------------------------------------------------------------------
-# Path 1: Arch + sudo  → metapkgs/base
+# Arch  → metapkgs/base
 # ---------------------------------------------------------------------------
 install_arch() {
   log "Detected Arch Linux. Building base-env metapackage."
@@ -54,354 +49,40 @@ install_arch() {
 }
 
 # ---------------------------------------------------------------------------
-# Path 2: Debian/Ubuntu + sudo  → apt + supplementary
+# Fedora  → dnf + Dnffile
 # ---------------------------------------------------------------------------
-install_apt_packages() {
+install_fedora() {
+  log "Detected Fedora. Installing system packages via dnf."
+  command -v dnf >/dev/null 2>&1 || die "dnf not found."
+
   local pkgs=()
   while IFS= read -r line; do
     line="${line%%#*}"
     line="$(echo "$line" | xargs)"
     [[ -z "$line" ]] && continue
     pkgs+=("$line")
-  done < Aptfile
+  done < Dnffile
 
-  log "Installing ${#pkgs[@]} apt packages..."
-  sudo apt-get update -y
-  sudo apt-get install -y --no-install-recommends "${pkgs[@]}"
+  log "Installing ${#pkgs[@]} dnf packages..."
+  sudo dnf install -y "${pkgs[@]}"
 }
 
-install_supplementary_debian() {
-  # Tools missing from / outdated in apt: chezmoi, mise, starship, sheldon,
-  # ghq, gh, glab, eza, delta. We install them under $HOME/.local/bin to avoid
-  # touching system paths beyond what apt already changed.
+# ---------------------------------------------------------------------------
+# Common: chezmoi + mise into ~/.local/bin
+# ---------------------------------------------------------------------------
+install_chezmoi_and_mise() {
   local bin="$HOME/.local/bin"
   mkdir -p "$bin"
 
-  if ! command -v chezmoi >/dev/null 2>&1; then
+  if ! command -v chezmoi >/dev/null 2>&1 && [[ ! -x "$bin/chezmoi" ]]; then
     log "Installing chezmoi → $bin"
     sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$bin"
   fi
 
-  if ! command -v mise >/dev/null 2>&1; then
-    log "Installing mise → $HOME/.local/bin"
+  if ! command -v mise >/dev/null 2>&1 && [[ ! -x "$bin/mise" ]]; then
+    log "Installing mise → $bin"
     curl -fsSL https://mise.run | sh
   fi
-
-  # Use mise as a uniform installer for the rest. Requires mise to be on PATH;
-  # since we just installed it, source its activation here.
-  export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
-
-  log "Installing remaining tools via mise (starship, sheldon, ghq, gh, glab, eza, delta)..."
-  mise use -g \
-    starship@latest \
-    sheldon@latest \
-    ghq@latest \
-    gh@latest \
-    glab@latest \
-    eza@latest \
-    delta@latest || warn "Some tools failed via mise — check 'mise doctor'."
-}
-
-install_debian() {
-  log "Detected Debian/Ubuntu with sudo."
-  install_apt_packages
-  install_supplementary_debian
-  install_op_cli
-}
-
-# ---------------------------------------------------------------------------
-# Path 3: Debian/Ubuntu without sudo  → sideapt + Aptfile + supplementary
-# ---------------------------------------------------------------------------
-# sideapt fetches the same .deb packages we would `apt-get install` and
-# extracts them into $HOME/.sideapt/usr. Combined with `install_supplementary_debian`
-# (which already targets $HOME/.local/bin and never invokes sudo), this gives
-# us the same toolchain as the sudo path without root.
-
-install_apt_packages_via_sideapt() {
-  local pkgs=()
-  while IFS= read -r line; do
-    line="${line%%#*}"
-    line="$(echo "$line" | xargs)"
-    [[ -z "$line" ]] && continue
-    pkgs+=("$line")
-  done < Aptfile
-
-  log "Installing ${#pkgs[@]} packages via sideapt..."
-  sideapt install "${pkgs[@]}" \
-    || warn "sideapt install reported failures — packages requiring maintainer scripts/setuid/systemd may be unusable."
-}
-
-install_debian_nosudo() {
-  log "Detected Debian/Ubuntu without sudo — using sideapt."
-  install_sideapt
-  command -v sideapt >/dev/null 2>&1 \
-    || die "sideapt is not on PATH after install — cannot continue."
-  install_apt_packages_via_sideapt
-  _link_sideapt_alternatives
-  install_supplementary_debian
-  install_op_cli
-
-  cat <<EOF
-
-==> Done. sideapt extracted apt packages under \$HOME/.sideapt/usr.
-    Supplementary tools live in \$HOME/.local/bin (and mise's shims).
-    Both are wired in dot_zshrc / dot_bashrc via 'eval "\$(sideapt env)"'.
-
-    Activate the new env in the current shell (or open a new shell) before
-    continuing:
-
-      eval "\$(\$HOME/.local/bin/sideapt env)"
-      export PATH="\$HOME/.local/bin:\$PATH"
-      chezmoi init --source . --apply
-
-    Then, with a GitHub token to avoid anonymous rate limits on mise.
-    NOTE: pipe through 'tr -d' to strip stray whitespace — a trailing
-    newline crashes mise with InvalidHeaderValue at src/github.rs:557.
-
-      export GITHUB_TOKEN="\$(gh auth token | tr -d '[:space:]')"
-      mise install
-EOF
-}
-
-# ---------------------------------------------------------------------------
-# Path 4: No sudo, non-Debian  → pixi (conda-forge) fallback under $HOME
-# ---------------------------------------------------------------------------
-# Build/extract is throw-away (PIXI_CACHE_DIR=/tmp/${USER}-pixi-cache); all
-# permanent artifacts live under $HOME/.pixi. Mirrors Brewfile's tool list.
-# 1Password CLI (`op`) is not on conda-forge — installed separately from the
-# official static binary by install_op_cli below.
-
-install_pixi() {
-  log "No sudo available on a non-Debian host — installing via pixi (cache in /tmp, prefix in \$HOME/.pixi)."
-
-  : "${PIXI_HOME:=$HOME/.pixi}"
-  : "${PIXI_CACHE_DIR:=/tmp/${USER:-$(id -un)}-pixi-cache}"
-  export PIXI_HOME PIXI_CACHE_DIR
-  mkdir -p "$PIXI_CACHE_DIR"
-
-  if ! command -v pixi >/dev/null 2>&1 && [[ ! -x "$PIXI_HOME/bin/pixi" ]]; then
-    log "Installing pixi → $PIXI_HOME"
-    curl -fsSL https://pixi.sh/install.sh | env PIXI_HOME="$PIXI_HOME" PIXI_NO_PATH_UPDATE=1 bash
-  fi
-  export PATH="$PIXI_HOME/bin:$PATH"
-
-  write_pixi_global_manifest "$PIXI_HOME/manifests/pixi-global.toml"
-
-  log "Syncing pixi global environments (this may take a few minutes the first time)..."
-  pixi global sync || warn "pixi global sync had failures — re-run after fixing 'pixi global list'."
-
-  install_op_cli
-
-  cat <<EOF
-
-==> Done. pixi is installed under $PIXI_HOME (build cache: $PIXI_CACHE_DIR).
-
-    \$HOME/.pixi/bin is NOT on PATH in the current shell yet. Next steps:
-
-      export PATH="\$HOME/.pixi/bin:\$HOME/.local/bin:\$PATH"
-      chezmoi init --source . --apply
-      mise install
-
-    After 'chezmoi apply' lays down ~/.bashrc / ~/.zshrc, open a new shell
-    to pick up the PATH automatically.
-EOF
-}
-
-# sideapt: non-root apt wrapper. Clones the repo, builds the bash wrapper
-# into $HOME/.local/bin, and initializes the private apt index under
-# $HOME/.sideapt. Only meaningful on Debian/Ubuntu hosts.
-install_sideapt() {
-  command -v apt-get  >/dev/null 2>&1 || return 0
-  command -v dpkg-deb >/dev/null 2>&1 || return 0
-  command -v git      >/dev/null 2>&1 || { warn "sideapt needs git; skipping."; return 0; }
-  command -v make     >/dev/null 2>&1 || { warn "sideapt needs make; skipping."; return 0; }
-
-  local repo_dir="$HOME/ghq/github.com/kqnade/sideapt"
-  local bin="$HOME/.local/bin"
-  mkdir -p "$bin"
-
-  if [[ ! -d "$repo_dir/.git" ]]; then
-    log "Cloning sideapt → $repo_dir"
-    mkdir -p "$(dirname "$repo_dir")"
-    if ! git clone --depth=1 https://github.com/kqnade/sideapt "$repo_dir"; then
-      warn "sideapt clone failed; skipping."
-      return 0
-    fi
-  else
-    log "Updating sideapt repo (git pull)..."
-    git -C "$repo_dir" pull --ff-only --quiet || warn "sideapt git pull failed; using current checkout."
-  fi
-
-  if [[ ! -x "$bin/sideapt" ]] || [[ "$repo_dir/bin/sideapt" -nt "$bin/sideapt" ]]; then
-    log "Installing sideapt → $bin/sideapt"
-    make -C "$repo_dir" install PREFIX="$HOME/.local" >/dev/null \
-      || { warn "sideapt make install failed."; return 0; }
-  fi
-
-  export PATH="$bin:$PATH"
-  if [[ ! -d "$HOME/.sideapt/apt" ]]; then
-    log "Initializing sideapt (~/.sideapt) and fetching index..."
-    sideapt init   || warn "sideapt init failed"
-    sideapt update || warn "sideapt update failed (apt may be too old; system index will be used)"
-  fi
-
-  # Activate sideapt env so subsequent install steps (and tools chezmoi
-  # invokes from run_onchange scripts) can find gcc/cargo/unzip/etc.
-  eval "$(sideapt env 2>/dev/null)" || true
-  _activate_sideapt_multiarch
-}
-
-# sideapt env exports CPATH=~/.sideapt/usr/include but Debian splits its
-# headers under the multiarch dir (~/.sideapt/usr/include/x86_64-linux-gnu),
-# and libs under ~/.sideapt/usr/lib/x86_64-linux-gnu. Without these, gcc
-# fails on '#include <bits/libc-header-start.h>'. Mirror the same logic in
-# dot_zshrc / dot_bashrc.tmpl and run_onchange scripts.
-_activate_sideapt_multiarch() {
-  local marc
-  marc="$(dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || true)"
-  [[ -z "$marc" ]] && return 0
-  [[ -d "$HOME/.sideapt/usr/include/$marc" ]] \
-    && export CPATH="$HOME/.sideapt/usr/include/$marc:${CPATH-}"
-  [[ -d "$HOME/.sideapt/usr/lib/$marc" ]] \
-    && export LIBRARY_PATH="$HOME/.sideapt/usr/lib/$marc:${LIBRARY_PATH-}"
-  # The trailing `[[ ]] && export` returns non-zero when the dir is absent
-  # (first run, before sideapt installs anything). Under `set -e` that
-  # bubbles up through install_sideapt and kills the script before
-  # sideapt install runs.
-  return 0
-}
-
-# Some Debian/Ubuntu packages register their binary via update-alternatives
-# in postinst (zsh ships as /usr/bin/zsh5 with /usr/bin/zsh as the alternative
-# symlink, etc.). sideapt does not execute maintainer scripts, so the bare
-# canonical names never appear. Plant the symlinks ourselves under
-# ~/.local/bin (already on PATH) so shells, shebangs, and chsh-style consumers
-# find e.g. `zsh` without poking at sideapt's internal layout.
-_link_sideapt_alternatives() {
-  local bin="$HOME/.local/bin"
-  mkdir -p "$bin"
-
-  _link_first_existing() {
-    local linkname="$1"; shift
-    local target
-    for target in "$@"; do
-      if [[ -x "$target" ]]; then
-        ln -sf "$target" "$bin/$linkname"
-        log "Linked $bin/$linkname → $target"
-        return 0
-      fi
-    done
-    warn "could not locate a binary for '$linkname' under \$HOME/.sideapt"
-    return 0
-  }
-
-  _link_first_existing zsh \
-    "$HOME/.sideapt/usr/bin/zsh" \
-    "$HOME/.sideapt/usr/bin/zsh5" \
-    "$HOME/.sideapt/bin/zsh" \
-    "$HOME/.sideapt/bin/zsh5"
-}
-
-write_pixi_global_manifest() {
-  local manifest="$1"
-  mkdir -p "$(dirname "$manifest")"
-  cat > "$manifest" <<'TOML'
-# Generated by scripts/install-linux.sh — edits will be overwritten on re-run.
-version = 1
-
-[envs.cli-tools]
-channels = ["conda-forge"]
-
-[envs.cli-tools.dependencies]
-chezmoi   = "*"
-mise      = "*"
-sheldon   = "*"
-starship  = "*"
-zsh       = "*"
-git       = "*"
-git-lfs   = "*"
-go-ghq    = "*"
-gh        = "*"
-glab      = "*"
-git-delta = "*"
-eza       = "*"
-ripgrep   = "*"
-fd-find   = "*"
-bat       = "*"
-fzf       = "*"
-nvim      = "*"
-vim       = "*"
-gomi      = "*"
-rust      = "*"
-unzip     = "*"
-
-# NOTE: conda-forge `neovim` is the Python client (pynvim); the editor lives
-# in `nvim`. `fzf-tmux` is intentionally NOT exposed — conda-forge `fzf`
-# does not ship that binary, and listing a missing exposable aborts the
-# whole env's expose step.
-[envs.cli-tools.exposed]
-chezmoi           = "chezmoi"
-mise              = "mise"
-sheldon           = "sheldon"
-starship          = "starship"
-zsh               = "zsh"
-git               = "git"
-"git-lfs"         = "git-lfs"
-ghq               = "ghq"
-gh                = "gh"
-glab              = "glab"
-delta             = "delta"
-eza               = "eza"
-rg                = "rg"
-fd                = "fd"
-bat               = "bat"
-fzf               = "fzf"
-nvim              = "nvim"
-vim               = "vim"
-gomi              = "gomi"
-cargo             = "cargo"
-rustc             = "rustc"
-unzip             = "unzip"
-TOML
-}
-
-# 1Password CLI (`op`) is not packaged on conda-forge / pacman / apt by default.
-# Download the official static binary from cache.agilebits.com into
-# $HOME/.local/bin so all four install paths share the same fallback. On hosts
-# where `op` is already provided by the 1Password desktop package or an AUR
-# build, this is a no-op.
-install_op_cli() {
-  command -v op >/dev/null 2>&1 && return 0
-
-  local arch tmp version url
-  case "$(uname -m)" in
-    x86_64|amd64)   arch=amd64 ;;
-    aarch64|arm64)  arch=arm64 ;;
-    *) warn "1Password CLI: unsupported arch $(uname -m); skipping."; return 0 ;;
-  esac
-  command -v curl  >/dev/null 2>&1 || { warn "op install needs curl; skipping.";  return 0; }
-  command -v unzip >/dev/null 2>&1 || { warn "op install needs unzip; skipping."; return 0; }
-
-  log "Fetching latest 1Password CLI version..."
-  version="$(curl -fsSL https://app-updates.agilebits.com/check/1/0/CLI2/en/2000000/N 2>/dev/null \
-             | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1)" || version=""
-  if [[ -z "$version" ]]; then
-    warn "Could not detect latest op version; skipping."
-    return 0
-  fi
-
-  mkdir -p "$HOME/.local/bin"
-  log "Installing 1Password CLI $version → \$HOME/.local/bin/op"
-  tmp="$(mktemp -d)"
-  url="https://cache.agilebits.com/dist/1P/op2/pkg/${version}/op_linux_${arch}_${version}.zip"
-  if curl -fsSL "$url" -o "$tmp/op.zip" \
-     && unzip -q "$tmp/op.zip" -d "$tmp" \
-     && install -m 0755 "$tmp/op" "$HOME/.local/bin/op"; then
-    log "1Password CLI installed."
-  else
-    warn "1Password CLI install failed (URL: $url)."
-  fi
-  rm -rf "$tmp"
 }
 
 # ---------------------------------------------------------------------------
@@ -412,31 +93,38 @@ main() {
   distro="$(detect_distro)"
   log "Distribution: $distro"
 
-  if ! has_sudo; then
-    case "$distro" in
-      ubuntu|debian|linuxmint|pop)
-        install_debian_nosudo
-        ;;
-      *)
-        warn "No sudo on '$distro' — falling back to pixi."
-        install_pixi
-        ;;
-    esac
-    return
-  fi
+  require_sudo
 
   case "$distro" in
     arch|manjaro|endeavouros)
       install_arch
       ;;
-    ubuntu|debian|linuxmint|pop)
-      install_debian
+    fedora|rhel|centos|rocky|almalinux)
+      install_fedora
       ;;
     *)
-      warn "Unrecognized distribution '$distro'. Falling back to pixi path."
-      install_pixi
+      die "Unsupported distribution '$distro'. Only Arch and Fedora are supported."
       ;;
   esac
+
+  install_chezmoi_and_mise
+
+  cat <<EOF
+
+==> System packages installed. Next steps:
+
+    1. Initialize chezmoi (if not already done):
+         export PATH="\$HOME/.local/bin:\$PATH"
+         chezmoi init --source . --apply
+
+    2. Install dev tools (incl. rust for yaskkserv2) via mise:
+         export GITHUB_TOKEN="\$(gh auth token 2>/dev/null | tr -d '[:space:]')"  # optional, avoids GitHub rate limits
+         mise install
+
+    3. Re-run \`chezmoi apply\` so post-install steps (yaskkserv2 build,
+       UDEVGothic font fetch) pick up the freshly-installed mise tools.
+
+EOF
 }
 
 main "$@"

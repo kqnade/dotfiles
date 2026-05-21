@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# WSL-only shim: proxy `ssh` to Windows OpenSSH so 1Password's Windows
+# SSH agent is reachable transparently. Linux ssh in WSL can't talk to
+# the Windows named pipe agent without a socat/npiperelay bridge, and
+# 1Password's WSL story expects ssh.exe usage.
+#
+# Deployed only on WSL via .chezmoiignore.
+exec ssh.exe "$@"

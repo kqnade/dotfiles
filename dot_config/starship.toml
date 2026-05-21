@@ -9,11 +9,12 @@ vicmd_symbol = "[❮](cyan)"
 
 [os]
 disabled = false
-format = "[$symbol]($style)"
+format = "[$symbol]($style) "
 style = "bold cyan"
 
 [os.symbols]
 Arch    = ""  # nf-linux-archlinux
+Fedora  = ""  # nf-linux-fedora
 Ubuntu  = ""  # nf-linux-ubuntu
 Debian  = ""  # nf-linux-debian
 Macos   = ""  # nf-fa-apple

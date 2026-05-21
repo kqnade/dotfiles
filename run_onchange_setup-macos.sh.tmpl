@@ -24,7 +24,7 @@ elif [[ -x /usr/local/bin/brew ]]; then
 fi
 
 log "Running brew bundle..."
-brew bundle --file="${HOME}/Brewfile"
+brew bundle --file="{{ .chezmoi.sourceDir }}/Brewfile"
 
 # ---------------------------------------------------------------------------
 # macOS defaults

@@ -1,37 +1,57 @@
 # dotfiles
 
-**chezmoi** で管理する、Arch Linux / Ubuntu (Debian) / macOS / Windows 対応の宣言的な環境設定群。Colemak キーボードレイアウト最適化済み。
+**chezmoi** で管理する、Fedora / Arch Linux / macOS / Windows 対応のミニマル dotfiles。Colemak 配列最適化。
+
+## 設計思想
+
+OS パッケージマネージャは「**シェル・git・ビルドツールチェイン・フォント・常駐サービス**」だけを持ち、開発ツール (chezmoi 自体, sheldon, starship, ghq, gh, glab, eza, fd, ripgrep, bat, fzf, delta, gomi, neovim, lazygit, 言語ランタイム…) はすべて [**mise**](https://mise.jdx.dev) に集約。これで OS 横断のパリティ問題が消える。
 
 ## プラットフォーム別インストール経路
 
-| 環境 | パッケージ管理 | 一発インストール | ドキュメント |
-|------|----------------|------------------|--------------|
-| Arch Linux (sudo) | pacman + 自作 metapackage `base-env` | `cd metapkgs/base && makepkg -si` | [docs/setup-linux.md](docs/setup-linux.md) |
-| Ubuntu / Debian (sudo) | `apt` + `Aptfile`、補助は mise | `bash scripts/install-linux.sh` | [docs/setup-linux.md](docs/setup-linux.md) |
-| 非 sudo Debian / Ubuntu | [**sideapt**](https://github.com/kqnade/sideapt) + `Aptfile` を `~/.sideapt/usr` に非 root 展開、補助は sudo 経路と同じ supplementary installer | `FORCE_NOSUDO=1 bash scripts/install-linux.sh` | [docs/setup-linux.md](docs/setup-linux.md) |
-| 非 sudo その他 distro | pixi (conda-forge) を `~/.pixi` にインストールするフォールバック | `FORCE_NOSUDO=1 bash scripts/install-linux.sh` | [docs/setup-linux.md](docs/setup-linux.md) |
-| macOS | Homebrew + `Brewfile` | `brew bundle` | [docs/setup-macos.md](docs/setup-macos.md) |
-| Windows (PowerShell 7) | scoop + `scoopfile.json` | `chezmoi apply` で自動 | [docs/setup-windows.md](docs/setup-windows.md) |
+| 環境 | OS パッケージ | 一発インストール |
+|------|---------------|------------------|
+| **Fedora** (primary) | `dnf` + `Dnffile` | `bash scripts/install-linux.sh` |
+| Arch Linux | pacman + 自作 metapackage `base-env` | `bash scripts/install-linux.sh` |
+| macOS | Homebrew + `Brewfile` | `brew bundle` |
+| Windows (PowerShell 7) | scoop + `scoopfile.json` | `chezmoi apply` で自動 |
 
-`scripts/install-linux.sh` は `/etc/os-release` と sudo 利用可否を自動判定して上記 4 経路に分岐します。`FORCE_NOSUDO=1` で sudo を強制的に無視可能。非 sudo な Debian/Ubuntu では `sideapt`（`apt download` + `dpkg-deb -x` を `~/.sideapt/usr` 配下に展開する非 root ラッパ）を `~/.local/bin` にビルドし、`Aptfile` のパッケージをそのまま `sideapt install` で導入します。pixi は Debian/Ubuntu 以外の distro でしか sudo が取れない時の最終手段として残しています。
+Linux はいずれも sudo 必須。`scripts/install-linux.sh` は `/etc/os-release` を読んで `arch` / `fedora` (含む `rhel`/`centos`/`rocky`/`almalinux`) に分岐し、続いて `chezmoi` と `mise` を `~/.local/bin` に投下する。
+
+> **削除されたサポート対象**: Debian/Ubuntu (apt), sideapt (非sudo apt), pixi (conda-forge フォールバック)。
 
 ## 概要
 
-Zsh / PowerShell, Vim / Neovim, Git などのツールを一貫したモダン環境として構築するための設定。
-
-主な特徴：
-
 * **chezmoi**: テンプレートと OS 分岐で 1 リポジトリから 4 OS に展開。
-* **mise**: CLI ツールおよびランタイムのバージョン管理。
-* **sheldon**: Zsh プラグインの高速管理（Linux/macOS）。
+* **mise**: 開発ツールおよび言語ランタイムの統一バージョン管理。aqua/github/npm/pipx/cargo/go backend を扱える。
+* **sheldon**: Zsh プラグインの高速管理 (Linux/macOS)。
 * **starship**: 全 OS 共通のプロンプト。
-* **Vim/Neovim**: Colemak 配列に最適化されたキーバインド。
+* **Vim/Neovim**: Colemak 配列に最適化されたキーバインド (Neovim はオプトアウト)。
+* **yaskkserv2**: macSKK / Neovim skkeleton から共用するローカル SKK 辞書サーバ。
 
-詳細は [docs/features.md](docs/features.md) を参照。
+## 新環境セットアップ (Fedora 例)
+
+```bash
+# 1. リポジトリ取得
+git clone https://github.com/kqnade/dotfiles ~/repos/github.com/kqnade/dotfiles
+cd ~/repos/github.com/kqnade/dotfiles
+
+# 2. システムパッケージ + chezmoi + mise
+bash scripts/install-linux.sh
+
+# 3. chezmoi 適用 (Neovim を入れるか聞かれる)
+export PATH="$HOME/.local/bin:$PATH"
+chezmoi init --source . --apply
+
+# 4. mise で残りの開発ツール
+mise install
+
+# 5. yaskkserv2 のビルド・サービス登録のため再適用
+chezmoi apply
+```
 
 ## ドキュメント
 
-* [docs/setup-linux.md](docs/setup-linux.md) — Arch / Ubuntu / 非 sudo (sideapt + pixi フォールバック)
+* [docs/setup-linux.md](docs/setup-linux.md) — Fedora / Arch
 * [docs/setup-macos.md](docs/setup-macos.md) — macOS
 * [docs/setup-windows.md](docs/setup-windows.md) — Windows (PowerShell 7 + scoop)
 * [docs/features.md](docs/features.md) — Zsh / PowerShell / Vim / Neovim / Git の機能と設定

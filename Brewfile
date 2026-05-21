@@ -1,42 +1,23 @@
-# macOS Homebrew Brewfile.
-# Non-sudo Linux uses pixi (conda-forge) instead — see scripts/install-linux.sh.
+# macOS Homebrew Brewfile — chezmoi template.
+# Scope: shell + system tools that mise can't (or shouldn't) handle. Everything
+# else (sheldon, starship, ghq, gh, glab, eza, fd, ripgrep, bat, fzf, delta,
+# gomi, neovim, lazygit, 1password-cli, language runtimes) lives in
+# dot_config/mise/config.toml. chezmoi and mise themselves are bootstrapped
+# from get.chezmoi.io and mise.run into ~/.local/bin.
 
-# Core environment
-brew "chezmoi"
-brew "mise"
-brew "sheldon"
-
-# Shell
+# Newer shell + system editor than what macOS ships with
 brew "zsh"
-
-# Version control
-brew "git"
-brew "git-delta"
-brew "git-lfs"
-brew "gh"
-brew "glab"
-brew "ghq"
-
-# Editors
 brew "vim"
-brew "neovim"
 
-# Secrets / SSH
-cask "1password-cli"
+# Newer git than Apple Xcode CLI provides
+brew "git"
+brew "openssh"
 
-# CLI tools
-brew "gomi"
-brew "ripgrep"
-brew "fd"
-brew "bat"
-brew "eza"
-brew "fzf"
-brew "starship"
-
-# Fonts
+# Primary monospace font (also installed on Linux via run_onchange_after_install-fonts.sh)
 cask "font-udev-gothic"
 
-# SKK dictionary server (delphinus/yaskkserv2 tap, HEAD build).
-# Brew handles rust as a build-only dependency internally.
+# SKK dictionary server — used by macSKK (always) and by Neovim's skkeleton
+# (when features.neovim is on). delphinus/yaskkserv2 tap, HEAD build; brew
+# handles the rust build dep internally.
 tap "delphinus/yaskkserv2"
 brew "delphinus/yaskkserv2/yaskkserv2", args: ["HEAD"]

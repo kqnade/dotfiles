@@ -1,0 +1,33 @@
+# Fedora dnf packages (parallel to Brewfile and metapkgs/base/PKGBUILD).
+# Consumed by scripts/install-linux.sh on the Fedora path.
+# One package per line; '#' starts a comment.
+#
+# Scope: only OS-level tools that mise can't (or shouldn't) manage —
+# the shell, system git, build toolchain for yaskkserv2, fonts. Everything
+# else (chezmoi, sheldon, starship, ghq, gh, glab, eza, fd, rg, bat, fzf,
+# delta, gomi, neovim, language runtimes) lives in dot_config/mise/config.toml.
+
+# Shell + system editors
+zsh
+vim-enhanced
+
+# Version control
+git
+git-lfs
+openssh-clients
+
+# Core CLI utilities (mise needs these to bootstrap)
+curl
+ca-certificates
+unzip
+fontconfig
+
+# Build toolchain (yaskkserv2 cargo build needs a C compiler; cargo itself
+# comes from mise's rust runtime)
+gcc
+gcc-c++
+make
+
+# CJK fonts (UDEVGothic NF is fetched separately by run_onchange_after_install-fonts.sh)
+google-noto-sans-cjk-fonts
+google-noto-serif-cjk-fonts

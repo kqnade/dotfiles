@@ -1,19 +1,17 @@
 {{- if eq .chezmoi.os "linux" -}}
 #!/usr/bin/env bash
 # Linux bootstrap: delegates to scripts/install-linux.sh for distro-aware
-# package installation. Branches by distro + sudo availability:
-#   - Arch + sudo            → metapkgs/base via makepkg
-#   - Debian/Ubuntu + sudo   → apt + Aptfile + supplementary
-#   - Debian/Ubuntu no sudo  → sideapt + Aptfile + supplementary
-#   - Other distro no sudo   → pixi (conda-forge) fallback
+# package installation. Branches by distro (sudo required on both):
+#   - Arch    → metapkgs/base via makepkg
+#   - Fedora  → dnf + Dnffile
 #
-# Skipped in CI or any non-interactive context because the sudo paths
-# would block on a password prompt.
+# Skipped in CI or any non-interactive context because the sudo prompt
+# would block.
 #
 # Re-runs whenever any source manifest below changes. Brewfile is excluded
 # because it's macOS-only.
 # install-linux.sh: {{ include "scripts/install-linux.sh" | sha256sum }}
-# Aptfile:          {{ include "Aptfile" | sha256sum }}
+# Dnffile:          {{ include "Dnffile" | sha256sum }}
 # PKGBUILD:         {{ include "metapkgs/base/PKGBUILD" | sha256sum }}
 
 set -euo pipefail

@@ -1,3 +1,4 @@
+{{- $isWsl := and (eq .chezmoi.os "linux") (contains "microsoft" (.chezmoi.kernel.osrelease | default "" | lower)) -}}
 metapkgs/
 scripts/
 docs/
@@ -6,34 +7,30 @@ README.md
 CLAUDE.md
 dot_config/nvim/README.md
 
-{{- /* Brewfile is for macOS Homebrew or non-sudo Linux Linuxbrew. */ -}}
-{{ if eq .chezmoi.os "windows" -}}
+# Package-manager manifests live in the repo only; scripts read them via
+# `.chezmoi.sourceDir`, never from $HOME.
 Brewfile
-{{- end }}
+Dnffile
+scoopfile.json
 
-{{- /* Aptfile is only meaningful on Debian-family distributions. */ -}}
-{{ if ne .chezmoi.os "linux" -}}
-Aptfile
-{{- end }}
-{{- $id := "" -}}{{- $idLike := "" -}}
-{{- if eq .chezmoi.os "linux" -}}
-  {{- $id = (.chezmoi.osRelease.id | default "") -}}
-  {{- $idLike = (index .chezmoi.osRelease "idLike" | default "") -}}
-{{- end }}
-{{ if and (eq .chezmoi.os "linux") (not (or (eq $id "ubuntu") (eq $id "debian") (contains "debian" $idLike))) -}}
-Aptfile
-{{ end }}
-{{- /* Files only meaningful on Windows */ -}}
 {{ if ne .chezmoi.os "windows" -}}
 Documents/
-scoopfile.json
-{{- end }}
+{{ end -}}
 
-{{- /* Files only meaningful on Linux / macOS */ -}}
 {{ if eq .chezmoi.os "windows" -}}
 dot_zshrc
 dot_config/zsh/
 dot_config/sheldon/
 dot_config/ghostty/
 dot_config/op/
-{{- end }}
+{{ end -}}
+
+{{ if not .features.neovim -}}
+dot_config/nvim/
+{{ end -}}
+
+{{ if not $isWsl -}}
+dot_local/bin/executable_op
+dot_local/bin/executable_ssh
+dot_local/bin/executable_ssh-add
+{{ end -}}

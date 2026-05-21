@@ -1,35 +1,36 @@
 pkgname=base-env
-pkgver=20260513
+pkgver=20260520
 pkgrel=1
-pkgdesc="My declarative base environment"
+pkgdesc="My declarative base environment — OS-level deps only; dev tools live in mise"
 arch=('any')
 depends=(
-  'mise'
-  'libyaml'
-  'ghq'
+  # Shell + system editor
   'zsh'
-  'chezmoi'
   'vim'
-  'neovim'
-  'sheldon'
-  'git-delta'
-  'git-lfs'
-  'github-cli'
-  'glab'
-  'openssh'
-  'rust'
-)
-# Note: 1Password CLI (`op`) lives in AUR (`1password-cli`) and is not
-# installable via pacman alone. Install it manually with an AUR helper
-# (e.g. `yay -S 1password-cli`) or install the 1Password Linux desktop
-# package which bundles it. The supplementary installer in
-# scripts/install-linux.sh also drops a static `op` binary into
-# ~/.local/bin as a fallback.
-# Note: UDEVGothic NF is installed by run_onchange_after_install-fonts.sh
-# (downloaded from yuru7/udev-gothic releases) — keeps Arch + sudo path on
-# pacman-only deps without requiring an AUR helper.
 
-# Always use latest versions
+  # Version control & SSH
+  'git'
+  'git-lfs'
+  'openssh'
+
+  # Build toolchain for source builds (yaskkserv2 via cargo)
+  'base-devel'
+  'libyaml'
+
+  # Fonts + tools used by the font installer script
+  'noto-fonts-cjk'
+  'ttf-udev-gothic-nf'
+  'fontconfig'
+  'unzip'
+)
+# Notes:
+# - chezmoi, mise, sheldon, starship, ghq, gh, glab, delta, gomi, neovim,
+#   eza/fd/ripgrep/bat/fzf, lazygit, 1password-cli, and all language runtimes
+#   (including rust for yaskkserv2) are managed by mise — see
+#   dot_config/mise/config.toml. The bootstrap script installs chezmoi + mise
+#   into ~/.local/bin before chezmoi apply runs.
+
+# Always use the latest versions
 pkgver() {
   date +%Y%m%d
 }
