@@ -1,6 +1,12 @@
 # Global mise config — single source of truth for dev tools across all OSes.
 # OS package managers (dnf / pacman / brew) only carry shell + git + build
 # toolchain + fonts + system services. Everything else lives here.
+#
+# Intel Mac (darwin/amd64) は aqua レジストリが atuin/delta/sheldon/btop の
+# darwin/amd64 バイナリを持たないため、それらは Brewfile 側 (`Hardware::CPU.intel?`
+# ガード) で補う。下の条件分岐で mise から除外する。
+{{- $isIntelMac := and (eq .chezmoi.os "darwin") (eq .chezmoi.arch "amd64") }}
+
 [tools]
 
 # ----------------------------------------------------------------------------
@@ -10,12 +16,16 @@
 #  it current after bootstrap.)
 # ----------------------------------------------------------------------------
 chezmoi = "latest"
+{{- if not $isIntelMac }}
 sheldon = "latest"
+{{- end }}
 starship = "latest"
 ghq = "latest"
 gh = "latest"
 git-lfs = "latest"
+{{- if not $isIntelMac }}
 delta = "latest"
+{{- end }}
 difftastic = "latest"
 gitleaks = "latest"
 
@@ -39,8 +49,10 @@ xh = "latest"
 yq = "latest"
 jq = "latest"
 just = "latest"
+{{- if not $isIntelMac }}
 atuin = "latest"
 btop = "latest"
+{{- end }}
 duf = "latest"
 dust = "latest"
 watchexec = "latest"

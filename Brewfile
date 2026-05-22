@@ -21,3 +21,13 @@ cask "font-udev-gothic"
 # handles the rust build dep internally.
 tap "delphinus/yaskkserv2"
 brew "delphinus/yaskkserv2/yaskkserv2", args: ["HEAD"]
+
+# Intel Mac (darwin/amd64) fallbacks — mise の aqua レジストリが Intel Mac
+# バイナリを公開していないツール群。Apple Silicon では mise (aqua) が解決
+# するためここでは入れない。`delta` の brew formula 名は `git-delta`。
+if Hardware::CPU.intel?
+  brew "atuin"
+  brew "btop"
+  brew "git-delta"
+  brew "sheldon"
+end
