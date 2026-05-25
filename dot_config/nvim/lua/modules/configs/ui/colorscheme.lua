@@ -1,43 +1,34 @@
 -- ╭──────────────────────────────────────────────────────────╮
--- │                      Colorscheme                          │
--- │                      Catppuccin                           │
+-- │                      Colorscheme                         │
+-- │                       Kanagawa                           │
 -- ╰──────────────────────────────────────────────────────────╯
 
-require("catppuccin").setup({
-  flavour = "mocha",
-  transparent_background = true,
-  custom_highlights = function()
-    return {
-      NormalFloat = { bg = "NONE" },
-      FloatBorder = { bg = "NONE" },
-      StatusLine = { bg = "NONE" },
-      StatusLineNC = { bg = "NONE" },
-    }
-  end,
-  styles = {
-    comments = { "italic" },
-    conditionals = { "italic" },
-    keywords = { "bold", "italic" },
+require("kanagawa").setup({
+  transparent_background = false,
+  undercurl = true,
+  commentStyle = { italic = true },
+  keywordStyle = { bold = true, italic = true },
+  statementStyle = { bold = true },
+  typeStyle = { bold = true },
+  variablebuiltinStyle = { italic = true },
+  specialReturn = true,
+  specialException = true,
+  colors = {
+    palette = {},
+    theme = {},
   },
-  integrations = {
-    cmp = true,
-    gitsigns = true,
-    mason = true,
-    neotest = true,
-    notify = true,
-    treesitter = true,
-    telescope = { enabled = true },
-    which_key = true,
-    native_lsp = {
-      enabled = true,
-      underlines = {
-        errors = { "undercurl" },
-        hints = { "undercurl" },
-        warnings = { "undercurl" },
-        information = { "undercurl" },
-      },
-    },
+  overrides = function(colors)
+    return {}
+  end,
+  theme = "wave",
+  background = {
+    dark = "wave",
+    light = "lotus",
   },
 })
 
-vim.cmd("colorscheme catppuccin")
+if vim.o.background == "light" then
+  vim.cmd("colorscheme kanagawa-lotus")
+else
+  vim.cmd("colorscheme kanagawa-wave")
+end
