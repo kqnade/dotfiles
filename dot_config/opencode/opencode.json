@@ -35,79 +35,88 @@
 
   "lsp": {
     "bash": {
-      "command": "bash-language-server",
-      "args": ["start"]
+      "command": ["bash-language-server", "start"],
+      "extensions": [".sh", ".bash", ".zsh"]
     },
     "clojure": {
-      "command": "clojure-lsp"
+      "command": ["clojure-lsp"],
+      "extensions": [".clj", ".cljs", ".cljc", ".edn"]
     },
     "cpp": {
-      "command": "clangd"
+      "command": ["clangd"],
+      "extensions": [".c", ".cpp", ".cc", ".cxx", ".h", ".hpp", ".hxx"]
     },
     "csharp": {
-      "command": "omnisharp"
+      "command": ["omnisharp"],
+      "extensions": [".cs", ".csx"]
     },
     "css": {
-      "command": "vscode-css-language-server",
-      "args": ["--stdio"]
+      "command": ["vscode-css-language-server", "--stdio"],
+      "extensions": [".css", ".scss", ".less"]
     },
     "dockerfile": {
-      "command": "docker-langserver",
-      "args": ["--stdio"]
+      "command": ["docker-langserver", "--stdio"],
+      "extensions": [".dockerfile"]
     },
     "go": {
-      "command": "gopls"
+      "command": ["gopls"],
+      "extensions": [".go"]
     },
     "html": {
-      "command": "vscode-html-language-server",
-      "args": ["--stdio"]
+      "command": ["vscode-html-language-server", "--stdio"],
+      "extensions": [".html", ".htm"]
     },
     "java": {
-      "command": "jdtls"
+      "command": ["jdtls"],
+      "extensions": [".java"]
     },
     "javascript": {
-      "command": "typescript-language-server",
-      "args": ["--stdio"]
+      "command": ["typescript-language-server", "--stdio"],
+      "extensions": [".js", ".jsx", ".mjs", ".cjs"]
     },
     "json": {
-      "command": "vscode-json-language-server",
-      "args": ["--stdio"]
+      "command": ["vscode-json-language-server", "--stdio"],
+      "extensions": [".json"]
     },
     "jsonc": {
-      "command": "vscode-json-language-server",
-      "args": ["--stdio"]
+      "command": ["vscode-json-language-server", "--stdio"],
+      "extensions": [".jsonc"]
     },
     "kotlin": {
-      "command": "kotlin-language-server"
+      "command": ["kotlin-language-server"],
+      "extensions": [".kt", ".kts"]
     },
     "lua": {
-      "command": "lua-language-server"
+      "command": ["lua-language-server"],
+      "extensions": [".lua"]
     },
     "powershell": {
-      "command": "powershell-editor-services",
-      "args": ["--stdio"]
+      "command": ["powershell-editor-services", "--stdio"],
+      "extensions": [".ps1", ".psm1", ".psd1"]
     },
     "python": {
-      "command": "pyright-langserver",
-      "args": ["--stdio"]
+      "command": ["pyright-langserver", "--stdio"],
+      "extensions": [".py", ".pyi"]
     },
     "ruby": {
-      "command": "ruby-lsp"
+      "command": ["ruby-lsp"],
+      "extensions": [".rb", ".rake", ".gemspec"]
     },
     "rust": {
-      "command": "rust-analyzer"
+      "command": ["rust-analyzer"],
+      "extensions": [".rs"]
     },
     "tailwindcss": {
-      "command": "tailwindcss-language-server",
-      "args": ["--stdio"]
+      "command": ["tailwindcss-language-server", "--stdio"],
+      "extensions": [".css", ".html", ".jsx", ".tsx", ".vue"]
     },
     "typescript": {
-      "command": "typescript-language-server",
-      "args": ["--stdio"]
+      "command": ["typescript-language-server", "--stdio"],
+      "extensions": [".ts", ".tsx", ".mts", ".cts"]
     },
     "yaml": {
-      "command": "yaml-language-server",
-      "args": ["--stdio"]
+      "command": ["yaml-language-server", "--stdio"],
+      "extensions": [".yaml", ".yml"]
     }
   }
 }
