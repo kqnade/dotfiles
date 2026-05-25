@@ -30,4 +30,5 @@ if Hardware::CPU.intel?
   brew "btop"
   brew "git-delta"
   brew "sheldon"
+  brew "fd"
 end

@@ -2,7 +2,7 @@
 # OS package managers (dnf / pacman / brew) only carry shell + git + build
 # toolchain + fonts + system services. Everything else lives here.
 #
-# Intel Mac (darwin/amd64) は aqua レジストリが atuin/delta/sheldon/btop の
+# Intel Mac (darwin/amd64) は aqua レジストリが atuin/delta/sheldon/btop/fd の
 # darwin/amd64 バイナリを持たないため、それらは Brewfile 側 (`Hardware::CPU.intel?`
 # ガード) で補う。下の条件分岐で mise から除外する。
 {{- $isIntelMac := and (eq .chezmoi.os "darwin") (eq .chezmoi.arch "amd64") }}
@@ -40,7 +40,9 @@ gitleaks = "latest"
 # ----------------------------------------------------------------------------
 eza = "latest"
 fzf = "latest"
+{{- if not $isIntelMac }}
 fd = "latest"
+{{- end }}
 ripgrep = "latest"
 bat = "latest"
 zoxide = "latest"
