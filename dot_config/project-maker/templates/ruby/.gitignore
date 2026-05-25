@@ -1,0 +1,6 @@
+*.gem
+.bundle/
+vendor/
+Gemfile.lock
+.idea/
+.vscode/

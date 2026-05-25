@@ -1,0 +1,5 @@
+[tools]
+go = "latest"
+gofumpt = "latest"
+goimports = "latest"
+golangci-lint = "latest"

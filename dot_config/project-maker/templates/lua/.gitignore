@@ -1,0 +1,4 @@
+*.luac
+.luarocks/
+.idea/
+.vscode/
