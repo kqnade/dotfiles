@@ -91,16 +91,17 @@ typos = "latest"
 # ----------------------------------------------------------------------------
 # LSP servers (shared by nvim + opencode)
 # ----------------------------------------------------------------------------
-rust-analyzer = "latest"
-lua-language-server = "latest"
-gopls = "latest"
-typescript-language-server = "latest"
-vscode-langservers-extracted = "latest"
-yaml-language-server = "latest"
-bash-language-server = "latest"
-pyright = "latest"
-dockerfile-language-server-nodejs = "latest"
-tailwindcss-language-server = "latest"
+# rust-analyzer is managed by rustup (`rustup component add rust-analyzer`)
+# after `mise install rust`.
+"aqua:LuaLS/lua-language-server" = "latest"
+"aqua:golang.org/x/tools/gopls" = "latest"
+"npm:typescript-language-server" = "latest"
+"npm:vscode-langservers-extracted" = "latest"
+"npm:yaml-language-server" = "latest"
+"npm:bash-language-server" = "latest"
+"npm:pyright" = "latest"
+"npm:dockerfile-language-server-nodejs" = "latest"
+"npm:@tailwindcss/language-server" = "latest"
 "github:clojure-lsp/clojure-lsp" = "latest"
 "github:fwcd/kotlin-language-server" = "latest"
 
