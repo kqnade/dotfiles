@@ -67,6 +67,9 @@ tree-sitter = "latest"
 # coscli (Tencent Cloud Object Storage CLI) — custom github backend.
 "github:mtane0412/coscli" = { version = "latest", exe = "cos" }
 
+# pingu — ping, but cuter
+go:github.com/sheepla/pingu = "latest"
+
 {{- if eq .chezmoi.os "linux" }}
 # yaskkserv2: macOS は delphinus/yaskkserv2 brew tap で入れる (Apple Silicon
 # 対応バイナリが GitHub release に無いので)。Linux x86_64 は upstream release
