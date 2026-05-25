@@ -31,5 +31,83 @@
   "instructions": [
     "AGENTS.md",
     ".cursor/rules/*.md"
-  ]
+  ],
+
+  "lsp": {
+    "bash": {
+      "command": "bash-language-server",
+      "args": ["start"]
+    },
+    "clojure": {
+      "command": "clojure-lsp"
+    },
+    "cpp": {
+      "command": "clangd"
+    },
+    "csharp": {
+      "command": "omnisharp"
+    },
+    "css": {
+      "command": "vscode-css-language-server",
+      "args": ["--stdio"]
+    },
+    "dockerfile": {
+      "command": "docker-langserver",
+      "args": ["--stdio"]
+    },
+    "go": {
+      "command": "gopls"
+    },
+    "html": {
+      "command": "vscode-html-language-server",
+      "args": ["--stdio"]
+    },
+    "java": {
+      "command": "jdtls"
+    },
+    "javascript": {
+      "command": "typescript-language-server",
+      "args": ["--stdio"]
+    },
+    "json": {
+      "command": "vscode-json-language-server",
+      "args": ["--stdio"]
+    },
+    "jsonc": {
+      "command": "vscode-json-language-server",
+      "args": ["--stdio"]
+    },
+    "kotlin": {
+      "command": "kotlin-language-server"
+    },
+    "lua": {
+      "command": "lua-language-server"
+    },
+    "powershell": {
+      "command": "powershell-editor-services",
+      "args": ["--stdio"]
+    },
+    "python": {
+      "command": "pyright-langserver",
+      "args": ["--stdio"]
+    },
+    "ruby": {
+      "command": "ruby-lsp"
+    },
+    "rust": {
+      "command": "rust-analyzer"
+    },
+    "tailwindcss": {
+      "command": "tailwindcss-language-server",
+      "args": ["--stdio"]
+    },
+    "typescript": {
+      "command": "typescript-language-server",
+      "args": ["--stdio"]
+    },
+    "yaml": {
+      "command": "yaml-language-server",
+      "args": ["--stdio"]
+    }
+  }
 }
