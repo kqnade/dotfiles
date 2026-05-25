@@ -58,3 +58,7 @@ if command -v eza >/dev/null 2>&1; then
   alias la='eza -a --icons --git'
   alias lt='eza -T --icons --git'
 fi
+
+if command -v pingu >/dev/null 2>&1; then
+  alias ping='pingu'
+fi
