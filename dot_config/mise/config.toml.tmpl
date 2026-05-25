@@ -68,7 +68,9 @@ tree-sitter = "latest"
 "github:mtane0412/coscli" = { version = "latest", exe = "cos" }
 
 # pingu — ping, but cuter
-"go:github.com/sheepla/pingu" = "latest"
+# NOTE: go install github.com/sheepla/pingu fails on some Go versions
+# due to golang.org/x/net/internal/socket build issues.
+# Install manually if needed: go install github.com/sheepla/pingu@latest
 
 {{- if eq .chezmoi.os "linux" }}
 # yaskkserv2: macOS は delphinus/yaskkserv2 brew tap で入れる (Apple Silicon
