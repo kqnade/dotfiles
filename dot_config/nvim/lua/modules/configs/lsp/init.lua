@@ -333,15 +333,30 @@ local servers = {
   -- JSON
   jsonls = {
     on_init = function(client)
+      local schemas = {}
       local ok_schema, schemastore = pcall(require, "schemastore")
       if ok_schema then
-        client.config.settings = {
-          json = {
-            schemas = schemastore.json.schemas(),
-            validate = { enable = true },
-          },
-        }
+        schemas = schemastore.json.schemas()
       end
+      -- opencode config schemas
+      table.insert(schemas, {
+        description = "OpenCode configuration",
+        fileMatch = { "opencode.json", ".opencode/opencode.json" },
+        name = "opencode.json",
+        url = "https://opencode.ai/config.json",
+      })
+      table.insert(schemas, {
+        description = "OpenCode TUI configuration",
+        fileMatch = { "tui.json", ".opencode/tui.json" },
+        name = "tui.json",
+        url = "https://opencode.ai/tui.json",
+      })
+      client.config.settings = {
+        json = {
+          schemas = schemas,
+          validate = { enable = true },
+        },
+      }
     end,
   },
 
