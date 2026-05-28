@@ -13,6 +13,9 @@ brew 'vim'
 brew 'git'
 brew 'openssh'
 
+# Modern top
+brew 'btop'
+
 # Latex Env
 cask 'mactex-no-gui'
 

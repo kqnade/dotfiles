@@ -51,9 +51,11 @@ xh = "latest"
 yq = "latest"
 jq = "latest"
 just = "latest"
+{{- if eq .chezmoi.os "linux"}}
+btop = "latest"
+{{- end }}
 {{- if not $isIntelMac }}
 atuin = "latest"
-btop = "latest"
 {{- end }}
 duf = "latest"
 dust = "latest"
