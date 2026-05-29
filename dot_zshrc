@@ -70,3 +70,9 @@ zstyle ':fzf-tab:*' fzf-flags --height=40% --layout=reverse --border
 zstyle ':fzf-tab:complete: cd:*' fzf-preview 'ls -la $realpath'
 
 for f in ~/.config/zsh/**/*.zsh(N); do source $f; done
+
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  if [[ -x /User/kqnade/.kimi-code ]]; then
+    export PATH="/Users/kqnade/.kimi-code/bin:$PATH"
+  fi
+fi
