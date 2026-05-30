@@ -76,3 +76,6 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
     export PATH="/Users/kqnade/.kimi-code/bin:$PATH"
   fi
 fi
+if [[ -x /home/kqnade/.kimi-code/bin ]]; then
+  export PATH=" /home/kqnade/.kimi-code/bin:$PATH"
+fi
