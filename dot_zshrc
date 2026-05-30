@@ -71,11 +71,6 @@ zstyle ':fzf-tab:complete: cd:*' fzf-preview 'ls -la $realpath'
 
 for f in ~/.config/zsh/**/*.zsh(N); do source $f; done
 
-if [[ "$(uname -s)" == "Darwin" ]]; then
-  if [[ -x /User/kqnade/.kimi-code ]]; then
-    export PATH="/Users/kqnade/.kimi-code/bin:$PATH"
-  fi
-fi
-if [[ -x /home/kqnade/.kimi-code/bin ]]; then
-  export PATH=" /home/kqnade/.kimi-code/bin:$PATH"
+if [[ -d "$HOME/.kimi-code/bin" ]]; then
+  export PATH="$HOME/.kimi-code/bin:$PATH"
 fi
