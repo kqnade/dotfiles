@@ -13,7 +13,7 @@ function git-ccc() {
   echo "Generating commit message..."
 
   local msg
-  msg=$(printf '== Recent commits (for style reference) ==\n%s\n\n== Git diff ==\n%s' "$log" "$diff" | claude -p "Generate a conventional commit message with a gitmoji prefix for the git diff below.
+  msg=$(printf '== Recent commits (for style reference) ==\n%s\n\n== Git diff ==\n%s' "$log" "$diff" | opencode run --format json --model opencode-go/kimi-k2.6 "Generate a conventional commit message with a gitmoji prefix for the git diff below.
 Use the recent commits as style reference to stay consistent.
 
 Format: <emoji> <type>: <description>
@@ -34,7 +34,7 @@ Gitmoji mapping:
 Rules:
 - Output the commit message ONLY (no explanation, no markdown, no code block)
 - Use imperative mood (e.g. 'add', 'fix', 'update')
-- Keep it under 72 characters")
+- Keep it under 72 characters" | jq -r '.part.text // empty')
 
   if [[ -z "$msg" ]]; then
     echo "Failed to generate commit message."
