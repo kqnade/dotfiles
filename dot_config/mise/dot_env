@@ -1,0 +1,3 @@
+# 1Password reference for GitHub token
+# Change the vault/item/field if your 1Password setup differs.
+GITHUB_TOKEN=op://Personal/GitHub/token
