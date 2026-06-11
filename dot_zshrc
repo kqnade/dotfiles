@@ -74,6 +74,8 @@ zstyle ':fzf-tab:complete: cd:*' fzf-preview 'ls -la $realpath'
 
 for f in ~/.config/zsh/**/*.zsh(N); do source $f; done
 
+export OPENCODE_ENABLE_EXA=1
+
 if [[ -d "$HOME/.kimi-code/bin" ]]; then
   export PATH="$HOME/.kimi-code/bin:$PATH"
 fi
