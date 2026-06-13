@@ -4,7 +4,8 @@
 #
 # Intel Mac (darwin/amd64) は aqua レジストリが atuin/delta/sheldon/btop/fd の
 # darwin/amd64 バイナリを持たないため、それらは Brewfile 側 (`Hardware::CPU.intel?`
-# ガード) で補う。下の条件分岐で mise から除外する。
+# ガード) で補う。また、mise system packages の brew backend は arm64 macOS のみ
+# 対応なので、brew: 系 system packages も Intel Mac では除外する。
 {{- $isIntelMac := and (eq .chezmoi.os "darwin") (eq .chezmoi.arch "amd64") }}
 
 [tools]
@@ -51,7 +52,7 @@ xh = "latest"
 yq = "latest"
 jq = "latest"
 just = "latest"
-{{- if eq .chezmoi.os "linux"}}
+{{- if not $isIntelMac }}
 btop = "latest"
 {{- end }}
 {{- if not $isIntelMac }}
@@ -130,3 +131,42 @@ neovim = "latest"
 
 [settings]
 activate_aggressive = true
+experimental = true
+
+# ----------------------------------------------------------------------------
+# System packages (experimental) — machine-global bootstrap packages managed
+# by `mise system install`. These replace the overlapping OS-manifest entries
+# that were duplicated across Dnffile / Brewfile / PKGBUILD.
+#
+# Rules of thumb:
+#   - Put shell / system editor / SSH / build toolchain here.
+#   - Keep casks, fonts, yaskkserv2 tap, and Intel Mac fallbacks in Brewfile.
+#     (mise system packages' brew backend only supports arm64 macOS.)
+#   - Keep distro-specific groups (Arch base-devel) and fonts in PKGBUILD.
+#   - Windows is unchanged (scoop backend is not supported by system packages).
+# ----------------------------------------------------------------------------
+[system.packages]
+
+# Shell + system editor + SSH
+"apt:zsh" = "latest"
+"apt:vim" = "latest"
+"apt:openssh-client" = "latest"
+"dnf:zsh" = "latest"
+"dnf:vim-enhanced" = "latest"
+"dnf:openssh-clients" = "latest"
+"pacman:zsh" = "latest"
+"pacman:vim" = "latest"
+"pacman:openssh" = "latest"
+{{- if not $isIntelMac }}
+"brew:zsh" = "latest"
+"brew:vim" = "latest"
+"brew:openssh" = "latest"
+{{- end }}
+
+# Build toolchain (yaskkserv2 cargo build needs a C compiler)
+"apt:build-essential" = "latest"
+"dnf:gcc" = "latest"
+"dnf:gcc-c++" = "latest"
+"dnf:make" = "latest"
+# pacman: base-devel group stays in metapkgs/base/PKGBUILD
+# brew: Xcode CLI tools provide the toolchain

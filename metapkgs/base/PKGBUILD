@@ -1,19 +1,11 @@
 pkgname=base-env
 pkgver=20260520
 pkgrel=1
-pkgdesc="My declarative base environment — OS-level deps only; dev tools live in mise"
+pkgdesc="My declarative base environment — bootstrap-only deps; dev tools and system packages live in mise"
 arch=('any')
 depends=(
-  # Shell + system editor
-  'zsh'
-  'vim'
-
-  # Version control & SSH
-  'git'
-  'git-lfs'
-  'openssh'
-
-  # Build toolchain for source builds (yaskkserv2 via cargo)
+  # Build toolchain for source builds (yaskkserv2 via cargo). The shell,
+  # editor, git, and ssh are now managed by mise [system.packages].
   'base-devel'
   'libyaml'
 
@@ -24,11 +16,11 @@ depends=(
   'unzip'
 )
 # Notes:
-# - chezmoi, mise, sheldon, starship, ghq, gh, glab, delta, gomi, neovim,
-#   eza/fd/ripgrep/bat/fzf, lazygit, 1password-cli, and all language runtimes
-#   (including rust for yaskkserv2) are managed by mise — see
-#   dot_config/mise/config.toml. The bootstrap script installs chezmoi + mise
-#   into ~/.local/bin before chezmoi apply runs.
+# - chezmoi, mise, zsh, vim, git, openssh, sheldon, starship, ghq, gh, glab,
+#   delta, gomi, neovim, eza/fd/ripgrep/bat/fzf, lazygit, 1password-cli, and
+#   all language runtimes (including rust for yaskkserv2) are managed by mise
+#   — see dot_config/mise/config.toml. The bootstrap script installs chezmoi +
+#   mise into ~/.local/bin before chezmoi apply runs.
 
 # Always use the latest versions
 pkgver() {

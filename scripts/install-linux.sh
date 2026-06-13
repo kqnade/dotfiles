@@ -111,17 +111,20 @@ main() {
 
   cat <<EOF
 
-==> System packages installed. Next steps:
+==> Bootstrap packages installed. Next steps:
 
     1. Initialize chezmoi (if not already done):
          export PATH="\$HOME/.local/bin:\$PATH"
          chezmoi init --source . --apply
 
-    2. Install dev tools (incl. rust for yaskkserv2) via mise:
+    2. Install system packages declared in mise config:
+         mise system install --yes
+
+    3. Install dev tools (incl. rust for yaskkserv2) via mise:
          export GITHUB_TOKEN="\$(gh auth token 2>/dev/null | tr -d '[:space:]')"  # optional, avoids GitHub rate limits
          mise install
 
-    3. Re-run \`chezmoi apply\` so post-install steps (yaskkserv2 build,
+    4. Re-run \`chezmoi apply\` so post-install steps (yaskkserv2 build,
        UDEVGothic font fetch) pick up the freshly-installed mise tools.
 
 EOF

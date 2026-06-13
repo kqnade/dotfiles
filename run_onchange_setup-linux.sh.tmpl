@@ -5,6 +5,9 @@
 #   - Arch    → metapkgs/base via makepkg
 #   - Fedora  → dnf + Dnffile
 #
+# After system packages are installed, also runs `mise system install` so
+# [system.packages] entries (zsh, vim, openssh, build toolchain) are applied.
+#
 # Skipped in CI or any non-interactive context because the sudo prompt
 # would block.
 #
@@ -22,5 +25,10 @@ if [[ "${CI:-}" == "true" ]] || [[ ! -t 0 ]]; then
 fi
 
 REPO_ROOT="{{ .chezmoi.sourceDir }}"
-exec bash "${REPO_ROOT}/scripts/install-linux.sh"
+bash "${REPO_ROOT}/scripts/install-linux.sh"
+
+if [[ -x "$HOME/.local/bin/mise" ]]; then
+  echo "==> Installing mise system packages..."
+  "$HOME/.local/bin/mise" system install --yes
+fi
 {{ end -}}
