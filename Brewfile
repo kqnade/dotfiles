@@ -7,9 +7,6 @@
 # chezmoi and mise themselves are bootstrapped from get.chezmoi.io and
 # mise.run into ~/.local/bin.
 
-# Latex Env
-cask 'mactex-no-gui'
-
 # Primary monospace font (also installed on Linux via run_onchange_after_install-fonts.sh)
 cask 'font-udev-gothic'
 
