@@ -133,6 +133,17 @@ neovim = "latest"
 activate_aggressive = true
 experimental = {{ .features.mise_experimental }}
 {{ if .features.mise_experimental }}
+# Restrict bootstrap package managers so Linux uses only native package managers
+# (dnf on Fedora, pacman on Arch, apt on Debian/Ubuntu). macOS uses Homebrew.
+# Windows has no bootstrap package support in mise.
+system_packages.managers = [
+    {{ if eq .chezmoi.os "linux" -}}
+    "{{ if eq .chezmoi.osRelease.id "fedora" }}dnf{{ else if eq .chezmoi.osRelease.id "arch" }}pacman{{ else }}apt{{ end }}"
+    {{- else if eq .chezmoi.os "darwin" -}}
+    "brew"
+    {{- end }}
+]
+
 # ----------------------------------------------------------------------------
 # Bootstrap packages (experimental) — machine-global bootstrap packages managed
 # by `mise bootstrap packages install`. These replace the overlapping OS-manifest
