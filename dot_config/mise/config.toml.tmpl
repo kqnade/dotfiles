@@ -4,8 +4,8 @@
 #
 # Intel Mac (darwin/amd64) は aqua レジストリが atuin/delta/sheldon/btop/fd の
 # darwin/amd64 バイナリを持たないため、それらは Brewfile 側 (`Hardware::CPU.intel?`
-# ガード) で補う。また、mise system packages の brew backend は arm64 macOS のみ
-# 対応なので、brew: 系 system packages も Intel Mac では除外する。
+# ガード) で補う。また、mise bootstrap packages の brew backend は arm64 macOS のみ
+# 対応なので、brew: 系 bootstrap packages も Intel Mac では除外する。
 {{- $isIntelMac := and (eq .chezmoi.os "darwin") (eq .chezmoi.arch "amd64") }}
 
 [tools]
@@ -131,21 +131,21 @@ neovim = "latest"
 
 [settings]
 activate_aggressive = true
-experimental = true
-
+experimental = {{ .features.mise_experimental }}
+{{ if .features.mise_experimental }}
 # ----------------------------------------------------------------------------
-# System packages (experimental) — machine-global bootstrap packages managed
-# by `mise system install`. These replace the overlapping OS-manifest entries
-# that were duplicated across Dnffile / Brewfile / PKGBUILD.
+# Bootstrap packages (experimental) — machine-global bootstrap packages managed
+# by `mise bootstrap packages install`. These replace the overlapping OS-manifest
+# entries that were duplicated across Dnffile / Brewfile / PKGBUILD.
 #
 # Rules of thumb:
 #   - Put shell / system editor / SSH / build toolchain here.
 #   - Keep casks, fonts, yaskkserv2 tap, and Intel Mac fallbacks in Brewfile.
-#     (mise system packages' brew backend only supports arm64 macOS.)
+#     (mise bootstrap packages' brew backend only supports arm64 macOS.)
 #   - Keep distro-specific groups (Arch base-devel) and fonts in PKGBUILD.
-#   - Windows is unchanged (scoop backend is not supported by system packages).
+#   - Windows is unchanged (scoop backend is not supported by bootstrap packages).
 # ----------------------------------------------------------------------------
-[system.packages]
+[bootstrap.packages]
 
 # Shell + system editor + SSH
 "apt:zsh" = "latest"
@@ -170,3 +170,4 @@ experimental = true
 "dnf:make" = "latest"
 # pacman: base-devel group stays in metapkgs/base/PKGBUILD
 # brew: Xcode CLI tools provide the toolchain
+{{- end }}

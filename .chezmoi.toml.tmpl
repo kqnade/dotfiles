@@ -1,4 +1,5 @@
 {{- $neovim := promptBoolOnce . "features.neovim" "Install Neovim, SKK dictionaries, and yaskkserv2 service" true -}}
+{{- $miseExperimental := promptBoolOnce . "features.mise_experimental" "Enable mise experimental features (required for bootstrap packages)" true -}}
 
 {{ if eq .chezmoi.os "windows" -}}
 sourceDir = "Z:/github.com/kqnade/dotfiles"
@@ -8,3 +9,4 @@ sourceDir = "~/repos/github.com/kqnade/dotfiles"
 
 [data.features]
 neovim = {{ $neovim }}
+mise_experimental = {{ $miseExperimental }}

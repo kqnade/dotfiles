@@ -14,7 +14,7 @@ Cross-platform dotfiles managed by **chezmoi**, with dev tools centralized in **
 | Edit a config | `chezmoi edit <file>` (zsh alias: `ce`) |
 | Diff before apply | `chezmoi diff` |
 | Install/update dev tools | `mise install` |
-| Install system packages | `mise system install --yes` |
+| Install bootstrap packages | `mise bootstrap packages install --yes` |
 | Generate commit message | `git ccc` (staged diff → opencode → gitmoji commit) |
 
 ## Architecture facts that are easy to miss
@@ -31,12 +31,12 @@ Cross-platform dotfiles managed by **chezmoi**, with dev tools centralized in **
 
 | OS | Entry point | Manifest |
 |----|-------------|----------|
-| Fedora | `bash scripts/install-linux.sh` | `Dnffile` + `mise system install` |
+| Fedora | `bash scripts/install-linux.sh` | `Dnffile` + `mise bootstrap packages install` |
 | Arch | `bash scripts/install-linux.sh` | `metapkgs/base/PKGBUILD` |
 | macOS | `chezmoi apply` | `Brewfile` |
 | Windows | `chezmoi apply` | `scoopfile.json` |
 
-Fedora/Arch both run `mise system install --yes` after OS packages. Intel Mac falls back to Homebrew for tools that mise's aqua registry lacks darwin/amd64 binaries for (`atuin`, `btop`, `delta`, `fd`, `sheldon`).
+Fedora/Arch both run `mise bootstrap packages install --yes` after OS packages. Intel Mac falls back to Homebrew for tools that mise's aqua registry lacks darwin/amd64 binaries for (`atuin`, `btop`, `delta`, `fd`, `sheldon`).
 
 ### mise is the source of truth for dev tools
 

@@ -5,7 +5,7 @@
 #   1. Arch    → metapkgs/base via makepkg
 #   2. Fedora  → dnf + Dnffile
 #
-# After system packages are installed, chezmoi and mise are dropped into
+# After OS packages are installed, chezmoi and mise are dropped into
 # ~/.local/bin so the user can run `chezmoi init --apply` and `mise install`
 # to materialize the rest of the dev toolchain (which lives entirely in
 # dot_config/mise/config.toml — including language runtimes like rust).
@@ -52,7 +52,7 @@ install_arch() {
 # Fedora  → dnf + Dnffile
 # ---------------------------------------------------------------------------
 install_fedora() {
-  log "Detected Fedora. Installing system packages via dnf."
+  log "Detected Fedora. Installing OS packages via dnf."
   command -v dnf >/dev/null 2>&1 || die "dnf not found."
 
   local pkgs=()
@@ -117,8 +117,8 @@ main() {
          export PATH="\$HOME/.local/bin:\$PATH"
          chezmoi init --source . --apply
 
-    2. Install system packages declared in mise config:
-         mise system install --yes
+    2. Install bootstrap packages declared in mise config:
+         mise bootstrap packages install --yes
 
     3. Install dev tools (incl. rust for yaskkserv2) via mise:
          export GITHUB_TOKEN="\$(gh auth token 2>/dev/null | tr -d '[:space:]')"  # optional, avoids GitHub rate limits

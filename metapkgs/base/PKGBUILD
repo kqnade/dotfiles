@@ -1,11 +1,11 @@
 pkgname=base-env
 pkgver=20260520
 pkgrel=1
-pkgdesc="My declarative base environment — bootstrap-only deps; dev tools and system packages live in mise"
+pkgdesc="My declarative base environment — bootstrap-only deps; dev tools and bootstrap packages live in mise"
 arch=('any')
 depends=(
   # Build toolchain for source builds (yaskkserv2 via cargo). The shell,
-  # editor, git, and ssh are now managed by mise [system.packages].
+  # editor, git, and ssh are now managed by mise [bootstrap.packages].
   'base-devel'
   'libyaml'
 

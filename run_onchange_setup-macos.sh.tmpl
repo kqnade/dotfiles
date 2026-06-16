@@ -26,11 +26,13 @@ fi
 log "Running brew bundle..."
 brew bundle --file="{{ .chezmoi.sourceDir }}/Brewfile"
 
-# Install mise-managed system packages (zsh, vim, openssh, etc.)
+# Install mise-managed bootstrap packages (zsh, vim, openssh, etc.)
+{{- if .features.mise_experimental }}
 if [[ -x "$HOME/.local/bin/mise" ]]; then
-  log "Installing mise system packages..."
-  "$HOME/.local/bin/mise" system install --yes
+  log "Installing mise bootstrap packages..."
+  "$HOME/.local/bin/mise" bootstrap packages install --yes
 fi
+{{- end }}
 
 # ---------------------------------------------------------------------------
 # macOS defaults

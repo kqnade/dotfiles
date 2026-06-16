@@ -2,9 +2,9 @@
 # Consumed by scripts/install-linux.sh on the Fedora path.
 # One package per line; '#' starts a comment.
 #
-# Scope: only OS-level bootstrap / font packages that mise system packages
+# Scope: only OS-level bootstrap / font packages that mise bootstrap packages
 # can't (or shouldn't) handle. The rest (zsh, vim, git, openssh, build
-# toolchain) lives in dot_config/mise/config.toml [system.packages].
+# toolchain) lives in dot_config/mise/config.toml [bootstrap.packages].
 
 # Bootstrap tools (needed before mise itself can be installed)
 curl
