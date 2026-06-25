@@ -1,0 +1,6 @@
+Host *
+    # Override the local TERM (e.g. ghostty's xterm-ghostty) with a value
+    # every remote host has in its terminfo database, avoiding "unknown
+    # terminal type" breakage over SSH. Sent via the pty request, so no
+    # AcceptEnv is needed on the server side.
+    SetEnv TERM=xterm-256color
