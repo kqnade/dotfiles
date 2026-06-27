@@ -121,6 +121,7 @@ claude = "latest"
 codex = "latest"
 opencode = "latest"
 "npm:ccusage" = "latest"
+"npm:@moonshot-ai/kimi-code" = "latest"
 
 # ----------------------------------------------------------------------------
 # Editor (opt-out via .chezmoi.toml.tmpl: features.neovim)
@@ -131,6 +132,7 @@ neovim = "latest"
 
 [settings]
 activate_aggressive = true
+npm.bun = true
 experimental = {{ .features.mise_experimental }}
 {{ if .features.mise_experimental }}
 # Restrict bootstrap package managers so Linux uses only native package managers
