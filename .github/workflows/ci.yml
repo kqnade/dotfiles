@@ -89,10 +89,20 @@ jobs:
       - name: run scripts/install-linux.sh
         run: bash scripts/install-linux.sh
 
+      - name: install mise bootstrap packages
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          chezmoi --source "$PWD" init --promptDefaults
+          mkdir -p "$HOME/.config/mise"
+          chezmoi --source "$PWD" execute-template --init \
+            < dot_config/mise/config.toml.tmpl \
+            > "$HOME/.config/mise/config.toml"
+          mise bootstrap packages install --yes
+
       - name: verify dnf packages installed
         run: |
           missing=0
-          for pkg in zsh vim-enhanced git git-lfs openssh-clients curl \
+          for pkg in zsh vim-enhanced git openssh-clients curl \
                     ca-certificates unzip fontconfig gcc gcc-c++ make \
                     google-noto-sans-cjk-fonts google-noto-serif-cjk-fonts; do
             if ! rpm -q "$pkg" >/dev/null 2>&1; then
