@@ -9,6 +9,9 @@
 
 Types: feat, fix, refactor, docs, test, chore, perf, ci
 
+**Never add AI attribution to commits or PRs**: no `Co-Authored-By: Claude` trailers,
+no "Generated with Claude Code" footers. Keep the log clean.
+
 
 ## Pull Request Workflow
 

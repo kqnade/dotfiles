@@ -1,10 +1,21 @@
-{
+#!/bin/bash
+# ~/.claude/settings.json is only partially managed by chezmoi.
+# Keys that Claude Code mutates at runtime via /config (model, theme,
+# effortLevel, ...) are preserved from the existing file; everything in
+# $managed below is enforced from dotfiles. Arrays are replaced, not merged.
+set -eu
+
+managed='{
   "cleanupPeriodDays": 14,
   "env": {
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "75",
     "DISABLE_NON_ESSENTIAL_MODEL_CALLS": "1"
   },
-  "includeCoAuthoredBy": true,
+  "includeCoAuthoredBy": false,
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
   "permissions": {
     "allow": [
       "Bash(git *)",
@@ -15,13 +26,14 @@
     ],
     "deny": [
       "Bash(rm -rf *)",
-      "Bash(git push --force *)"
+      "Bash(git push --force *)",
+      "Bash(git push -f *)"
     ],
     "defaultMode": "default"
   },
   "statusLine": {
     "type": "command",
-    "command": "bunx -y ccstatusline@latest",
+    "command": "bunx -y ccstatusline@2.2.22",
     "padding": 0
   },
   "enabledPlugins": {
@@ -41,6 +53,12 @@
   },
   "language": "Friendly Japanese",
   "spinnerTipsEnabled": false,
-  "effortLevel": "xhigh",
   "verbose": false
-}
+}'
+
+target="$(cat)"
+if [ -z "$target" ]; then
+  target='{}'
+fi
+
+jq -S --argjson managed "$managed" '. * $managed' <<<"$target"

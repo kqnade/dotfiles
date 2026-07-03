@@ -2,43 +2,35 @@
 
 ## Purpose
 
-Code review ensures quality, security, and maintainability before code is merged. This rule defines when and how to conduct code reviews.
+Code review ensures quality, security, and maintainability before code is merged.
+Apply this rule proportionally: a full review for substantive code changes, a light
+pass for config/docs/dotfiles tweaks.
 
 ## When to Review
 
-**MANDATORY review triggers:**
+Review before merging when the change:
 
-- After writing or modifying code
-- Before any commit to shared branches
-- When security-sensitive code is changed (auth, payments, user data)
-- When architectural changes are made
-- Before merging pull requests
+- Adds or modifies non-trivial code
+- Touches security-sensitive areas (auth, payments, user data)
+- Changes architecture or public interfaces
 
-**Pre-Review Requirements:**
-
-Before requesting review, ensure:
-
-- All automated checks (CI/CD) are passing
-- Merge conflicts are resolved
-- Branch is up to date with target branch
+Before requesting review, ensure CI is passing, merge conflicts are resolved,
+and the branch is up to date with the target branch.
 
 ## Review Checklist
 
-Before marking code complete:
-
 - [ ] Code is readable and well-named
-- [ ] Functions are focused (<50 lines)
-- [ ] Files are cohesive (<800 lines)
-- [ ] No deep nesting (>4 levels)
+- [ ] Functions are focused (<50 lines) and files cohesive (<800 lines)
+- [ ] No deep nesting (>4 levels) — use early returns
 - [ ] Errors are handled explicitly
 - [ ] No hardcoded secrets or credentials
-- [ ] No console.log or debug statements
-- [ ] Tests exist for new functionality
-- [ ] Test coverage meets 80% minimum
+- [ ] No leftover debug output
+- [ ] New functionality has tests (where the project has a test suite;
+      aim for ~80% coverage on projects that track it)
 
 ## Security Review Triggers
 
-**STOP and use security-reviewer agent when:**
+Run `/security-review` when the change touches:
 
 - Authentication or authorization code
 - User input handling
@@ -57,29 +49,14 @@ Before marking code complete:
 | MEDIUM | Maintainability concern | **INFO** - Consider fixing |
 | LOW | Style or minor suggestion | **NOTE** - Optional |
 
-## Agent Usage
+## Tools
 
-Use these agents for code review:
-
-| Agent | Purpose |
-|-------|---------|
-| **code-reviewer** | General code quality, patterns, best practices |
-| **security-reviewer** | Security vulnerabilities, OWASP Top 10 |
-| **typescript-reviewer** | TypeScript/JavaScript specific issues |
-| **python-reviewer** | Python specific issues |
-| **go-reviewer** | Go specific issues |
-| **rust-reviewer** | Rust specific issues |
-
-## Review Workflow
-
-```
-1. Run git diff to understand changes
-2. Check security checklist first
-3. Review code quality checklist
-4. Run relevant tests
-5. Verify coverage >= 80%
-6. Use appropriate agent for detailed review
-```
+| Tool | Purpose |
+|------|---------|
+| `/code-review` (built-in skill) | Correctness bugs and cleanup in the current diff |
+| `coderabbit:code-review` (plugin skill) | Thorough AI review of changes / PRs |
+| `/security-review` (built-in skill) | Security review of pending changes |
+| `/review` (built-in skill) | Review a GitHub pull request |
 
 ## Common Issues to Catch
 
@@ -94,19 +71,17 @@ Use these agents for code review:
 
 ### Code Quality
 
-- Large functions (>50 lines) - split into smaller
-- Large files (>800 lines) - extract modules
-- Deep nesting (>4 levels) - use early returns
-- Missing error handling - handle explicitly
-- Mutation patterns - prefer immutable operations
-- Missing tests - add test coverage
+- Large functions / files — split or extract
+- Deep nesting — use early returns
+- Missing error handling — handle explicitly
+- Mutation patterns — prefer immutable operations
+- Missing tests — add coverage
 
 ### Performance
 
-- N+1 queries - use JOINs or batching
-- Missing pagination - add LIMIT to queries
-- Unbounded queries - add constraints
-- Missing caching - cache expensive operations
+- N+1 queries — use JOINs or batching
+- Missing pagination / unbounded queries — add LIMIT and constraints
+- Missing caching — cache expensive operations
 
 ## Approval Criteria
 
@@ -116,9 +91,7 @@ Use these agents for code review:
 
 ## Integration with Other Rules
 
-This rule works with:
-
-- [testing.md](testing.md) - Test coverage requirements
+- [testing.md](testing.md) - Test standards
 - [security.md](security.md) - Security checklist
 - [git-workflow.md](git-workflow.md) - Commit standards
 - [agents.md](agents.md) - Agent delegation
