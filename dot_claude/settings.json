@@ -1,21 +1,109 @@
-#!/bin/bash
-# ~/.claude/settings.json is only partially managed by chezmoi.
-# Keys that Claude Code mutates at runtime via /config (model, theme,
-# effortLevel, ...) are preserved from the existing file; everything in
-# $managed below is enforced from dotfiles. Arrays are replaced, not merged.
-set -eu
-
-managed='{
-  "cleanupPeriodDays": 14,
-  "env": {
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "75",
-    "DISABLE_NON_ESSENTIAL_MODEL_CALLS": "1"
-  },
-  "includeCoAuthoredBy": false,
+{
   "attribution": {
     "commit": "",
     "pr": ""
   },
+  "cleanupPeriodDays": 14,
+  "effortLevel": "high",
+  "enabledPlugins": {
+    "coderabbit@claude-plugins-official": true,
+    "everything-claude-code@everything-claude-code": true,
+    "github@claude-plugins-official": true,
+    "gopls-lsp@claude-plugins-official": true,
+    "skill-codex@skill-codex": true,
+    "typescript-lsp@claude-plugins-official": true
+  },
+  "env": {
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "75",
+    "DISABLE_NON_ESSENTIAL_MODEL_CALLS": "1"
+  },
+  "extraKnownMarketplaces": {
+    "skill-codex": {
+      "source": {
+        "repo": "skills-directory/skill-codex",
+        "source": "github"
+      }
+    }
+  },
+  "hooks": {
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "command": "~/.claude/hooks/notify.sh",
+            "timeout": 10,
+            "type": "command"
+          }
+        ],
+        "matcher": ""
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "~/.claude/hooks/format-on-save.sh",
+            "statusMessage": "Formatting...",
+            "timeout": 30,
+            "type": "command"
+          }
+        ],
+        "matcher": "Edit|Write"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "~/.claude/hooks/protect-files.sh",
+            "statusMessage": "Checking file protections...",
+            "timeout": 10,
+            "type": "command"
+          },
+          {
+            "command": "~/.claude/hooks/warn-large-files.sh",
+            "statusMessage": "Checking for build artifacts...",
+            "timeout": 10,
+            "type": "command"
+          },
+          {
+            "command": "~/.claude/hooks/scan-secrets.sh",
+            "statusMessage": "Scanning for secrets...",
+            "timeout": 10,
+            "type": "command"
+          }
+        ],
+        "matcher": "Edit|Write"
+      },
+      {
+        "hooks": [
+          {
+            "command": "~/.claude/hooks/block-dangerous-commands.sh",
+            "statusMessage": "Checking command safety...",
+            "timeout": 10,
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "~/.claude/hooks/session-start.sh",
+            "statusMessage": "Loading project context...",
+            "timeout": 10,
+            "type": "command"
+          }
+        ],
+        "matcher": "startup|resume|clear"
+      }
+    ]
+  },
+  "includeCoAuthoredBy": false,
+  "language": "Friendly Japanese",
+  "model": "claude-fable-5[1m]",
   "permissions": {
     "allow": [
       "Bash(git *)",
@@ -24,41 +112,34 @@ managed='{
       "Bash(zig *)",
       "Bash(npm *)"
     ],
+    "defaultMode": "default",
     "deny": [
       "Bash(rm -rf *)",
       "Bash(git push --force *)",
-      "Bash(git push -f *)"
-    ],
-    "defaultMode": "default"
+      "Bash(git push -f *)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/secrets/**)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Write(**/.env)",
+      "Write(**/.env.*)",
+      "Write(**/secrets/**)",
+      "Write(**/*.pem)",
+      "Write(**/*.key)",
+      "Edit(**/.env)",
+      "Edit(**/.env.*)",
+      "Edit(**/secrets/**)",
+      "Edit(**/*.pem)",
+      "Edit(**/*.key)"
+    ]
   },
-  "statusLine": {
-    "type": "command",
-    "command": "bunx -y ccstatusline@2.2.22",
-    "padding": 0
-  },
-  "enabledPlugins": {
-    "github@claude-plugins-official": true,
-    "gopls-lsp@claude-plugins-official": true,
-    "everything-claude-code@everything-claude-code": true,
-    "skill-codex@skill-codex": true,
-    "coderabbit@claude-plugins-official": true
-  },
-  "extraKnownMarketplaces": {
-    "skill-codex": {
-      "source": {
-        "source": "github",
-        "repo": "skills-directory/skill-codex"
-      }
-    }
-  },
-  "language": "Friendly Japanese",
   "spinnerTipsEnabled": false,
+  "statusLine": {
+    "command": "bunx -y ccstatusline@2.2.22",
+    "padding": 0,
+    "type": "command"
+  },
+  "theme": "auto",
   "verbose": false
-}'
-
-target="$(cat)"
-if [ -z "$target" ]; then
-  target='{}'
-fi
-
-jq -S --argjson managed "$managed" '. * $managed' <<<"$target"
+}

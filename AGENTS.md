@@ -78,6 +78,21 @@ Maintained across Vim/Neovim:
 
 Keep this mapping when editing Neovim configs.
 
+### Claude Code global config (`dot_claude/` → `~/.claude/`)
+
+- `settings.json` is plain JSON managed by chezmoi. Claude Code mutates it at runtime
+  (`/config` changes to model, effortLevel, enabledPlugins), so `chezmoi diff` showing
+  drift there is expected — fold wanted runtime changes back into the source.
+- `hooks/` use the chezmoi `executable_` prefix. They are wired globally in `settings.json`
+  (except `auto-test.sh`, deployed but unwired — enable per project with a fast test suite).
+- `block-dangerous-commands.sh` blocks `git push` to main/master; override per project
+  with the `CLAUDE_PROTECTED_BRANCHES` env var.
+- Review agents live in `agents/*.md`, workflow skills in `skills/*/SKILL.md`.
+  `/setupdotclaude` copies selected pieces from `~/.claude/` into a project's `.claude/`
+  after scanning it.
+- Removing a deployed file: delete it from `dot_claude/` AND list its target path in
+  `.chezmoiremove`, or `chezmoi apply` will leave the orphan in `~/.claude/`.
+
 ## Adding things
 
 - **mise tool**: `dot_config/mise/config.toml.tmpl`
@@ -86,6 +101,7 @@ Keep this mapping when editing Neovim configs.
 - **nvim LSP**: `dot_config/nvim/lua/modules/configs/lsp/init.lua`
 - **nvim formatter**: `dot_config/nvim/lua/modules/configs/editor/conform.lua`
 - **opencode config**: `dot_config/opencode/opencode.json`
+- **Claude rule/agent/skill/hook**: `dot_claude/{rules,agents,skills,hooks}/` (hooks need the `executable_` prefix and wiring in `dot_claude/settings.json`)
 
 ## Conventions
 

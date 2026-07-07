@@ -14,7 +14,9 @@ For code review, prefer skills over agents: `/code-review` (built-in) or the
 CodeRabbit plugin (`coderabbit:code-review`). For security-sensitive changes
 use `/security-review`.
 
-Custom agents in `~/.claude/agents/` (fractal summarizers, etc.) are
+Custom agents in `~/.claude/agents/` (dotclaude review specialists:
+code-reviewer, security-reviewer, performance-reviewer, doc-reviewer,
+pr-test-analyzer, silent-failure-hunter, frontend-designer) are
 task-specific — only use them for their documented purpose.
 
 ## Parallel Task Execution
