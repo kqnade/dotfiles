@@ -69,6 +69,10 @@ bindkey -e                     # Emacs キーバインド
 bindkey '^[[A' history-substring-search-up
 bindkey '^[[B' history-substring-search-down
 
+autoload -Uz edit-command-line
+zle -N edit-command-line
+bindkey '^x^e' edit-command-line
+
 zstyle ':fzf-tab:*' fzf-flags --height=40% --layout=reverse --border
 zstyle ':fzf-tab:complete: cd:*' fzf-preview 'ls -la $realpath'
 
