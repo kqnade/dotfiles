@@ -98,6 +98,16 @@
         "docker"
       ],
       "pinDigests": true
+    },
+    {
+      "description": "Keep the Fedora CI container on numbered release tags instead of latest or rawhide.",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "fedora"
+      ],
+      "allowedVersions": "/^\\d+$/"
     }
   ]
 }
