@@ -7,3 +7,6 @@
 .claude/commands/fractal-check.md
 .claude/commands/fractal-regenerate.md
 .claude/commands/fractal-summarize.md
+.claude/rules/coding-style.md
+.claude/rules/hooks.md
+.claude/rules/patterns.md

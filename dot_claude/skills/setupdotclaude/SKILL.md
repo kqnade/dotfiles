@@ -21,7 +21,7 @@ If `$ARGUMENTS` names a focus area (e.g. `frontend`), weight the scan and the pr
 
 Build an evidence table. Don't stop at manifests; read real code.
 
-1. **Stack**: manifests (`package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `Gemfile`, `composer.json`, `build.gradle`, `pom.xml`, `Makefile`, `Dockerfile`) and CI workflows (`.github/workflows/`, `.gitlab-ci.yml`). Record the *actual* build/test/lint/dev commands and script names, not guesses.
+1. **Stack**: manifests (`package.json`, `tsconfig*.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `build.zig`, `build.zig.zon`, `deps.edn`, `project.clj`, `bb.edn`, `shadow-cljs.edn`, Terraform `*.tf`, Lua `stylua.toml`/`.luacheckrc`, `Gemfile`, `composer.json`, `build.gradle`, `pom.xml`, `Makefile`, `Dockerfile`) and CI workflows (`.github/workflows/`, `.gitlab-ci.yml`). Record the *actual* build/test/lint/dev commands and script names, not guesses.
 2. **Monorepo**: `workspaces` key, `pnpm-workspace.yaml`, `lerna.json`, `nx.json`, `turbo.json`, or multiple manifests at depth 2+. List the packages.
 3. **Source layout**: list the real source directories (`src/`, `app/`, `lib/`, `packages/*/src`, `cmd/`, `internal/`, ...). These become rule `paths:` globs later — record actual paths, never assume `src/`.
 4. **Tests**: config files (`jest.config.*`, `vitest.config.*`, `pytest.ini`, `conftest.py`, `playwright.config.*`, ...), then **open 2-3 real test files**: runner, naming convention (`*.test.ts` vs `test_*.py`), test directory layout, assertion style, how much mocking they actually do.
@@ -67,7 +67,20 @@ Hard mapping rules (no exceptions without the user overriding):
 
 | Component | Installs only if |
 |---|---|
+| `rules/go.md` | Go files or Go module manifests exist |
+| `rules/go-testing.md` | Go test files or `testdata` exist |
+| `rules/go-security.md` | Go security-sensitive paths exist, or Go backend/API surfaces exist |
 | `rules/frontend.md`, `agents/frontend-designer/` | Frontend files exist (Phase 1.5) |
+| `rules/node.md` | Node package manifests or JavaScript files exist |
+| `rules/typescript.md` | TypeScript files or `tsconfig*.json` exist |
+| `rules/python.md` | Python files or Python project manifests exist |
+| `rules/python-packaging.md` | Python packaging manifests or lockfiles exist |
+| `rules/rust.md` | Rust files or Cargo manifests exist |
+| `rules/terraform.md` | Terraform files or `.terraform.lock.hcl` exist |
+| `rules/terraform-state.md` | Terraform backend/state files exist or Terraform state operations are in scope |
+| `rules/zig.md` | Zig files or Zig build manifests exist |
+| `rules/lua.md` | Lua/Luau files or Lua formatter/linter configs exist |
+| `rules/clojure.md` | Clojure/ClojureScript files or Clojure manifests exist |
 | `rules/database.md` | Migrations or ORM detected (1.6), `paths:` rewritten to the real migration dirs |
 | `rules/security.md`, `rules/error-handling.md` | Backend/API surfaces exist (1.6), `paths:` rewritten to the real dirs (with monorepo prefixes) |
 | `rules/testing.md` | A test suite actually exists |
