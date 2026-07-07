@@ -1,0 +1,44 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:best-practices",
+    "helpers:pinGitHubActionDigestsToSemver"
+  ],
+
+  // 通常の機能追加・修正更新は、リリースから14日経過後にPR化する。
+  "minimumReleaseAge": "14 days",
+
+  // 脆弱性更新は待たずにPR化する。
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "minimumReleaseAge": null
+  },
+  "osvVulnerabilityAlerts": true,
+
+  "reviewersFromCodeOwners": true,
+
+  "packageRules": [
+    {
+      "description": "Create security PRs immediately, bypassing the default 14-day release age.",
+      "matchUpdateTypes": [
+        "major",
+        "minor",
+        "patch",
+        "pin",
+        "digest"
+      ],
+      "matchJsonata": [
+        "$exists(vulnerabilityFixVersion) or isVulnerabilityAlert"
+      ],
+      "minimumReleaseAge": null,
+      "prCreation": "immediate"
+    },
+    {
+      "description": "Prefer immutable Docker digest pins where Renovate supports them. Docker keeps the readable tag as image:1.2.3@sha256:...; GitHub Actions use helpers:pinGitHubActionDigestsToSemver for action@sha # v1.2.3.",
+      "matchDatasources": [
+        "docker"
+      ],
+      "pinDigests": true
+    }
+  ]
+}
