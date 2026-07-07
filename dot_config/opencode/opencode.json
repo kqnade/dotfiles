@@ -6,8 +6,46 @@
   "autoupdate": true,
 
   "permission": {
-    "edit": "allow",
-    "bash": "allow"
+    "read": {
+      "*": "allow",
+      ".env": "deny",
+      ".env.*": "deny",
+      "**/.env": "deny",
+      "**/.env.*": "deny",
+      "secrets/**": "deny",
+      "**/secrets/**": "deny",
+      "*.pem": "deny",
+      "**/*.pem": "deny",
+      "*.key": "deny",
+      "**/*.key": "deny"
+    },
+    "edit": {
+      "*": "allow",
+      ".env": "deny",
+      ".env.*": "deny",
+      "**/.env": "deny",
+      "**/.env.*": "deny",
+      "secrets/**": "deny",
+      "**/secrets/**": "deny",
+      "*.pem": "deny",
+      "**/*.pem": "deny",
+      "*.key": "deny",
+      "**/*.key": "deny"
+    },
+    "bash": {
+      "*": "ask",
+      "git *": "allow",
+      "cargo *": "allow",
+      "go *": "allow",
+      "zig *": "allow",
+      "npm *": "allow",
+      "rm -rf": "deny",
+      "rm -rf *": "deny",
+      "git push --force": "deny",
+      "git push --force *": "deny",
+      "git push -f": "deny",
+      "git push -f *": "deny"
+    }
   },
 
   "compaction": {
