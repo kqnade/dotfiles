@@ -1,0 +1,9 @@
+.claude/agents/anchor-mapper.md
+.claude/agents/consistency-checker.md
+.claude/agents/summarizer-L1.md
+.claude/agents/summarizer-L2.md
+.claude/agents/summarizer-L3.md
+.claude/agents/summarizer-L4.md
+.claude/commands/fractal-check.md
+.claude/commands/fractal-regenerate.md
+.claude/commands/fractal-summarize.md
