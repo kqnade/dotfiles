@@ -59,6 +59,28 @@ for pattern in "${PROTECTED_PATTERNS[@]}"; do
   esac
 done
 
+# Linter/formatter configs: confirm instead of block. Weakening checks to
+# silence errors must be a human decision — the fix belongs in the code.
+LINTER_CONFIG_PATTERNS=(
+  "biome.json*"
+  ".eslintrc*"
+  "eslint.config.*"
+  ".prettierrc*"
+  "prettier.config.*"
+  "ruff.toml"
+  ".golangci.*"
+  "rustfmt.toml"
+  ".editorconfig"
+)
+
+for pattern in "${LINTER_CONFIG_PATTERNS[@]}"; do
+  case "$BASENAME_LC" in
+    $pattern)
+      emit ask "Editing linter/formatter config ($BASENAME). Don't weaken checks to silence errors — fix the code instead. Confirm this change."
+      ;;
+  esac
+done
+
 # Sensitive directories (use lower-cased path for case-insensitive on mac/Windows).
 case "$PATH_LC" in
   .git/*|*/.git/*)
