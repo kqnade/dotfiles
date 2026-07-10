@@ -9,6 +9,8 @@
 - WHY comments, never WHAT. If code needs a "what" comment, rename instead.
 - Comments explain only design that isn't self-evident from the code. Never write history or circumstances ("changed because...", "used to be...") — git log and dev context carry those.
 - API docs at module boundaries only, not every internal function.
+- Magic numbers get named constants.
+- Default to immutable updates; don't mutate shared state in place.
 
 ## Naming
 

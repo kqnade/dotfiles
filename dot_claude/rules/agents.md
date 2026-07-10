@@ -34,6 +34,8 @@ Launch 3 agents in parallel:
 First agent 1, then agent 2, then agent 3
 ```
 
+Parallelize reads freely; parallelize writes only when their file surfaces don't collide.
+
 ## Multi-Perspective Analysis
 
 For complex problems, use split role sub-agents:

@@ -22,6 +22,8 @@ config tweaks don't need the full pipeline.
    - State the problem in one sentence without naming the solution — if you can't, the requirement isn't ready
    - List the assumptions the plan depends on; drop each one in turn and check whether a simpler solution appears
    - For assumptions you keep, note an observable condition that would prove them wrong — stop and re-plan if it fires during implementation
+   - Ground the plan in existing code: cite the naming, error-handling, and test conventions you will follow with `file:line` examples; if no similar code exists, say so — don't invent patterns
+   - For ambiguous or high-risk changes, write observable acceptance criteria first (scenario → action → expected result → prohibited side effect). Never infer business constraints (SLA, compliance, pricing, retention) from code — record them as assumptions until confirmed
    - Identify dependencies and risks
    - Break down into phases
 

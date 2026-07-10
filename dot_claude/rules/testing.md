@@ -6,3 +6,4 @@
 - Prefer real implementations. Mock only at system boundaries (network, filesystem, clock, randomness).
 - One assertion per test. Test names describe behavior. Arrange-Act-Assert. No `if` or loops in tests.
 - Never `expect(true)` or check a mock was called without verifying arguments.
+- When a test fails, fix the implementation, not the test — unless the test itself is provably wrong. Never weaken an assertion to get to green.

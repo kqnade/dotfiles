@@ -22,6 +22,9 @@ Lower context sensitivity tasks:
 - Documentation updates
 - Simple bug fixes
 
+Compact at logical task boundaries (research→plan, after debugging, after abandoning
+an approach) — never mid-implementation. Persist plan/state to a file before compacting.
+
 ## Plan Mode
 
 For complex tasks requiring deep reasoning, enable **Plan Mode** and iterate on the plan

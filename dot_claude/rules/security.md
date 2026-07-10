@@ -17,3 +17,4 @@ paths:
 - Use constant-time comparison for secrets and tokens.
 - Set appropriate CORS, CSP, and security headers.
 - Rate-limit authentication endpoints.
+- If a secret is ever exposed: stop, rotate it immediately, then sweep the entire codebase for the same class of leak.
