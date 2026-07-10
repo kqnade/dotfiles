@@ -5,6 +5,7 @@ docs/
 .gitignore
 README.md
 AGENTS.md
+CLAUDE.md
 .config/nvim/README.md
 
 # Package-manager manifests live in the repo only; scripts read them via
