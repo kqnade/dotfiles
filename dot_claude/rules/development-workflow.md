@@ -19,6 +19,9 @@ config tweaks don't need the full pipeline.
 
 1. **Plan First**
    - Use **Plan Mode** or the built-in **Plan** agent to create an implementation plan
+   - State the problem in one sentence without naming the solution — if you can't, the requirement isn't ready
+   - List the assumptions the plan depends on; drop each one in turn and check whether a simpler solution appears
+   - For assumptions you keep, note an observable condition that would prove them wrong — stop and re-plan if it fires during implementation
    - Identify dependencies and risks
    - Break down into phases
 
