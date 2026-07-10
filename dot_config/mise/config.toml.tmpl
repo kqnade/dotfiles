@@ -88,6 +88,7 @@ go = "latest"
 rust = "latest"
 bun = "latest"
 node = "lts"
+pnpm = "latest"
 deno = "latest"
 uv = "latest"
 clang = "latest"
@@ -133,7 +134,8 @@ neovim = "latest"
 
 [settings]
 activate_aggressive = true
-npm.bun = true
+# npm.package_manager = "bun"
+npm.package_manager = "pnpm"
 experimental = {{ .features.mise_experimental }}
 {{ if .features.mise_experimental }}
 # Restrict bootstrap package managers so Linux uses only native package managers
