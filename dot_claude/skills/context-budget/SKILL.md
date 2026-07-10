@@ -112,3 +112,4 @@ End the report with the highest-leverage trim recommendation if any class is ove
 - Skills cost zero until invoked. Most have `disable-model-invocation: true`, meaning they only fire on `/name`.
 - Path-scoped rules cost zero unless the conversation touches files matching their globs.
 - Hooks contribute to context only if they print to stdout. dotclaude's hooks are silent on success by design.
+- MCP tool schemas are invisible to this scan but cost roughly ~500 tokens per tool per turn. Count tools across connected servers (`.mcp.json`, plugins) and flag servers that merely wrap a CLI already available for free (`gh`, `git`).
