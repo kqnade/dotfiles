@@ -7,6 +7,7 @@
 - Don't refactor adjacent code while fixing a bug.
 - No dead code or commented-out blocks. Git has history.
 - WHY comments, never WHAT. If code needs a "what" comment, rename instead.
+- Comments explain only design that isn't self-evident from the code. Never write history or circumstances ("changed because...", "used to be...") — git log and dev context carry those.
 - API docs at module boundaries only, not every internal function.
 
 ## Naming
