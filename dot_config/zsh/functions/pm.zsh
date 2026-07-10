@@ -118,7 +118,7 @@ pm() {
       (cd "$project_path" && cargo init --name "${name}")
       ;;
     typescript)
-      (cd "$project_path" && bun init -y)
+      (cd "$project_path" && pnpm init)
       ;;
     python)
       (cd "$project_path" && uv init --name "${name}")
