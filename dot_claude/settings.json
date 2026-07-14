@@ -136,7 +136,7 @@
   },
   "spinnerTipsEnabled": false,
   "statusLine": {
-    "command": "bunx -y ccstatusline@2.2.22",
+    "command": "bunx -y ccstatusline@2.2.23",
     "padding": 0,
     "type": "command"
   },
