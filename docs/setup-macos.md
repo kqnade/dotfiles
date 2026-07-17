@@ -28,6 +28,11 @@ chezmoi init --apply kqnade
    - メニューバー時計: 曜日表示・日付非表示・AM/PM
    - トラックパッド: タップでクリック
    - Stage Manager 無効、通知プレビュー要約無効
+4. **cmux** をインストールし、`~/.config/cmux/cmux.json` を配置：
+   - フォント・テーマなどの端末描画設定は `~/.config/ghostty/config` を共有
+   - 新しいワークスペースは現在の作業ディレクトリを引き継ぐ
+   - 復元した AI エージェントは自動再開せず、意図せずコマンドを再実行しない
+   - `localhost` のリンクは cmux 内蔵ブラウザで開く
 
 設定を変更したい場合は `run_onchange_setup-macos.sh.tmpl` を直接編集してください。
 ファイルの内容が変わると次回の `chezmoi apply` で再実行されます。

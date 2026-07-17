@@ -1,0 +1,31 @@
+{
+  "$schema": "https://raw.githubusercontent.com/manaflow-ai/cmux/main/web/data/cmux.schema.json",
+  "schemaVersion": 1,
+
+  "app": {
+    "appearance": "dark",
+    "workspaceInheritWorkingDirectory": true,
+    "openSupportedFilesInCmux": true,
+    "openMarkdownInCmuxViewer": true,
+    "sendAnonymousTelemetry": false
+  },
+
+  "terminal": {
+    "showScrollBar": false,
+    "autoResumeAgentSessions": false
+  },
+
+  "notifications": {
+    "agentPermissionPrompt": true,
+    "agentTurnComplete": "whenIdle",
+    "agentIdleReminder": true
+  },
+
+  "automation": {
+    "suppressSubagentNotifications": true
+  },
+
+  "browser": {
+    "hostsToOpenInEmbeddedBrowser": ["localhost", "127.0.0.1", "*.localhost"]
+  }
+}

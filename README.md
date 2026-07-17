@@ -25,6 +25,7 @@ Linux はいずれも sudo 必須。`scripts/install-linux.sh` は `/etc/os-rele
 * **mise**: 開発ツールおよび言語ランタイムの統一バージョン管理。aqua/github/npm/pipx/cargo/go backend を扱える。
 * **sheldon**: Zsh プラグインの高速管理 (Linux/macOS)。
 * **starship**: 全 OS 共通のプロンプト。
+* **cmux**: macOS の AI エージェント向けターミナル。Ghostty の表示設定を共有。
 * **Vim/Neovim**: Colemak 配列に最適化されたキーバインド (Neovim はオプトアウト)。
 * **yaskkserv2**: macSKK / Neovim skkeleton から共用するローカル SKK 辞書サーバ。
 
