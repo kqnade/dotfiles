@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Update this value to intentionally upgrade MCP Agent Mail.
+version="v0.3.21"
+installer_url="https://raw.githubusercontent.com/Dicklesworthstone/mcp_agent_mail_rust/${version}/install.sh"
+installer="$(mktemp)"
+trap 'rm -f "$installer"' EXIT
+
+curl -fsSL "$installer_url" -o "$installer"
+
+# macOS ships Bash 3.2, where expanding an empty array under `set -u` raises an
+# unbound-variable error. Upstream v0.3.21 does this while scanning shell rc
+# files, before installing the binaries. Guard that expansion on legacy Bash.
+if ((BASH_VERSINFO[0] < 4)); then
+  sed -i.bak \
+    's/^  rc_files+=("${sourced_files\[@\]}")$/  if ((${#sourced_files[@]})); then rc_files+=("${sourced_files[@]}"); fi/' \
+    "$installer"
+  rm -f "$installer.bak"
+fi
+
+bash "$installer" \
+  --version "$version" \
+  --dest "$HOME/.local/bin" \
+  --no-easy \
+  --no-migrate \
+  --yes

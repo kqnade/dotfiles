@@ -1,0 +1,13 @@
+$ErrorActionPreference = "Stop"
+
+$missing = @("claude", "codex") | Where-Object {
+    -not (Get-Command $_ -ErrorAction SilentlyContinue)
+}
+if ($missing.Count -gt 0) {
+    throw "missing agent CLIs: $($missing -join ', '); run chezmoi apply again after mise install"
+}
+
+& claude mcp remove --scope user agent-mail 2>$null
+& claude mcp add --scope user agent-mail -- mcp-agent-mail
+& codex mcp remove agent-mail 2>$null
+& codex mcp add agent-mail -- mcp-agent-mail

@@ -24,6 +24,13 @@ Documents/
 .config/sheldon/
 .config/ghostty/
 .config/op/
+install-mcp-agent-mail.sh
+configure-agent-mail.sh
+{{ end -}}
+
+{{ if ne .chezmoi.os "windows" -}}
+install-mcp-agent-mail.ps1
+configure-agent-mail.ps1
 {{ end -}}
 
 {{ if not .features.neovim -}}

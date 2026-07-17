@@ -3,6 +3,15 @@
 
   "model": "kimi/KimiK2.7Code",
 
+  "mcp": {
+    "agent-mail": {
+      "type": "local",
+      "command": ["mcp-agent-mail"],
+      "enabled": true,
+      "timeout": 30000
+    }
+  },
+
   "autoupdate": true,
 
   "permission": {

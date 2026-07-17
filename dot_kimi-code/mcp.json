@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "agent-mail": {
+      "command": "mcp-agent-mail",
+      "args": [],
+      "enabled": true,
+      "startupTimeoutMs": 30000,
+      "toolTimeoutMs": 120000
+    }
+  }
+}
