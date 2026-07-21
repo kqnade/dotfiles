@@ -93,6 +93,24 @@ Keep this mapping when editing Neovim configs.
 - Removing a deployed file: delete it from `dot_claude/` AND list its target path in
   `.chezmoiremove`, or `chezmoi apply` will leave the orphan in `~/.claude/`.
 
+### Agent Mail identity across worktrees
+
+- Normalize a ghq worktree path of
+  `<ghq-root>/<host>/<owner>/<repo>@<worktree>` to the single Agent Mail project
+  `<ghq-root>/<host>/<owner>/<repo>`. Never register or use the `@<worktree>` path
+  as an Agent Mail `project_key`.
+- Prefer `AGENT_MAIL_PROJECT`; `cmux-worktree` sets it to the normalized base-repo
+  path. Otherwise resolve the base repo with `wt home-path` (or `_wt_base` for an
+  older wt), and use that absolute path for every Agent Mail tool call.
+- Outside a wt-enabled shell, the equivalent Git fallback is
+  `dirname "$(git rev-parse --path-format=absolute --git-common-dir)"`; verify that
+  the resulting basename has no `@<worktree>` suffix before using it.
+- Resolve the agent name from `AGENT_MAIL_AGENT`/`AGENT_NAME` or Agent Mail's pane
+  identity. If none exists, register an identity automatically and retain the
+  returned name for the session; do not ask the user to supply an Agent Mail ID.
+- `cmux-worktree` exports `AGENT_MAIL_PROJECT` for new worktree shells, while
+  `WORKTREES_ENABLED=true` lets the Agent Mail service recognize linked worktrees.
+
 ## Adding things
 
 - **mise tool**: `dot_config/mise/config.toml.tmpl`
