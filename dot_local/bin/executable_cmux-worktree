@@ -55,6 +55,30 @@ exec zsh -lic '
   ghq_root=$(ghq root)
   repo_key=${base_repo#"$ghq_root"/}
   group_name=${repo_key#*/}
+
+  # Group repositories by ghq host/owner in Agent Mail. Product UIDs must be
+  # 32 hexadecimal characters, so derive a stable ID from the organization key.
+  if [[ "$repo_key" != "$base_repo" && "$repo_key" == */*/* ]]; then
+    host=${repo_key%%/*}
+    owner_repo=${repo_key#*/}
+    owner=${owner_repo%%/*}
+    org_key="$host/$owner"
+    product_uid=$(printf "%s" "$org_key" | git hash-object --stdin | cut -c1-32)
+    product_log_dir="$HOME/.local/state/cmux"
+    mkdir -p "$product_log_dir"
+
+    # A new Agent Mail project is registered only after the first agent starts.
+    # Retry the idempotent link in the background so the launcher stays fast.
+    (
+      am products ensure "$product_uid" --name "$org_key" >/dev/null || exit
+      for attempt in {1..120}; do
+        am products link "$product_uid" "$base_repo" >/dev/null && exit
+        sleep 5
+      done
+      print -u2 "error: timed out linking $base_repo to Agent Mail product $org_key"
+    ) >>"$product_log_dir/agent-mail-product.log" 2>&1 &!
+  fi
+
   workspace=$(cmux identify | jq -r ".caller.workspace_ref")
   groups=$(cmux workspace-group list --json)
   group=$(jq -r --arg name "$group_name" \

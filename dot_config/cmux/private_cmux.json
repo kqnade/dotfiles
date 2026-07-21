@@ -55,7 +55,7 @@
 
   "ui": {
     "newWorkspace": {
-      "action": "cmux.config.command.New%20Git%20Worktree",
+      "action": "ghq-worktree",
       "contextMenu": [
         { "action": "ghq-worktree", "title": "New Git Worktree" },
         { "type": "separator" },
