@@ -5,6 +5,7 @@
 * `sheldon` によるプラグイン管理（autosuggestions, syntax-highlighting, enhancd 等）。
 * `fzf-tab` による補完のプレビュー。
 * **`gg` 関数**: `ghq` 管理下のリポジトリを `fzf` で検索・プレビューし、ディレクトリを高速移動。
+* **cmux worktree launcher**: macOS の cmux で「＋」を押すと branch 名を入力でき、`wt new` の規則に従って `{ghq root}/<host>/<owner>/<repo>@<branch>` に worktree を作成して移動。既存 branch/worktree は安全に再利用する。同じ ghq リポジトリの workspace は自動的に同じ Workspace Group へ入り、branch 名・Agent Mail project/thread 情報も引き継ぐ。
 * エイリアス: `ls` (`eza`), `cat` (`bat`), `vi` (`vim`), `p` (`brew` / `paru` / `apt` を環境に応じて切り替え)。
 * `dot_config/zsh/functions/` に関数を `.zsh` ファイルとして追加するだけで `.zshrc` から自動 source されます。
 

@@ -8,6 +8,14 @@ if ($missing.Count -gt 0) {
 }
 
 & claude mcp remove --scope user agent-mail 2>$null
-& claude mcp add --scope user agent-mail -- mcp-agent-mail
 & codex mcp remove agent-mail 2>$null
-& codex mcp add agent-mail -- mcp-agent-mail
+
+& claude mcp get mcp-agent-mail *> $null
+if ($LASTEXITCODE -ne 0) {
+    throw "Claude's mcp-agent-mail HTTP entry is missing or unhealthy; rerun chezmoi apply"
+}
+
+& codex mcp get mcp_agent_mail *> $null
+if ($LASTEXITCODE -ne 0) {
+    throw "Codex's mcp_agent_mail HTTP entry is missing; rerun chezmoi apply"
+}

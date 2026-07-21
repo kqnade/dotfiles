@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Keep the CLIs' runtime-owned configs intact. Their commands update only the
-# Agent Mail entry instead of replacing trusted-project and UI state.
+# The installer creates authenticated HTTP entries named `mcp-agent-mail` for
+# Claude and `mcp_agent_mail` for Codex. Remove the older stdio entries managed
+# by this script: they cannot open the database while the HTTP service owns it.
 missing=()
 command -v claude >/dev/null 2>&1 || missing+=(claude)
 command -v codex >/dev/null 2>&1 || missing+=(codex)
@@ -12,6 +13,13 @@ if ((${#missing[@]})); then
 fi
 
 claude mcp remove --scope user agent-mail >/dev/null 2>&1 || true
-claude mcp add --scope user agent-mail -- mcp-agent-mail
 codex mcp remove agent-mail >/dev/null 2>&1 || true
-codex mcp add agent-mail -- mcp-agent-mail
+
+if ! claude mcp get mcp-agent-mail >/dev/null 2>&1; then
+  echo "Claude's mcp-agent-mail HTTP entry is missing or unhealthy; rerun chezmoi apply" >&2
+  exit 1
+fi
+if ! codex mcp get mcp_agent_mail >/dev/null 2>&1; then
+  echo "Codex's mcp_agent_mail HTTP entry is missing; rerun chezmoi apply" >&2
+  exit 1
+fi

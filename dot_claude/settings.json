@@ -103,7 +103,7 @@
   },
   "includeCoAuthoredBy": false,
   "language": "Friendly Japanese",
-  "model": "claude-fable-5[1m]",
+  "model": "claude-sonnet-5",
   "permissions": {
     "allow": [
       "Bash(git *)",

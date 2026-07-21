@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# wt is a zsh function loaded by sheldon, so enter a login/interactive zsh
+# instead of duplicating any of wt's path, hook, or lifecycle logic here.
+exec zsh -lic '
+  printf "Branch name (for example issue/123 or feat/login): "
+  IFS= read -r branch
+  [[ -n "$branch" ]] || { print -u2 "error: branch name is required"; exit 1; }
+  git check-ref-format --branch "$branch" >/dev/null 2>&1 || {
+    print -u2 "error: invalid branch name: $branch"
+    exit 1
+  }
+
+  # Reuse an existing worktree for the exact branch. This makes retries safe
+  # when creation succeeded but later cmux setup failed.
+  worktree_path=""
+  candidate_path=""
+  while IFS= read -r line; do
+    case "$line" in
+      "worktree "*) candidate_path=${line#worktree } ;;
+      "branch refs/heads/$branch") worktree_path=$candidate_path; break ;;
+      "") candidate_path="" ;;
+    esac
+  done < <(git worktree list --porcelain)
+
+  if [[ -n "$worktree_path" ]]; then
+    builtin cd "$worktree_path" || exit
+    print "✓ reusing worktree: $worktree_path"
+  elif git show-ref --verify --quiet "refs/heads/$branch"; then
+    # The branch exists but is not checked out anywhere. wt new intentionally
+    # rejects this case, so attach it using the wt directory convention.
+    base_repo=$(_wt_base) || exit
+    worktree_name=$(_wt_branch_to_dir "$branch") || exit
+    worktree_path="$(dirname "$base_repo")/$(basename "$base_repo")@$worktree_name"
+    [[ ! -e "$worktree_path" ]] || {
+      print -u2 "error: path exists but is not a registered worktree: $worktree_path"
+      exit 1
+    }
+    git worktree add "$worktree_path" "$branch" || exit
+    _wt_run_hook post-new "$branch" "$worktree_path" || exit
+    builtin cd "$worktree_path" || exit
+    print "✓ worktree created from existing branch: $worktree_path"
+  else
+    wt new "$branch" --no-ai || exit
+    # wt cd matches the slash-normalized directory name, not the Git branch.
+    worktree_name=$(_wt_branch_to_dir "$branch") || exit
+    wt cd "$worktree_name" || exit
+  fi
+
+  # Keep one cmux group and one Agent Mail project per canonical ghq checkout.
+  # Prefer the public wt API once available; the helper fallback supports the
+  # currently installed wt version without reimplementing its path rules.
+  base_repo=$(wt home-path 2>/dev/null || _wt_base) || exit
+  ghq_root=$(ghq root)
+  repo_key=${base_repo#"$ghq_root"/}
+  group_name=${repo_key#*/}
+  workspace=$(cmux identify | jq -r ".caller.workspace_ref")
+  groups=$(cmux workspace-group list --json)
+  group=$(jq -r --arg name "$group_name" \
+    ".groups[] | select(.name == \$name) | .ref" <<<"$groups" | head -n 1)
+
+  if [[ -z "$group" ]]; then
+    cmux workspace-group create \
+      --name "$group_name" --cwd "$base_repo" --from "$workspace" >/dev/null
+    groups=$(cmux workspace-group list --json)
+    group=$(jq -r --arg name "$group_name" \
+      ".groups[] | select(.name == \$name) | .ref" <<<"$groups" | head -n 1)
+    [[ -n "$group" ]] || { print -u2 "error: failed to create cmux group"; exit 1; }
+    cmux workspace-group set-color "$group" --hex "#1565C0" >/dev/null
+    cmux workspace-group set-icon "$group" --symbol "folder.badge.gearshape" >/dev/null
+  elif ! jq -e --arg group "$group" --arg workspace "$workspace" \
+    ".groups[] | select(.ref == \$group) | .member_workspace_refs | index(\$workspace)" \
+    >/dev/null <<<"$groups"; then
+    # A workspace belongs to at most one group. Move it to its repository group.
+    current_group=$(jq -r --arg workspace "$workspace" \
+      ".groups[] | select(.member_workspace_refs | index(\$workspace)) | .ref" \
+      <<<"$groups" | head -n 1)
+    [[ -z "$current_group" ]] || cmux workspace-group remove --workspace "$workspace" >/dev/null
+    cmux workspace-group add --group "$group" --workspace "$workspace" >/dev/null
+  fi
+
+  export AGENT_MAIL_PROJECT="$base_repo"
+  export AGENT_MAIL_THREAD_ID="$branch"
+  cmux rename-workspace --workspace "$workspace" "$branch" >/dev/null 2>&1 || true
+  cmux set-status branch "$branch" --workspace "$workspace" \
+    --icon "arrow.triangle.branch" --color "#1565C0" --priority 90 >/dev/null 2>&1 || true
+  cmux workspace-group expand "$group" >/dev/null 2>&1 || true
+  exec zsh -l
+'
