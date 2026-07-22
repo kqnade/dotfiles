@@ -98,7 +98,17 @@
           }
         ],
         "matcher": "startup|resume|clear"
-      }
+      }{{ if ne .chezmoi.os "windows" }},
+      {
+        "hooks": [
+          {
+            "command": "bash '{{ .chezmoi.homeDir }}/.claude/hooks/herdr-agent-state.sh' session",
+            "timeout": 10,
+            "type": "command"
+          }
+        ],
+        "matcher": "*"
+      }{{ end }}
     ]
   },
   "includeCoAuthoredBy": false,
@@ -142,4 +152,4 @@
   },
   "theme": "auto",
   "verbose": false
-}
+}{{- /* Herdr's Claude integration writes JSON without a trailing newline. */ -}}
