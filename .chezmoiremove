@@ -12,3 +12,4 @@
 .claude/rules/patterns.md
 .config/cmux
 .local/bin/cmux-worktree
+.config/zsh/functions/ccc.zsh

@@ -15,7 +15,7 @@ Cross-platform dotfiles managed by **chezmoi**, with dev tools centralized in **
 | Diff before apply | `chezmoi diff` |
 | Install/update dev tools | `mise install` |
 | Install bootstrap packages | `mise bootstrap packages install --yes` |
-| Generate commit message | `git ccc` (staged diff → opencode → gitmoji commit) |
+| Generate commit message | `git cc` (staged diff → Codex → gitmoji commit) |
 
 ## Architecture facts that are easy to miss
 
@@ -123,6 +123,6 @@ Keep this mapping when editing Neovim configs.
 
 ## Conventions
 
-- Commit messages use gitmoji prefixes; generate with `git ccc`.
+- Commit messages use gitmoji prefixes; generate with `git cc`.
 - Default branch is `main`.
 - PRs are verified by `.github/workflows/ci.yml`: `chezmoi apply --dry-run` on Ubuntu/macOS/Windows, real Fedora bootstrap, and shellcheck on rendered templates.
