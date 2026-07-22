@@ -10,9 +10,6 @@
 # Primary monospace font (also installed on Linux via run_onchange_after_install-fonts.sh)
 cask 'font-udev-gothic'
 
-# AI coding agent-oriented terminal. Its settings live in dot_config/cmux/.
-cask 'cmux'
-
 # SKK dictionary server — used by macSKK (always) and by Neovim's skkeleton
 # (when features.neovim is on). delphinus/yaskkserv2 tap, HEAD build; brew
 # handles the rust build dep internally.

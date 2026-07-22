@@ -1,0 +1,11 @@
+{{- if ne .chezmoi.os "windows" -}}
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Herdr is installed by mise, which may happen after the first chezmoi apply.
+# Running this idempotent hook on every apply makes the integration converge on
+# the next apply without making initial bootstrap depend on mise's timing.
+if command -v herdr >/dev/null 2>&1 && command -v hermes >/dev/null 2>&1; then
+  herdr integration install hermes >/dev/null
+fi
+{{- end }}

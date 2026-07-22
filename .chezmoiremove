@@ -10,3 +10,5 @@
 .claude/rules/coding-style.md
 .claude/rules/hooks.md
 .claude/rules/patterns.md
+.config/cmux
+.local/bin/cmux-worktree

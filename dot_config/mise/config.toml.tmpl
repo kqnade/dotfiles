@@ -119,6 +119,9 @@ rust-analyzer = "latest"
 # ----------------------------------------------------------------------------
 # AI / agent CLIs
 # ----------------------------------------------------------------------------
+{{- if ne .chezmoi.os "windows" }}
+herdr = "latest"
+{{- end }}
 claude = "latest"
 codex = "latest"
 opencode = "latest"

@@ -5,7 +5,7 @@
 * `sheldon` によるプラグイン管理（autosuggestions, syntax-highlighting, enhancd 等）。
 * `fzf-tab` による補完のプレビュー。
 * **`gg` 関数**: `ghq` 管理下のリポジトリを `fzf` で検索・プレビューし、ディレクトリを高速移動。
-* **cmux worktree launcher**: macOS の cmux で「＋」を押すと branch 名を入力でき、`wt new` の規則に従って `{ghq root}/<host>/<owner>/<repo>@<branch>` に worktree を作成して移動。既存 branch/worktree は安全に再利用する。同じ ghq リポジトリの workspace は自動的に同じ Workspace Group へ入り、Agent Mailではworktreeをbase projectへ統合し、`<host>/<owner>` 単位のProductへ自動linkする。
+* **Herdr + Hermes Agent**: Herdr の workspace / worktree と agent sidebar で複数の CLI エージェントを管理。`prefix+Shift+G` は `wt` をラップし、従来どおり `{ghq root}/<host>/<owner>/<repo>@<branch>` に作成してから Herdr の元 repository workspace 配下へ登録する。`prefix+Alt+G` で既存 worktree を開き、`prefix+Alt+X` で checkout を安全に削除できる。Hermes 連携は `chezmoi apply` 時に自動導入され、状態・承認待ち・session ID を Herdr に通知する。
 * エイリアス: `ls` (`eza`), `cat` (`bat`), `vi` (`vim`), `p` (`brew` / `paru` / `apt` を環境に応じて切り替え)。
 * `dot_config/zsh/functions/` に関数を `.zsh` ファイルとして追加するだけで `.zshrc` から自動 source されます。
 

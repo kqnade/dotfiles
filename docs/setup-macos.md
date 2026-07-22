@@ -17,7 +17,7 @@ chezmoi init --apply kqnade
 
 ## 2. 自動化されている内容
 
-`run_onchange_setup-macos.sh.tmpl` が `chezmoi apply` のたびに：
+関連する chezmoi スクリプトが初回または管理内容の変更時に：
 
 1. **Homebrew が無ければインストール**（Apple Silicon / Intel 両対応）
 2. `Brewfile`（chezmoi の sourceDir 配下、`~` には展開しない）を `brew bundle` で適用（`Brewfile` の内容が変わると自動再実行）
@@ -28,20 +28,29 @@ chezmoi init --apply kqnade
    - メニューバー時計: 曜日表示・日付非表示・AM/PM
    - トラックパッド: タップでクリック
    - Stage Manager 無効、通知プレビュー要約無効
-4. **cmux** をインストールし、`~/.config/cmux/cmux.json` を配置：
-   - フォント・テーマなどの端末描画設定は `~/.config/ghostty/config` を共有
-   - 新しいワークスペースは現在の作業ディレクトリを引き継ぐ
-   - 復元した AI エージェントは自動再開せず、意図せずコマンドを再実行しない
-   - `localhost` のリンクは cmux 内蔵ブラウザで開く
+4. **Hermes Agent** を公式インストーラーで `~/.hermes` に導入（既存の設定・認証情報は保持）
+5. mise 管理の **Herdr** に `~/.config/herdr/config.toml` を配置：
+   - 新しい pane / tab / workspace は現在の作業ディレクトリを引き継ぐ
+   - `prefix+Shift+G` で `wt` 規則の Git worktree を作成し、元 repository の workspace 配下にグループ化
+   - `prefix+Alt+G` で既存 worktree を再オープン、`prefix+Alt+X` で checkout を削除
+   - 復元した AI エージェントは自動再開しない
+   - macOS の日本語 IME 候補位置を agent pane のカーソルに追従させる
+   - prefix 操作中だけ ASCII 入力ソースへ切り替える
 
-設定を変更したい場合は `run_onchange_setup-macos.sh.tmpl` を直接編集してください。
-ファイルの内容が変わると次回の `chezmoi apply` で再実行されます。
+macOS defaults は `run_onchange_setup-macos.sh.tmpl`、Herdr は
+`dot_config/herdr/config.toml` で管理します。内容が変わると次回の
+`chezmoi apply` で反映されます。
 
 ## 3. ツールのインストール
 
 ```bash
 mise install
+chezmoi apply # Herdr と Hermes の lifecycle/session 連携を有効化
 ```
+
+Herdr は `herdr` で起動します。Hermes のモデル・プロバイダー・認証は
+`hermes setup --portal`（または `hermes config`）で設定してください。API キー等は
+`~/.hermes/.env` に保存され、chezmoi の管理対象には含まれません。
 
 ## 4. SKK 辞書サーバ (yaskkserv2)
 

@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# wt is a zsh function loaded by sheldon. Use it instead of duplicating its
+# checkout path convention and post-new lifecycle hooks.
+exec zsh -lic '
+  printf "Branch name (for example issue/123 or feat/login): "
+  IFS= read -r branch
+  [[ -n "$branch" ]] || { print -u2 "error: branch name is required"; exit 1; }
+  git check-ref-format --branch "$branch" >/dev/null 2>&1 || {
+    print -u2 "error: invalid branch name: $branch"
+    exit 1
+  }
+
+  worktree_path=""
+  candidate_path=""
+  while IFS= read -r line; do
+    case "$line" in
+      "worktree "*) candidate_path=${line#worktree } ;;
+      "branch refs/heads/$branch") worktree_path=$candidate_path; break ;;
+      "") candidate_path="" ;;
+    esac
+  done < <(git worktree list --porcelain)
+
+  if [[ -n "$worktree_path" ]]; then
+    print "✓ reusing worktree: $worktree_path"
+  elif git show-ref --verify --quiet "refs/heads/$branch"; then
+    # wt new rejects an existing branch, so attach it using the wt directory
+    # convention and run the same hook that wt new runs after creation.
+    base_repo=$(wt home-path 2>/dev/null || _wt_base) || exit
+    worktree_name=$(_wt_branch_to_dir "$branch") || exit
+    worktree_path="$(dirname "$base_repo")/$(basename "$base_repo")@$worktree_name"
+    [[ ! -e "$worktree_path" ]] || {
+      print -u2 "error: path exists but is not a registered worktree: $worktree_path"
+      exit 1
+    }
+    git worktree add "$worktree_path" "$branch" || exit
+    _wt_run_hook post-new "$branch" "$worktree_path" || exit
+    print "✓ worktree created from existing branch: $worktree_path"
+  else
+    wt new "$branch" --no-ai || exit
+    base_repo=$(wt home-path 2>/dev/null || _wt_base) || exit
+    worktree_name=$(_wt_branch_to_dir "$branch") || exit
+    worktree_path="$(dirname "$base_repo")/$(basename "$base_repo")@$worktree_name"
+  fi
+
+  # Register the wt-managed checkout in Herdr. Herdr reuses an already-open
+  # workspace and groups a newly opened one below the source repository.
+  herdr worktree open --path "$worktree_path" --label "$branch" --focus --json \
+    >/dev/null || exit
+  print "✓ opened in Herdr: $branch"
+'

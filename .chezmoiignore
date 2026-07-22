@@ -33,10 +33,6 @@ install-mcp-agent-mail.ps1
 configure-agent-mail.ps1
 {{ end -}}
 
-{{ if ne .chezmoi.os "darwin" -}}
-.config/cmux/
-{{ end -}}
-
 {{ if not .features.neovim -}}
 .config/nvim/
 {{ end -}}

@@ -13,7 +13,7 @@ if ((${#missing[@]})); then
 fi
 
 # Product Bus groups related ghq repositories. Worktree shells set
-# AGENT_MAIL_PROJECT to the canonical base repository in cmux-worktree.
+# AGENT_MAIL_PROJECT to the canonical base repository in the launching shell.
 service_changed=0
 service_manager=""
 case "$(uname -s)" in

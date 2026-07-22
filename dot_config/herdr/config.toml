@@ -1,0 +1,36 @@
+# Managed by chezmoi. Keep secrets and machine-local state out of this file.
+onboarding = false
+
+[terminal]
+default_shell = "zsh"
+shell_mode = "auto"
+new_cwd = "follow"
+
+[session]
+# Restored panes remain visible without automatically re-running an agent.
+resume_agents_on_restore = false
+
+[keys]
+# Creation uses the wt wrapper below so its sibling-directory convention and
+# lifecycle hooks remain the source of truth. Keep Herdr's native creator on a
+# secondary binding for cases where a Herdr-managed checkout is preferable.
+new_worktree = "prefix+alt+n"
+open_worktree = "prefix+alt+g"
+remove_worktree = "prefix+alt+x"
+
+[[keys.command]]
+key = "prefix+shift+g"
+type = "popup"
+command = "$HOME/.local/bin/herdr-worktree"
+width = "72%"
+height = "35%"
+
+[worktrees]
+# Keep Herdr-managed checkouts separate from ghq's canonical repositories.
+directory = "~/.herdr/worktrees"
+
+[experimental]
+# Keep Japanese IME candidates anchored to the active agent pane on macOS.
+reveal_hidden_cursor_for_cjk_ime = true
+cjk_ime_agents = ["claude", "codex", "hermes", "opencode"]
+switch_ascii_input_source_in_prefix = true
