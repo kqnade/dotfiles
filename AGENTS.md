@@ -99,9 +99,11 @@ Keep this mapping when editing Neovim configs.
   `<ghq-root>/<host>/<owner>/<repo>@<worktree>` to the single Agent Mail project
   `<ghq-root>/<host>/<owner>/<repo>`. Never register or use the `@<worktree>` path
   as an Agent Mail `project_key`.
-- Prefer `AGENT_MAIL_PROJECT` when the shell provides it. Otherwise resolve the
-  base repo with `wt home-path` (or `_wt_base` for an older wt), and use that
-  absolute path for every Agent Mail tool call.
+- Use the non-empty `AGENT_MAIL_PROJECT` exported by the shell as the
+  `project_key` for every Agent Mail tool call; do not replace it with `$PWD` or
+  a worktree path. If it is unavailable, resolve the base repo with
+  `wt home-path` (or `_wt_base` for an older wt) and export the resulting
+  absolute path before registering an agent or calling Agent Mail.
 - Outside a wt-enabled shell, the equivalent Git fallback is
   `dirname "$(git rev-parse --path-format=absolute --git-common-dir)"`; verify that
   the resulting basename has no `@<worktree>` suffix before using it.
@@ -110,6 +112,22 @@ Keep this mapping when editing Neovim configs.
   returned name for the session; do not ask the user to supply an Agent Mail ID.
 - `WORKTREES_ENABLED=true` lets the Agent Mail service recognize linked worktrees,
   including shells opened from Herdr workspaces.
+
+### Agent Mail communication
+
+- Treat Agent Mail as concise agent-to-agent task communication, not formal
+  email. Omit greetings, pleasantries, signatures, and ceremonial wording.
+- Lead with the request or conclusion. Include only the relevant context,
+  affected paths, constraints, and completion criteria.
+- Keep replies focused on the result, changed paths, verification, and blockers.
+- Make requests actionable and explicit; do not hide the required action inside
+  background explanation.
+- A managing or coordinating agent must check Agent Mail when a managed agent
+  becomes `idle` or `done`; `done` is also a result-collection trigger, not a
+  terminal state to ignore.
+- The managing agent must collect relevant replies and surface their results to
+  the user. Do not assume the user will open the mailbox or relay messages
+  between agents.
 
 ## Adding things
 
