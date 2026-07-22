@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "agent-mail": {
-      "command": "mcp-agent-mail",
-      "args": [],
+      "url": "http://127.0.0.1:8765/mcp/",
+      "bearerTokenEnvVar": "HTTP_BEARER_TOKEN",
       "enabled": true,
       "startupTimeoutMs": 30000,
       "toolTimeoutMs": 120000

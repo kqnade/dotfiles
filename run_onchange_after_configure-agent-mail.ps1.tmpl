@@ -10,6 +10,23 @@ if ($missing.Count -gt 0) {
 & claude mcp remove --scope user agent-mail 2>$null
 & codex mcp remove agent-mail 2>$null
 
+$legacyOpenCode = Join-Path $HOME ".opencode/opencode.json"
+if (Test-Path $legacyOpenCode) {
+    $config = Get-Content $legacyOpenCode -Raw | ConvertFrom-Json
+    if ($null -ne $config.mcp -and $null -ne $config.mcp.PSObject.Properties["mcp-agent-mail"]) {
+        $config.mcp.PSObject.Properties.Remove("mcp-agent-mail")
+        if ($config.mcp.PSObject.Properties.Count -eq 0) {
+            $config.PSObject.Properties.Remove("mcp")
+        }
+        $remaining = @($config.PSObject.Properties.Name | Where-Object { $_ -ne '$schema' })
+        if ($remaining.Count -eq 0) {
+            Remove-Item $legacyOpenCode
+        } else {
+            $config | ConvertTo-Json -Depth 20 | Set-Content $legacyOpenCode
+        }
+    }
+}
+
 & claude mcp get mcp-agent-mail *> $null
 if ($LASTEXITCODE -ne 0) {
     throw "Claude's mcp-agent-mail HTTP entry is missing or unhealthy; rerun chezmoi apply"

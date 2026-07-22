@@ -2,8 +2,10 @@
 set -euo pipefail
 
 # The installer creates authenticated HTTP entries named `mcp-agent-mail` for
-# Claude and `mcp_agent_mail` for Codex. Remove the older stdio entries managed
-# by this script: they cannot open the database while the HTTP service owns it.
+# Claude, `mcp_agent_mail` for Codex, and a second OpenCode config under
+# ~/.opencode. Claude and Codex use those installer-managed entries. OpenCode
+# and Kimi use the chezmoi-managed HTTP entries and inherit the bearer token
+# from ~/.config/mcp-agent-mail/config.env.
 missing=()
 command -v claude >/dev/null 2>&1 || missing+=(claude)
 command -v codex >/dev/null 2>&1 || missing+=(codex)
@@ -68,6 +70,23 @@ fi
 
 claude mcp remove --scope user agent-mail >/dev/null 2>&1 || true
 codex mcp remove agent-mail >/dev/null 2>&1 || true
+
+# Remove only the duplicate installer-managed OpenCode entry. Preserve the file
+# if it contains unrelated settings; delete it when only schema/empty MCP data
+# remains so ~/.config/opencode/opencode.json is the single source of truth.
+legacy_opencode="$HOME/.opencode/opencode.json"
+if [[ -f "$legacy_opencode" ]] \
+  && jq -e '.mcp["mcp-agent-mail"]' "$legacy_opencode" >/dev/null 2>&1; then
+  cleaned=$(mktemp)
+  jq 'del(.mcp["mcp-agent-mail"]) | if .mcp == {} then del(.mcp) else . end' \
+    "$legacy_opencode" >"$cleaned"
+  if jq -e 'del(."$schema") | length == 0' "$cleaned" >/dev/null; then
+    rm -f "$legacy_opencode"
+  else
+    install -m 600 "$cleaned" "$legacy_opencode"
+  fi
+  rm -f "$cleaned"
+fi
 
 for _ in {1..10}; do
   claude mcp get mcp-agent-mail >/dev/null 2>&1 && break
