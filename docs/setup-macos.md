@@ -28,8 +28,7 @@ chezmoi init --apply kqnade
    - メニューバー時計: 曜日表示・日付非表示・AM/PM
    - トラックパッド: タップでクリック
    - Stage Manager 無効、通知プレビュー要約無効
-4. **Hermes Agent** を公式インストーラーで `~/.hermes` に導入（既存の設定・認証情報は保持）
-5. mise 管理の **Herdr** に `~/.config/herdr/config.toml` を配置：
+4. mise 管理の **Herdr** に `~/.config/herdr/config.toml` を配置：
    - 新しい pane / tab / workspace は現在の作業ディレクトリを引き継ぐ
    - `prefix+Shift+G` で `wt` 規則の Git worktree を作成し、元 repository の workspace 配下にグループ化
    - `prefix+Alt+G` で既存 worktree を再オープン、`prefix+Alt+X` で checkout を削除
@@ -45,12 +44,10 @@ macOS defaults は `run_onchange_setup-macos.sh.tmpl`、Herdr は
 
 ```bash
 mise install
-chezmoi apply # Herdr と Hermes の lifecycle/session 連携を有効化
+chezmoi apply # Herdr と各エージェントの lifecycle/session 連携を有効化
 ```
 
-Herdr は `herdr` で起動します。Hermes のモデル・プロバイダー・認証は
-`hermes setup --portal`（または `hermes config`）で設定してください。API キー等は
-`~/.hermes/.env` に保存され、chezmoi の管理対象には含まれません。
+Herdr は `herdr` で起動します。
 
 ## 4. SKK 辞書サーバ (yaskkserv2)
 

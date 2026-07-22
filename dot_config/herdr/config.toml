@@ -32,7 +32,7 @@ directory = "~/.herdr/worktrees"
 [experimental]
 # Keep Japanese IME candidates anchored to the active agent pane on macOS.
 reveal_hidden_cursor_for_cjk_ime = true
-cjk_ime_agents = ["claude", "codex", "hermes", "opencode"]
+cjk_ime_agents = ["claude", "codex", "opencode"]
 switch_ascii_input_source_in_prefix = true
 
 [ui.toast]

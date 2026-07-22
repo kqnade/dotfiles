@@ -25,7 +25,7 @@ Linux はいずれも sudo 必須。`scripts/install-linux.sh` は `/etc/os-rele
 * **mise**: 開発ツールおよび言語ランタイムの統一バージョン管理。aqua/github/npm/pipx/cargo/go backend を扱える。
 * **sheldon**: Zsh プラグインの高速管理 (Linux/macOS)。
 * **starship**: 全 OS 共通のプロンプト。
-* **Herdr + Hermes Agent**: Herdr で複数の CLI エージェントを監視・再接続し、Hermes を常駐型 AI エージェントとして利用（Linux / macOS）。
+* **Herdr**: 複数の CLI エージェントを監視・再接続するターミナルワークスペース（Linux / macOS）。
 * **Vim/Neovim**: Colemak 配列に最適化されたキーバインド (Neovim はオプトアウト)。
 * **yaskkserv2**: macSKK / Neovim skkeleton から共用するローカル SKK 辞書サーバ。
 

@@ -10,7 +10,5 @@ if command -v herdr >/dev/null 2>&1; then
     command -v "$agent" >/dev/null 2>&1 \
       && herdr integration install "$agent" >/dev/null
   done
-  command -v hermes >/dev/null 2>&1 \
-    && herdr integration install hermes >/dev/null
 fi
 {{- end }}
