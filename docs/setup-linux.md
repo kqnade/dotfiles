@@ -1,111 +1,54 @@
 # Linux セットアップ
 
-`scripts/install-linux.sh` が `/etc/os-release` を読んで以下の 2 経路に分岐します。**いずれも sudo 必須**。
+対象は Fedora x64、Arch Linux x64、および同ディストリビューションを使う
+WSL x64 です。別系統のディストリビューションは対象外です。
 
-| 経路 | 条件 | パッケージ manifest |
-|------|------|---------------------|
-| **Fedora** (primary) | `fedora` / `rhel` / `centos` / `rocky` / `almalinux` | `Dnffile` |
-| Arch | `arch` / `manjaro` / `endeavouros` | `metapkgs/base/PKGBUILD` |
-
-> **削除されたサポート対象**: Debian/Ubuntu (apt), sideapt (非sudo apt), pixi (conda-forge)。
->
-> 開発ツールは全て [mise](https://mise.jdx.dev) に寄せたため、OS 層で必要なのは「shell + git + ビルドツール + フォント + 常駐サービス」のみ。差分が薄くなったので Debian/Ubuntu 経路を sideapt/pixi も含めて削除しました。
-
-リポジトリは ghq 規約に従って `~/repos/github.com/kqnade/dotfiles` に配置することを想定しています。
-
-`chezmoi apply` を実行すると `run_onchange_setup-linux.sh.tmpl` が
-自動で `scripts/install-linux.sh` を呼び出すため、初回・更新時とも
-このコマンド 1 つで完結します（CI など TTY 不在の環境ではスキップ）。
-さらに `run_onchange_after_install-fonts.sh.tmpl` が UDEVGothic NF
-を `~/.local/share/fonts` に配置し、4 OS で同一フォントを共有します。
-
-`run_onchange_after_install-yaskkserv2.sh.tmpl` が mise の rust runtime
-で `yaskkserv2` をビルド → `~/.skk/dictionary.yaskkserv2` を生成 →
-systemd user unit (`yaskkserv2.service`) を有効化し、`127.0.0.1:1178`
-で SKK 辞書サーバを常駐させます（`--google-japanese-input=notfound` で
-未収録語は Google 日本語入力で補完、結果は `~/.cache/yaskkserv2/google.cache`
-にキャッシュ）。Neovim の skkeleton と macOS の macSKK がこのサーバを参照します。
-
----
-
-## Fedora (primary)
-
-### 1. リポジトリ取得 + システム依存
+## 初回セットアップ
 
 ```bash
-sudo dnf install -y git curl
-git clone https://github.com/kqnade/dotfiles.git ~/repos/github.com/kqnade/dotfiles
-cd ~/repos/github.com/kqnade/dotfiles
-bash scripts/install-linux.sh
+curl -fsSL https://raw.githubusercontent.com/kqnade/dotfiles/main/install.sh | bash
 ```
 
-`scripts/install-linux.sh` は以下を行います：
+`install.sh` は `curl` と Git がなければ対象 OS の package manager で最小限だけ
+導入し、mise を `~/.local/bin` に配置します。その後、リポジトリを
+`~/repos/github.com/kqnade/dotfiles` に取得し、`mise bootstrap --yes` を実行します。
 
-- `Dnffile` の dnf パッケージ（`zsh`, `vim-enhanced`, `git`, `git-lfs`, `openssh-clients`, `gcc`, `make`, `unzip`, `fontconfig`, `google-noto-*-cjk-fonts` など）を一括 install
-- `chezmoi` を `get.chezmoi.io` 経由で `~/.local/bin` に配置
-- `mise` を `mise.run` 経由で `~/.local/bin` に配置
+## system packages
 
-### 2. chezmoi 適用
+root `mise.toml` の `[bootstrap.packages]` が次を管理します。
+
+- zsh、Git、OpenSSH
+- C/C++ build toolchain
+- fontconfig、CJK fonts
+- bootstrap と UDEV Gothic 配置に必要な curl、CA certificates、unzip
+
+Fedora は dnf、Arch は pacman だけを使います。
+
+## SKK
+
+yaskkserv2 と辞書生成 tool は全 OS 共通の Cargo Git backend で build します。
+SKK-JISYO source は chezmoi externals、結合辞書は
+`scripts/build-skk-dictionary.sh`、常駐化は mise の
+`dev.mise.yaskkserv2.service` が担当します。
 
 ```bash
-export PATH="$HOME/.local/bin:$PATH"
-chezmoi init --source . --apply
+systemctl --user status dev.mise.yaskkserv2.service
 ```
 
-初回は `features.neovim` (default: true) を聞かれます。false にすると Neovim 設定と mise の `neovim` エントリが除外されます（yaskkserv2 自体は macSKK でも使うため常時導入）。
+WSL でも systemd user manager が必要です。`mise run doctor` が利用可否と service
+状態を診断します。
 
-### 3. 開発ツールのインストール（mise）
+## WSL の 1Password / SSH
+
+WSL では `~/.local/bin/{op,ssh,ssh-add}` を配置し、Windows 側の `op.exe`、
+`ssh.exe`、`ssh-add.exe` へ委譲します。commit 署名は
+`op-ssh-sign-wsl.exe` を使います。
+
+Windows 側の 1Password で SSH agent を有効にし、WSL から次を確認してください。
 
 ```bash
-# 任意: GitHub API rate limit を回避
-export GITHUB_TOKEN="$(gh auth token 2>/dev/null | tr -d '[:space:]')"
-mise install
+ssh-add -l
 ```
 
-これで `sheldon` / `starship` / `ghq` / `gh` / `eza` / `fd` / `ripgrep` / `bat` / `fzf` / `1password-cli` / `gomi` / `coscli` / `zoxide` / `neovim`（オプトイン時）/ `rust`（yaskkserv2 ビルド用）などが揃います。
-
-### 4. yaskkserv2 のビルド・サービス登録
-
-mise で rust が入った後に再度 apply すれば完了:
-
-```bash
-chezmoi apply
-```
-
-### WSL 補足: 1Password / SSH の Windows 側委譲
-
-WSL では Linux 版 1Password desktop が使えないため、Windows 側のツールを **shim** 経由で透過に叩く構成にしている。`.chezmoiignore` が WSL を検出して以下を deploy:
-
-| `~/.local/bin/` | proxy 先 | 用途 |
-|-----------------|---------|------|
-| `op` | `op.exe` (scoop) | `op read ...`, `op plugin run` 等 |
-| `ssh` | `ssh.exe` (Windows OpenSSH) | 1Password Windows SSH agent と直結 |
-| `ssh-add` | `ssh-add.exe` | 鍵確認 (`ssh-add -l`) |
-
-`~/.local/bin` は PATH 先頭側にあるので Linux native の `ssh` / `op` (もし入っていれば) を上書きする。git の SSH 呼び出しも結果として ssh.exe 経由になるので、`core.sshCommand` を別途設定する必要は無い。
-
-commit 署名のみ別経路で、`dot_gitconfig.tmpl` の `gpg.ssh.program` を `/mnt/c/Users/<name>/AppData/Local/Microsoft/WindowsApps/op-ssh-sign-wsl.exe` (Microsoft Store 版 1Password の app-alias) に向ける。
-
-Windows 側で **1Password → 設定 → 開発者 → "SSH エージェントを使用する"** を有効化しておくこと。`ssh-add -l` で 1Password の鍵が表示されれば WSL 経路は確認済み。
-
----
-
-## Arch Linux
-
-```bash
-sudo pacman -Syu --needed --noconfirm git base-devel
-git clone https://github.com/kqnade/dotfiles.git ~/repos/github.com/kqnade/dotfiles
-cd ~/repos/github.com/kqnade/dotfiles
-bash scripts/install-linux.sh
-```
-
-`scripts/install-linux.sh` は `metapkgs/base/PKGBUILD` を `makepkg -si --needed --noconfirm` でビルドし、`zsh` / `vim` / `git` / `base-devel` / `noto-fonts-cjk` / `ttf-udev-gothic-nf` などを導入します。続けて Fedora と同じく `chezmoi` と `mise` を `~/.local/bin` に投下します。
-
-```bash
-export PATH="$HOME/.local/bin:$PATH"
-chezmoi init --source . --apply
-mise install
-chezmoi apply
-```
-
-> NOTE: 1Password CLI は mise の `1password-cli` で導入されるため、AUR の `1password-cli` を別途入れる必要はありません。
+この proxy は WSL 専用です。ネイティブ Windows の dotfile/bootstrap 機能は
+ありません。

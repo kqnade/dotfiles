@@ -1,58 +1,60 @@
-# dotfiles
+# dotfiles v2
 
-**chezmoi** で管理する、Fedora / Arch Linux / macOS / Windows 対応のミニマル dotfiles。Colemak 配列最適化。
+mise をマシン構築の入口に統一した、macOS / Fedora / Arch Linux / WSL 向け
+dotfiles です。chezmoi はテンプレート、private 属性、externals の配置だけを
+担当します。
 
-## 設計思想
+## 対象環境
 
-OS パッケージマネージャは「**シェル・git・ビルドツールチェイン・フォント・常駐サービス**」だけを持ち、開発ツール (chezmoi 自体, sheldon, starship, ghq, gh, glab, eza, fd, ripgrep, bat, fzf, delta, gomi, neovim, lazygit, 言語ランタイム…) はすべて [**mise**](https://mise.jdx.dev) に集約。これで OS 横断のパリティ問題が消える。
+- macOS arm64 / x64
+- Fedora x64
+- Arch Linux x64
+- Fedora / Arch Linux on WSL x64
 
-## プラットフォーム別インストール経路
+## セットアップ
 
-| 環境 | OS パッケージ | 一発インストール |
-|------|---------------|------------------|
-| **Fedora** (primary) | `dnf` + `Dnffile` | `bash scripts/install-linux.sh` |
-| Arch Linux | pacman + 自作 metapackage `base-env` | `bash scripts/install-linux.sh` |
-| macOS | Homebrew + `Brewfile` | `brew bundle` |
-| Windows (PowerShell 7) | scoop + `scoopfile.json` | `chezmoi apply` で自動 |
-
-Linux はいずれも sudo 必須。`scripts/install-linux.sh` は `/etc/os-release` を読んで `arch` / `fedora` (含む `rhel`/`centos`/`rocky`/`almalinux`) に分岐し、続いて `chezmoi` と `mise` を `~/.local/bin` に投下する。
-
-> **削除されたサポート対象**: Debian/Ubuntu (apt), sideapt (非sudo apt), pixi (conda-forge フォールバック)。
-
-## 概要
-
-* **chezmoi**: テンプレートと OS 分岐で 1 リポジトリから 4 OS に展開。
-* **mise**: 開発ツールおよび言語ランタイムの統一バージョン管理。aqua/github/npm/pipx/cargo/go backend を扱える。
-* **sheldon**: Zsh プラグインの高速管理 (Linux/macOS)。
-* **starship**: 全 OS 共通のプロンプト。
-* **Herdr**: 複数の CLI エージェントを監視・再接続するターミナルワークスペース（Linux / macOS）。
-* **Vim/Neovim**: Colemak 配列に最適化されたキーバインド (Neovim はオプトアウト)。
-* **yaskkserv2**: macSKK / Neovim skkeleton から共用するローカル SKK 辞書サーバ。
-
-## 新環境セットアップ (Fedora 例)
+取得済みの `install.sh` を実行すると、mise を `~/.local/bin` に導入し、
+リポジトリを `~/repos/github.com/kqnade/dotfiles` に取得したあと、マシン全体を
+収束させます。
 
 ```bash
-# 1. リポジトリ取得
-git clone https://github.com/kqnade/dotfiles ~/repos/github.com/kqnade/dotfiles
-cd ~/repos/github.com/kqnade/dotfiles
-
-# 2. システムパッケージ + chezmoi + mise
-bash scripts/install-linux.sh
-
-# 3. chezmoi 適用 (Neovim を入れるか聞かれる)
-export PATH="$HOME/.local/bin:$PATH"
-chezmoi init --source . --apply
-
-# 4. mise で残りの開発ツール
-mise install
-
-# 5. yaskkserv2 のビルド・サービス登録のため再適用
-chezmoi apply
+bash install.sh
 ```
+
+未取得の環境では次の一行でも開始できます。
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/kqnade/dotfiles/main/install.sh | bash
+```
+
+macOS で Xcode Command Line Tools が未導入の場合だけ、OS のインストール確認を
+完了してから処理が続きます。既存の外部パッケージマネージャや、その管理データは
+自動削除しません。
+
+## 公開インターフェース
+
+```bash
+mise bootstrap --yes  # packages, tools, dotfiles, defaults, services を収束
+mise run apply         # chezmoi で dotfile を反映
+mise run doctor        # tools, packages, dotfiles, fonts, services を診断
+mise run update        # tool pin と 3 platform の lock を更新
+```
+
+root の [mise.toml](mise.toml) が bootstrap と global tool の唯一の定義です。
+全 tool は明示 pin し、`mise.lock` は `macos-arm64`、`macos-x64`、
+`linux-x64` を収録します。Intel Mac では sheldon、delta、fd、atuin を
+Cargo backend で build し、pnpm は npm backend から導入します。
+
+## 維持している設定
+
+- Neovim 設定と Colemak keymap
+- skkeleton と yaskkserv2 による SKK
+- Zsh/Bash の履歴、補完、sheldon、starship、mise、atuin、zoxide、ghq 操作
+- Claude Code / Codex / OpenCode / Herdr と各 CLI の設定
+- WSL から Windows 側 1Password/OpenSSH を使う `op` / `ssh` / `ssh-add` proxy
 
 ## ドキュメント
 
-* [docs/setup-linux.md](docs/setup-linux.md) — Fedora / Arch
-* [docs/setup-macos.md](docs/setup-macos.md) — macOS
-* [docs/setup-windows.md](docs/setup-windows.md) — Windows (PowerShell 7 + scoop)
-* [docs/features.md](docs/features.md) — Zsh / PowerShell / Vim / Neovim / Git の機能と設定
+- [Linux セットアップ](docs/setup-linux.md)
+- [macOS セットアップ](docs/setup-macos.md)
+- [設定一覧](docs/features.md)
