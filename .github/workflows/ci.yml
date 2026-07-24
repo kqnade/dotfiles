@@ -2,20 +2,26 @@ name: ci
 
 on:
   push:
-    branches: [main]
   pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
+  GITHUB_TOKEN: ${{ github.token }}
   MISE_VERSION: v2026.7.5
 
 jobs:
   static:
-    name: pins, lock, formats, and removals
+    name: pins, lock, formats, and invariants
     runs-on: ubuntu-latest
+    env:
+      MISE_CONFIG_DIR: ${{ runner.temp }}/mise-config
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
@@ -47,69 +53,13 @@ jobs:
           "$taplo_bin" lint "${toml_files[@]}"
           "$taplo_bin" format --check mise.toml mise.lock
 
-  locked-dry-run:
-    name: locked dry-run (${{ matrix.name }})
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: linux-x64
-            os: ubuntu-latest
-            arch: X64
-          - name: macos-arm64
-            os: macos-15
-            arch: ARM64
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - name: assert runner architecture
-        run: test "$RUNNER_ARCH" = "${{ matrix.arch }}"
-
-      - name: install mise
+      - name: verify runtime root override
         run: |
-          curl -fsSL https://mise.run | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
-      - name: resolve every tool from mise.lock
-        env:
-          MISE_CONFIG_DIR: ${{ runner.temp }}/mise-config
-        run: |
-          mise trust mise.toml
-          mise install --locked --dry-run
-
-  intel-fallback:
-    name: Intel Mac source fallbacks
-    runs-on: macos-15-intel
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - name: assert Intel runner
-        run: test "$RUNNER_ARCH" = X64
-
-      - name: install mise
-        run: |
-          curl -fsSL https://mise.run | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
-      - name: verify Cargo and npm fallbacks
-        env:
-          MISE_CONFIG_DIR: ${{ runner.temp }}/mise-config
-        run: |
-          mise trust mise.toml
-          mise install --locked --dry-run 2>&1 | tee "$RUNNER_TEMP/install-plan"
-          for tool in cargo:sheldon cargo:git-delta cargo:fd-find cargo:atuin npm:pnpm; do
-            grep -F "$tool" "$RUNNER_TEMP/install-plan"
-          done
-
-      - name: install pnpm through the Intel fallback
-        env:
-          MISE_CONFIG_DIR: ${{ runner.temp }}/mise-config
-        run: |
-          mise install --locked node npm:pnpm
-          node_dir="$(dirname "$(mise which node)")"
-          pnpm_bin="$(mise which pnpm)"
-          test "$(PATH="$node_dir:$PATH" "$pnpm_bin" --version)" = 11.16.0
+          DOTFILES_ROOT="$PWD" bash -c '
+            source scripts/lib/runtime.sh
+            test "$(dotfiles_resolve_root)" = "$PWD"
+            dotfiles_supported_platform
+          '
 
   package-bootstrap:
     name: packages (${{ matrix.name }})
@@ -125,6 +75,8 @@ jobs:
             image: archlinux:base-devel
     container:
       image: ${{ matrix.image }}
+    env:
+      MISE_CONFIG_DIR: ${{ runner.temp }}/mise-config
     steps:
       - name: prepare Fedora container
         if: matrix.name == 'Fedora'
@@ -141,37 +93,157 @@ jobs:
           curl -fsSL https://mise.run | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      - name: apply and verify bootstrap packages
+      - name: apply packages twice and verify state
         run: |
           mise trust mise.toml
           mise bootstrap packages apply --yes
           mise bootstrap packages status --missing
+          mise bootstrap packages apply --yes
+          mise bootstrap packages status --missing
 
-  chezmoi-dry-run:
-    name: chezmoi dry-run (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-15]
-    runs-on: ${{ matrix.os }}
+  linux-bootstrap:
+    name: Fedora full bootstrap without user systemd
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    container:
+      image: fedora:44@sha256:6c75d5bf57cb0fa5aa4b92c6a83c86c791644496d9ac230de7711f5b8ec3b898
+    env:
+      DOTFILES_BOOTSTRAP_SKIP: linux-systemd-units,user
+      DOTFILES_REPO_DIR: ${{ github.workspace }}
+      DOTFILES_SKIP_SERVICE_HEALTH: "1"
+      MISE_CONFIG_DIR: ${{ runner.temp }}/mise-config
+      MISE_LOCKED: "1"
+    steps:
+      - name: prepare container
+        run: dnf install -y --setopt=install_weak_deps=False git curl ca-certificates tar gzip
+
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: assert Linux architecture
+        run: test "$(uname -m)" = x86_64
+
+      - name: run the Linux install entry point
+        run: bash install.sh
+
+      - name: verify tools, dotfiles, font, dictionary, and server
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          export DOTFILES_ROOT="$GITHUB_WORKSPACE"
+
+          missing="$(mise -C "$DOTFILES_ROOT" ls --current --missing --no-header)"
+          test -z "$missing"
+          mise -C "$DOTFILES_ROOT" exec -- pnpm --version
+
+          mise -C "$DOTFILES_ROOT" run apply
+          test -z "$(chezmoi --source "$DOTFILES_ROOT" diff --exclude=externals)"
+          fc-list | grep -qi udevgothic
+          test -s "$HOME/.skk/dictionary.yaskkserv2"
+
+          bash "$DOTFILES_ROOT/scripts/yaskkserv2-serve.sh" >"$RUNNER_TEMP/yaskkserv2.log" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          source "$DOTFILES_ROOT/scripts/lib/runtime.sh"
+          if ! dotfiles_wait_for_port 127.0.0.1 1178 30; then
+            cat "$RUNNER_TEMP/yaskkserv2.log"
+            exit 1
+          fi
+
+  macos-bootstrap:
+    name: macOS arm64 public interfaces
+    runs-on: macos-15
+    timeout-minutes: 90
+    env:
+      MISE_LOCKED: "1"
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - name: install mise and chezmoi
-        run: |
-          curl -fsSL https://mise.run | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          "$HOME/.local/bin/mise" trust mise.toml
-          "$HOME/.local/bin/mise" install --locked chezmoi
+      - name: assert Apple Silicon runner
+        run: test "$RUNNER_ARCH" = ARM64
 
-      - name: render and apply without externals
+      - name: expose the checkout at the public path
         run: |
-          chezmoi_bin="$(mise which chezmoi)"
-          destination="$RUNNER_TEMP/chezmoi-destination"
-          mkdir -p "$destination"
-          "$chezmoi_bin" --source "$PWD" init
-          "$chezmoi_bin" --source "$PWD" --destination "$destination" \
-            apply --dry-run --verbose --exclude=externals
-          "$chezmoi_bin" --source "$PWD" execute-template \
-            < dot_claude/settings.json.tmpl \
-            | python3 -m json.tool > /dev/null
+          canonical_parent="$HOME/repos/github.com/kqnade"
+          canonical_root="$canonical_parent/dotfiles"
+          mkdir -p "$canonical_parent"
+          ln -s "$GITHUB_WORKSPACE" "$canonical_root"
+          test -f "$canonical_root/mise.toml"
+
+      - name: run install.sh and every non-update public command
+        run: |
+          canonical_root="$HOME/repos/github.com/kqnade/dotfiles"
+          bash install.sh
+          export PATH="$HOME/.local/bin:$PATH"
+
+          cd "$HOME"
+          mise run apply
+          mise run doctor
+
+          cd "$canonical_root"
+          mise bootstrap --yes
+
+          cd "$HOME"
+          mise run doctor
+
+      - name: run update in a disposable checkout
+        run: |
+          unset MISE_LOCKED
+          export PATH="$HOME/.local/bin:$PATH"
+          update_root="$RUNNER_TEMP/update-checkout"
+          git clone --local --no-hardlinks "$GITHUB_WORKSPACE" "$update_root"
+
+          DOTFILES_ROOT="$update_root" mise -C "$update_root" run update
+          python3 "$update_root/scripts/ci/validate-mise.py"
+          python3 "$update_root/scripts/ci/validate-repository.py"
+          git -C "$update_root" diff --check
+
+          unexpected="$(
+            git -C "$update_root" diff --name-only |
+              grep -Ev '^(mise\.toml|mise\.lock)$' || true
+          )"
+          test -z "$unexpected"
+
+  intel-fallback:
+    name: Intel Mac public interfaces and source fallbacks
+    runs-on: macos-15-intel
+    timeout-minutes: 120
+    env:
+      MISE_LOCKED: "1"
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: assert Intel runner
+        run: test "$RUNNER_ARCH" = X64
+
+      - name: expose the checkout at the public path
+        run: |
+          canonical_parent="$HOME/repos/github.com/kqnade"
+          canonical_root="$canonical_parent/dotfiles"
+          mkdir -p "$canonical_parent"
+          ln -s "$GITHUB_WORKSPACE" "$canonical_root"
+          test -f "$canonical_root/mise.toml"
+
+      - name: run the Intel install entry point
+        run: |
+          bash install.sh
+          export PATH="$HOME/.local/bin:$PATH"
+
+          cd "$HOME"
+          mise run apply
+          mise run doctor
+
+      - name: execute every fallback
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          for selector in \
+            cargo:sheldon \
+            cargo:git-delta \
+            cargo:fd-find \
+            cargo:atuin \
+            npm:pnpm; do
+            mise ls --current "$selector" --no-header | grep -F "$selector"
+          done
+          for command in sheldon delta fd atuin pnpm; do
+            test -x "$(mise which "$command")"
+            mise exec -- "$command" --version
+          done
+          test "$(mise exec -- pnpm --version)" = 11.16.0

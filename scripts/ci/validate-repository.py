@@ -95,6 +95,7 @@ for required in (
     "install.sh",
     "mise.toml",
     "mise.lock",
+    "scripts/lib/runtime.sh",
     "dot_config/nvim/init.lua",
     "dot_config/nvim/lua/core/keymaps.lua",
     "dot_config/nvim/lua/modules/configs/editor/skkeleton.lua",
@@ -185,4 +186,41 @@ ignore = (ROOT / ".chezmoiignore").read_text()
 if "microsoft" not in ignore or ".local/bin/op" not in ignore:
     fail("WSL proxy conditional is missing from .chezmoiignore")
 
-print("validated removals, JSON, WSL proxies, Neovim, Colemak, and SKK")
+workflow = (ROOT / ".github/workflows/ci.yml").read_text()
+if "--dry-" + "run" in workflow:
+    fail("CI must execute bootstrap interfaces instead of previewing them")
+for fragment in (
+    "bash install.sh",
+    "mise run apply",
+    "mise run doctor",
+    "mise bootstrap --yes",
+    'DOTFILES_ROOT="$update_root" mise -C "$update_root" run update',
+    "mise bootstrap packages apply --yes",
+    "cargo:sheldon",
+    "cargo:git-delta",
+    "cargo:fd-find",
+    "cargo:atuin",
+    "npm:pnpm",
+    "dotfiles_wait_for_port 127.0.0.1 1178",
+):
+    if fragment not in workflow:
+        fail(f"CI no longer executes required integration path: {fragment}")
+
+for relative in (
+    "scripts/apply.sh",
+    "scripts/bootstrap.sh",
+    "scripts/build-skk-dictionary.sh",
+    "scripts/doctor.sh",
+    "scripts/update.sh",
+    "scripts/yaskkserv2-serve.sh",
+):
+    script = (ROOT / relative).read_text()
+    if "scripts/lib/runtime.sh" not in script:
+        fail(f"{relative} must use the shared bootstrap runtime")
+    if 'readonly DOTFILES_ROOT="${HOME}/repos/' in script:
+        fail(f"{relative} must not hard-code the checkout path")
+
+print(
+    "validated removals, JSON, public CI paths, WSL proxies, "
+    "Neovim, Colemak, and SKK"
+)
