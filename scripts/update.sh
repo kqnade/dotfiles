@@ -17,6 +17,13 @@ readonly MISE_BIN
 cd "$DOTFILES_ROOT"
 "$MISE_BIN" upgrade --bump --local --yes
 "$MISE_BIN" lock --platform macos-arm64,macos-x64,linux-x64 --yes
-"$MISE_BIN" exec -- taplo format mise.toml mise.lock
+
+taplo_bin="$("$MISE_BIN" which taplo)"
+"$taplo_bin" format mise.toml
+formatted_lock="$(mktemp "${DOTFILES_ROOT}/.mise.lock.XXXXXX")"
+trap 'rm -f "$formatted_lock"' EXIT
+"$taplo_bin" format --stdin-filepath mise.lock - <mise.lock >"$formatted_lock"
+mv -f "$formatted_lock" mise.lock
+trap - EXIT
 
 printf 'Updated tool pins and mise.lock. Review both files before committing.\n'

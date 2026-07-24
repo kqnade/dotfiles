@@ -51,7 +51,8 @@ jobs:
           "$shellcheck_bin" -e SC1091 -S warning "${shell_files[@]}"
           "$shfmt_bin" -i 2 -ci -d "${shell_files[@]}"
           "$taplo_bin" lint "${toml_files[@]}"
-          "$taplo_bin" format --check mise.toml mise.lock
+          "$taplo_bin" format --check mise.toml
+          "$taplo_bin" format --check --stdin-filepath mise.lock - < mise.lock
 
       - name: verify runtime root override
         run: |

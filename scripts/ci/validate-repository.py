@@ -196,6 +196,7 @@ for fragment in (
     "mise bootstrap --yes",
     'DOTFILES_ROOT="$update_root" mise -C "$update_root" run update',
     "mise bootstrap packages apply --yes",
+    "format --check --stdin-filepath mise.lock - < mise.lock",
     "cargo:sheldon",
     "cargo:git-delta",
     "cargo:fd-find",
