@@ -3,19 +3,6 @@
 
   "model": "kimi/KimiK2.7Code",
 
-  "mcp": {
-    "agent-mail": {
-      "type": "remote",
-      "url": "http://127.0.0.1:8765/mcp/",
-      "enabled": true,
-      "oauth": false,
-      "headers": {
-        "Authorization": "Bearer {env:HTTP_BEARER_TOKEN}"
-      },
-      "timeout": 30000
-    }
-  },
-
   "autoupdate": true,
 
   "permission": {

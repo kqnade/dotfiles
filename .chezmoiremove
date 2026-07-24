@@ -13,3 +13,9 @@
 .config/cmux
 .local/bin/cmux-worktree
 .config/zsh/functions/ccc.zsh
+.config/project-maker
+.config/zsh/agent-mail.zsh
+.kimi-code/mcp.json
+Documents/PowerShell/Microsoft.PowerShell_profile.ps1
+Library/LaunchAgents/com.user.yaskkserv2.plist
+.config/systemd/user/yaskkserv2.service

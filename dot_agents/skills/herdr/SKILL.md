@@ -58,11 +58,8 @@ Agent commands accept either a unique live agent name or the pane ID currently h
 `idle` means the agent is ready for input and its tab has been seen in the focused Herdr UI. `done` is the same underlying idle state after unseen background work finishes. Focusing the tab or targeting the pane or agent with a focus command marks it seen. CLI reads do not mark it seen. `blocked` means Herdr recognized an approval or question UI. `unknown` means an agent is present but Herdr cannot classify it confidently; it does not prove completion.
 
 When coordinating other agents, treat both `idle` and `done` as settled states
-that trigger result collection. On either state, check Agent Mail for the managed
-agent's reply and surface the result to the user. Never focus or visit a
-background tab merely to convert `done` to `idle`; that discards the useful
-unseen-work distinction and makes Agent Mail coordination depend on UI focus.
-Do not assume the user will open Agent Mail themselves.
+that trigger result collection. Never focus or visit a background tab merely to
+convert `done` to `idle`; that discards the useful unseen-work distinction.
 
 ## Use IDs and caller context
 

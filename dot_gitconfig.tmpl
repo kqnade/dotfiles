@@ -19,11 +19,7 @@
 {{- end }}
 
 [ghq]
-{{- if eq .chezmoi.os "windows" }}
-	root = Z:/
-{{- else }}
 	root = ~/repos
-{{- end }}
 
 [alias]
 	ci = commit
@@ -66,17 +62,13 @@
 [tag]
 	gpgSign = true
 
-# `ghq get foo/bar` や bare な https clone を全部 SSH に rewrite。
-# 1Password agent (ssh.exe shim 経由) で auth 抜けるので HTTPS の
-# token 入力プロンプトが回避できる。
+# `ghq get foo/bar` や bare な https clone を SSH に rewrite。
+# WSL では ssh.exe proxy、macOS/Linux では 1Password agent を使う。
 [url "git@github.com:"]
 	insteadOf = https://github.com/
 
 [url "git@gitlab.com:"]
 	insteadOf = https://gitlab.com/
-
-[credential "https://gitlab.com"]
-	helper = !glab auth git-credential
 
 [filter "lfs"]
 	clean = git-lfs clean -- %f
