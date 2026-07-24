@@ -158,7 +158,10 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: assert Apple Silicon runner
-        run: test "$RUNNER_ARCH" = ARM64
+        run: |
+          test "$RUNNER_ARCH" = ARM64
+          sudo chsh -s /bin/zsh "$USER"
+          test "$(dscl . -read "/Users/$USER" UserShell | awk '{print $2}')" = /bin/zsh
 
       - name: expose the checkout at the public path
         run: |
@@ -212,7 +215,10 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: assert Intel runner
-        run: test "$RUNNER_ARCH" = X64
+        run: |
+          test "$RUNNER_ARCH" = X64
+          sudo chsh -s /bin/zsh "$USER"
+          test "$(dscl . -read "/Users/$USER" UserShell | awk '{print $2}')" = /bin/zsh
 
       - name: expose the checkout at the public path
         run: |

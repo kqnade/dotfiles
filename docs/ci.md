@@ -7,6 +7,9 @@
 
 ### macOS arm64
 
+GitHub-hosted runnerのlogin shellを、対象macOSと同じ標準`/bin/zsh`へ揃えた上で
+次を実行します。
+
 - productionと同じpathへcheckoutを公開
 - `bash install.sh`
 - `mise run apply`
@@ -21,7 +24,8 @@
 
 ### Intel Mac
 
-`bash install.sh`、`mise run apply`、`mise run doctor`をIntel runnerでも実行します。
+login shellを標準`/bin/zsh`へ揃え、`bash install.sh`、`mise run apply`、
+`mise run doctor`をIntel runnerでも実行します。
 さらに次のfallbackを実際にsourceからbuildまたはnpmからinstallし、それぞれの
 `--version`を実行します。
 
