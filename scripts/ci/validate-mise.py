@@ -100,8 +100,8 @@ def active_on(value: Any, platform: str) -> bool:
 config = load_toml(ROOT / "mise.toml")
 lock = load_toml(ROOT / "mise.lock")
 
-if config.get("min_version") != "2026.7.5":
-    fail("min_version must remain 2026.7.5")
+if config.get("min_version") != "2026.7.12":
+    fail("min_version must remain 2026.7.12")
 
 settings = config.get("settings", {})
 if tuple(settings.get("lockfile_platforms", ())) != PLATFORMS:

@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-readonly MISE_MIN_VERSION="2026.7.5"
+readonly MISE_MIN_VERSION="2026.7.12"
 readonly REPO_URL="${DOTFILES_REPO_URL:-https://github.com/kqnade/dotfiles.git}"
 readonly REPO_REF="${DOTFILES_REPO_REF:-}"
 readonly REPO_DIR="${DOTFILES_REPO_DIR:-${HOME}/repos/github.com/kqnade/dotfiles}"

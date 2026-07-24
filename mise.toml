@@ -1,6 +1,6 @@
 #:schema https://mise.jdx.dev/schema/mise.json
 
-min_version = "2026.7.5"
+min_version = "2026.7.12"
 
 [settings]
 activate_aggressive = true
