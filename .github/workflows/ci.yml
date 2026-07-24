@@ -20,13 +20,12 @@ jobs:
   static:
     name: pins, lock, formats, and invariants
     runs-on: ubuntu-latest
-    env:
-      MISE_CONFIG_DIR: ${{ runner.temp }}/mise-config
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: install mise
         run: |
+          echo "MISE_CONFIG_DIR=$RUNNER_TEMP/mise-config" >> "$GITHUB_ENV"
           curl -fsSL https://mise.run | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
@@ -76,8 +75,6 @@ jobs:
             image: archlinux:base-devel
     container:
       image: ${{ matrix.image }}
-    env:
-      MISE_CONFIG_DIR: ${{ runner.temp }}/mise-config
     steps:
       - name: prepare Fedora container
         if: matrix.name == 'Fedora'
@@ -91,6 +88,7 @@ jobs:
 
       - name: install mise
         run: |
+          echo "MISE_CONFIG_DIR=$RUNNER_TEMP/mise-config" >> "$GITHUB_ENV"
           curl -fsSL https://mise.run | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
@@ -112,11 +110,12 @@ jobs:
       DOTFILES_BOOTSTRAP_SKIP: linux-systemd-units,user
       DOTFILES_REPO_DIR: ${{ github.workspace }}
       DOTFILES_SKIP_SERVICE_HEALTH: "1"
-      MISE_CONFIG_DIR: ${{ runner.temp }}/mise-config
       MISE_LOCKED: "1"
     steps:
       - name: prepare container
-        run: dnf install -y --setopt=install_weak_deps=False git curl ca-certificates tar gzip
+        run: |
+          echo "MISE_CONFIG_DIR=$RUNNER_TEMP/mise-config" >> "$GITHUB_ENV"
+          dnf install -y --setopt=install_weak_deps=False git curl ca-certificates tar gzip
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
