@@ -9,158 +9,169 @@ on:
 permissions:
   contents: read
 
+env:
+  MISE_VERSION: v2026.7.5
+
 jobs:
-  # ---------------------------------------------------------------------------
-  # chezmoi apply --dry-run across ubuntu / macos / windows. ubuntu acts as a
-  # generic-Linux proxy here; the actual Fedora install path is covered in
-  # fedora-bootstrap below. apply --dry-run renders every template, so a
-  # separate template-only job would be redundant.
-  # ---------------------------------------------------------------------------
-  apply-dry-run:
-    name: apply --dry-run (${{ matrix.os }})
+  static:
+    name: pins, lock, formats, and removals
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: install mise
+        run: |
+          curl -fsSL https://mise.run | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: validate manifest and repository invariants
+        run: |
+          python3 scripts/ci/validate-mise.py
+          python3 scripts/ci/validate-repository.py
+          mise trust mise.toml
+          mise tasks validate
+
+      - name: install pinned linters
+        run: mise install --locked shellcheck shfmt taplo
+
+      - name: lint shell and TOML
+        run: |
+          shellcheck_bin="$(mise which shellcheck)"
+          shfmt_bin="$(mise which shfmt)"
+          taplo_bin="$(mise which taplo)"
+          mapfile -t shell_files < <(find scripts -type f -name '*.sh' -print | sort)
+          mapfile -t toml_files < <(find . -type f -name '*.toml' -not -path './.git/*' -print | sort)
+          shell_files+=(install.sh dot_local/bin/executable_op dot_local/bin/executable_ssh dot_local/bin/executable_ssh-add)
+          "$shellcheck_bin" -e SC1091 -S warning "${shell_files[@]}"
+          "$shfmt_bin" -i 2 -ci -d "${shell_files[@]}"
+          "$taplo_bin" lint "${toml_files[@]}"
+          "$taplo_bin" format --check mise.toml mise.lock
+
+  locked-dry-run:
+    name: locked dry-run (${{ matrix.name }})
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - name: linux-x64
+            os: ubuntu-latest
+            arch: X64
+          - name: macos-arm64
+            os: macos-15
+            arch: ARM64
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - name: install chezmoi (linux)
-        if: runner.os == 'Linux'
+      - name: assert runner architecture
+        run: test "$RUNNER_ARCH" = "${{ matrix.arch }}"
+
+      - name: install mise
         run: |
-          sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+          curl -fsSL https://mise.run | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      - name: install chezmoi (macos)
-        if: runner.os == 'macOS'
+      - name: resolve every tool from mise.lock
         env:
-          HOMEBREW_NO_AUTO_UPDATE: "1"
-          HOMEBREW_NO_INSTALL_CLEANUP: "1"
-        run: brew install chezmoi
-
-      - name: install chezmoi (windows)
-        if: runner.os == 'Windows'
-        run: choco install chezmoi -y --no-progress
-
-      - name: chezmoi init (generate config with default feature flags)
-        if: runner.os != 'Windows'
-        run: chezmoi --source "$PWD" init --promptDefaults
-
-      - name: chezmoi init (windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: chezmoi --source "$PWD" init --promptDefaults
-
-      - name: chezmoi apply --dry-run (unix)
-        if: runner.os != 'Windows'
+          MISE_CONFIG_DIR: ${{ runner.temp }}/mise-config
         run: |
-          dest="$RUNNER_TEMP/cm-dest"
-          mkdir -p "$dest"
-          chezmoi --source "$PWD" --destination "$dest" \
-            apply --dry-run --verbose --exclude=externals
+          mise trust mise.toml
+          mise install --locked --dry-run
 
-      - name: chezmoi apply --dry-run (windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $dest = Join-Path $env:RUNNER_TEMP "cm-dest"
-          New-Item -ItemType Directory -Force -Path $dest | Out-Null
-          chezmoi --source "$PWD" --destination $dest `
-            apply --dry-run --verbose --exclude=externals
-
-  # ---------------------------------------------------------------------------
-  # Real bootstrap on Fedora — runs `bash scripts/install-linux.sh` inside a
-  # Fedora container, then verifies dnf packages + ~/.local/bin/{chezmoi,mise}.
-  # ---------------------------------------------------------------------------
-  fedora-bootstrap:
-    name: bootstrap on Fedora container
-    runs-on: ubuntu-latest
-    container:
-      image: fedora:44@sha256:6c75d5bf57cb0fa5aa4b92c6a83c86c791644496d9ac230de7711f5b8ec3b898
-    timeout-minutes: 15
-    steps:
-      - name: container prerequisites
-        run: |
-          dnf install -y --setopt=install_weak_deps=False \
-            git curl sudo shadow-utils util-linux which findutils tar gzip
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - name: run scripts/install-linux.sh
-        run: bash scripts/install-linux.sh
-
-      - name: install mise bootstrap packages
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          chezmoi --source "$PWD" init --promptDefaults
-          mkdir -p "$HOME/.config/mise"
-          chezmoi --source "$PWD" execute-template --init \
-            < dot_config/mise/config.toml.tmpl \
-            > "$HOME/.config/mise/config.toml"
-          mise bootstrap packages install --yes
-
-      - name: verify dnf packages installed
-        run: |
-          missing=0
-          for pkg in zsh vim-enhanced git openssh-clients curl \
-                    ca-certificates unzip fontconfig gcc gcc-c++ make \
-                    google-noto-sans-cjk-fonts google-noto-serif-cjk-fonts; do
-            if ! rpm -q "$pkg" >/dev/null 2>&1; then
-              echo "::error::missing dnf package: $pkg"
-              missing=$((missing+1))
-            fi
-          done
-          exit "$missing"
-
-      - name: verify chezmoi + mise bootstrap into ~/.local/bin
-        run: |
-          test -x "$HOME/.local/bin/chezmoi"
-          test -x "$HOME/.local/bin/mise"
-
-      - name: chezmoi init + apply --dry-run
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          chezmoi --source "$PWD" init --promptDefaults
-          dest="$RUNNER_TEMP/cm-dest"
-          mkdir -p "$dest"
-          chezmoi --source "$PWD" --destination "$dest" \
-            apply --dry-run --verbose --exclude=externals
-
-  # ---------------------------------------------------------------------------
-  # shellcheck the install-linux.sh script and rendered run_onchange_*.sh
-  # templates. Uses chezmoi init + execute-template to fill `.features.*` etc.
-  # ---------------------------------------------------------------------------
-  shellcheck:
-    name: shellcheck
-    runs-on: ubuntu-latest
+  intel-fallback:
+    name: Intel Mac source fallbacks
+    runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - name: install chezmoi + shellcheck
+      - name: assert Intel runner
+        run: test "$RUNNER_ARCH" = X64
+
+      - name: install mise
         run: |
-          sudo apt-get update -y
-          sudo apt-get install -y --no-install-recommends shellcheck
-          sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+          curl -fsSL https://mise.run | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      - name: render shell templates and lint
+      - name: verify Cargo and npm fallbacks
+        env:
+          MISE_CONFIG_DIR: ${{ runner.temp }}/mise-config
         run: |
-          set -eu
-          chezmoi --source "$PWD" init --promptDefaults
-          mkdir -p .rendered
-          for f in run_onchange_*.sh.tmpl; do
-            [[ -f "$f" ]] || continue
-            out=".rendered/${f%.tmpl}"
-            chezmoi execute-template --init --source "$PWD" < "$f" > "$out" || true
-            [[ -s "$out" ]] || rm -f "$out"
+          mise trust mise.toml
+          mise install --locked --dry-run 2>&1 | tee "$RUNNER_TEMP/install-plan"
+          for tool in cargo:sheldon cargo:git-delta cargo:fd-find cargo:atuin npm:pnpm; do
+            grep -F "$tool" "$RUNNER_TEMP/install-plan"
           done
-          targets=()
-          for s in scripts/*.sh; do
-            [[ -f "$s" ]] && targets+=("$s")
-          done
-          for r in .rendered/*.sh; do
-            [[ -f "$r" ]] && targets+=("$r")
-          done
-          if [[ ${#targets[@]} -gt 0 ]]; then
-            shellcheck -e SC1091 -S warning "${targets[@]}"
-          fi
+
+      - name: install pnpm through the Intel fallback
+        env:
+          MISE_CONFIG_DIR: ${{ runner.temp }}/mise-config
+        run: |
+          mise install --locked node npm:pnpm
+          node_dir="$(dirname "$(mise which node)")"
+          pnpm_bin="$(mise which pnpm)"
+          test "$(PATH="$node_dir:$PATH" "$pnpm_bin" --version)" = 11.16.0
+
+  package-bootstrap:
+    name: packages (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Fedora
+            image: fedora:44@sha256:6c75d5bf57cb0fa5aa4b92c6a83c86c791644496d9ac230de7711f5b8ec3b898
+          - name: Arch
+            image: archlinux:base-devel
+    container:
+      image: ${{ matrix.image }}
+    steps:
+      - name: prepare Fedora container
+        if: matrix.name == 'Fedora'
+        run: dnf install -y --setopt=install_weak_deps=False git curl ca-certificates tar gzip
+
+      - name: prepare Arch container
+        if: matrix.name == 'Arch'
+        run: pacman -Syu --needed --noconfirm git curl ca-certificates tar gzip
+
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: install mise
+        run: |
+          curl -fsSL https://mise.run | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: apply and verify bootstrap packages
+        run: |
+          mise trust mise.toml
+          mise bootstrap packages apply --yes
+          mise bootstrap packages status --missing
+
+  chezmoi-dry-run:
+    name: chezmoi dry-run (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-15]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: install mise and chezmoi
+        run: |
+          curl -fsSL https://mise.run | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/mise" trust mise.toml
+          "$HOME/.local/bin/mise" install --locked chezmoi
+
+      - name: render and apply without externals
+        run: |
+          chezmoi_bin="$(mise which chezmoi)"
+          destination="$RUNNER_TEMP/chezmoi-destination"
+          mkdir -p "$destination"
+          "$chezmoi_bin" --source "$PWD" init
+          "$chezmoi_bin" --source "$PWD" --destination "$destination" \
+            apply --dry-run --verbose --exclude=externals
+          "$chezmoi_bin" --source "$PWD" execute-template \
+            < dot_claude/settings.json.tmpl \
+            | python3 -m json.tool > /dev/null

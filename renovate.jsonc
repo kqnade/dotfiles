@@ -17,64 +17,9 @@
 
   "reviewersFromCodeOwners": true,
 
-  "customManagers": [
-    {
-      "customType": "regex",
-      "description": "Update npm-backed tools in the templated global mise config.",
-      "managerFilePatterns": [
-        "/(^|/)dot_config/mise/config\\.toml\\.tmpl$/"
-      ],
-      "matchStrings": [
-        "\\\"npm:(?<depName>[^\\\"]+)\\\"\\s*=\\s*\\\"(?<currentValue>[^\\\"]+)\\\""
-      ],
-      "datasourceTemplate": "npm"
-    },
-    {
-      "customType": "regex",
-      "description": "Update Go-backed tools in the templated global mise config.",
-      "managerFilePatterns": [
-        "/(^|/)dot_config/mise/config\\.toml\\.tmpl$/"
-      ],
-      "matchStrings": [
-        "\\\"go:(?<depName>[^\\\"]+)\\\"\\s*=\\s*\\\"(?<currentValue>[^\\\"]+)\\\""
-      ],
-      "datasourceTemplate": "go"
-    },
-    {
-      "customType": "regex",
-      "description": "Update GitHub-backed tools in the templated global mise config.",
-      "managerFilePatterns": [
-        "/(^|/)dot_config/mise/config\\.toml\\.tmpl$/"
-      ],
-      "matchStrings": [
-        "\\\"github:(?<depName>[^\\\"]+)\\\"\\s*=\\s*\\\"(?<currentValue>[^\\\"]+)\\\"",
-        "\\\"github:(?<depName>[^\\\"]+)\\\"\\s*=\\s*\\{\\s*version\\s*=\\s*\\\"(?<currentValue>[^\\\"]+)\\\""
-      ],
-      "datasourceTemplate": "github-releases"
-    },
-    {
-      "customType": "regex",
-      "description": "Update Aqua GitHub-backed tools in the templated global mise config.",
-      "managerFilePatterns": [
-        "/(^|/)dot_config/mise/config\\.toml\\.tmpl$/"
-      ],
-      "matchStrings": [
-        "\\\"aqua:(?<depName>[^\\\"]+)\\\"\\s*=\\s*\\\"(?<currentValue>[^\\\"]+)\\\""
-      ],
-      "datasourceTemplate": "github-releases"
-    },
-    {
-      "customType": "regex",
-      "description": "Update npm packages invoked through bunx in Claude settings.",
-      "managerFilePatterns": [
-        "/(^|/)dot_claude/settings\\.json$/"
-      ],
-      "matchStrings": [
-        "\\\"command\\\"\\s*:\\s*\\\"bunx -y (?<depName>(?:@[^/\\s@]+/)?[^@\\s]+)@(?<currentValue>[^\\s\\\"]+)"
-      ],
-      "datasourceTemplate": "npm"
-    }
-  ],
+  "lockFileMaintenance": {
+    "enabled": true
+  },
 
   "packageRules": [
     {
