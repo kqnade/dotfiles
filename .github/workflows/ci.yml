@@ -2,165 +2,254 @@ name: ci
 
 on:
   push:
-    branches: [main]
   pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GITHUB_TOKEN: ${{ github.token }}
+  MISE_VERSION: v2026.7.12
+
 jobs:
-  # ---------------------------------------------------------------------------
-  # chezmoi apply --dry-run across ubuntu / macos / windows. ubuntu acts as a
-  # generic-Linux proxy here; the actual Fedora install path is covered in
-  # fedora-bootstrap below. apply --dry-run renders every template, so a
-  # separate template-only job would be redundant.
-  # ---------------------------------------------------------------------------
-  apply-dry-run:
-    name: apply --dry-run (${{ matrix.os }})
+  static:
+    name: pins, lock, formats, and invariants
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: install mise
+        run: |
+          echo "MISE_CONFIG_DIR=$RUNNER_TEMP/mise-config" >> "$GITHUB_ENV"
+          curl -fsSL https://mise.run | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: validate manifest and repository invariants
+        run: |
+          python3 scripts/ci/validate-mise.py
+          python3 scripts/ci/validate-repository.py
+          mise trust mise.toml
+          mise tasks validate
+
+      - name: install pinned linters
+        run: mise install --locked shellcheck shfmt taplo
+
+      - name: lint shell and TOML
+        run: |
+          shellcheck_bin="$(mise which shellcheck)"
+          shfmt_bin="$(mise which shfmt)"
+          taplo_bin="$(mise which taplo)"
+          mapfile -t shell_files < <(find scripts -type f -name '*.sh' -print | sort)
+          mapfile -t toml_files < <(find . -type f -name '*.toml' -not -path './.git/*' -print | sort)
+          shell_files+=(install.sh dot_local/bin/executable_op dot_local/bin/executable_ssh dot_local/bin/executable_ssh-add)
+          "$shellcheck_bin" -e SC1091 -S warning "${shell_files[@]}"
+          "$shfmt_bin" -i 2 -ci -d "${shell_files[@]}"
+          "$taplo_bin" lint "${toml_files[@]}"
+          "$taplo_bin" format --check mise.toml
+          "$taplo_bin" format --check --stdin-filepath mise.lock - < mise.lock
+
+      - name: verify runtime root override
+        run: |
+          DOTFILES_ROOT="$PWD" bash -c '
+            source scripts/lib/runtime.sh
+            test "$(dotfiles_resolve_root)" = "$PWD"
+            dotfiles_supported_platform
+          '
+
+  package-bootstrap:
+    name: packages (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+        include:
+          - name: Fedora
+            image: fedora:44@sha256:6c75d5bf57cb0fa5aa4b92c6a83c86c791644496d9ac230de7711f5b8ec3b898
+          - name: Arch
+            image: archlinux:base-devel
+    container:
+      image: ${{ matrix.image }}
     steps:
+      - name: prepare Fedora container
+        if: matrix.name == 'Fedora'
+        run: dnf install -y --setopt=install_weak_deps=False git curl ca-certificates tar gzip
+
+      - name: prepare Arch container
+        if: matrix.name == 'Arch'
+        run: pacman -Syu --needed --noconfirm git curl ca-certificates tar gzip
+
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - name: install chezmoi (linux)
-        if: runner.os == 'Linux'
+      - name: install mise
         run: |
-          sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+          echo "MISE_CONFIG_DIR=$RUNNER_TEMP/mise-config" >> "$GITHUB_ENV"
+          curl -fsSL https://mise.run | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      - name: install chezmoi (macos)
-        if: runner.os == 'macOS'
-        env:
-          HOMEBREW_NO_AUTO_UPDATE: "1"
-          HOMEBREW_NO_INSTALL_CLEANUP: "1"
-        run: brew install chezmoi
-
-      - name: install chezmoi (windows)
-        if: runner.os == 'Windows'
-        run: choco install chezmoi -y --no-progress
-
-      - name: chezmoi init (generate config with default feature flags)
-        if: runner.os != 'Windows'
-        run: chezmoi --source "$PWD" init --promptDefaults
-
-      - name: chezmoi init (windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: chezmoi --source "$PWD" init --promptDefaults
-
-      - name: chezmoi apply --dry-run (unix)
-        if: runner.os != 'Windows'
+      - name: apply packages twice and verify state
         run: |
-          dest="$RUNNER_TEMP/cm-dest"
-          mkdir -p "$dest"
-          chezmoi --source "$PWD" --destination "$dest" \
-            apply --dry-run --verbose --exclude=externals
+          mise trust mise.toml
+          mise bootstrap packages apply --yes
+          mise bootstrap packages status --missing
+          mise bootstrap packages apply --yes
+          mise bootstrap packages status --missing
 
-      - name: chezmoi apply --dry-run (windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $dest = Join-Path $env:RUNNER_TEMP "cm-dest"
-          New-Item -ItemType Directory -Force -Path $dest | Out-Null
-          chezmoi --source "$PWD" --destination $dest `
-            apply --dry-run --verbose --exclude=externals
-
-  # ---------------------------------------------------------------------------
-  # Real bootstrap on Fedora — runs `bash scripts/install-linux.sh` inside a
-  # Fedora container, then verifies dnf packages + ~/.local/bin/{chezmoi,mise}.
-  # ---------------------------------------------------------------------------
-  fedora-bootstrap:
-    name: bootstrap on Fedora container
+  linux-bootstrap:
+    name: Fedora full bootstrap without user systemd
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     container:
       image: fedora:44@sha256:6c75d5bf57cb0fa5aa4b92c6a83c86c791644496d9ac230de7711f5b8ec3b898
-    timeout-minutes: 15
+    env:
+      DOTFILES_BOOTSTRAP_SKIP: linux-systemd-units,user
+      DOTFILES_REPO_DIR: ${{ github.workspace }}
+      DOTFILES_SKIP_SERVICE_HEALTH: "1"
+      MISE_LOCKED: "1"
     steps:
-      - name: container prerequisites
+      - name: prepare container
         run: |
-          dnf install -y --setopt=install_weak_deps=False \
-            git curl sudo shadow-utils util-linux which findutils tar gzip
+          echo "MISE_CONFIG_DIR=$RUNNER_TEMP/mise-config" >> "$GITHUB_ENV"
+          dnf install -y --setopt=install_weak_deps=False git curl ca-certificates tar gzip
+
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - name: run scripts/install-linux.sh
-        run: bash scripts/install-linux.sh
+      - name: assert Linux architecture
+        run: test "$(uname -m)" = x86_64
 
-      - name: install mise bootstrap packages
+      - name: run the Linux install entry point
+        run: bash install.sh
+
+      - name: verify tools, dotfiles, font, dictionary, and server
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          chezmoi --source "$PWD" init --promptDefaults
-          mkdir -p "$HOME/.config/mise"
-          chezmoi --source "$PWD" execute-template --init \
-            < dot_config/mise/config.toml.tmpl \
-            > "$HOME/.config/mise/config.toml"
-          mise bootstrap packages install --yes
+          export DOTFILES_ROOT="$GITHUB_WORKSPACE"
 
-      - name: verify dnf packages installed
-        run: |
-          missing=0
-          for pkg in zsh vim-enhanced git openssh-clients curl \
-                    ca-certificates unzip fontconfig gcc gcc-c++ make \
-                    google-noto-sans-cjk-fonts google-noto-serif-cjk-fonts; do
-            if ! rpm -q "$pkg" >/dev/null 2>&1; then
-              echo "::error::missing dnf package: $pkg"
-              missing=$((missing+1))
-            fi
-          done
-          exit "$missing"
+          missing="$(mise -C "$DOTFILES_ROOT" ls --current --missing --no-header)"
+          test -z "$missing"
+          mise -C "$DOTFILES_ROOT" exec -- pnpm --version
 
-      - name: verify chezmoi + mise bootstrap into ~/.local/bin
-        run: |
-          test -x "$HOME/.local/bin/chezmoi"
-          test -x "$HOME/.local/bin/mise"
+          mise -C "$DOTFILES_ROOT" run apply
+          test -z "$(chezmoi --source "$DOTFILES_ROOT" diff --exclude=externals)"
+          fc-list | grep -qi udevgothic
+          test -s "$HOME/.skk/dictionary.yaskkserv2"
 
-      - name: chezmoi init + apply --dry-run
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          chezmoi --source "$PWD" init --promptDefaults
-          dest="$RUNNER_TEMP/cm-dest"
-          mkdir -p "$dest"
-          chezmoi --source "$PWD" --destination "$dest" \
-            apply --dry-run --verbose --exclude=externals
-
-  # ---------------------------------------------------------------------------
-  # shellcheck the install-linux.sh script and rendered run_onchange_*.sh
-  # templates. Uses chezmoi init + execute-template to fill `.features.*` etc.
-  # ---------------------------------------------------------------------------
-  shellcheck:
-    name: shellcheck
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - name: install chezmoi + shellcheck
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y --no-install-recommends shellcheck
-          sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
-      - name: render shell templates and lint
-        run: |
-          set -eu
-          chezmoi --source "$PWD" init --promptDefaults
-          mkdir -p .rendered
-          for f in run_onchange_*.sh.tmpl; do
-            [[ -f "$f" ]] || continue
-            out=".rendered/${f%.tmpl}"
-            chezmoi execute-template --init --source "$PWD" < "$f" > "$out" || true
-            [[ -s "$out" ]] || rm -f "$out"
-          done
-          targets=()
-          for s in scripts/*.sh; do
-            [[ -f "$s" ]] && targets+=("$s")
-          done
-          for r in .rendered/*.sh; do
-            [[ -f "$r" ]] && targets+=("$r")
-          done
-          if [[ ${#targets[@]} -gt 0 ]]; then
-            shellcheck -e SC1091 -S warning "${targets[@]}"
+          bash "$DOTFILES_ROOT/scripts/yaskkserv2-serve.sh" >"$RUNNER_TEMP/yaskkserv2.log" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          source "$DOTFILES_ROOT/scripts/lib/runtime.sh"
+          if ! dotfiles_wait_for_port 127.0.0.1 1178 30; then
+            cat "$RUNNER_TEMP/yaskkserv2.log"
+            exit 1
           fi
+
+  macos-bootstrap:
+    name: macOS arm64 public interfaces
+    runs-on: macos-15
+    timeout-minutes: 90
+    env:
+      MISE_LOCKED: "1"
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: assert Apple Silicon runner
+        run: |
+          test "$RUNNER_ARCH" = ARM64
+          sudo chsh -s /bin/zsh "$USER"
+          test "$(dscl . -read "/Users/$USER" UserShell | awk '{print $2}')" = /bin/zsh
+
+      - name: expose the checkout at the public path
+        run: |
+          canonical_parent="$HOME/repos/github.com/kqnade"
+          canonical_root="$canonical_parent/dotfiles"
+          mkdir -p "$canonical_parent"
+          ln -s "$GITHUB_WORKSPACE" "$canonical_root"
+          test -f "$canonical_root/mise.toml"
+
+      - name: run install.sh and every non-update public command
+        run: |
+          canonical_root="$HOME/repos/github.com/kqnade/dotfiles"
+          bash install.sh
+          export PATH="$HOME/.local/bin:$PATH"
+
+          cd "$HOME"
+          mise run apply
+          mise run doctor
+
+          cd "$canonical_root"
+          mise bootstrap --yes
+
+          cd "$HOME"
+          mise run doctor
+
+      - name: run update in a disposable checkout
+        run: |
+          unset MISE_LOCKED
+          export PATH="$HOME/.local/bin:$PATH"
+          update_root="$RUNNER_TEMP/update-checkout"
+          git clone --local --no-hardlinks "$GITHUB_WORKSPACE" "$update_root"
+
+          DOTFILES_ROOT="$update_root" mise -C "$update_root" run update
+          python3 "$update_root/scripts/ci/validate-mise.py"
+          python3 "$update_root/scripts/ci/validate-repository.py"
+          git -C "$update_root" diff --check
+
+          unexpected="$(
+            git -C "$update_root" diff --name-only |
+              grep -Ev '^(mise\.toml|mise\.lock)$' || true
+          )"
+          test -z "$unexpected"
+
+  intel-fallback:
+    name: Intel Mac public interfaces and source fallbacks
+    runs-on: macos-15-intel
+    timeout-minutes: 120
+    env:
+      MISE_LOCKED: "1"
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: assert Intel runner
+        run: |
+          test "$RUNNER_ARCH" = X64
+          sudo chsh -s /bin/zsh "$USER"
+          test "$(dscl . -read "/Users/$USER" UserShell | awk '{print $2}')" = /bin/zsh
+
+      - name: expose the checkout at the public path
+        run: |
+          canonical_parent="$HOME/repos/github.com/kqnade"
+          canonical_root="$canonical_parent/dotfiles"
+          mkdir -p "$canonical_parent"
+          ln -s "$GITHUB_WORKSPACE" "$canonical_root"
+          test -f "$canonical_root/mise.toml"
+
+      - name: run the Intel install entry point
+        run: |
+          bash install.sh
+          export PATH="$HOME/.local/bin:$PATH"
+
+          cd "$HOME"
+          mise run apply
+          mise run doctor
+
+      - name: execute every fallback
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          for selector in \
+            cargo:sheldon \
+            cargo:git-delta \
+            cargo:fd-find \
+            cargo:atuin \
+            npm:pnpm; do
+            mise ls --current "$selector" --no-header | grep -F "$selector"
+          done
+          for command in sheldon delta fd atuin pnpm; do
+            test -x "$(mise which "$command")"
+            mise exec -- "$command" --version
+          done
+          test "$(mise exec -- pnpm --version)" = 11.16.0

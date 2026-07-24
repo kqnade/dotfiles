@@ -1,6 +1,0 @@
-*.class
-*.jar
-.gradle/
-build/
-.idea/
-.vscode/
