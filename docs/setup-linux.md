@@ -18,7 +18,7 @@ curl -fsSL https://raw.githubusercontent.com/kqnade/dotfiles/main/install.sh | b
 root `mise.toml` の `[bootstrap.packages]` が次を管理します。
 
 - zsh、Git、OpenSSH
-- C/C++ build toolchain
+- C/C++ build toolchain、OpenSSL headers、pkg-config
 - fontconfig、CJK fonts
 - bootstrap と UDEV Gothic 配置に必要な curl、CA certificates、unzip
 

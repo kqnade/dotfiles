@@ -67,6 +67,34 @@ INTEL_FALLBACKS = {
 
 NON_URL_LOCKS = {"rust"}
 
+EXPECTED_PACKAGES = {
+    "dnf:ca-certificates",
+    "dnf:curl",
+    "dnf:fontconfig",
+    "dnf:gcc",
+    "dnf:gcc-c++",
+    "dnf:git",
+    "dnf:google-noto-sans-cjk-fonts",
+    "dnf:google-noto-serif-cjk-fonts",
+    "dnf:make",
+    "dnf:openssh-clients",
+    "dnf:openssl-devel",
+    "dnf:pkgconf-pkg-config",
+    "dnf:unzip",
+    "dnf:zsh",
+    "pacman:base-devel",
+    "pacman:ca-certificates",
+    "pacman:curl",
+    "pacman:fontconfig",
+    "pacman:git",
+    "pacman:noto-fonts-cjk",
+    "pacman:openssh",
+    "pacman:openssl",
+    "pacman:pkgconf",
+    "pacman:unzip",
+    "pacman:zsh",
+}
+
 
 def fail(message: str) -> None:
     print(f"error: {message}", file=sys.stderr)
@@ -112,6 +140,16 @@ if settings.get("npm", {}).get("package_manager") != "npm":
     fail("npm tools must use Node's npm so npm:pnpm has no pnpm bootstrap cycle")
 if settings.get("task", {}).get("run_auto_install") is not False:
     fail("public tasks must not implicitly install tools")
+
+packages = config.get("bootstrap", {}).get("packages", {})
+if set(packages) != EXPECTED_PACKAGES:
+    fail(
+        "bootstrap package allowlist mismatch; "
+        f"missing={sorted(EXPECTED_PACKAGES - set(packages))}, "
+        f"unexpected={sorted(set(packages) - EXPECTED_PACKAGES)}"
+    )
+if any(version != "latest" for version in packages.values()):
+    fail("bootstrap packages must use the package manager's current version")
 
 tools = config.get("tools", {})
 tool_names = set(tools)
