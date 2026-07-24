@@ -3,9 +3,11 @@
 set -euo pipefail
 
 readonly MISE_MIN_VERSION="2026.7.5"
-readonly REPO_URL="https://github.com/kqnade/dotfiles.git"
-readonly REPO_DIR="${HOME}/repos/github.com/kqnade/dotfiles"
-readonly MISE_BIN="${HOME}/.local/bin/mise"
+readonly REPO_URL="${DOTFILES_REPO_URL:-https://github.com/kqnade/dotfiles.git}"
+readonly REPO_REF="${DOTFILES_REPO_REF:-}"
+readonly REPO_DIR="${DOTFILES_REPO_DIR:-${HOME}/repos/github.com/kqnade/dotfiles}"
+readonly MISE_BIN="${DOTFILES_MISE_BIN:-${HOME}/.local/bin/mise}"
+readonly BOOTSTRAP_SKIP="${DOTFILES_BOOTSTRAP_SKIP:-}"
 
 log() {
   printf '\033[1;36m==>\033[0m %s\n' "$*"
@@ -124,23 +126,33 @@ checkout_dotfiles() {
     die "${REPO_DIR} exists but is not a Git checkout."
   else
     log "Cloning dotfiles into ${REPO_DIR}."
-    git clone "$REPO_URL" "$REPO_DIR"
+    if [[ -n "$REPO_REF" ]]; then
+      git clone --branch "$REPO_REF" --single-branch "$REPO_URL" "$REPO_DIR"
+    else
+      git clone "$REPO_URL" "$REPO_DIR"
+    fi
   fi
 
   [[ -f "$REPO_DIR/mise.toml" ]] || die "${REPO_DIR}/mise.toml is missing."
 }
 
 main() {
+  local bootstrap_args=(bootstrap --yes)
+
   ensure_platform_prerequisites
   install_mise
   checkout_dotfiles
 
   export PATH="${HOME}/.local/bin:${PATH}"
+  export DOTFILES_ROOT="$REPO_DIR"
   log "Trusting the repository mise config."
   "$MISE_BIN" trust "$REPO_DIR/mise.toml"
 
   log "Converging the machine with mise bootstrap."
-  "$MISE_BIN" -C "$REPO_DIR" bootstrap --yes
+  if [[ -n "$BOOTSTRAP_SKIP" ]]; then
+    bootstrap_args+=(--skip "$BOOTSTRAP_SKIP")
+  fi
+  "$MISE_BIN" -C "$REPO_DIR" "${bootstrap_args[@]}"
 }
 
 main "$@"

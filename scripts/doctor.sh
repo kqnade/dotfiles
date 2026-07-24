@@ -2,7 +2,17 @@
 
 set -uo pipefail
 
-readonly DOTFILES_ROOT="${HOME}/repos/github.com/kqnade/dotfiles"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+readonly SCRIPT_DIR
+# shellcheck source=scripts/lib/runtime.sh
+source "$SCRIPT_DIR/lib/runtime.sh"
+
+DOTFILES_ROOT="$(dotfiles_resolve_root)"
+readonly DOTFILES_ROOT
+export DOTFILES_ROOT
+
+MISE_BIN="$(dotfiles_mise_bin)"
+readonly MISE_BIN
 failures=0
 
 check() {
@@ -23,7 +33,7 @@ run_check() {
 }
 
 tools_ok() {
-  [[ -z "$(mise -C "$DOTFILES_ROOT" ls --current --missing --no-header 2>/dev/null)" ]]
+  [[ -z "$("$MISE_BIN" -C "$DOTFILES_ROOT" ls --current --missing --no-header 2>/dev/null)" ]]
 }
 
 dotfiles_ok() {
@@ -33,7 +43,9 @@ dotfiles_ok() {
 font_ok() {
   case "$(uname -s)" in
     Darwin)
-      compgen -G "${HOME}/Library/Fonts/UDEVGothic*.ttf" >/dev/null
+      find "${HOME}/Library/Fonts" \
+        -maxdepth 1 -type f -name 'UDEVGothic*.ttf' -print -quit |
+        grep -q .
       ;;
     Linux)
       fc-list 2>/dev/null | grep -qi udevgothic
@@ -44,20 +56,37 @@ font_ok() {
 service_ok() {
   case "$(uname -s)" in
     Darwin)
-      mise -C "$DOTFILES_ROOT" bootstrap macos launchd-agents status --missing >/dev/null
+      "$MISE_BIN" -C "$DOTFILES_ROOT" \
+        bootstrap macos launchd-agents status --missing >/dev/null
       ;;
     Linux)
-      mise -C "$DOTFILES_ROOT" bootstrap linux systemd-units status --missing >/dev/null
+      dotfiles_systemd_user_available &&
+        "$MISE_BIN" -C "$DOTFILES_ROOT" \
+          bootstrap linux systemd-units status --missing >/dev/null
       ;;
   esac
 }
 
-run_check "mise installation" mise doctor
+wsl_proxies_ok() {
+  local command_name
+  for command_name in op ssh ssh-add; do
+    [[ -x "${HOME}/.local/bin/${command_name}" ]] || return 1
+    command -v "${command_name}.exe" >/dev/null 2>&1 || return 1
+  done
+}
+
+run_check "supported platform" dotfiles_supported_platform
+run_check "mise installation" "$MISE_BIN" doctor
 run_check "tool pins installed" tools_ok
-run_check "system packages" mise -C "$DOTFILES_ROOT" bootstrap packages status --missing
+run_check "system packages" "$MISE_BIN" -C "$DOTFILES_ROOT" \
+  bootstrap packages status --missing
 run_check "chezmoi state" dotfiles_ok
 run_check "UDEV Gothic" font_ok
 run_check "SKK dictionary" test -s "${HOME}/.skk/dictionary.yaskkserv2"
 run_check "yaskkserv2 service" service_ok
+run_check "yaskkserv2 port" dotfiles_port_open 127.0.0.1 1178
+if dotfiles_is_wsl; then
+  run_check "WSL proxies" wsl_proxies_ok
+fi
 
 exit "$failures"

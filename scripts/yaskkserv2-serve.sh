@@ -2,11 +2,20 @@
 
 set -euo pipefail
 
-readonly DOTFILES_ROOT="${HOME}/repos/github.com/kqnade/dotfiles"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+readonly SCRIPT_DIR
+# shellcheck source=scripts/lib/runtime.sh
+source "$SCRIPT_DIR/lib/runtime.sh"
+
+DOTFILES_ROOT="$(dotfiles_resolve_root)"
+readonly DOTFILES_ROOT
+export DOTFILES_ROOT
+
 readonly DICTIONARY="${HOME}/.skk/dictionary.yaskkserv2"
 readonly LISTEN_ADDRESS="127.0.0.1"
 readonly LISTEN_PORT="1178"
-readonly MISE_BIN="${HOME}/.local/bin/mise"
+MISE_BIN="$(dotfiles_mise_bin)"
+readonly MISE_BIN
 
 case "$(uname -s)" in
   Darwin)
@@ -19,11 +28,7 @@ esac
 mkdir -p "$cache_dir"
 
 while true; do
-  if [[ -x "$MISE_BIN" ]]; then
-    yaskkserv2="$("$MISE_BIN" -C "$DOTFILES_ROOT" which yaskkserv2 2>/dev/null || true)"
-  else
-    yaskkserv2=""
-  fi
+  yaskkserv2="$("$MISE_BIN" -C "$DOTFILES_ROOT" which yaskkserv2 2>/dev/null || true)"
   if [[ -n "$yaskkserv2" ]] && [[ -s "$DICTIONARY" ]]; then
     break
   fi

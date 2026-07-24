@@ -204,23 +204,23 @@ standard_output = "journal"
 standard_error = "journal"
 
 [bootstrap.hooks.pre-packages]
-run = "bash \"$HOME/repos/github.com/kqnade/dotfiles/scripts/remove-legacy-yaskkserv2.sh\""
+run = "bash \"${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/remove-legacy-yaskkserv2.sh\""
 
 [bootstrap.hooks.post-defaults]
-run = "bash \"$HOME/repos/github.com/kqnade/dotfiles/scripts/macos-finalize.sh\""
+run = "bash \"${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/macos-finalize.sh\""
 
 [tasks.apply]
 description = "Apply chezmoi-managed dotfiles"
-run = "bash \"$HOME/repos/github.com/kqnade/dotfiles/scripts/apply.sh\""
+run = "bash \"${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/apply.sh\""
 
 [tasks.bootstrap]
 description = "Finish idempotent machine setup after tools are installed"
-run = "bash \"$HOME/repos/github.com/kqnade/dotfiles/scripts/bootstrap.sh\""
+run = "bash \"${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/bootstrap.sh\""
 
 [tasks.doctor]
 description = "Diagnose tools, packages, dotfiles, fonts, and services"
-run = "bash \"$HOME/repos/github.com/kqnade/dotfiles/scripts/doctor.sh\""
+run = "bash \"${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/doctor.sh\""
 
 [tasks.update]
 description = "Update explicit tool pins and all lockfile platforms"
-run = "bash \"$HOME/repos/github.com/kqnade/dotfiles/scripts/update.sh\""
+run = "bash \"${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/update.sh\""

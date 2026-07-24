@@ -2,23 +2,25 @@
 
 set -euo pipefail
 
-readonly DOTFILES_ROOT="${HOME}/repos/github.com/kqnade/dotfiles"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+readonly SCRIPT_DIR
+# shellcheck source=scripts/lib/runtime.sh
+source "$SCRIPT_DIR/lib/runtime.sh"
 
-bash "$DOTFILES_ROOT/scripts/apply.sh"
-bash "$DOTFILES_ROOT/scripts/install-font.sh"
-bash "$DOTFILES_ROOT/scripts/build-skk-dictionary.sh"
-bash "$DOTFILES_ROOT/scripts/configure-herdr.sh"
+DOTFILES_ROOT="$(dotfiles_resolve_root)"
+readonly DOTFILES_ROOT
+export DOTFILES_ROOT
 
-case "$(uname -s)" in
-  Darwin)
-    mise -C "$DOTFILES_ROOT" bootstrap macos launchd-agents apply --yes
-    ;;
-  Linux)
-    if systemctl --user show-environment >/dev/null 2>&1; then
-      mise -C "$DOTFILES_ROOT" bootstrap linux systemd-units apply --yes
-    else
-      printf 'systemd user manager is unavailable; yaskkserv2 was not started.\n' >&2
-      exit 1
-    fi
-    ;;
-esac
+dotfiles_supported_platform ||
+  dotfiles_die "unsupported platform $(uname -s)/$(uname -m)"
+
+bash "$SCRIPT_DIR/apply.sh"
+bash "$SCRIPT_DIR/install-font.sh"
+bash "$SCRIPT_DIR/build-skk-dictionary.sh"
+bash "$SCRIPT_DIR/configure-herdr.sh"
+
+if [[ "${DOTFILES_SKIP_SERVICE_HEALTH:-0}" != 1 ]]; then
+  dotfiles_log "Waiting for yaskkserv2 on 127.0.0.1:1178."
+  dotfiles_wait_for_port 127.0.0.1 1178 30 ||
+    dotfiles_die "yaskkserv2 did not start on 127.0.0.1:1178"
+fi
