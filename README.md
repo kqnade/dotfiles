@@ -58,3 +58,16 @@ Cargo backend で build し、pnpm は npm backend から導入します。
 - [Linux セットアップ](docs/setup-linux.md)
 - [macOS セットアップ](docs/setup-macos.md)
 - [設定一覧](docs/features.md)
+- [CI の実行範囲](docs/ci.md)
+- [残作業](TODO.md)
+
+## CI
+
+CI は preview ではなく、実際のinstall・build・applyを行います。macOS arm64では
+`install.sh`、全公開command、2回目のbootstrapによる冪等性、serviceのportまで
+確認します。Intel Macでも `install.sh`、apply、doctorを実行し、Cargo/npm
+fallbackをすべてbuildして実行します。
+
+Fedoraではsystem package、全tool、dotfile、font、SKK辞書とserver本体を実行し、
+Archでもsystem packageを実導入します。GitHub-hosted Linux containerにはuser
+systemdがないため、systemd unitとWSL proxyの実機検証だけは専用runnerの残課題です。

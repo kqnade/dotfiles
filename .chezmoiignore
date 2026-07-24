@@ -3,6 +3,7 @@ docs/
 .github/
 .gitignore
 README.md
+TODO.md
 AGENTS.md
 CLAUDE.md
 install.sh

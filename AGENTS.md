@@ -54,6 +54,9 @@ are macOS arm64/x64, Fedora x64, Arch Linux x64, and Fedora/Arch under WSL x64.
 - `scripts/remove-legacy-yaskkserv2.sh` removes only the previous
   `com.user.yaskkserv2` / `yaskkserv2.service` definitions before mise enables
   its service.
+- Bootstrap scripts resolve their checkout through `scripts/lib/runtime.sh`.
+  `DOTFILES_ROOT` is an internal override for CI and disposable worktrees.
+- Bootstrap is not complete until `127.0.0.1:1178` accepts connections.
 
 ## 1Password / SSH
 
@@ -98,6 +101,10 @@ Keep this mapping consistent when editing Vim or Neovim:
 - Default branch is `main`.
 - Do not modify Neovim configuration as part of bootstrap cleanup.
 - Keep WSL proxies separate from native Windows support.
-- CI validates pins, lock platforms, both Linux package paths, both macOS
-  architectures, chezmoi rendering, shell scripts, and retained SKK/Colemak
-  invariants.
+- CI performs real installs and applies rather than preview-only runs. macOS
+  arm64 exercises every public interface; Intel macOS runs install/apply/doctor
+  and builds all source fallbacks; Fedora exercises all Linux components and
+  Arch exercises packages.
+- GitHub-hosted Linux containers cannot run a user systemd manager. The Linux
+  job starts yaskkserv2 directly and checks its port; systemd and WSL runtime
+  coverage require dedicated runners.
