@@ -195,8 +195,17 @@ if "microsoft" not in ignore or ".local/bin/op" not in ignore:
 wsl_mise = (ROOT / "dot_config/mise/conf.d/wsl.toml.tmpl").read_text()
 if "microsoft" not in wsl_mise or 'disable_tools = ["1password-cli"]' not in wsl_mise:
     fail("WSL must disable the native 1Password CLI")
-if "MISE_DISABLE_TOOLS" not in (ROOT / "install.sh").read_text():
+installer = (ROOT / "install.sh").read_text()
+if "MISE_DISABLE_TOOLS" not in installer:
     fail("fresh WSL bootstrap must disable the native 1Password CLI")
+for fragment in (
+    "  ensure_linux_elevation\n\n  if command -v curl",
+    'sudo -v || die "sudo authorization is required to install system packages."',
+    "run_as_root dnf install",
+    "run_as_root pacman -Syu",
+):
+    if fragment not in installer:
+        fail(f"Linux bootstrap elevation check is missing: {fragment}")
 
 workflow = (ROOT / ".github/workflows/ci.yml").read_text()
 if "--dry-" + "run" in workflow:

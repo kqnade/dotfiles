@@ -58,6 +58,21 @@ linux_distro() {
   printf '%s\n' "${ID:-unknown}"
 }
 
+ensure_linux_elevation() {
+  ((EUID == 0)) && return
+  command -v sudo >/dev/null 2>&1 ||
+    die "sudo is required to install system packages."
+  sudo -v || die "sudo authorization is required to install system packages."
+}
+
+run_as_root() {
+  if ((EUID == 0)); then
+    "$@"
+  else
+    sudo "$@"
+  fi
+}
+
 ensure_linux_prerequisites() {
   local distro
   distro="$(linux_distro)"
@@ -69,17 +84,18 @@ ensure_linux_prerequisites() {
       ;;
   esac
 
+  ensure_linux_elevation
+
   if command -v curl >/dev/null 2>&1 && command -v git >/dev/null 2>&1; then
     return
   fi
 
-  command -v sudo >/dev/null 2>&1 || die "sudo is required to install curl and Git."
   case "$distro" in
     fedora)
-      sudo dnf install -y curl git ca-certificates
+      run_as_root dnf install -y curl git ca-certificates
       ;;
     arch)
-      sudo pacman -Syu --needed --noconfirm curl git ca-certificates
+      run_as_root pacman -Syu --needed --noconfirm curl git ca-certificates
       ;;
   esac
 }
