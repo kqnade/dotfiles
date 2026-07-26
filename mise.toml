@@ -76,7 +76,7 @@ opencode = "1.18.4"
 
 # SKK server and dictionary builder. Keep this on the Cargo git backend on
 # every platform so the service behaves identically on macOS and Linux.
-"cargo:https://github.com/wachikun/yaskkserv2" = { version = "tag:0.1.7", depends = [
+"cargo:https://github.com/wachikun/yaskkserv2" = { version = "rev:f5bc4590c798c591e9861e02ea2e12d227a047ed", depends = [
   "rust",
 ], install_env = { CARGO_NET_GIT_FETCH_WITH_CLI = "true", GIT_CONFIG_GLOBAL = "/dev/null" } }
 
