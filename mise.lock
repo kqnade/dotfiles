@@ -125,10 +125,6 @@ version = "0.19.2"
 backend = "cargo:git-delta"
 
 [[tools."cargo:https://github.com/wachikun/yaskkserv2"]]
-version = "ref:0.1.7"
-backend = "cargo:https://github.com/wachikun/yaskkserv2"
-
-[[tools."cargo:https://github.com/wachikun/yaskkserv2"]]
 version = "tag:0.1.7"
 backend = "cargo:https://github.com/wachikun/yaskkserv2"
 

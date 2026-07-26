@@ -7,9 +7,9 @@ activate_aggressive = true
 experimental = true
 lockfile = true
 lockfile_platforms = ["macos-arm64", "macos-x64", "linux-x64"]
-# Intel macOS installs npm:pnpm, so using pnpm here would create a bootstrap
-# cycle. Node's pinned npm installs all npm-backed tools instead.
-npm.package_manager = "npm"
+# Use mise's embedded npm installer. Shelling out to Node's npm can trigger its
+# automatic reshim wrapper before mise itself is available on the install PATH.
+npm.package_manager = "auto"
 system_packages.managers = ["dnf", "pacman"]
 task.run_auto_install = false
 
@@ -78,7 +78,7 @@ opencode = "1.18.4"
 # every platform so the service behaves identically on macOS and Linux.
 "cargo:https://github.com/wachikun/yaskkserv2" = { version = "tag:0.1.7", depends = [
   "rust",
-] }
+], install_env = { CARGO_NET_GIT_FETCH_WITH_CLI = "true" } }
 
 [bootstrap.packages]
 # Fedora

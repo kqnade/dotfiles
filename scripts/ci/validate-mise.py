@@ -136,8 +136,8 @@ if tuple(settings.get("lockfile_platforms", ())) != PLATFORMS:
     fail(f"lockfile_platforms must be exactly {PLATFORMS!r}")
 if settings.get("system_packages", {}).get("managers") != ["dnf", "pacman"]:
     fail("only dnf and pacman may manage bootstrap packages")
-if settings.get("npm", {}).get("package_manager") != "npm":
-    fail("npm tools must use Node's npm so npm:pnpm has no pnpm bootstrap cycle")
+if settings.get("npm", {}).get("package_manager") != "auto":
+    fail("npm tools must use mise's embedded installer")
 if settings.get("task", {}).get("run_auto_install") is not False:
     fail("public tasks must not implicitly install tools")
 
@@ -174,6 +174,12 @@ for primary in ("atuin", "fd", "delta", "sheldon", "pnpm"):
     value = tools[primary]
     if not isinstance(value, dict) or "macos/x64" in value.get("os", []):
         fail(f"{primary} must not be selected on macos/x64")
+
+yaskkserv2 = tools["cargo:https://github.com/wachikun/yaskkserv2"]
+if not isinstance(yaskkserv2, dict) or yaskkserv2.get("install_env") != {
+    "CARGO_NET_GIT_FETCH_WITH_CLI": "true"
+}:
+    fail("yaskkserv2 must use the Git CLI for WSL SSH compatibility")
 
 lock_tools = lock.get("tools", {})
 if set(lock_tools) != EXPECTED_TOOLS:
