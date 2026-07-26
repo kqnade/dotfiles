@@ -33,11 +33,16 @@ run_check() {
 }
 
 tools_ok() {
-  [[ -z "$("$MISE_BIN" -C "$DOTFILES_ROOT" ls --current --missing --no-header 2>/dev/null)" ]]
+  local missing
+  missing="$("$MISE_BIN" -C "$DOTFILES_ROOT" ls --current --missing --no-header 2>/dev/null)" ||
+    return 1
+  [[ -z "$missing" ]]
 }
 
 dotfiles_ok() {
-  [[ -z "$(chezmoi --source "$DOTFILES_ROOT" diff --exclude=externals)" ]]
+  local diff
+  diff="$(chezmoi --source "$DOTFILES_ROOT" diff --exclude=externals)" || return 1
+  [[ -z "$diff" ]]
 }
 
 font_ok() {
