@@ -172,7 +172,7 @@ for fallback in INTEL_FALLBACKS:
 
 for primary in ("atuin", "fd", "delta", "sheldon", "pnpm"):
     value = tools[primary]
-    if not isinstance(value, dict) or "macos/x64" in value.get("os", []):
+    if active_on(value, "macos-x64"):
         fail(f"{primary} must not be selected on macos/x64")
 
 yaskkserv2 = tools["cargo:https://github.com/wachikun/yaskkserv2"]
