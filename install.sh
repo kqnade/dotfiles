@@ -103,6 +103,13 @@ ensure_platform_prerequisites() {
   esac
 }
 
+configure_wsl_mise() {
+  [[ "$(uname -s)" == Linux ]] || return
+  [[ -r /proc/sys/kernel/osrelease ]] || return
+  grep -qi microsoft /proc/sys/kernel/osrelease || return
+  export MISE_DISABLE_TOOLS="${MISE_DISABLE_TOOLS:+${MISE_DISABLE_TOOLS},}1password-cli"
+}
+
 install_mise() {
   local asset checksum download_url mise_tmp
   local installed_version=""
@@ -184,6 +191,7 @@ main() {
   local bootstrap_args=(bootstrap --yes)
 
   ensure_platform_prerequisites
+  configure_wsl_mise
   install_mise
   checkout_dotfiles
 

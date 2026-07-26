@@ -19,3 +19,7 @@
 Documents/PowerShell/Microsoft.PowerShell_profile.ps1
 Library/LaunchAgents/com.user.yaskkserv2.plist
 .config/systemd/user/yaskkserv2.service
+.config/mise/.env
+.config/mise/.miserc.toml
+.config/mise/miserc.toml
+.config/zsh/functions/mise.zsh

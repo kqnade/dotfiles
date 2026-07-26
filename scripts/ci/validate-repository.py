@@ -103,6 +103,7 @@ for required in (
     "dot_local/bin/executable_ssh",
     "dot_local/bin/executable_ssh-add",
     "dot_local/bin/executable_yaskkserv2-serve.tmpl",
+    "dot_config/mise/conf.d/wsl.toml.tmpl",
 ):
     if not (ROOT / required).is_file():
         fail(f"required v2 file is missing: {required}")
@@ -115,6 +116,10 @@ for target in (
     "Documents/PowerShell/Microsoft.PowerShell_profile.ps1",
     "Library/LaunchAgents/com.user.yaskkserv2.plist",
     ".config/systemd/user/yaskkserv2.service",
+    ".config/mise/.env",
+    ".config/mise/.miserc.toml",
+    ".config/mise/miserc.toml",
+    ".config/zsh/functions/mise.zsh",
 ):
     if target not in removals:
         fail(f"deleted chezmoi target is missing from .chezmoiremove: {target}")
@@ -186,6 +191,12 @@ for fragment in (
 ignore = (ROOT / ".chezmoiignore").read_text()
 if "microsoft" not in ignore or ".local/bin/op" not in ignore:
     fail("WSL proxy conditional is missing from .chezmoiignore")
+
+wsl_mise = (ROOT / "dot_config/mise/conf.d/wsl.toml.tmpl").read_text()
+if "microsoft" not in wsl_mise or 'disable_tools = ["1password-cli"]' not in wsl_mise:
+    fail("WSL must disable the native 1Password CLI")
+if "MISE_DISABLE_TOOLS" not in (ROOT / "install.sh").read_text():
+    fail("fresh WSL bootstrap must disable the native 1Password CLI")
 
 workflow = (ROOT / ".github/workflows/ci.yml").read_text()
 if "--dry-" + "run" in workflow:
