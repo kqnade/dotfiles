@@ -34,6 +34,7 @@ fi
 
 tmp_dir="$(mktemp -d)"
 staged_fonts=()
+published_fonts=()
 cleanup() {
   local staged_font
   rm -rf "$tmp_dir"
@@ -70,11 +71,23 @@ for font_source in "${font_sources[@]}"; do
   staged_fonts+=("$staged_font")
 done
 
-find "$font_dir" -maxdepth 1 -type f -name 'UDEVGothic*.ttf' -delete
 for staged_font in "${staged_fonts[@]}"; do
   font_name="${staged_font##*/.}"
-  mv -f "$staged_font" "${font_dir}/${font_name%.new}"
+  published_font="${font_dir}/${font_name%.new}"
+  mv -f "$staged_font" "$published_font"
+  published_fonts+=("$published_font")
 done
+
+while IFS= read -r -d '' installed_font; do
+  current=false
+  for published_font in "${published_fonts[@]}"; do
+    if [[ "$installed_font" == "$published_font" ]]; then
+      current=true
+      break
+    fi
+  done
+  "$current" || rm -f "$installed_font"
+done < <(find "$font_dir" -maxdepth 1 -type f -name 'UDEVGothic*.ttf' -print0)
 
 marker_tmp="${marker}.new"
 printf '%s\n' "$FONT_VERSION" >"$marker_tmp"
