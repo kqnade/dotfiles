@@ -199,6 +199,13 @@ installer = (ROOT / "install.sh").read_text()
 if "MISE_DISABLE_TOOLS" not in installer:
     fail("fresh WSL bootstrap must disable the native 1Password CLI")
 for fragment in (
+    '[[ "$(uname -s)" == Linux ]] || return 0',
+    "[[ -r /proc/sys/kernel/osrelease ]] || return 0",
+    "grep -qi microsoft /proc/sys/kernel/osrelease || return 0",
+):
+    if fragment not in installer:
+        fail(f"non-WSL bootstrap must skip WSL mise configuration successfully: {fragment}")
+for fragment in (
     "  ensure_linux_elevation\n\n  if command -v curl",
     'sudo -v || die "sudo authorization is required to install system packages."',
     "run_as_root dnf install",

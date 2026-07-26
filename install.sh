@@ -120,9 +120,9 @@ ensure_platform_prerequisites() {
 }
 
 configure_wsl_mise() {
-  [[ "$(uname -s)" == Linux ]] || return
-  [[ -r /proc/sys/kernel/osrelease ]] || return
-  grep -qi microsoft /proc/sys/kernel/osrelease || return
+  [[ "$(uname -s)" == Linux ]] || return 0
+  [[ -r /proc/sys/kernel/osrelease ]] || return 0
+  grep -qi microsoft /proc/sys/kernel/osrelease || return 0
   export MISE_DISABLE_TOOLS="${MISE_DISABLE_TOOLS:+${MISE_DISABLE_TOOLS},}1password-cli"
 }
 
