@@ -102,6 +102,7 @@ for required in (
     "dot_local/bin/executable_op",
     "dot_local/bin/executable_ssh",
     "dot_local/bin/executable_ssh-add",
+    "dot_local/bin/executable_yaskkserv2-serve.tmpl",
 ):
     if not (ROOT / required).is_file():
         fail(f"required v2 file is missing: {required}")

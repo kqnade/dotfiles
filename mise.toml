@@ -191,7 +191,7 @@ PlainTextEncoding = 4
 PlainTextEncodingForWrite = 4
 
 [bootstrap.macos.launchd.agents.yaskkserv2]
-program = "~/repos/github.com/kqnade/dotfiles/scripts/yaskkserv2-serve.sh"
+program = "~/.local/bin/yaskkserv2-serve"
 run_at_load = true
 keep_alive = true
 kickstart = true
@@ -200,7 +200,7 @@ stderr_path = "~/Library/Logs/yaskkserv2.err"
 
 [bootstrap.linux.systemd.units.yaskkserv2]
 description = "Local SKK dictionary server"
-exec_start = "~/repos/github.com/kqnade/dotfiles/scripts/yaskkserv2-serve.sh"
+exec_start = "~/.local/bin/yaskkserv2-serve"
 after = ["network.target"]
 restart = "on-failure"
 restart_sec = "2s"
