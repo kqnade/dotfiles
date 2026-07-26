@@ -177,9 +177,10 @@ for primary in ("atuin", "fd", "delta", "sheldon", "pnpm"):
 
 yaskkserv2 = tools["cargo:https://github.com/wachikun/yaskkserv2"]
 if not isinstance(yaskkserv2, dict) or yaskkserv2.get("install_env") != {
-    "CARGO_NET_GIT_FETCH_WITH_CLI": "true"
+    "CARGO_NET_GIT_FETCH_WITH_CLI": "true",
+    "GIT_CONFIG_GLOBAL": "/dev/null",
 }:
-    fail("yaskkserv2 must use the Git CLI for WSL SSH compatibility")
+    fail("yaskkserv2 must use HTTPS through an isolated Git CLI")
 
 lock_tools = lock.get("tools", {})
 if set(lock_tools) != EXPECTED_TOOLS:
