@@ -20,8 +20,11 @@ jobs:
   static:
     name: pins, lock, formats, and invariants
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: install mise
         run: |
@@ -72,7 +75,7 @@ jobs:
           - name: Fedora
             image: fedora:44@sha256:6c75d5bf57cb0fa5aa4b92c6a83c86c791644496d9ac230de7711f5b8ec3b898
           - name: Arch
-            image: archlinux:base-devel
+            image: archlinux:base-devel@sha256:412efebb0eeef0ef322ff24ad73f82b1ba2d3b12377db4c5fbe3074c7e7e8678
     container:
       image: ${{ matrix.image }}
     steps:
@@ -85,6 +88,8 @@ jobs:
         run: pacman -Syu --needed --noconfirm git curl ca-certificates tar gzip
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: install mise
         run: |
@@ -118,6 +123,8 @@ jobs:
           dnf install -y --setopt=install_weak_deps=False git curl ca-certificates tar gzip
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: assert Linux architecture
         run: test "$(uname -m)" = x86_64
@@ -156,6 +163,8 @@ jobs:
       MISE_LOCKED: "1"
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: assert Apple Silicon runner
         run: |
@@ -213,6 +222,8 @@ jobs:
       MISE_LOCKED: "1"
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: assert Intel runner
         run: |
@@ -252,4 +263,5 @@ jobs:
             test -x "$(mise which "$command")"
             mise exec -- "$command" --version
           done
-          test "$(mise exec -- pnpm --version)" = 11.16.0
+          expected_pnpm="$(mise config get tools.npm:pnpm.version)"
+          test "$(mise exec -- pnpm --version)" = "$expected_pnpm"
