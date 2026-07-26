@@ -3,6 +3,9 @@
 set -euo pipefail
 
 readonly MISE_MIN_VERSION="2026.7.12"
+readonly MISE_LINUX_X64_SHA256="dad54e0b843908324282b8673f9c0ebc3a4da0c49ad2da309a49bfbc918ba180"
+readonly MISE_MACOS_ARM64_SHA256="4268f41491bcb89e750951041d415a847495639a00e894075c62057633d06982"
+readonly MISE_MACOS_X64_SHA256="bbe1d2378dd42ff562b4fe688bf235e64c326117428f02c6a634dead29bd0945"
 readonly REPO_URL="${DOTFILES_REPO_URL:-https://github.com/kqnade/dotfiles.git}"
 readonly REPO_REF="${DOTFILES_REPO_REF:-}"
 readonly REPO_DIR="${DOTFILES_REPO_DIR:-${HOME}/repos/github.com/kqnade/dotfiles}"
@@ -101,6 +104,7 @@ ensure_platform_prerequisites() {
 }
 
 install_mise() {
+  local asset checksum download_url mise_tmp
   local installed_version=""
   if [[ -x "$MISE_BIN" ]]; then
     installed_version="$("$MISE_BIN" --version | awk '{print $1}')"
@@ -111,10 +115,50 @@ install_mise() {
     return
   fi
 
+  case "$(uname -s):$(uname -m)" in
+    Darwin:arm64)
+      asset="mise-v${MISE_MIN_VERSION}-macos-arm64"
+      checksum="$MISE_MACOS_ARM64_SHA256"
+      ;;
+    Darwin:x86_64)
+      asset="mise-v${MISE_MIN_VERSION}-macos-x64"
+      checksum="$MISE_MACOS_X64_SHA256"
+      ;;
+    Linux:x86_64)
+      asset="mise-v${MISE_MIN_VERSION}-linux-x64"
+      checksum="$MISE_LINUX_X64_SHA256"
+      ;;
+    *)
+      die "No mise artifact is configured for $(uname -s)/$(uname -m)."
+      ;;
+  esac
+
   log "Installing mise ${MISE_MIN_VERSION} to ${MISE_BIN}."
   mkdir -p "${MISE_BIN%/*}"
-  curl -fsSL https://mise.run |
-    MISE_VERSION="v${MISE_MIN_VERSION}" MISE_INSTALL_PATH="$MISE_BIN" sh
+  mise_tmp="$(mktemp "${MISE_BIN}.XXXXXX")"
+  download_url="https://github.com/jdx/mise/releases/download/v${MISE_MIN_VERSION}/${asset}"
+
+  if ! curl -fsSL "$download_url" -o "$mise_tmp"; then
+    rm -f "$mise_tmp"
+    die "Failed to download mise ${MISE_MIN_VERSION}."
+  fi
+  if command -v sha256sum >/dev/null 2>&1; then
+    if ! printf '%s  %s\n' "$checksum" "$mise_tmp" | sha256sum -c -; then
+      rm -f "$mise_tmp"
+      die "mise ${MISE_MIN_VERSION} checksum verification failed."
+    fi
+  elif command -v shasum >/dev/null 2>&1; then
+    if ! printf '%s  %s\n' "$checksum" "$mise_tmp" | shasum -a 256 -c -; then
+      rm -f "$mise_tmp"
+      die "mise ${MISE_MIN_VERSION} checksum verification failed."
+    fi
+  else
+    rm -f "$mise_tmp"
+    die "No SHA-256 checksum tool is available."
+  fi
+
+  chmod 0755 "$mise_tmp"
+  mv -f "$mise_tmp" "$MISE_BIN"
 }
 
 checkout_dotfiles() {
