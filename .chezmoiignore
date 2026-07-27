@@ -1,42 +1,18 @@
-{{- $isWsl := and (eq .chezmoi.os "linux") (contains "microsoft" (.chezmoi.kernel.osrelease | default "" | lower)) -}}
-metapkgs/
 scripts/
 docs/
+.github/
 .gitignore
 README.md
+TODO.md
 AGENTS.md
 CLAUDE.md
+install.sh
+mise.toml
+mise.lock
+renovate.jsonc
 .config/nvim/README.md
 
-# Package-manager manifests live in the repo only; scripts read them via
-# `.chezmoi.sourceDir`, never from $HOME.
-Brewfile
-Dnffile
-scoopfile.json
-
-{{ if ne .chezmoi.os "windows" -}}
-Documents/
-{{ end -}}
-
-{{ if eq .chezmoi.os "windows" -}}
-.zshrc
-.config/zsh/
-.config/sheldon/
-.config/ghostty/
-.config/op/
-install-mcp-agent-mail.sh
-configure-agent-mail.sh
-{{ end -}}
-
-{{ if ne .chezmoi.os "windows" -}}
-install-mcp-agent-mail.ps1
-configure-agent-mail.ps1
-{{ end -}}
-
-{{ if not .features.neovim -}}
-.config/nvim/
-{{ end -}}
-
+{{- $isWsl := and (eq .chezmoi.os "linux") (contains "microsoft" (.chezmoi.kernel.osrelease | default "" | lower)) }}
 {{ if not $isWsl -}}
 .local/bin/op
 .local/bin/ssh

@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+exec {{ printf "%s/scripts/yaskkserv2-serve.sh" .chezmoi.sourceDir | quote }} "$@"

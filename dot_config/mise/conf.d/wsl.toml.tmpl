@@ -1,0 +1,5 @@
+{{- $isWsl := and (eq .chezmoi.os "linux") (contains "microsoft" (.chezmoi.kernel.osrelease | default "" | lower)) -}}
+{{- if $isWsl }}
+[settings]
+disable_tools = ["1password-cli"]
+{{ end -}}

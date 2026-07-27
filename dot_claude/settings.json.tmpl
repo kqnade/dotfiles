@@ -99,7 +99,7 @@
           }
         ],
         "matcher": "startup|resume|clear"
-      }{{ if ne .chezmoi.os "windows" }},
+      },
       {
         "hooks": [
           {
@@ -109,7 +109,7 @@
           }
         ],
         "matcher": "*"
-      }{{ end }}
+      }
     ]
   },
   "includeCoAuthoredBy": false,

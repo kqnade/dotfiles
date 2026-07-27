@@ -1,86 +1,51 @@
 # macOS セットアップ
 
-リポジトリは ghq 規約に従って `~/repos/github.com/kqnade/dotfiles` に配置することを想定しています。
+Apple Silicon と Intel Mac を対象にします。OS 標準の zsh、Git、OpenSSH と
+Xcode Command Line Tools を利用します。
 
-## 1. chezmoi の取得と適用
-
-`chezmoi init --apply` を一度走らせれば、以降のすべてのセットアップ
-（Homebrew のインストール、`brew bundle`、macOS の `defaults` 適用）は
-`run_onchange_setup-macos.sh.tmpl` が自動で行います。
+## 初回セットアップ
 
 ```bash
-# chezmoi がまだ無い場合のみ
-brew install chezmoi || /bin/bash -c "$(curl -fsSL https://get.chezmoi.io)"
-
-chezmoi init --apply kqnade
+curl -fsSL https://raw.githubusercontent.com/kqnade/dotfiles/main/install.sh | bash
 ```
 
-## 2. 自動化されている内容
+Command Line Tools が未導入の場合は OS の確認画面が開きます。完了後、
+`install.sh` が mise の導入、repository checkout、`mise bootstrap --yes` まで
+続行します。
 
-関連する chezmoi スクリプトが初回または管理内容の変更時に：
+## Intel Mac
 
-1. **Homebrew が無ければインストール**（Apple Silicon / Intel 両対応）
-2. `Brewfile`（chezmoi の sourceDir 配下、`~` には展開しない）を `brew bundle` で適用（`Brewfile` の内容が変わると自動再実行）
-3. `defaults write` で macOS の各種設定を適用：
-   - NSGlobalDomain: 拡張子表示、F-key 標準化、キーリピート高速化、トラックパッド速度
-   - Dock: 左寄せ・自動非表示・サイズ・最近使ったアプリ非表示
-   - Finder: 隠しファイル表示、アイコン表示、フォルダ優先ソート、デスクトップ表示項目
-   - メニューバー時計: 曜日表示・日付非表示・AM/PM
-   - トラックパッド: タップでクリック
-   - Stage Manager 無効、通知プレビュー要約無効
-4. mise 管理の **Herdr** に `~/.config/herdr/config.toml` を配置：
-   - 新しい pane / tab / workspace は現在の作業ディレクトリを引き継ぐ
-   - `prefix+Shift+G` で `wt` 規則の Git worktree を作成し、元 repository の workspace 配下にグループ化
-   - `prefix+Alt+G` で既存 worktree を再オープン、`prefix+Alt+X` で checkout を削除
-   - 復元した AI エージェントは自動再開しない
-   - macOS の日本語 IME 候補位置を agent pane のカーソルに追従させる
-   - prefix 操作中だけ ASCII 入力ソースへ切り替える
+Intel Mac 用 artifact がない tool は、同じ `mise.toml` 内で Cargo backend に
+切り替えます。
 
-macOS defaults は `run_onchange_setup-macos.sh.tmpl`、Herdr は
-`dot_config/herdr/config.toml` で管理します。内容が変わると次回の
-`chezmoi apply` で反映されます。
+- sheldon
+- delta
+- fd
+- atuin
 
-## 3. ツールのインストール
+pnpm は Intel 用 standalone artifact がないため npm backend を使います。
+Rust、Node、Command Line Tools がそれぞれの dependency です。
+
+## macOS defaults
+
+Dock、Finder、keyboard、trackpad は mise の friendly sections、それ以外は
+`[bootstrap.macos.defaults]` で宣言します。
+
+次の imperative 処理だけを idempotent hook に残しています。
+
+- Finder plist の icon arrange 設定
+- screenshot directory の作成と設定
+- `~/Library` の hidden flag 解除
+- Dock、Finder、SystemUIServer の再起動
+
+## SKK
+
+yaskkserv2 は Cargo Git backend から build し、mise が
+`~/Library/LaunchAgents/dev.mise.yaskkserv2.plist` を管理します。
 
 ```bash
-mise install
-chezmoi apply # Herdr と各エージェントの lifecycle/session 連携を有効化
+launchctl print "gui/$(id -u)/dev.mise.yaskkserv2"
 ```
 
-Herdr は `herdr` で起動します。
-
-## 4. SKK 辞書サーバ (yaskkserv2)
-
-`Brewfile` で `delphinus/yaskkserv2` tap から HEAD ビルドの `yaskkserv2` /
-`yaskkserv2_make_dictionary` をインストール（rust は brew が build deps として
-内部処理）。続いて `run_onchange_after_install-yaskkserv2.sh.tmpl` が：
-
-1. `~/.skk/SKK-JISYO.{L,geo,propernoun,assoc,JIS3_4,law}` をマージして
-   `~/.skk/dictionary.yaskkserv2` を生成
-2. `~/Library/LaunchAgents/com.user.yaskkserv2.plist` を配置 →
-   `launchctl bootstrap` で `127.0.0.1:1178` に常駐
-
-起動引数：
-- `--google-japanese-input=notfound`: 辞書未収録語を Google 日本語入力で補完
-- `--google-cache-filename=~/Library/Caches/yaskkserv2/google.cache`: 補完結果のキャッシュ
-- `KeepAlive` は `Crashed:true / SuccessfulExit:false`（明示停止時は再起動しない）
-
-Neovim の skkeleton はこのサーバを参照する設定（`sources = { "skk_server" }`）。
-**macSKK** の `設定 → 辞書 → SKKServ` で `127.0.0.1:1178` を指定すると、
-nvim と macOS IME で同じ辞書サーバを共有できます。
-
-ログ: `~/Library/Logs/yaskkserv2.{log,err}`
-停止: `launchctl bootout gui/$(id -u)/com.user.yaskkserv2`
-
-## 補足: 現在の `defaults` を参照する
-
-新しい設定を script に追加したいときの確認手順：
-
-```bash
-defaults read <domain>             # 例: defaults read com.apple.dock
-defaults read-type <domain> <key>  # 値の型を確認
-```
-
-`Brewfile` は macOS / Linuxbrew 共通フォーマット。
-`if OS.mac?` ガードにより `cask` (`font-udev-gothic`) と `pinentry-mac`
-は macOS でのみ取り込まれます。
+server は `127.0.0.1:1178` を listen します。macSKK から同じ endpoint を指定すれば、
+Neovim の skkeleton と辞書 server を共有できます。
