@@ -55,23 +55,18 @@ typos = "1.48.0"
 
 # Language runtimes
 rust = "1.97.1"
-node = "24.18.0"
+node = "26.5.0"
 bun = "1.3.14"
-pnpm = { version = "11.16.0", os = [
-  "linux",
-  "macos/arm64",
-], depends = [
-  "node",
-] }
+pnpm = { version = "11.17.0", os = ["linux", "macos/arm64"], depends = ["node"] }
 "npm:pnpm" = { version = "11.16.0", os = ["macos/x64"], depends = ["node"] }
-uv = "0.11.31"
+uv = "0.11.32"
 
 # Agent and application CLIs
 1password-cli = "2.35.0"
 herdr = "0.7.5"
-claude = "2.1.218"
+claude = "2.1.220"
 codex = { version = "0.145.0", depends = ["node"] }
-opencode = "1.18.4"
+opencode = "1.18.5"
 "npm:ccusage" = { version = "20.0.18", depends = ["node"] }
 
 # SKK server and dictionary builder. Keep this on the Cargo git backend on
