@@ -19,6 +19,13 @@ bash "$SCRIPT_DIR/install-font.sh"
 bash "$SCRIPT_DIR/build-skk-dictionary.sh"
 bash "$SCRIPT_DIR/configure-herdr.sh"
 
+MISE_BIN="$(dotfiles_mise_bin)"
+readonly MISE_BIN
+dotfiles_log "Installing the repository pre-commit hook."
+"$MISE_BIN" -C "$DOTFILES_ROOT" generate git-pre-commit \
+  --write \
+  --task=pre-commit >/dev/null
+
 if [[ "${DOTFILES_SKIP_SERVICE_HEALTH:-0}" != 1 ]]; then
   dotfiles_log "Waiting for yaskkserv2 on 127.0.0.1:1178."
   dotfiles_wait_for_port 127.0.0.1 1178 30 ||

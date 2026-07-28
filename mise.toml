@@ -57,7 +57,12 @@ typos = "1.48.0"
 rust = "1.97.1"
 node = "26.5.0"
 bun = "1.3.14"
-pnpm = { version = "11.17.0", os = ["linux", "macos/arm64"], depends = ["node"] }
+pnpm = { version = "11.17.0", os = [
+  "linux",
+  "macos/arm64",
+], depends = [
+  "node",
+] }
 "npm:pnpm" = { version = "11.16.0", os = ["macos/x64"], depends = ["node"] }
 uv = "0.11.32"
 
@@ -186,7 +191,7 @@ PlainTextEncoding = 4
 PlainTextEncodingForWrite = 4
 
 [bootstrap.macos.launchd.agents.yaskkserv2]
-program = "~/.local/bin/yaskkserv2-serve"
+program = "~/repos/github.com/kqnade/dotfiles/scripts/yaskkserv2-serve.sh"
 run_at_load = true
 keep_alive = true
 kickstart = true
@@ -195,7 +200,7 @@ stderr_path = "~/Library/Logs/yaskkserv2.err"
 
 [bootstrap.linux.systemd.units.yaskkserv2]
 description = "Local SKK dictionary server"
-exec_start = "~/.local/bin/yaskkserv2-serve"
+exec_start = "~/repos/github.com/kqnade/dotfiles/scripts/yaskkserv2-serve.sh"
 after = ["network.target"]
 restart = "on-failure"
 restart_sec = "2s"
@@ -219,6 +224,14 @@ run = "bash \"${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/b
 [tasks.doctor]
 description = "Diagnose tools, packages, dotfiles, fonts, and services"
 run = "bash \"${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/doctor.sh\""
+
+[tasks.format]
+description = "Format repository TOML files enforced by CI"
+run = "bash \"${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/format.sh\""
+
+[tasks.pre-commit]
+description = "Check staged repository TOML formatting"
+run = "bash \"${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/pre-commit.sh\""
 
 [tasks.update]
 description = "Update explicit tool pins and all lockfile platforms"
