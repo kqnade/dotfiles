@@ -38,6 +38,20 @@ dotfiles_mise_bin() {
   fi
 }
 
+dotfiles_with_safe_git_directory() {
+  local checkout="${1:?checkout is required}"
+  local config_count="${GIT_CONFIG_COUNT:-0}"
+  shift
+
+  [[ "$config_count" =~ ^[0-9]+$ ]] ||
+    dotfiles_die "GIT_CONFIG_COUNT must be a non-negative integer"
+  env \
+    "GIT_CONFIG_COUNT=$((config_count + 1))" \
+    "GIT_CONFIG_KEY_${config_count}=safe.directory" \
+    "GIT_CONFIG_VALUE_${config_count}=$checkout" \
+    "$@"
+}
+
 dotfiles_supported_platform() {
   case "$(uname -s):$(uname -m)" in
     Darwin:arm64 | Darwin:x86_64 | Linux:x86_64) return 0 ;;

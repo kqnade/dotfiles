@@ -289,6 +289,44 @@ for relative in (
     if 'readonly DOTFILES_ROOT="${HOME}/repos/' in script:
         fail(f"{relative} must not hard-code the checkout path")
 
+git_config_probe = subprocess.run(
+    [
+        "bash",
+        "-c",
+        """
+set -euo pipefail
+source scripts/lib/runtime.sh
+GIT_CONFIG_COUNT=1 \
+GIT_CONFIG_KEY_0=test.existing \
+GIT_CONFIG_VALUE_0=preserved \
+  dotfiles_with_safe_git_directory /trusted/checkout env
+""",
+    ],
+    cwd=ROOT,
+    check=True,
+    capture_output=True,
+    text=True,
+)
+git_config_environment = dict(
+    line.split("=", 1)
+    for line in git_config_probe.stdout.splitlines()
+    if "=" in line
+)
+expected_git_config = {
+    "GIT_CONFIG_COUNT": "2",
+    "GIT_CONFIG_KEY_0": "test.existing",
+    "GIT_CONFIG_VALUE_0": "preserved",
+    "GIT_CONFIG_KEY_1": "safe.directory",
+    "GIT_CONFIG_VALUE_1": "/trusted/checkout",
+}
+for key, expected in expected_git_config.items():
+    if git_config_environment.get(key) != expected:
+        fail(f"checkout-scoped Git config {key} must be {expected!r}")
+
+bootstrap = (ROOT / "scripts/bootstrap.sh").read_text()
+if "dotfiles_with_safe_git_directory" not in bootstrap:
+    fail("pre-commit generation must trust only the resolved checkout for its Git subprocess")
+
 print(
     "validated removals, JSON, Claude permissions, public CI paths, WSL proxies, "
     "Neovim, Colemak, and SKK"

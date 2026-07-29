@@ -22,7 +22,8 @@ bash "$SCRIPT_DIR/configure-herdr.sh"
 MISE_BIN="$(dotfiles_mise_bin)"
 readonly MISE_BIN
 dotfiles_log "Installing the repository pre-commit hook."
-"$MISE_BIN" -C "$DOTFILES_ROOT" generate git-pre-commit \
+dotfiles_with_safe_git_directory "$DOTFILES_ROOT" \
+  "$MISE_BIN" -C "$DOTFILES_ROOT" generate git-pre-commit \
   --write \
   --task=pre-commit >/dev/null
 
