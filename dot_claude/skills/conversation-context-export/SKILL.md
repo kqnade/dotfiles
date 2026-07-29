@@ -31,7 +31,7 @@ context_path=".dev/contexts/${context_id}.md"
 `$context_path`を現在のworktreeの出力先にする。これにより`feature/a`と`feature-a`を
 別のcontextとして扱う。
 
-既存ファイル、関連する`.dev/todo/`、そこから参照されるDesignDoc、ADR、調査結果を
+既存ファイル、関連するactiveな`.dev/todo/`、そこから参照されるDesignDoc、ADR、調査結果を
 先に読む。Gitのstatus、対象commit、diff、実行済みの検証結果も確認する。
 `.dev`の各文書が正本であり、contextは会話固有の情報を補足するものとする。
 
@@ -49,7 +49,9 @@ context_path=".dev/contexts/${context_id}.md"
 - 失敗した試行は、操作、観測結果、判断を分ける。
 - 検証は、コマンドまたは観測と結果を対応付ける。証拠なしに成功を主張しない。
 - 意図的な非対応と、単に未着手の作業を分ける。
-- 次の作業は`.dev/todo/`のcommit単位の項目へリンクする。
+- 未完了の次作業がある場合だけ、`.dev/todo/`のcommit単位の項目へリンクする。
+- 作業完了時はTODOへのリンクを残さず、完了したTODOをcontext内のarchiveとして
+  複製しない。
 
 変更ファイル一覧やコードから自明な実装説明は書かない。会話で得た理由、制約、
 反証可能な前提、再発しやすい難所を優先する。日本語で書き、識別子、コマンド、

@@ -19,7 +19,7 @@ Use one canonical location for each kind of information:
 - `.dev/research/`: facts, sources, experiments, and unresolved questions
 - `.dev/designdoc/`: the proposed implementation, constraints, interfaces, rollout, and verification
 - `.dev/adr/`: a durable decision with alternatives and consequences
-- `.dev/todo/`: the executable work plan
+- `.dev/todo/`: the active executable work plan, removed when the work is complete
 - `.dev/contexts/`: session handoff context, not duplicated design documentation
 
 Create or update an artifact only when it has durable value:
@@ -64,13 +64,16 @@ tradeoffs. Express what and how through naming and code structure.
 
 After verification:
 
-1. Mark the TODO item complete and record the verification performed.
+1. Mark the TODO item complete and record the verification performed. If it is the final
+   item, delete the TODO file instead of keeping a completed work plan.
 2. Review the diff for unrelated changes and accidental generated or secret files.
 3. Commit the implementation, tests, and directly related `.dev/` updates together.
 4. Match the repository's commit-message convention and include an issue or task reference when available.
 
 Commit relevant `.dev/contexts/` records so the decision process remains traceable.
-Never commit a red state, combine multiple unfinished TODOs, or generate a pull request body.
+Keep durable decisions in a DesignDoc or ADR and conversation-only handoff facts in a
+context; do not retain the completed TODO as an archive. Never commit a red state, combine
+multiple unfinished TODOs, or generate a pull request body.
 
 ## 5. Finish or hand off
 

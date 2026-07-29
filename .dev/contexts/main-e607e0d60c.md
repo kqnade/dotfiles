@@ -15,7 +15,6 @@ local変更、remote writeを人間が追跡・管理できる開発workflowへ�
 
 ## 正本へのリンク
 
-- TODO: [Claude rules / skills再設計](../todo/claude-rules-redesign.md)
 - DesignDoc: [AI支援開発workflow](../designdoc/ai-assisted-development.md)
 - ADR: [Herdr上の同一CLIでAdversarial Reviewを行う](../adr/0001-herdr-adversarial-review.md)
 - 調査: [Claude Codeの指示設計に関する調査](../research/claude-code-guidance.md)

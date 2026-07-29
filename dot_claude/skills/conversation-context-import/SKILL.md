@@ -28,7 +28,8 @@ legacy file and report that it should be migrated by the next export.
 Then:
 
 1. Compare its `Source commit` with the current HEAD and flag stale context.
-2. Read the relevant `.dev/todo/` file.
+2. Read the relevant active `.dev/todo/` file when one exists. Its absence is valid for
+   completed work.
 3. Follow only the DesignDoc, ADR, and research links referenced by the context or TODO.
 4. Inspect `git status`, branch commits, and the current diff.
 5. Check whether decisions, evidence, and current state contradict the canonical `.dev`

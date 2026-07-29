@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -107,6 +108,16 @@ for required in (
 ):
     if not (ROOT / required).is_file():
         fail(f"required v2 file is missing: {required}")
+
+for todo in (ROOT / ".dev/todo").glob("*.md"):
+    if todo.name == "README.md":
+        continue
+    todo_text = todo.read_text()
+    todo_items = re.findall(r"^- \[([ xX])\]", todo_text, re.MULTILINE)
+    if re.search(r"^- 状態:.*完了", todo_text, re.MULTILINE) or (
+        todo_items and all(item.casefold() == "x" for item in todo_items)
+    ):
+        fail(f"completed work item must be removed from .dev/todo: {todo.name}")
 
 removals = (ROOT / ".chezmoiremove").read_text().splitlines()
 for target in (

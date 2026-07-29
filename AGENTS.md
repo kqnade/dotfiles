@@ -91,8 +91,10 @@ Keep this mapping consistent when editing Vim or Neovim:
 ## AI-assisted development records
 
 - `.dev/` is the source of truth for AI-assisted work in this repository.
-- Read `.dev/todo/` first, then follow its links to `.dev/designdoc/`,
-  `.dev/adr/`, `.dev/research/`, and `.dev/contexts/`.
+- Read active work items in `.dev/todo/` first, then follow their links to
+  `.dev/designdoc/`, `.dev/adr/`, `.dev/research/`, and `.dev/contexts/`.
+- `.dev/todo/` contains only active work. Delete a work-item file when its final item is
+  complete; Git history is the record of the completed plan.
 - The workflow contract is documented in
   `.dev/designdoc/ai-assisted-development.md`.
 

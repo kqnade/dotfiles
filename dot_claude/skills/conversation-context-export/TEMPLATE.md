@@ -14,7 +14,7 @@
 
 ## 正本へのリンク
 
-- TODO: {`.dev/todo/...`のcommit単位の項目}
+- TODO: {activeな`.dev/todo/...` / 該当なし（完了）}
 - DesignDoc: {`.dev/designdoc/...`、または該当なし}
 - ADR: {`.dev/adr/...`、または該当なし}
 - 調査: {`.dev/research/...`、または該当なし}
@@ -79,7 +79,7 @@
 
 ## 次の作業
 
-<!-- `.dev/todo/`の次のcommit単位項目、開始条件、最初の具体的操作 -->
+<!-- 未完了時だけ`.dev/todo/`の次のcommit単位項目、開始条件、最初の具体的操作 -->
 
 - TODO:
   - 開始条件:

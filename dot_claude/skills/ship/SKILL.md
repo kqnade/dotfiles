@@ -18,8 +18,9 @@ Publish work that has already been completed through the `develop` workflow.
 
 ## 1. Verify readiness
 
-1. Inspect `git status`, branch commits, and the relevant `.dev/todo/`.
-2. Confirm each completed TODO maps to a cohesive passing commit.
+1. Inspect `git status`, branch commits, and any active `.dev/todo/`.
+2. Confirm the intended work maps to cohesive passing commits and no completed TODO file
+   remains as an archive.
 3. Run `git status --short --untracked-files=all`. If any related staged, unstaged, or
    untracked work remains outside the intended commits, stop. Do not ignore new files or
    batch unrelated leftovers into a final commit.

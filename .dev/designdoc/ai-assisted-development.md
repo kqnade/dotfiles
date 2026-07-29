@@ -12,7 +12,7 @@ AIの速度を使いながら、判断過程、実装、テスト、レビュー
 
 開発情報は`.dev/`を正本とする。
 
-- `.dev/todo/`: commit単位の作業計画と状態
+- `.dev/todo/`: 未完了作業のcommit単位計画。最終item完了時に削除する
 - `.dev/designdoc/`: 実装前後に更新する設計
 - `.dev/adr/`: 重要な選択と却下理由
 - `.dev/research/`: 一次資料と調査結果
@@ -27,7 +27,8 @@ code、test、実行結果も独立した証拠であり、`.dev`の記述と矛
 2. 各TODOを一つのcommitへ対応させる。
 3. TDDを原則とし、期待する理由でtestが失敗することを確認する。
 4. そのtestを通す最小実装を行い、関連testと必要な広域検証を通す。
-5. greenになったTODOだけをcommitする。
+5. greenになったTODO itemだけをcommitする。最終itemのcommitではTODO fileを削除し、
+   完了済み計画をarchiveとして残さない。
 6. inline commentはcodeから読めないWhyだけに限定する。
 
 調査、DesignDoc、ADRが必要な変更は、実装TODOより前に作成または更新する。

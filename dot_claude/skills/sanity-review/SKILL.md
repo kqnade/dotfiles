@@ -35,7 +35,8 @@ Never draft, complete, rewrite, or suggest copy-ready PR body text.
 
 Read AI context separately from a comment marked
 `<!-- ai-conversation-context:<context-id> -->` or `.dev/contexts/`. Read the relevant
-`.dev/todo/` and follow linked DesignDocs, ADRs, and research. Keep human claims and
+active `.dev/todo/` work items, when present, and follow linked DesignDocs, ADRs, and
+research. A completed change should have no retained TODO file. Keep human claims and
 AI-generated context distinguishable throughout the report.
 
 ## 2. Build an evidence map

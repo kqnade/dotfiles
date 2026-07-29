@@ -13,7 +13,9 @@ Read only; never modify the worktree.
 
 1. Resolve the full branch ref with `git symbolic-ref --quiet HEAD` and run `git status`.
    Stop and ask for an explicit handoff file on detached HEAD.
-2. Read the relevant `.dev/todo/`. Derive the context path exactly:
+2. Read any relevant active work item in `.dev/todo/`. The absence of a work item means
+   there is no recorded in-flight plan; do not treat it as missing history. Derive the
+   context path exactly:
 
 ```bash
 full_ref=$(git symbolic-ref --quiet HEAD)
