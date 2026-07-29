@@ -289,6 +289,12 @@ for fragment in (
     "cargo:atuin",
     "npm:pnpm",
     "dotfiles_wait_for_port 127.0.0.1 1178",
+    "uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0",
+    "intel-macos-mise-v1-${{ runner.os }}-${{ runner.arch }}-",
+    "~/.local/share/mise",
+    "~/.rustup",
+    "~/.cargo/registry",
+    "~/.cargo/git",
 ):
     if fragment not in workflow:
         fail(f"CI no longer executes required integration path: {fragment}")
