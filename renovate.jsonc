@@ -23,6 +23,16 @@
 
   "packageRules": [
     {
+      "description": "Ignore 1Password CLI because the mise registry maps it to a nonexistent GitHub repository. mise run update remains its update path.",
+      "matchManagers": [
+        "mise"
+      ],
+      "matchPackageNames": [
+        "1password/cli"
+      ],
+      "enabled": false
+    },
+    {
       "description": "Create security PRs immediately, bypassing the default 14-day release age.",
       "matchUpdateTypes": [
         "major",

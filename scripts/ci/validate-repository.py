@@ -215,6 +215,13 @@ if renovate.get("lockFileMaintenance", {}).get("enabled") is not True:
     fail("Renovate lockFileMaintenance must remain enabled")
 if "customManagers" in renovate:
     fail("Renovate must use the standard mise manager, not customManagers")
+if not any(
+    rule.get("matchManagers") == ["mise"]
+    and rule.get("matchPackageNames") == ["1password/cli"]
+    and rule.get("enabled") is False
+    for rule in renovate.get("packageRules", [])
+):
+    fail("Renovate must ignore the unresolvable 1Password CLI datasource")
 
 keymaps = (ROOT / "dot_config/nvim/lua/core/keymaps.lua").read_text()
 for mapping in (
