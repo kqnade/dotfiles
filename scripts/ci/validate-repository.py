@@ -215,6 +215,14 @@ if renovate.get("timezone") != "Asia/Tokyo":
     fail("Renovate timezone must remain Asia/Tokyo")
 if renovate.get("schedule") != ["* 0-5 * * *"]:
     fail("Renovate schedule must remain between midnight and 6am")
+if renovate.get("automerge") is not True:
+    fail("Renovate automerge must remain enabled")
+if renovate.get("automergeType") != "pr":
+    fail("Renovate automergeType must remain pr")
+if renovate.get("automergeStrategy") != "squash":
+    fail("Renovate automergeStrategy must remain squash")
+if renovate.get("platformAutomerge") is not True:
+    fail("Renovate platformAutomerge must remain enabled")
 if renovate.get("lockFileMaintenance", {}).get("enabled") is not True:
     fail("Renovate lockFileMaintenance must remain enabled")
 if "customManagers" in renovate:

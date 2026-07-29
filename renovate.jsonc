@@ -23,6 +23,12 @@
 
   "reviewersFromCodeOwners": true,
 
+  // Approveと必須CIの成功後、GitHubのnative auto-mergeでsquashする。
+  "automerge": true,
+  "automergeType": "pr",
+  "automergeStrategy": "squash",
+  "platformAutomerge": true,
+
   "lockFileMaintenance": {
     "enabled": true
   },
