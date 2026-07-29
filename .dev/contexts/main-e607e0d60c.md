@@ -3,10 +3,10 @@
 - PR: export時点でPR未作成
 - Branch: `main`
 - Context ID: `main-e607e0d60c`
-- Source commit: `2f7d2ec`
+- Source commit: `940a1f2`
 - Updated at: 2026-07-29 Asia/Tokyo
 - Exported by: Codex
-- 状態: Herdr通知経路test後に中断・再開待ち
+- 状態: Claude制御境界の再監査中に中断・再開待ち
 
 ## 目的
 
@@ -110,6 +110,27 @@ local変更、remote writeを人間が追跡・管理できる開発workflowへ�
   Status / Completionへ上下分割できた。Advocate `w1:p8`とChallenger `w1:pA`は
   個人Codexで`done`になり、Completion `w1:pB`から通知が表示された。
 
+## 中断時点のClaude制御境界監査
+
+以下は公式documentとの照合で判明した未反映事項である。まだsource、runtime、commitへ
+反映していないため、再開時は実装済みとして扱わない。
+
+- `SKILL.md`の`disallowed-tools`はClaude Codeがdocument化しているskill frontmatterでは
+  なく、現在の複数skillに書かれた指定はtool禁止を保証しない。
+- skillの`allowed-tools`は指定toolを事前承認するもので、利用可能tool全体を制限しない。
+  review実行をread-onlyにする境界はcustom subagentの`tools` allowlist、または独立CLIの
+  `--tools "Read,Grep,Glob"`で強制する必要がある。
+- 現在のreview agentは`Read`、`Grep`、`Glob`だけを指定しているため、custom subagent側の
+  read-only境界は成立している。skill coordinator自体には別途明示的な非変更規約が必要。
+- Adversarial ReviewのHerdr起動例は`--kind <current-kind>`のままで、同一Claude CLIを
+  強制していない。会社環境向けには`--kind claude`とread-onlyなClaude CLI引数へ固定する
+  必要がある。ただし、この個人repositoryで社用Claudeを実行して検証してはならない。
+- Claude Codeの`includeGitInstructions`は既定で有効であり、built-inのcommit / PR workflow
+  指示を読み込む。PR本文生成を抑止しcustom workflowを正本にするため、
+  `settings.json.tmpl`で`false`へ明示する案を監査対象とする。
+- 社用accountであることと、対象repositoryの情報を送信してよいことは別の認可である。
+  自動workflowはaccount区分だけでなく、repositoryごとの利用許可も満たす必要がある。
+
 ## 注意が必要な難所
 
 - chezmoi applyはruntime変更されたtargetごとに上書き確認を求める。sourceを正本として
@@ -138,12 +159,18 @@ local変更、remote writeを人間が追跡・管理できる開発workflowへ�
 
 - 完了: `.dev`正本、workflow skill、Claude runtime、permission validatorのCommit 1〜4。
   Herdrの3列＋右列上下分割、background `done`、通知表示のmechanics test。
-- 作業中: ユーザー指示により中断。
+- 作業中: Claude skillのtool制約、Adversarial ReviewのCLI境界、built-in Git指示を
+  公式documentと照合する監査。ユーザー指示により変更前に中断。
 - 未確認: yaskkserv2の新service再登録。会社repository上のClaude実reviewは、この
   個人repositoryでは実行禁止。
 
 ## 次の作業
 
+- TODO: Claude制御境界の未反映事項をsourceへ適用するか判断し、適用する場合は
+  skill metadata、Adversarial Review起動引数、`includeGitInstructions`、repository認可の
+  順に修正してsource / runtime / validatorを再検証する。
+  - 開始条件: 作業再開の指示があること。
+  - 最初の操作: 現在のGit状態とClaude公式documentの仕様が変わっていないことを確認する。
 - TODO: 中断中のHerdr test tab `w1:t3`を整理する。
   - 開始条件: 作業再開の指示があること。
   - 最初の操作: `advocate_notify`と`challenger_notify`が`done`であることを確認し、
