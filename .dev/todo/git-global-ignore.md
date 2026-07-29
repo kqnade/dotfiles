@@ -11,6 +11,8 @@ chezmoiで一元管理する。
 
 - [x] Commit 1: `~/.config/git/ignore`と`core.excludesFile`をchezmoi管理へ追加し、
   runtime反映後にglobal ignoreとして機能することを確認する。
+- [x] Commit 2: repository内の`.claude/`をglobal ignoreへ追加し、chezmoi sourceの
+  `dot_claude/`は追跡対象のままであることを確認する。
 
 ## 検証
 
