@@ -1,82 +1,53 @@
 ---
 name: ship
-description: Scan changes, commit, push, and create a PR. With confirmation at each step
-argument-hint: "[optional commit message or PR title]"
+description: >-
+  Push an already verified series of traceable commits and optionally create a pull
+  request using only verbatim user-authored body text. Never generates a PR body.
+argument-hint: "[optional PR title]"
 disable-model-invocation: true
 allowed-tools:
-  - Bash(git status)
+  - Bash(git status *)
   - Bash(git diff *)
   - Bash(git log *)
-  - Bash(git add *)
-  - Bash(git commit *)
-  - Bash(git push *)
-  - Bash(git checkout *)
-  - Bash(git branch *)
-  - Bash(gh pr create *)
   - Bash(gh pr view *)
-  - Bash(git fetch *)
-  - Bash(git for-each-ref *)
 ---
 
-Ship the current changes through commit, push, and PR creation. Confirm with the user before each step using the AskUserQuestion tool.
+# Ship
 
-## Step 1: Scan
+Publish work that has already been completed through the `develop` workflow.
 
-- Run `git status` to see all changed, staged, and untracked files
-- Run `git diff` to see what changed (staged + unstaged)
-- Run `git log --oneline -5` to see recent commit style
-- Present a clear summary to the user:
-  - Files modified
-  - Files added
-  - Files deleted
-  - Untracked files
-- If there are no changes, tell the user and stop
+## 1. Verify readiness
 
-## Step 2: Stage & Commit
+1. Inspect `git status`, branch commits, and the relevant `.dev/todo/`.
+2. Confirm each completed TODO maps to a cohesive passing commit.
+3. Run `git status --short --untracked-files=all`. If any related staged, unstaged, or
+   untracked work remains outside the intended commits, stop. Do not ignore new files or
+   batch unrelated leftovers into a final commit.
+4. Run or confirm the repository's required pre-push checks.
 
-- Propose which files to stage. **Never stage** these:
-  - Secrets: `.env*`, `*.pem`, `*.key`, `credentials.json`
-  - Lock files: `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml` (unless intentionally updated)
-  - Generated: `*.gen.ts`, `*.generated.*`, `*.min.js`, `*.min.css`
-  - Build output: `dist/`, `build/`, `.next/`, `__pycache__/`
-  - Dependencies: `node_modules/`, `vendor/`, `.venv/`
-  - OS/editor: `.DS_Store`, `Thumbs.db`, `*.swp`, `.idea/`, `.vscode/settings.json`
-- Draft a commit message based on the changes, matching the repo's existing commit style
-- **ASK the user to confirm or edit**: show the exact files to stage and the proposed commit message
-- Only after confirmation: stage the files and create the commit
-- If the commit fails (e.g., pre-commit hook), fix the issue and try again with a NEW commit
+## 2. Push
 
-## Step 3: Push
+Show the branch and commits that will be pushed. Ask for confirmation, then push without
+force. Use `-u` when the branch has no upstream.
 
-- Check if the current branch has an upstream remote
-- If not, propose creating one with `git push -u origin <branch>`
-- **ASK the user to confirm** before pushing
-- Only after confirmation: push to remote
+## 3. Pull request
 
-## Step 4: Pull Request
+If a pull request already exists, report its URL and do not edit its body.
 
-- Check if a PR already exists for this branch (`gh pr view`. If it exists, show the URL and stop)
-- Analyze ALL commits on this branch vs the base branch (not just the latest commit)
-- Draft a PR title (under 72 chars) and body with:
-  - Summary: 2-4 bullet points
-  - Test plan: how to verify
-- **ASK the user to confirm or edit** the title and body
-- Only after confirmation: create the PR with `gh pr create`
-- Show the PR URL when done
+Never draft, complete, rewrite, or suggest copy-ready pull request body text. Never use
+`gh pr create --fill`. A title may be proposed, but body text must come from the user.
 
-## Step 5: Branch cleanup (optional)
+Create a pull request only when the user supplies either:
 
-After the PR is created (or if invoked when everything is already shipped), offer to clean up stale local branches:
+- exact body text to submit verbatim; or
+- a path to a body file the user authored.
 
-- `git fetch --prune`, then find branches whose upstream is gone:
-  `git for-each-ref --format '%(refname:short) %(upstream:track)' refs/heads | grep '\[gone\]'`
-- Show the list and **ASK before deleting**. Delete with `git branch -d` only.
-- If a branch isn't fully merged (`-d` refuses), list it separately — deleting unmerged branches needs the user to explicitly say so, every time.
+Show the exact title and unchanged body source, ask for confirmation, then create the pull
+request. If no user-authored body is available, stop after push and ask the user to write
+the body; do not fill the gap.
 
-## Rules
+Use `/conversation-context-export publish` separately when the user explicitly requests a
+Japanese, collapsible AI-context comment after the pull request exists.
 
-- NEVER skip a confirmation step. Each step requires explicit user approval
-- NEVER force-push
-- NEVER commit .env, secrets, or credential files
-- If the user says "skip" at any step, skip that step and move to the next
-- If $ARGUMENTS is provided, use it as the commit message / PR title
+Report user-facing pull request information in Japanese while preserving identifiers,
+commands, and user-authored text exactly.

@@ -14,7 +14,7 @@
 
 - [x] Commit 1: `.dev`へ調査、DesignDoc、ADR、移行TODOを追加し、全agentから正本を
   発見できるようにする。
-- [ ] Commit 2: 開発、Sanity Review、Adversarial Review、context handoff、shipの
+- [x] Commit 2: 開発、Sanity Review、Adversarial Review、context handoff、shipの
   workflow skillを再構成する。
 - [ ] Commit 3: 新rule、権限、hook、review agent、旧ruleと重複skillの削除を一つの
   Claude runtime replacementとして反映する。
@@ -44,4 +44,4 @@ stagingと通常commitだけを自律許可し、それ以外の外向き・広�
 ## 未実施
 
 - background専用tabの3列＋coordinator上下分割と`done`通知の再test
-- Commit 2〜4
+- Commit 3〜4

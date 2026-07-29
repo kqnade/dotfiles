@@ -1,97 +1,45 @@
 ---
 name: conversation-context-import
 description: >-
-  対話コンテキストをimportする。
-  `.dev/contexts/` ディレクトリに保存された過去の対話コンテキストを読み込み、開発の継続やレビューに活用する。
-  ユーザーが「コンテキストを読み込んで」「対話コンテキストをimport」「.devのコンテキストを読んで」と言った時に使用する。
+  Load saved AI conversation context from `.dev/contexts/` and reconnect it to the
+  current TODO, DesignDoc, ADR, research, and Git branch state.
+argument-hint: "[optional branch or focus]"
+disallowed-tools:
+  - Write
+  - Edit
 ---
 
-# 対話コンテキストのimport手順書
+# Import conversation context
 
-`.dev/contexts/` に保存された過去の対話コンテキストを読み込む。
+Resolve the branch and context path with the exact commands below. Stop and ask for an
+explicit handoff file if `git symbolic-ref --quiet HEAD` fails on detached HEAD.
 
-## 手順
-
-### 1. ブランチ名を取得する
-
-Bashツールで以下を実行する:
-
-```
-git branch --show-current
-```
-
-### ブランチ名のサニタイズ
-
-ブランチ名をファイル名として使う際、以下の文字を `-` に置換する:
-
-```
-/ \ : * ? " < > |
+```bash
+full_ref=$(git symbolic-ref --quiet HEAD)
+branch_name=${full_ref#refs/heads/}
+readable_slug=$(printf '%s' "$branch_name" | sed 's#[/\\:*?"<>|]#-#g')
+ref_hash=$(printf '%s' "$full_ref" | git hash-object --stdin | cut -c1-10)
+context_id="${readable_slug}-${ref_hash}"
+context_path=".dev/contexts/${context_id}.md"
 ```
 
-例: `dependabot/npm_and_yarn/feed-5.2.0` → `dependabot-npm_and_yarn-feed-5.2.0`
+Read `$context_path`.
 
-以降の手順では、サニタイズ後のブランチ名を「サニタイズ済みブランチ名」と呼ぶ。
+If the new path does not exist but legacy `.dev/contexts/<readable-slug>.md` does, read the
+legacy file and report that it should be migrated by the next export.
 
-### 読み込み元ディレクトリの決定
+Then:
 
-読み込み元をgit worktreeの状況に応じて決める。
+1. Compare its `Source commit` with the current HEAD and flag stale context.
+2. Read the relevant `.dev/todo/` file.
+3. Follow only the DesignDoc, ADR, and research links referenced by the context or TODO.
+4. Inspect `git status`, branch commits, and the current diff.
+5. Check whether decisions, evidence, and current state contradict the canonical `.dev`
+   records or repository state.
+6. Report the goal, confirmed facts, decisions, completed work, in-flight state, next
+   commit-sized TODO, verified gotchas, contradictions, and unverified claims.
 
-Bashツールで `git worktree list` を実行し、現在の作業ツリーがmain worktree（リポジトリ本体の作業ツリー）か、リンクされたworktreeかを判断する。worktreeで作業している場合はmain worktreeのパスも把握する。
-
-main treeで作業中の場合は、読み込み元ディレクトリを `.dev/contexts/` とする。
-
-worktree内で作業中の場合は、main treeとworktreeローカルの両方の `.dev/contexts/` で、カレントブランチ用ファイル（`{サニタイズ済みブランチ名}.md`）の有無を確認して読み込み元ディレクトリを決める:
-
-- 両方に存在する場合: 両方のフルパスを提示し、AskUserQuestionツールでどちらを読み込むか選ばせる。選んだ側の `.dev/contexts/` を読み込み元ディレクトリとする
-- 片方のみに存在する場合: そちらの `.dev/contexts/` を読み込み元ディレクトリとする
-- どちらにも存在しない場合: main treeの `.dev/contexts/` を読み込み元ディレクトリとする
-
-以降の手順では、決定したパスを「読み込み元ディレクトリ」と呼ぶ。
-
-### 2. ファイルの存在確認
-
-読み込み元ディレクトリ内のファイルを確認する。
-
-Globツールで `{読み込み元ディレクトリ}/*.md` を検索し、以下を把握する:
-
-- カレントブランチと同名のファイル（`{読み込み元ディレクトリ}/{サニタイズ済みブランチ名}.md`）が存在するか
-- それ以外のファイルが存在するか
-
-### 3. 読み込み対象の決定
-
-ファイルの存在状況に応じて対応を分ける:
-
-#### カレントブランチのファイルのみ存在する場合
-
-質問せずにそのファイルを読み込む。
-
-#### 他のファイルのみ存在する場合（カレントブランチのファイルが無い）
-
-質問せずに全ファイルを読み込む。
-
-#### 両方存在する場合
-
-AskUserQuestionツールで以下の選択肢を提示する:
-
-- **カレントブランチのコンテキストのみ読み込む**: `{読み込み元ディレクトリ}/{サニタイズ済みブランチ名}.md` のみ
-- **全てのコンテキストを読み込む**: 読み込み元ディレクトリ内の全ファイル（ファイル名を列挙して提示する）
-
-#### ファイルが1つも存在しない場合
-
-読み込み元ディレクトリにコンテキストファイルが見つからない旨を報告して終了する。
-
-### 4. 読み込みと報告
-
-Readツールで対象ファイルを読み込む。
-
-読み込み完了後、どのファイルを読み込んだかをユーザーに報告する:
-
-```
-以下の対話コンテキストを読み込みました:
-- `{読み込み元ディレクトリ}/feature-a.md`
-- `{読み込み元ディレクトリ}/feature-b.md`
-```
-
-## 関連スキル
-
-- **conversation-context-export**: 現在の対話コンテキストを `.dev/contexts/` に書き出すスキル。開発の区切りでコンテキストを保存する時に使用する。
+If the current branch has no context file, list available context filenames and ask which
+one is relevant rather than loading all of them. Do not infer a goal when neither `.dev/`
+records nor branch history establishes one. Treat the context as a conversation supplement,
+not as authority over TODOs, DesignDocs, ADRs, research, code, or observed test results.
