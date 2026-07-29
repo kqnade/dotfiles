@@ -1,6 +1,6 @@
 # AI支援開発workflow
 
-- 状態: 実装中
+- 状態: Claude制御境界のfollow-up実装中
 - 更新日: 2026-07-29
 
 ## 目的
@@ -57,12 +57,20 @@ PreToolUse hookは危険なcommandをdeterministicに拒否し、credentialら�
 含むshell commandも確認へ上げる。構造化hook decisionはJSONをstdoutへ出してexit 0と
 し、exit 2と混在させない。
 
+Claude Code組み込みのcommit / PR workflowは`includeGitInstructions: false`で外す。
+PR本文を含むGit workflowはこのrepositoryのruleとskillだけを正本にし、組み込み指示との
+競合を作らない。
+
 ## Review workflow
 
 通常のcode reviewはdiffに応じた専門reviewerだけを選ぶ。重要なPRではSanity Reviewを
 行い、人間が書いたPR本文、AI context、`.dev`、code、testを別々の証拠として読む。
-review/import系skillは`Write`と`Edit`を利用不可にし、専門reviewerは
-`Read`、`Grep`、`Glob`だけを持つ。live commandの実行と指摘の再現はmain agentが担う。
+skill frontmatterの`allowed-tools`はtoolを事前承認するだけで、tool集合を制限しない。
+Claude Codeがskill用にdocument化していない`disallowed-tools`も強制境界として扱わない。
+review/import系skillのcoordinatorは明示的にinspect-onlyとするが、main conversationの
+tool集合は通常のpermission境界を保つ。専門reviewerとconsultation subagentはcustom
+agentの`tools` allowlistを`Read`、`Grep`、`Glob`へ限定する。live commandの実行と指摘の
+再現はmain agentが担い、reviewerへchanged pathとhunkを渡す。
 
 設計前提、security、correctness、trade-offを争う必要がある場合は
 [ADR 0001](../adr/0001-herdr-adversarial-review.md)に従ってAdversarial Reviewを行う。
@@ -86,10 +94,13 @@ review/import系skillは`Write`と`Edit`を利用不可にし、専門reviewer�
 - 社用account: Claude、GitHub Copilot
 - 個人account: OpenCode、Codex、Kimi
 
-自動workflowは、現在利用中の会社承認済みCLIとaccountだけを使う。repository内容、
-diff、`.dev`、promptを個人accountへ送らない。Claude workflowのAdversarial Reviewと
-subagent consultationはClaudeだけを起動する。GitHub Copilotは社用accountだが別CLI
-なので、自動fallbackや同一CLI reviewerとしては使わない。
+自動workflowは、現在利用中の会社承認済みCLIとaccountだけを使う。ただし、社用account
+であることは、すべてのrepositoryをそのaccountへ送信できる認可ではない。CLI、account、
+対象repositoryの組み合わせが承認済みであることを送信前に確認する。repository内容、
+diff、`.dev`、promptを個人accountまたは対象repositoryに未承認のaccountへ送らない。
+Claude workflowのAdversarial Reviewとsubagent consultationはClaudeだけを起動する。
+GitHub Copilotは社用accountだが別CLIなので、自動fallbackや同一CLI reviewerとしては
+使わない。
 
 個人accountを使う場合はworkflow外で会社規程と送信対象を個別に確認する。
 Adversarial ReviewやSanity Reviewのfallbackにはしない。このため、Codex、

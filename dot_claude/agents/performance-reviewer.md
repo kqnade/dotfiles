@@ -20,7 +20,9 @@ This is static analysis. You can read code and estimate impact but cannot profil
 
 ## How to review
 
-Run `git diff --name-only`. Read each changed file plus its callers. Determine path frequency (per request, per user, once at startup). Rank findings by impact (frequency times cost).
+Use the changed paths and hunks supplied in the delegation prompt. Read each changed file
+plus its callers. Determine path frequency (per request, per user, once at startup). Rank
+findings by impact (frequency times cost).
 
 ## Database and queries
 

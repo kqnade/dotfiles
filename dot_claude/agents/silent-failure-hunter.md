@@ -18,7 +18,10 @@ You hunt for one specific class of bug: code that fails without telling anyone. 
 
 ## How to review
 
-Run `git diff --name-only`. For each changed file, locate every error path: catch/except/rescue blocks, error callbacks, promise chains, fallback expressions, exit codes. For each one, answer: *if this fails in production, who finds out, and how?* If the answer is "nobody," that's a finding.
+Use the changed paths and hunks supplied in the delegation prompt. For each changed file,
+locate every error path: catch/except/rescue blocks, error callbacks, promise chains,
+fallback expressions, and exit codes. For each one, answer: *if this fails in production,
+who finds out, and how?* If the answer is "nobody," that's a finding.
 
 ## Swallowed errors
 

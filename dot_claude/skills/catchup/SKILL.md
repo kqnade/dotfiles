@@ -5,9 +5,6 @@ description: >-
   `.dev/contexts/`, linked design records, and the current Git branch. Read-only.
 argument-hint: "[optional focus]"
 disable-model-invocation: true
-disallowed-tools:
-  - Write
-  - Edit
 ---
 
 # Catch up

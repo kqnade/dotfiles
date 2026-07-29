@@ -6,9 +6,6 @@ description: >-
   unresolved decision-changing claims. Use for consequential designs, risky changes, or when
   sanity-review identifies a material dispute.
 argument-hint: "[PR, diff, DesignDoc, ADR, or decision]"
-disallowed-tools:
-  - Write
-  - Edit
 ---
 
 # Adversarial Review
@@ -34,11 +31,14 @@ Load and follow the `herdr` skill. Verify `HERDR_ENV=1`. If the session is not m
 Herdr, stop and report that Adversarial Review was not performed. Do not replace the
 auditable Herdr workflow with subagents or an external AI service.
 
-Read the current agent kind from `herdr agent get "$HERDR_PANE_ID"` and use that same kind
-for both reviewers. In this Claude workflow, both reviewer kinds must be Claude. GitHub
-Copilot is company-managed but is a different CLI, so do not use it as an automatic fallback.
-OpenCode, Codex, and Kimi use personal accounts and must not receive the evidence. Confirm
-that the current Claude account is permitted to read it.
+Read the current agent kind from `herdr agent get "$HERDR_PANE_ID"`. Continue only when it
+is Claude, and use Claude for both reviewers. GitHub Copilot is company-managed but is a
+different CLI, so do not use it as an automatic fallback. OpenCode, Codex, and Kimi use
+personal accounts and must not receive the evidence.
+
+Confirm separately that the active Claude account is authorized for the target repository.
+Company ownership of the account does not grant repository-wide authorization. If the CLI,
+account, or repository authorization is missing or unclear, stop before creating the tab.
 
 Choose a short Japanese `<scope>` label and a collision-free alphanumeric `<suffix>`. Create
 one background tab per review scope. Reuse that tab and its two role contexts for incremental
@@ -93,10 +93,17 @@ Choose unique agent names `advocate_<suffix>` and `challenger_<suffix>` after ch
 
 ```bash
 herdr agent start advocate_<suffix> \
-  --kind <current-kind> --pane <advocate-pane>
+  --kind claude --pane <advocate-pane> -- \
+  --tools "Read,Grep,Glob" --disallowedTools "mcp__*"
 herdr agent start challenger_<suffix> \
-  --kind <current-kind> --pane <challenger-pane>
+  --kind claude --pane <challenger-pane> -- \
+  --tools "Read,Grep,Glob" --disallowedTools "mcp__*"
 ```
+
+`--tools` restricts the built-in tool set; `--disallowedTools "mcp__*"` removes plugin and
+MCP escape paths. Do not replace these with `--allowedTools`, which only pre-approves tools.
+If either reviewer starts without these restrictions, stop it without sending evidence and
+report that the review was not performed.
 
 ## 3. Run independent positions
 
@@ -132,7 +139,8 @@ continue its own evidence review instead of blocking on `agent wait`.
 After the notification, confirm both states with `herdr agent get` and read results with
 `recent-unwrapped`. If an agent is `blocked`, inspect it without granting new authority
 merely to finish. If the terminal cannot retain a complete result, ask that reviewer to
-write its existing answer as Markdown under a temporary directory and return only the path.
+repeat its existing answer in shorter numbered sections and read each section before
+requesting the next. Do not grant `Write` merely to preserve output.
 
 Deduplicate the findings and verify their cited evidence. Stop after the first pass when the
 reviewers' material conclusions are compatible, even if they found different issues. Do not

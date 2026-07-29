@@ -14,6 +14,10 @@ Claude Codeへ常時読み込ませるruleと、必要時だけ読むskillをど
 - [Lessons from building Claude Code: How we use skills](https://claude.com/blog/lessons-from-building-claude-code-how-we-use-skills)
 - [Configure permissions](https://code.claude.com/docs/en/permissions)
 - [Hooks reference](https://code.claude.com/docs/en/hooks)
+- [Extend Claude with skills](https://code.claude.com/docs/en/slash-commands)
+- [Create custom subagents](https://code.claude.com/docs/en/sub-agents)
+- [CLI reference](https://code.claude.com/docs/en/cli-usage)
+- [Claude Code settings](https://code.claude.com/docs/en/settings)
 
 ## 確認できた方針
 
@@ -22,6 +26,17 @@ Claude Codeへ常時読み込ませるruleと、必要時だけ読むskillをど
 - 複数手順を伴う作業はskillへ分離し、必要時だけ手順本文を読み込ませる。
 - skillのdescriptionは、処理内容だけでなく起動すべき状況を判定できる記述にする。
 - 詳細なtemplateやreferenceはskill本体から分離し、必要な時だけ読む。
+- skillの`allowed-tools`はそのturnでtoolを事前承認するが、利用可能toolを制限しない。
+  skill用frontmatterにdocument化されていない`disallowed-tools`を禁止境界として
+  扱わない。
+- custom subagentの`tools`はallowlistとしてtool集合を制限し、列挙しないbuilt-in toolと
+  MCP toolを利用不可にできる。
+- CLIの`--tools`はbuilt-in toolを制限するがMCP toolには作用しない。独立review sessionを
+  local read-onlyにする場合は`--tools "Read,Grep,Glob"`と
+  `--disallowedTools "mcp__*"`を併用する。
+- `includeGitInstructions`の既定値は`true`で、built-inのcommit / PR workflowとGit
+  status snapshotをsystem promptへ含める。custom Git workflowを正本にする場合は
+  `false`へ設定する。
 - 絶対に守る必要がある禁止事項をmodelへのruleだけに依存させず、permissionまたは
   deterministicなPreToolUse hookで実行境界を作る。
 - permissionはdeny、ask、allowの順に評価され、content-scopedなaskはsandboxの

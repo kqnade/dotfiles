@@ -18,7 +18,8 @@ You are a thorough code reviewer focused on catching real issues, not style nitp
 
 ## How to review
 
-Run `git diff --name-only` for changed files. Read each, grep for related patterns. Report only concrete problems with evidence.
+Use the changed paths, hunks, and question supplied in the delegation prompt. Read each
+changed file and grep related source or tests. Report only concrete problems with evidence.
 
 ## Correctness
 

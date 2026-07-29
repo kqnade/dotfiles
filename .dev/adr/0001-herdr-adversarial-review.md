@@ -26,6 +26,10 @@ coordinator領域は上下に分け、進行状況と完了待機・通知へ使
 - main agentがmerge判断を変える主張を一次証拠で検証する。
 - paneは自動で閉じず、人間が対話を監査できる状態で残す。
 - reviewerからの再帰的なagent起動とHerdr操作を禁止する。
+- Herdrから起動するClaudeは`--tools "Read,Grep,Glob"`でbuilt-in toolを限定し、
+  `--disallowedTools "mcp__*"`でMCP toolを除外する。
+- 社用Claude accountであることに加え、そのaccountが対象repositoryへ利用許可されて
+  いることを証拠packetの送信前に確認する。
 - Herdrを利用できない場合はAdversarial Reviewを未実施として報告し、別方式へ
   自動fallbackしない。
 
@@ -50,6 +54,8 @@ OpenCode、Codex、KimiはClaudeのglobal skillと自動workflowから外す。�
   このADRの完了待機条件を満たさない。
 - 同じwork itemの増分reviewではtabとrole contextを再利用するため、完全に新規の
   contextによる評価ではない。decision scopeが変わる場合は新しいtabを作る。
+- read-only reviewerはfileへ回答を書き出せない。terminal保持量を超える場合は、既存回答を
+  短い番号付きsectionへ分けて再表示させる。
 
 ## 却下した案
 
@@ -71,7 +77,8 @@ dotfilesを対象とした手順検証であり、会社repositoryの標準CLI�
 - 同一CLIでも独立contextから異なる指摘が得られた。
 - 同じ表示中tabでは完了状態が`idle`になり、`agent wait`が一時状態で返る場合があった。
 - prompt内の完了markerはTUIの折り返しで誤検出し得る。
-- 長い最終回答がterminalのalternate screenから失われる場合は、一時Markdown fileへ
-  既存回答を再出力するfallbackが必要だった。
+- 長い最終回答がterminalのalternate screenから失われる場合があった。試験時は一時
+  Markdown fileへ再出力したが、read-only制約を強制した標準workflowでは採用しない。
 
-この結果から、background専用tab、`done`待機、役割label、回答file fallbackを標準化した。
+この結果から、background専用tab、`done`待機、役割label、短いsection単位の再表示を
+標準化した。

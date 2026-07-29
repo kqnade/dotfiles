@@ -4,9 +4,6 @@ description: >-
   Review a dependency or runtime update pull request using release notes, dependency
   graphs, repository usage, version consistency, prior failures, and verification.
 argument-hint: "[PR URL or number]"
-disallowed-tools:
-  - Write
-  - Edit
 ---
 
 # ライブラリ更新レビュー

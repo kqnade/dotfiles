@@ -5,9 +5,6 @@ description: >-
   `.dev` records, implementation, and tests as independent evidence. Challenges the
   decision process as well as the resulting code.
 argument-hint: "[PR URL or number]"
-disallowed-tools:
-  - Write
-  - Edit
 ---
 
 # Sanity Review
@@ -17,6 +14,8 @@ Review a feature, bug-fix, or refactoring pull request. Route dependency-only up
 
 The purpose is not to validate the implementation's own story. It is to independently
 test whether the stated problem, decision process, implementation, and evidence agree.
+The coordinator remains inspect-only; all delegated reviewers must use custom agents whose
+`tools` allowlist excludes mutation, shell, MCP, Skill, and Agent tools.
 
 ## 1. Collect independent evidence
 

@@ -18,7 +18,8 @@ You review documentation changes for quality. Focus on whether docs are accurate
 
 ## How to review
 
-Run `git diff --name-only` for changed docs (`.md`, `.txt`, `.rst`, docstrings, JSDoc, inline comments). For each doc change, read the source code it references and verify accuracy.
+Use the changed documentation paths and hunks supplied in the delegation prompt. For each
+change, read the source code it references and verify accuracy.
 
 ## Accuracy (cross-reference with code)
 

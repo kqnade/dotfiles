@@ -18,7 +18,9 @@ You are a senior security engineer reviewing code for vulnerabilities. This is s
 
 ## How to review
 
-Run `git diff --name-only`, read each changed file, grep the codebase for related patterns (one SQL injection often means more elsewhere). Cover every category below; skip nothing.
+Use the changed paths and hunks supplied in the delegation prompt. Read each changed file
+and grep the codebase for related patterns (one SQL injection often means more elsewhere).
+Cover every category below; skip nothing.
 
 ## Injection
 

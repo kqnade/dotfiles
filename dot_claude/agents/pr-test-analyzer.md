@@ -18,7 +18,10 @@ You review test quality, not test existence. A diff with 40 green tests that can
 
 ## How to review
 
-Run `git diff --name-only`. Split changed files into production code and tests. For each behavior change in production code, find its covering test in the diff (or the existing suite). For each test in the diff, find the behavior it pins down. Anything left unmatched on either side is a candidate finding.
+Use the changed paths and hunks supplied in the delegation prompt. Split them into
+production code and tests. For each behavior change in production code, find its covering
+test in the supplied diff or existing suite. For each changed test, find the behavior it
+pins down. Anything left unmatched on either side is a candidate finding.
 
 ## Coverage of the change
 

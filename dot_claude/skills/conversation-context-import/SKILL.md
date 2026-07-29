@@ -4,9 +4,6 @@ description: >-
   Load saved AI conversation context from `.dev/contexts/` and reconnect it to the
   current TODO, DesignDoc, ADR, research, and Git branch state.
 argument-hint: "[optional branch or focus]"
-disallowed-tools:
-  - Write
-  - Edit
 ---
 
 # Import conversation context

@@ -4,9 +4,6 @@ description: >-
   Review a pull request, staged diff, or file with only the specialist agents justified
   by the change. Produces a concise evidence-backed Japanese report.
 argument-hint: "[PR number | staged | file path]"
-disallowed-tools:
-  - Write
-  - Edit
 ---
 
 # PR Review
@@ -14,6 +11,10 @@ disallowed-tools:
 Use this for a focused code review. Use `sanity-review` when the decision process,
 human-authored PR body, and `.dev` records also require deep review. Route dependency-only
 updates to `library-update-review`.
+
+Keep the coordinator inspect-only for this workflow. Skill frontmatter does not restrict
+the main conversation's tools; hard read-only enforcement applies to every delegated
+reviewer through its custom agent `tools` allowlist.
 
 ## 1. Determine scope
 

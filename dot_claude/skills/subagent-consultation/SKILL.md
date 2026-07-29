@@ -5,9 +5,6 @@ description: >-
   and reconcile its findings. Use when the user explicitly requests a subagent consultation,
   not as a fallback for adversarial-review.
 argument-hint: "[question and desired depth]"
-disallowed-tools:
-  - Write
-  - Edit
 ---
 
 # Subagent consultation
@@ -20,15 +17,17 @@ Send an isolated subagent a self-contained question. Include:
 - the current hypothesis when useful;
 - a request to seek counterexamples and overlooked alternatives.
 
-Use a read-only subagent. It may inspect the supplied evidence and related repository files,
-but must not edit files, run side-effecting commands, commit, post, invoke other agents, or
-perform outward actions. If the available environment cannot enforce that boundary, stop
-and report that the consultation was not performed.
+Use only the `independent-consultant` custom agent. Its `tools` allowlist must be exactly
+`Read`, `Grep`, and `Glob`. It may inspect the supplied evidence and related repository
+files, but it cannot edit files, run commands, use MCP, commit, post, or invoke other agents.
+If that definition is unavailable or its tool boundary differs, stop and report that the
+consultation was not performed.
 
 Use Claude subagents from the same company-managed environment as the main session. GitHub
 Copilot is company-managed but is not a Claude subagent, so do not use it as an automatic
 fallback. OpenCode, Codex, and Kimi use personal accounts and must not receive repository
-content.
+content. Confirm that the active Claude account is also authorized for the target repository;
+company ownership alone is insufficient.
 
 Use one pass by default. Use a second pass only when the first result exposes a material
 unresolved disagreement; include the full context again because the second agent may not
