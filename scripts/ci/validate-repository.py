@@ -289,7 +289,6 @@ for fragment in (
     "cargo:atuin",
     "npm:pnpm",
     "dotfiles_wait_for_port 127.0.0.1 1178",
-    "uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0",
     "intel-macos-mise-v1-${{ runner.os }}-${{ runner.arch }}-",
     "~/.local/share/mise",
     "~/.rustup",
@@ -298,6 +297,12 @@ for fragment in (
 ):
     if fragment not in workflow:
         fail(f"CI no longer executes required integration path: {fragment}")
+
+if not re.search(
+    r"(?m)^\s+uses: actions/cache@[0-9a-f]{40} # v[0-9]+\.[0-9]+\.[0-9]+$",
+    workflow,
+):
+    fail("actions/cache must use a full commit SHA with an exact semver comment")
 
 if "\tdefaultBranch = trunk" not in (ROOT / "dot_gitconfig.tmpl").read_text():
     fail("new Git repositories must default to trunk")
