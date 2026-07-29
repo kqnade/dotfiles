@@ -6,7 +6,7 @@ Xcode Command Line Tools を利用します。
 ## 初回セットアップ
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/kqnade/dotfiles/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/kqnade/dotfiles/trunk/install.sh | bash
 ```
 
 Command Line Tools が未導入の場合は OS の確認画面が開きます。完了後、

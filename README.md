@@ -24,7 +24,7 @@ bash install.sh
 未取得の環境では次の一行でも開始できます。
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/kqnade/dotfiles/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/kqnade/dotfiles/trunk/install.sh | bash
 ```
 
 macOS で Xcode Command Line Tools が未導入の場合だけ、OS のインストール確認を

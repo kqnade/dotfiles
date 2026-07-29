@@ -6,7 +6,7 @@ WSL x64 です。別系統のディストリビューションは対象外です
 ## 初回セットアップ
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/kqnade/dotfiles/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/kqnade/dotfiles/trunk/install.sh | bash
 ```
 
 `install.sh` は `curl` と Git がなければ対象 OS の package manager で最小限だけ

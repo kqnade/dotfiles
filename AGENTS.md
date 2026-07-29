@@ -111,7 +111,7 @@ Keep this mapping consistent when editing Vim or Neovim:
 ## Conventions
 
 - Commit messages use gitmoji prefixes.
-- Default branch is `main`.
+- Default branch is `trunk`.
 - Do not modify Neovim configuration as part of bootstrap cleanup.
 - Keep WSL proxies separate from native Windows support.
 - CI performs real installs and applies rather than preview-only runs. macOS

@@ -293,6 +293,15 @@ for fragment in (
     if fragment not in workflow:
         fail(f"CI no longer executes required integration path: {fragment}")
 
+if "\tdefaultBranch = trunk" not in (ROOT / "dot_gitconfig.tmpl").read_text():
+    fail("new Git repositories must default to trunk")
+if "- Default branch is `trunk`." not in (ROOT / "AGENTS.md").read_text():
+    fail("repository instructions must identify trunk as the default branch")
+for relative in ("README.md", "docs/setup-linux.md", "docs/setup-macos.md"):
+    document = (ROOT / relative).read_text()
+    if "raw.githubusercontent.com/kqnade/dotfiles/trunk/install.sh" not in document:
+        fail(f"{relative} install command must fetch from trunk")
+
 for relative in (
     "scripts/apply.sh",
     "scripts/bootstrap.sh",
