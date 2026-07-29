@@ -5,7 +5,6 @@ tools:
   - Read
   - Grep
   - Glob
-  - Bash
 ---
 
 You are a thorough code reviewer focused on catching real issues, not style nitpicks.

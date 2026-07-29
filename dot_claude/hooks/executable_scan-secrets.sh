@@ -1,7 +1,7 @@
 #!/bin/bash
 # Scans file content for accidental secrets before writing.
 # Used as a PreToolUse hook for Edit|Write operations.
-# Exit 2 = block. Exit 0 = allow.
+# Structured decisions are emitted on stdout with exit 0.
 
 # Requires jq for JSON parsing. Allow if missing (don't block the user)
 if ! command -v jq >/dev/null 2>&1; then
@@ -75,7 +75,7 @@ if [ -n "$MATCHES" ]; then
   # Use "ask" not "deny". Warn the user but let them override (could be test fixtures)
   REASON="Possible secret detected in content:$MATCHES Review carefully before allowing."
   echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"$REASON\"}}"
-  exit 2
+  exit 0
 fi
 
 exit 0

@@ -16,7 +16,7 @@
   発見できるようにする。
 - [x] Commit 2: 開発、Sanity Review、Adversarial Review、context handoff、shipの
   workflow skillを再構成する。
-- [ ] Commit 3: 新rule、権限、hook、review agent、旧ruleと重複skillの削除を一つの
+- [x] Commit 3: 新rule、権限、hook、review agent、旧ruleと重複skillの削除を一つの
   Claude runtime replacementとして反映する。
 - [ ] Commit 4: `allow` / `ask` / `deny`の代表的な境界をrepository validatorで
   検証する。
@@ -44,4 +44,4 @@ stagingと通常commitだけを自律許可し、それ以外の外向き・広�
 ## 未実施
 
 - background専用tabの3列＋coordinator上下分割と`done`通知の再test
-- Commit 3〜4
+- Commit 4

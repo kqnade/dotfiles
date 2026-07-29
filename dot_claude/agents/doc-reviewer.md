@@ -5,7 +5,6 @@ tools:
   - Read
   - Grep
   - Glob
-  - Bash
 ---
 
 You review documentation changes for quality. Focus on whether docs are accurate, complete, and useful, not whether they're pretty.

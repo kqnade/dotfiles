@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Blocks dangerous shell commands: push to protected branches, force push,
 # destructive operations. PreToolUse hook for Bash operations.
-# Exit 2 = block. Exit 0 = allow.
+# Structured decisions are emitted on stdout with exit 0.
 #
 # Configurable via env:
 #   CLAUDE_PROTECTED_BRANCHES  comma list (default: derived from git + main,master)
@@ -9,10 +9,15 @@
 set -uo pipefail
 
 emit_deny() {
-  # Emit a JSON deny decision and exit 2.
   local reason="${1//\"/\\\"}"
   printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"%s"}}\n' "$reason"
-  exit 2
+  exit 0
+}
+
+emit_ask() {
+  local reason="${1//\"/\\\"}"
+  printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"%s"}}\n' "$reason"
+  exit 0
 }
 
 if ! command -v jq >/dev/null 2>&1; then
@@ -64,6 +69,15 @@ fi
 # rm -rf targeting root, home, $HOME, $VAR (any unresolved expansion), or parent traversal.
 # We normalise quotes before matching so "my folder", '$HOME/trash', etc. Are all inspected.
 CMD_NOQUOTE=$(printf '%s' "$COMMAND" | tr -d "'\"")
+
+# Read/Edit permission rules do not apply to Bash subprocesses. Escalate obvious
+# secret-path access so read-only shell commands cannot silently bypass them.
+if printf '%s' "$CMD_NOQUOTE" | grep -qiE '(^|[[:space:]/])\.env([.][^[:space:]/]+)?($|[[:space:]/])|(^|[[:space:]/])secrets/|[.](pem|key)($|[[:space:]])'; then
+  emit_ask "Shell command references a protected secret path. Confirm that access is necessary and safe."
+fi
+
+# Match literal shell-variable spellings in command text, not variables in this hook.
+# shellcheck disable=SC2016
 if printf '%s' "$CMD_NOQUOTE" | grep -qE 'rm[[:space:]]+(-[a-zA-Z]*[[:space:]]+)*-?[a-zA-Z]*r[a-zA-Z]*f[a-zA-Z]*[[:space:]]+(/([[:space:]]|\*|$)|~|\$HOME|\$[A-Za-z_][A-Za-z0-9_]*|\.\./\.\.)' ; then
   emit_deny "Blocked: recursive force-delete on /, ~, \$HOME, an unresolved \$VAR, or .../.. Path. Specify a concrete safe target."
 fi
@@ -101,6 +115,13 @@ fi
 # curl/wget piped to a shell
 if contains_cmd '(curl|wget)[[:space:]].*\|[[:space:]]*(sudo[[:space:]]+)?(bash|sh|zsh|ksh|fish|dash|csh)([[:space:]]|$)'; then
   emit_deny "Blocked: piping downloaded content directly to a shell is dangerous."
+fi
+
+# Network reads remain autonomous; HTTP mutations require a fresh outward-action approval.
+if contains_icmd 'curl[[:space:]].*((-X|--request)([=[:space:]]*)(POST|PUT|PATCH|DELETE)|[[:space:]](-d|--data(-ascii|-binary|-raw|-urlencode)?|-F|--form|-T|--upload-file)([=[:space:]]|$))' \
+  || contains_icmd 'wget[[:space:]].*(--post-data|--post-file|--body-data|--method([=[:space:]]*)(POST|PUT|PATCH|DELETE))' \
+  || contains_icmd '(^|[;&|()]+[[:space:]]*)(http|https)[[:space:]]+(POST|PUT|PATCH|DELETE)([[:space:]]|$)'; then
+  emit_ask "HTTP request may write or upload data to an external service. Confirm the target and payload."
 fi
 
 # Disk / partition. Note: only REDIRECTIONS to /dev/ are destructive. `2>/dev/null` is not.

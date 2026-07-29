@@ -86,7 +86,7 @@ local変更、remote writeを人間が追跡・管理できる開発workflowへ�
 ## 意図的に対応しないこと
 
 - yaskkserv2のservice再登録はClaude再設計commitへ混ぜない。現在の1178番portは
-  2026-07-06から残る`/opt/homebrew/bin/yaskkserv2`がlistenしており、
+  2026-07-06から残る旧install pathの`yaskkserv2`がlistenしており、
   `dev.mise.yaskkserv2` plistはmissingである。独立したmachine bootstrap作業として扱う。
 
 ## 発見された事実・制約
@@ -120,12 +120,12 @@ local変更、remote writeを人間が追跡・管理できる開発workflowへ�
 
 ## 現在地
 
-- 完了: rule・skill・permission・hook・context exportのsource実装とhome反映。
-- 作業中: 検証済みdiffを4つのcommitへ分割。
+- 完了: `.dev`正本とworkflow skillのCommit 1〜2。
+- 作業中: rule・permission・hook・削除を一つのruntime replacementとしてcommit。
 - 未確認: yaskkserv2の新service再登録、Herdr notification topologyの再test。
 
 ## 次の作業
 
-- TODO: Commit 2のworkflow skill再構成。
-  - 開始条件: `.dev`正本とagent導線のCommit 1が完了していること。
-  - 最初の操作: 対象skillだけをstageし、frontmatterと参照先を再確認する。
+- TODO: Commit 3のClaude runtime replacement。
+  - 開始条件: 新ruleが参照するworkflow skillのCommit 2が完了していること。
+  - 最初の操作: rule、settings、hook、agent、削除対象を同時にstageする。

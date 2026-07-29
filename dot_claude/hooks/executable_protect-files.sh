@@ -1,20 +1,25 @@
 #!/usr/bin/env bash
 # Blocks edits to sensitive or generated files.
 # PreToolUse hook for Edit|Write operations.
-# Exit 2 = block. Exit 0 = allow.
+# Structured decisions are emitted on stdout with exit 0. Missing jq uses a
+# plain blocking error on stderr with exit 2.
 
 set -uo pipefail
 
 emit() {
   # $1 = decision (deny|ask) ; $2 = reason
   local decision="$1"
-  local reason="${2//\"/\\\"}"
-  printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"%s","permissionDecisionReason":"%s"}}\n' "$decision" "$reason"
-  exit 2
+  local reason="$2"
+  jq -cn \
+    --arg decision "$decision" \
+    --arg reason "$reason" \
+    '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:$decision,permissionDecisionReason:$reason}}'
+  exit 0
 }
 
 if ! command -v jq >/dev/null 2>&1; then
-  emit deny "jq is required for file protection hooks but is not installed."
+  printf '%s\n' "jq is required for file protection hooks but is not installed." >&2
+  exit 2
 fi
 
 INPUT=$(cat)
@@ -52,6 +57,8 @@ PROTECTED_PATTERNS=(
 shopt -s nocasematch 2>/dev/null || true
 for pattern in "${PROTECTED_PATTERNS[@]}"; do
   # Using bash case with nocasematch for case-insensitive glob match.
+  # The expanded variable is intentionally a glob, not a literal pattern.
+  # shellcheck disable=SC2254
   case "$BASENAME_LC" in
     $pattern)
       emit deny "Protected file: $BASENAME matches pattern '$pattern'"
@@ -74,6 +81,8 @@ LINTER_CONFIG_PATTERNS=(
 )
 
 for pattern in "${LINTER_CONFIG_PATTERNS[@]}"; do
+  # The expanded variable is intentionally a glob, not a literal pattern.
+  # shellcheck disable=SC2254
   case "$BASENAME_LC" in
     $pattern)
       emit ask "Editing linter/formatter config ($BASENAME). Don't weaken checks to silence errors — fix the code instead. Confirm this change."
