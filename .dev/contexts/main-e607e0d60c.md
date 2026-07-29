@@ -3,10 +3,10 @@
 - PR: export時点でPR未作成
 - Branch: `main`
 - Context ID: `main-e607e0d60c`
-- Source commit: `940a1f2`
+- Source commit: `bb1dfd2`
 - Updated at: 2026-07-29 Asia/Tokyo
 - Exported by: Codex
-- 状態: Claude制御境界の再監査中に中断・再開待ち
+- 状態: Claude制御境界の実装・runtime反映・検証完了
 
 ## 目的
 
@@ -91,6 +91,11 @@ local変更、remote writeを人間が追跡・管理できる開発workflowへ�
   - 判断: 実際のeventは`notification_show`である。Completion paneの出力を読んで
     `shown: true`を確認し、正しいmatchでは即時成功した。
   - 証拠: `w1:pB`の`notification_show` event。
+- 試行: 削除済みintegration名をrepository全体で禁止する最終監査を行った。
+  - 操作: CodeRabbitなどの名称を`.dev`の履歴を含めて`rg`した。
+  - 観測: active configに実体はないが、削除理由とuninstall記録を誤検出した。
+  - 判断: active configのrules、skills、agents、settingsだけを実体監査の対象にし、
+    `.dev`の却下理由と失敗履歴は保持した。
 
 ## 意図的に対応しないこと
 
@@ -112,8 +117,8 @@ local変更、remote writeを人間が追跡・管理できる開発workflowへ�
 
 ## 中断時点のClaude制御境界監査
 
-以下は公式documentとの照合で判明した未反映事項である。まだsource、runtime、commitへ
-反映していないため、再開時は実装済みとして扱わない。
+以下は中断時点で公式documentとの照合により判明した事項である。このsectionは監査時の
+状態を保存しており、現在はCommit `bb1dfd2`で解消済みである。
 
 - `SKILL.md`の`disallowed-tools`はClaude Codeがdocument化しているskill frontmatterでは
   なく、現在の複数skillに書かれた指定はtool禁止を保証しない。
@@ -130,6 +135,30 @@ local変更、remote writeを人間が追跡・管理できる開発workflowへ�
   `settings.json.tmpl`で`false`へ明示する案を監査対象とする。
 - 社用accountであることと、対象repositoryの情報を送信してよいことは別の認可である。
   自動workflowはaccount区分だけでなく、repositoryごとの利用許可も満たす必要がある。
+
+## Claude制御境界の反映結果
+
+- `adversarial-review`、`sanity-review`、`pr-review`、`library-update-review`、
+  `subagent-consultation`、`catchup`、`conversation-context-import`から、skillでは
+  強制力を持たない`disallowed-tools`を削除した。
+- code review用の6 agentと新しい`independent-consultant`は、frontmatterの`tools`を
+  `Read`、`Grep`、`Glob`の完全一致へ揃えた。各agentはmain coordinatorが渡すchanged
+  pathとhunkを読み、利用できない`git diff`を自分で実行する指示を持たない。
+- `subagent-consultation`は`independent-consultant`だけを使用し、定義がない場合やtool
+  集合が異なる場合は未実施として停止する。
+- Herdr上のAdversarial Reviewは`--kind claude`へ固定し、両reviewerを
+  `--tools "Read,Grep,Glob" --disallowedTools "mcp__*"`で起動する。これによりbuilt-in
+  mutation、Bash、Skill、Agentと、plugin / MCP toolをreviewer contextから外す。
+- read-only reviewerは回答fileを書けないため、terminalに残らない長文はWrite権限を
+  追加せず、短い番号付きsectionへ分けて再表示させる。
+- `includeGitInstructions: false`を設定し、Claude Code組み込みのcommit / PR workflowと
+  custom workflowの競合を除いた。
+- 常時rule、DesignDoc、ADRへ、accountの契約主体とrepository authorizationを別の境界として
+  追加した。active CLIまたはaccountが対象repositoryへ未承認・不明な場合は、repositoryを
+  読まず、別sessionやsubagentへ証拠を送らない。
+- このdotfiles repositoryは個人側にあり社用Claudeは利用不可なので、Claude reviewerの
+  実起動は行っていない。CLI flagの意味は公式documentで確認し、Herdrの引数受け渡しは
+  installed skillの`-- <agent-args...>`仕様へ従った。
 
 ## 注意が必要な難所
 
@@ -150,29 +179,34 @@ local変更、remote writeを人間が追跡・管理できる開発workflowへ�
 | hook構文 | `bash -n`、`zsh -n`、変更hookへの`shellcheck` | 成功 |
 | hook decision | deny / askの代表入力を各hookへ送信 | 期待したdecision、exit 0 |
 | skill metadata | Rubyで17件のYAML frontmatterをparse | 成功 |
+| skill metadata follow-up | 全skillのfield allowlistと全review agentの`tools`完全一致をRubyで検証 | 成功 |
+| skill validator | `skill-creator/scripts/quick_validate.py` | PyYAML未導入のため起動不可 |
+| skill validator fallback | Ruby標準YAMLで全skill / agent frontmatterをparse | 成功 |
+| Adversarial CLI境界 | `--tools`と`--disallowedTools`が両reviewer起動へ各1件あることを検証 | 成功 |
+| built-in Git指示 | source / runtimeの`includeGitInstructions == false`をJSONで検証 | 成功 |
+| runtime一致 | `chezmoi --source "$PWD" diff` | 出力なし |
+| installed Claude | `mise ls claude` | `2.1.220` |
 | plugin | `claude plugin list` | GitHub、gopls、TypeScriptだけenabled |
+| plugin manifest再確認 | `~/.claude/plugins/installed_plugins.json` | GitHub、gopls、TypeScriptだけ |
+| 完了監査 | rules、skills、agent tools、permission、`.dev`追跡、runtime、active plugin / configを要件別に直接確認 | 成功 |
 | doctor | `mise run doctor` | chezmoiは成功、yaskkserv2 serviceだけ失敗、portは成功 |
 | Herdr topology | `herdr pane layout --pane w1:p8` | 3列と右列上下分割を確認 |
 | Herdr completion | `agent wait --until done`×2、`notification show` | 両agentが`done`、`shown: true` |
 
 ## 現在地
 
-- 完了: `.dev`正本、workflow skill、Claude runtime、permission validatorのCommit 1〜4。
-  Herdrの3列＋右列上下分割、background `done`、通知表示のmechanics test。
-- 作業中: Claude skillのtool制約、Adversarial ReviewのCLI境界、built-in Git指示を
-  公式documentと照合する監査。ユーザー指示により変更前に中断。
+- 完了: `.dev`正本、workflow skill、Claude runtime、permission validator、Claude公式仕様に
+  合わせたreviewer tool境界のCommit 1〜6。Herdrの3列＋右列上下分割、background
+  `done`、通知表示のmechanics test。
+- 作業中: なし。
 - 未確認: yaskkserv2の新service再登録。会社repository上のClaude実reviewは、この
-  個人repositoryでは実行禁止。
+  個人repositoryでは実行禁止であり、Adversarial Reviewを会社repositoryで初めて使う際の
+  運用確認として扱う。
 
-## 次の作業
+## 今後の独立作業
 
-- TODO: Claude制御境界の未反映事項をsourceへ適用するか判断し、適用する場合は
-  skill metadata、Adversarial Review起動引数、`includeGitInstructions`、repository認可の
-  順に修正してsource / runtime / validatorを再検証する。
-  - 開始条件: 作業再開の指示があること。
-  - 最初の操作: 現在のGit状態とClaude公式documentの仕様が変わっていないことを確認する。
 - TODO: 中断中のHerdr test tab `w1:t3`を整理する。
-  - 開始条件: 作業再開の指示があること。
+  - 開始条件: Herdrを操作する明示指示があること。
   - 最初の操作: `advocate_notify`と`challenger_notify`が`done`であることを確認し、
     test結果を保持したまま作成済みtabだけを閉じる。
 - TODO: yaskkserv2を新しいmise管理serviceとして再登録する。

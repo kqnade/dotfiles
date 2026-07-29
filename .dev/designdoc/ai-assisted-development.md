@@ -1,6 +1,6 @@
 # AI支援開発workflow
 
-- 状態: Claude制御境界のfollow-up実装中
+- 状態: 実装・runtime反映・検証完了
 - 更新日: 2026-07-29
 
 ## 目的
