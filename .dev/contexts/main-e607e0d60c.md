@@ -3,10 +3,10 @@
 - PR: export時点でPR未作成
 - Branch: `main`
 - Context ID: `main-e607e0d60c`
-- Source commit: `10bbd6d`
+- Source commit: `825bd8b`
 - Updated at: 2026-07-29 Asia/Tokyo
 - Exported by: Codex
-- 状態: commit中
+- 状態: 実装・反映・commit完了
 
 ## 目的
 
@@ -120,12 +120,15 @@ local変更、remote writeを人間が追跡・管理できる開発workflowへ�
 
 ## 現在地
 
-- 完了: `.dev`正本とworkflow skillのCommit 1〜2。
-- 作業中: rule・permission・hook・削除を一つのruntime replacementとしてcommit。
+- 完了: `.dev`正本、workflow skill、Claude runtime、permission validatorのCommit 1〜4。
+- 作業中: 該当なし。
 - 未確認: yaskkserv2の新service再登録、Herdr notification topologyの再test。
 
 ## 次の作業
 
-- TODO: Commit 3のClaude runtime replacement。
-  - 開始条件: 新ruleが参照するworkflow skillのCommit 2が完了していること。
-  - 最初の操作: rule、settings、hook、agent、削除対象を同時にstageする。
+- TODO: Herdrのbackground tab、3列＋coordinator上下分割、`done`通知を再testする。
+  - 開始条件: `HERDR_ENV=1`のsessionで独立reviewが必要な対象があること。
+  - 最初の操作: `adversarial-review` skillの手順どおり既存tabを確認する。
+- TODO: yaskkserv2を新しいmise管理serviceとして再登録する。
+  - 開始条件: Claude再設計とは別のmachine bootstrap作業として扱うこと。
+  - 最初の操作: 現在の旧processを安全に停止する手順と新plistのapply内容を確認する。

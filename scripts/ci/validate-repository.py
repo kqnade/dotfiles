@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Check v2 removals and the configuration that must survive the reset."""
+"""Validate repository-wide invariants enforced by CI."""
 
 from __future__ import annotations
 
@@ -154,6 +154,46 @@ for path in tracked_files():
     except json.JSONDecodeError as error:
         fail(f"invalid JSON in {path.relative_to(ROOT)}: {error}")
 
+settings_template = (ROOT / "dot_claude/settings.json.tmpl").read_text()
+try:
+    settings = json.loads(settings_template.split("{{-", 1)[0])
+except json.JSONDecodeError as error:
+    fail(f"invalid Claude settings JSON: {error}")
+
+permissions = settings.get("permissions")
+if not isinstance(permissions, dict):
+    fail("Claude settings permissions must be an object")
+
+required_permissions = {
+    "allow": {
+        "Bash(git add *)",
+        "Bash(git commit *)",
+    },
+    "ask": {
+        "Bash(rm *)",
+        "Bash(git reset *)",
+        "Bash(git push *)",
+        "Bash(gh pr create *)",
+        "Bash(gh api *)",
+    },
+    "deny": {
+        "Bash(rm -rf *)",
+        "Bash(git push --force *)",
+        "Read(**/.env)",
+        "Edit(**/.env)",
+    },
+}
+for level, required in required_permissions.items():
+    configured = permissions.get(level)
+    if not isinstance(configured, list):
+        fail(f"Claude permissions.{level} must be a list")
+    missing = required - set(configured)
+    if missing:
+        fail(f"Claude permissions.{level} is missing: {sorted(missing)}")
+
+if "Bash(git *)" in permissions["allow"]:
+    fail("Claude permissions.allow must not pre-approve the git namespace")
+
 try:
     renovate = json.loads(strip_json_comments((ROOT / "renovate.jsonc").read_text()))
 except json.JSONDecodeError as error:
@@ -250,6 +290,6 @@ for relative in (
         fail(f"{relative} must not hard-code the checkout path")
 
 print(
-    "validated removals, JSON, public CI paths, WSL proxies, "
+    "validated removals, JSON, Claude permissions, public CI paths, WSL proxies, "
     "Neovim, Colemak, and SKK"
 )

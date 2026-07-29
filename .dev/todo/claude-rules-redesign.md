@@ -1,6 +1,6 @@
 # Claude rules / skills再設計
 
-- 状態: 検証済み・commit中
+- 状態: 実装・反映・commit完了（follow-upあり）
 - DesignDoc: [AI支援開発workflow](../designdoc/ai-assisted-development.md)
 - ADR: [Herdr上の同一CLIでAdversarial Reviewを行う](../adr/0001-herdr-adversarial-review.md)
 - 調査: [Claude Codeの指示設計に関する調査](../research/claude-code-guidance.md)
@@ -18,7 +18,7 @@
   workflow skillを再構成する。
 - [x] Commit 3: 新rule、権限、hook、review agent、旧ruleと重複skillの削除を一つの
   Claude runtime replacementとして反映する。
-- [ ] Commit 4: `allow` / `ask` / `deny`の代表的な境界をrepository validatorで
+- [x] Commit 4: `allow` / `ask` / `deny`の代表的な境界をrepository validatorで
   検証する。
 
 各commitは依存先を同じcommitか前のcommitに持ち、checkoutした中間状態でも参照切れを
@@ -44,4 +44,3 @@ stagingと通常commitだけを自律許可し、それ以外の外向き・広�
 ## 未実施
 
 - background専用tabの3列＋coordinator上下分割と`done`通知の再test
-- Commit 4
