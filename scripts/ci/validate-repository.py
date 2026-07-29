@@ -171,6 +171,37 @@ try:
 except json.JSONDecodeError as error:
     fail(f"invalid Claude settings JSON: {error}")
 
+hooks = settings.get("hooks")
+if not isinstance(hooks, dict):
+    fail("Claude settings hooks must be an object")
+
+for event, expected_command in {
+    "Stop": "~/.claude/hooks/herdr-review-notify.sh success",
+    "StopFailure": "~/.claude/hooks/herdr-review-notify.sh failure",
+}.items():
+    commands = {
+        hook.get("command")
+        for group in hooks.get(event, [])
+        for hook in group.get("hooks", [])
+        if isinstance(hook, dict)
+    }
+    if expected_command not in commands:
+        fail(f"Claude {event} hook must notify Herdr reviewer completion")
+
+herdr_notify = ROOT / "dot_claude/hooks/executable_herdr-review-notify.sh"
+if not herdr_notify.is_file():
+    fail("Herdr reviewer completion hook is missing")
+else:
+    notify_script = herdr_notify.read_text()
+    for fragment in ("herdr pane current --current", "herdr notification show"):
+        if fragment not in notify_script:
+            fail(f"Herdr reviewer completion hook is missing {fragment!r}")
+
+adversarial_skill = (ROOT / "dot_claude/skills/adversarial-review/SKILL.md").read_text()
+for obsolete in ("herdr agent wait", "<notification-pane>", "Completion: <scope>"):
+    if obsolete in adversarial_skill:
+        fail(f"adversarial-review still uses polling coordinator: {obsolete}")
+
 permissions = settings.get("permissions")
 if not isinstance(permissions, dict):
     fail("Claude settings permissions must be an object")

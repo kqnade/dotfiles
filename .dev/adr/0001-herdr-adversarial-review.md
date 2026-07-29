@@ -2,6 +2,7 @@
 
 - 状態: Accepted
 - 決定日: 2026-07-29
+- 更新日: 2026-07-29
 
 ## コンテキスト
 
@@ -13,14 +14,15 @@ ClaudeとGitHub Copilotは社用account、OpenCode、Codex、Kimiは個人accoun
 
 Claude workflowのAdversarial ReviewはHerdrのbackground専用tabにClaudeを独立起動して
 行う。GitHub Copilotは社用accountだが同一CLIではないため、自動fallbackにはしない。
-tabは3列に分け、擁護側、反証側、coordinator領域とする。
-coordinator領域は上下に分け、進行状況と完了待機・通知へ使う。
+tabは擁護側と反証側の2 paneへ等分する。
 
 - 擁護側と反証側へ同じ証拠packetを渡す。
 - 最初の見解は互いに見せず、並列に作成する。
 - 初回は各reviewer最大3件のdecision-changing findingへ絞る。
 - tabと全paneに対象と役割が分かるlabelを付ける。
-- background tabをfocusせず、各reviewerの`done`を待ってHerdr通知を出す。
+- background tabをfocusせず、各reviewerの`Stop` / `StopFailure` hookからHerdr通知を
+  直接出す。
+- coordinator側に完了待機paneを作らず、`herdr agent wait`でpollingしない。
 - 両者の重要な結論が両立する場合は初回で終了する。
 - 一次証拠で解消できないdecision-changingな対立だけ、反論を1往復行う。
 - main agentがmerge判断を変える主張を一次証拠で検証する。
@@ -50,12 +52,12 @@ OpenCode、Codex、KimiはClaudeのglobal skillと自動workflowから外す。�
 - 同じ誤学習や盲点を共有する可能性があり、合意は独立した証拠にならない。
 - Claude sessionを2つ追加するため、時間とtoken消費が増える。
 - 最終判断にはmain agentによる一次証拠の検証が必要である。
-- background tabを使わない実行では`idle`と作業途中の一時状態を区別しにくいため、
-  このADRの完了待機条件を満たさない。
 - 同じwork itemの増分reviewではtabとrole contextを再利用するため、完全に新規の
   contextによる評価ではない。decision scopeが変わる場合は新しいtabを作る。
 - read-only reviewerはfileへ回答を書き出せない。terminal保持量を超える場合は、既存回答を
   短い番号付きsectionへ分けて再表示させる。
+- Herdr通知は人間への通知であり、main agentを自動再開しない。main agentは通知後に
+  各reviewerの状態を1回確認し、未完了ならpollingせず次の通知を待つ。
 
 ## 却下した案
 
@@ -80,5 +82,7 @@ dotfilesを対象とした手順検証であり、会社repositoryの標準CLI�
 - 長い最終回答がterminalのalternate screenから失われる場合があった。試験時は一時
   Markdown fileへ再出力したが、read-only制約を強制した標準workflowでは採用しない。
 
-この結果から、background専用tab、`done`待機、役割label、短いsection単位の再表示を
-標準化した。
+この結果から、background専用tab、役割label、短いsection単位の再表示を標準化した。
+その後、完了待機paneによる`done`待機は、役割labelを判別するClaude `Stop` /
+`StopFailure` hookからの直接通知へ置き換えた。fixtureによる対象paneの絞り込みと、
+Herdr sessionへの実通知を確認した。

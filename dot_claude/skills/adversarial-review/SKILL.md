@@ -59,24 +59,14 @@ herdr tab create \
 Read `<tab-id>` from `.result.tab.tab_id` and `<advocate-pane>` from
 `.result.root_pane.pane_id`. Never derive IDs from display order.
 
-Build three columns, then split the coordinator column vertically:
+Split the tab into equal reviewer panes:
 
 ```bash
-# Keep the left two-thirds for reviewers; the returned pane is the right coordinator.
-herdr pane split <advocate-pane> \
-  --direction right --ratio 0.67 --cwd "$PWD" --no-focus
-
-# Divide the reviewer area in half; the returned pane is the challenger.
 herdr pane split <advocate-pane> \
   --direction right --ratio 0.5 --cwd "$PWD" --no-focus
-
-# Divide the coordinator area into status and notification panes.
-herdr pane split <coordinator-pane> \
-  --direction down --ratio 0.5 --cwd "$PWD" --no-focus
 ```
 
-Read each returned ID from `.result.pane.pane_id`. The original coordinator pane is
-`<status-pane>` and the pane returned by the last command is `<notification-pane>`.
+Read `<challenger-pane>` from `.result.pane.pane_id`.
 
 Name every surface:
 
@@ -84,8 +74,6 @@ Name every surface:
 herdr tab rename <tab-id> "敵対レビュー: <scope>"
 herdr pane rename <advocate-pane> "Advocate: <scope>"
 herdr pane rename <challenger-pane> "Challenger: <scope>"
-herdr pane rename <status-pane> "Status: <scope>"
-herdr pane rename <notification-pane> "Completion: <scope>"
 ```
 
 Choose unique agent names `advocate_<suffix>` and `challenger_<suffix>` after checking
@@ -123,24 +111,18 @@ decision-changing findings from each reviewer. Each finding must state the claim
 decision impact, and the smallest observation that could disprove it. Exclude style comments
 and repository-wide archaeology without a concrete failure hypothesis.
 
-After both prompts are submitted, run the completion watcher in the notification pane:
+The global Claude `Stop` and `StopFailure` hooks identify these pane labels and send Herdr
+notifications directly. Do not create a watcher pane, call `agent wait`, add completion
+instructions to the reviewer prompts, or grant Bash for notification. The main agent may
+continue its own evidence review; Herdr notifies the user once per reviewer turn.
 
-```bash
-herdr pane run <notification-pane> \
-  "herdr agent wait advocate_<suffix> --until done && \
-herdr agent wait challenger_<suffix> --until done && \
-herdr notification show '敵対レビュー完了' --sound done"
-```
-
-The tab stays in the background, so successful reviewer turns settle as `done`. Do not
-focus the tab while waiting. CLI reads do not change `done` to `idle`. The main agent may
-continue its own evidence review instead of blocking on `agent wait`.
-
-After the notification, confirm both states with `herdr agent get` and read results with
-`recent-unwrapped`. If an agent is `blocked`, inspect it without granting new authority
-merely to finish. If the terminal cannot retain a complete result, ask that reviewer to
-repeat its existing answer in shorter numbered sections and read each section before
-requesting the next. Do not grant `Write` merely to preserve output.
+After both notifications, confirm both states once with `herdr agent get` and read results
+with `recent-unwrapped`. A notification does not resume the main agent automatically. If an
+agent is still `working`, report the current state and let the next notification trigger
+collection instead of polling. If an agent is `blocked`, inspect it without granting new
+authority merely to finish. If the terminal cannot retain a complete result, ask that
+reviewer to repeat its existing answer in shorter numbered sections and read each section
+before requesting the next. Do not grant `Write` merely to preserve output.
 
 Deduplicate the findings and verify their cited evidence. Stop after the first pass when the
 reviewers' material conclusions are compatible, even if they found different issues. Do not
@@ -161,8 +143,8 @@ Do not continue debating points that have no decision impact.
 
 Skip cross-examination for compatible conclusions, independent findings, style preferences,
 or claims already resolved by primary evidence. When it is required, submit both rebuttal
-prompts before re-running the same completion watcher in `<notification-pane>`. Since the tab
-remains unseen, each completed rebuttal returns to `done`.
+prompts before waiting for the two direct completion notifications. Since the tab remains
+unseen, each completed rebuttal returns to `done`.
 
 ## 5. Main-agent verification
 

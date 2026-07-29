@@ -101,6 +101,28 @@
         ],
         "matcher": "*"
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "command": "~/.claude/hooks/herdr-review-notify.sh success",
+            "timeout": 10,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "command": "~/.claude/hooks/herdr-review-notify.sh failure",
+            "timeout": 10,
+            "type": "command"
+          }
+        ]
+      }
     ]
   },
   "includeCoAuthoredBy": false,
