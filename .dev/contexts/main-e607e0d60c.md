@@ -3,10 +3,10 @@
 - PR: export時点でPR未作成
 - Branch: `main`
 - Context ID: `main-e607e0d60c`
-- Source commit: `825bd8b`
+- Source commit: `2f7d2ec`
 - Updated at: 2026-07-29 Asia/Tokyo
 - Exported by: Codex
-- 状態: 実装・反映・commit完了
+- 状態: Herdr通知経路test後に中断・再開待ち
 
 ## 目的
 
@@ -31,6 +31,7 @@ local変更、remote writeを人間が追跡・管理できる開発workflowへ�
 - PR向けのAI commentとreview reportは日本語で書く。
 - `.dev/contexts/`を含む会話の判断記録もGitで追跡する。
 - ClaudeとGitHub Copilotは社用account、OpenCode、Codex、Kimiは個人accountである。
+- このdotfiles repositoryは個人側にあるため、社用Claudeを起動・接続してはならない。
 
 ## 設計方針
 
@@ -43,7 +44,9 @@ local変更、remote writeを人間が追跡・管理できる開発workflowへ�
   - 根拠: AIの作業速度を保ちつつ、外部影響が生じる直前を人間の確認点にするため。
   - 依存する前提: permissionとPreToolUse hookの両方が有効である。
   - 証拠: `dot_claude/settings.json.tmpl`と`dot_claude/hooks/`。
-- 決定: Adversarial ReviewはHerdrのbackground tabでClaudeを2つ起動する。
+- 決定: 会社repositoryのAdversarial ReviewはHerdrのbackground tabでClaudeを2つ
+  起動する。この個人repositoryではClaudeを使わず、Herdrのmechanicsだけを
+  repository外の一時directoryで個人Codexによりtestする。
   - 根拠: 会社repositoryを個人accountへ送らず、独立contextと監査可能なpaneを得るため。
   - 依存する前提: `HERDR_ENV=1`で、同じ会社Claude accountを利用できる。
   - 証拠: ADR 0001と`adversarial-review` skill。
@@ -82,6 +85,12 @@ local変更、remote writeを人間が追跡・管理できる開発workflowへ�
   - 観測: Claude CLIが`settings.json`を書き換え、管理中のhookとdenyが一時的に落ちた。
   - 判断: plugin変更後に`mise run apply`を再実行し、chezmoi driftなしを確認した。
   - 証拠: `chezmoi diff`は出力なし、plugin一覧は必要な3件だけである。
+- 試行: Completion paneの通知確認で`notification_shown`を待った。
+  - 操作: `pane wait-output`のmatchに実際と異なるevent名を指定した。
+  - 観測: 両agentと通知処理は完了していたが、外側のwaitだけがtimeoutした。
+  - 判断: 実際のeventは`notification_show`である。Completion paneの出力を読んで
+    `shown: true`を確認し、正しいmatchでは即時成功した。
+  - 証拠: `w1:pB`の`notification_show` event。
 
 ## 意図的に対応しないこと
 
@@ -97,6 +106,9 @@ local変更、remote writeを人間が追跡・管理できる開発workflowへ�
   PreToolUse hookでも確認する。
 - hookの構造化decisionはstdoutへJSONを出してexit 0にする必要がある。
 - Herdrのbackground tabではagent完了状態を`done`として通知paneから待機できる。
+- 2026-07-29のmechanics testでは、background tab `w1:t3`を3列に分け、右列を
+  Status / Completionへ上下分割できた。Advocate `w1:p8`とChallenger `w1:pA`は
+  個人Codexで`done`になり、Completion `w1:pB`から通知が表示された。
 
 ## 注意が必要な難所
 
@@ -104,6 +116,8 @@ local変更、remote writeを人間が追跡・管理できる開発workflowへ�
   全反映する場合はTTYから`all-overwrite`を選ぶ。
 - Claude plugin uninstallはplugin一覧だけでなく`settings.json`も再構成する。
 - 会社契約か個人契約かはmodel名ではなくaccount単位で判断する。
+- このrepositoryでは社用Claudeを利用できない。Claude固有の実reviewは会社側の
+  repositoryでのみ実施し、このrepoのmechanics test結果と混同しない。
 
 ## 検証証跡
 
@@ -117,18 +131,23 @@ local変更、remote writeを人間が追跡・管理できる開発workflowへ�
 | skill metadata | Rubyで17件のYAML frontmatterをparse | 成功 |
 | plugin | `claude plugin list` | GitHub、gopls、TypeScriptだけenabled |
 | doctor | `mise run doctor` | chezmoiは成功、yaskkserv2 serviceだけ失敗、portは成功 |
+| Herdr topology | `herdr pane layout --pane w1:p8` | 3列と右列上下分割を確認 |
+| Herdr completion | `agent wait --until done`×2、`notification show` | 両agentが`done`、`shown: true` |
 
 ## 現在地
 
 - 完了: `.dev`正本、workflow skill、Claude runtime、permission validatorのCommit 1〜4。
-- 作業中: 該当なし。
-- 未確認: yaskkserv2の新service再登録、Herdr notification topologyの再test。
+  Herdrの3列＋右列上下分割、background `done`、通知表示のmechanics test。
+- 作業中: ユーザー指示により中断。
+- 未確認: yaskkserv2の新service再登録。会社repository上のClaude実reviewは、この
+  個人repositoryでは実行禁止。
 
 ## 次の作業
 
-- TODO: Herdrのbackground tab、3列＋coordinator上下分割、`done`通知を再testする。
-  - 開始条件: `HERDR_ENV=1`のsessionで独立reviewが必要な対象があること。
-  - 最初の操作: `adversarial-review` skillの手順どおり既存tabを確認する。
+- TODO: 中断中のHerdr test tab `w1:t3`を整理する。
+  - 開始条件: 作業再開の指示があること。
+  - 最初の操作: `advocate_notify`と`challenger_notify`が`done`であることを確認し、
+    test結果を保持したまま作成済みtabだけを閉じる。
 - TODO: yaskkserv2を新しいmise管理serviceとして再登録する。
   - 開始条件: Claude再設計とは別のmachine bootstrap作業として扱うこと。
   - 最初の操作: 現在の旧processを安全に停止する手順と新plistのapply内容を確認する。
