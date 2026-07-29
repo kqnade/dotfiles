@@ -30,8 +30,10 @@ are macOS arm64/x64, Fedora x64, Arch Linux x64, and Fedora/Arch under WSL x64.
   chezmoi can materialize it as `~/.config/mise/config.toml`.
 - All tools are explicitly pinned. `mise.lock` covers `macos-arm64`,
   `macos-x64`, and `linux-x64`.
-- Fedora and Arch system packages live in `[bootstrap.packages]`.
+- macOS GUI apps and Fedora/Arch system packages live in `[bootstrap.packages]`.
 - macOS uses its built-in zsh, Git, SSH, and Xcode Command Line Tools.
+- macOS Casks use mise's built-in `brew-cask` manager; the repository does not require a
+  Brewfile or an external `brew` CLI.
 - Intel macOS uses Cargo fallbacks for sheldon, delta, fd, and atuin, plus an
   npm fallback for pnpm.
 - `mise run apply` is the only normal dotfile mutation path. Chezmoi does not
@@ -96,7 +98,7 @@ Keep this mapping consistent when editing Vim or Neovim:
 
 ## Adding things
 
-- mise tool or system package: root `mise.toml`
+- mise tool, system package, or macOS Cask: root `mise.toml`
 - zsh alias: `dot_config/zsh/aliases.zsh`
 - zsh function: `dot_config/zsh/functions/<name>.zsh`
 - Neovim LSP: `dot_config/nvim/lua/modules/configs/lsp/init.lua`

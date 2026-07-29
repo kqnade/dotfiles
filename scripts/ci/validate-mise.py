@@ -68,6 +68,7 @@ INTEL_FALLBACKS = {
 NON_URL_LOCKS = {"rust"}
 
 EXPECTED_PACKAGES = {
+    "brew-cask:scroll-reverser",
     "dnf:ca-certificates",
     "dnf:curl",
     "dnf:fontconfig",
@@ -134,8 +135,12 @@ if config.get("min_version") != "2026.7.12":
 settings = config.get("settings", {})
 if tuple(settings.get("lockfile_platforms", ())) != PLATFORMS:
     fail(f"lockfile_platforms must be exactly {PLATFORMS!r}")
-if settings.get("system_packages", {}).get("managers") != ["dnf", "pacman"]:
-    fail("only dnf and pacman may manage bootstrap packages")
+if settings.get("system_packages", {}).get("managers") != [
+    "dnf",
+    "pacman",
+    "brew-cask",
+]:
+    fail("only dnf, pacman, and brew-cask may manage bootstrap packages")
 if settings.get("npm", {}).get("package_manager") != "auto":
     fail("npm tools must use mise's embedded installer")
 if settings.get("task", {}).get("run_auto_install") is not False:

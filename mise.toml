@@ -10,7 +10,7 @@ lockfile_platforms = ["macos-arm64", "macos-x64", "linux-x64"]
 # Use mise's embedded npm installer. Shelling out to Node's npm can trigger its
 # automatic reshim wrapper before mise itself is available on the install PATH.
 npm.package_manager = "auto"
-system_packages.managers = ["dnf", "pacman"]
+system_packages.managers = ["dnf", "pacman", "brew-cask"]
 task.run_auto_install = false
 
 [tools]
@@ -81,6 +81,9 @@ opencode = "1.18.5"
 ], install_env = { CARGO_NET_GIT_FETCH_WITH_CLI = "true", GIT_CONFIG_GLOBAL = "/dev/null" } }
 
 [bootstrap.packages]
+# macOS
+"brew-cask:scroll-reverser" = "latest"
+
 # Fedora
 "dnf:zsh" = "latest"
 "dnf:git" = "latest"
