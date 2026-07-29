@@ -86,6 +86,14 @@ Keep this mapping consistent when editing Vim or Neovim:
 - Review agents live in `agents/*.md`; workflow skills live in
   `skills/*/SKILL.md`.
 
+## AI-assisted development records
+
+- `.dev/` is the source of truth for AI-assisted work in this repository.
+- Read `.dev/todo/` first, then follow its links to `.dev/designdoc/`,
+  `.dev/adr/`, `.dev/research/`, and `.dev/contexts/`.
+- The workflow contract is documented in
+  `.dev/designdoc/ai-assisted-development.md`.
+
 ## Adding things
 
 - mise tool or system package: root `mise.toml`
