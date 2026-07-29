@@ -5,8 +5,14 @@
     "helpers:pinGitHubActionDigestsToSemver"
   ],
 
-  // 通常の機能追加・修正更新は、リリースから14日経過後にPR化する。
-  "minimumReleaseAge": "14 days",
+  // 通常の機能追加・修正更新は、リリースから1日経過後にPR化する。
+  "minimumReleaseAge": "1 day",
+
+  // 毎日、起床前の深夜から早朝に通常更新のPRを作成する。
+  "timezone": "Asia/Tokyo",
+  "schedule": [
+    "* 0-5 * * *"
+  ],
 
   // 脆弱性更新は待たずにPR化する。
   "vulnerabilityAlerts": {
@@ -33,7 +39,7 @@
       "enabled": false
     },
     {
-      "description": "Create security PRs immediately, bypassing the default 14-day release age.",
+      "description": "Create security PRs immediately, bypassing the default 1-day release age.",
       "matchUpdateTypes": [
         "major",
         "minor",

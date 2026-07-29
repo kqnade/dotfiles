@@ -209,8 +209,12 @@ try:
     renovate = json.loads(strip_json_comments((ROOT / "renovate.jsonc").read_text()))
 except json.JSONDecodeError as error:
     fail(f"invalid JSONC in renovate.jsonc: {error}")
-if renovate.get("minimumReleaseAge") != "14 days":
-    fail("Renovate minimumReleaseAge must remain 14 days")
+if renovate.get("minimumReleaseAge") != "1 day":
+    fail("Renovate minimumReleaseAge must remain 1 day")
+if renovate.get("timezone") != "Asia/Tokyo":
+    fail("Renovate timezone must remain Asia/Tokyo")
+if renovate.get("schedule") != ["* 0-5 * * *"]:
+    fail("Renovate schedule must remain between midnight and 6am")
 if renovate.get("lockFileMaintenance", {}).get("enabled") is not True:
     fail("Renovate lockFileMaintenance must remain enabled")
 if "customManagers" in renovate:
