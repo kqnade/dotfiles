@@ -116,6 +116,9 @@ backend = "cargo:atuin"
 version = "0.23.5"
 backend = "cargo:eza"
 
+[tools."cargo:eza".options]
+features = "vendored-libgit2"
+
 [[tools."cargo:fd-find"]]
 version = "10.4.2"
 backend = "cargo:fd-find"

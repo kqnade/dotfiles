@@ -170,6 +170,10 @@ for name, value in tools.items():
     if version in {"latest", "stable", "lts"} or any(char in version for char in "*^~"):
         fail(f"{name} is not explicitly pinned: {version}")
 
+eza = tools["cargo:eza"]
+if not isinstance(eza, dict) or eza.get("features") != ["vendored-libgit2"]:
+    fail("eza must build its bundled libgit2 instead of linking a system copy")
+
 for fallback in INTEL_FALLBACKS:
     value = tools[fallback]
     if not isinstance(value, dict) or value.get("os") != ["macos/x64"]:
@@ -194,6 +198,11 @@ if set(lock_tools) != EXPECTED_TOOLS:
         f"missing={sorted(EXPECTED_TOOLS - set(lock_tools))}, "
         f"unexpected={sorted(set(lock_tools) - EXPECTED_TOOLS)}"
     )
+
+if lock_tools["cargo:eza"][-1].get("options") != {
+    "features": "vendored-libgit2"
+}:
+    fail("eza lock entry must preserve its vendored-libgit2 build option")
 
 for name, value in tools.items():
     requested_version = configured_version(value)

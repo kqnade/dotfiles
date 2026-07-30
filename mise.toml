@@ -30,7 +30,11 @@ delta = { version = "0.19.2", os = ["linux", "macos/arm64"] }
 ] }
 
 # Daily CLI tools
-"cargo:eza" = { version = "0.23.5", depends = ["rust"] }
+"cargo:eza" = { version = "0.23.5", depends = [
+  "rust",
+], features = [
+  "vendored-libgit2",
+] }
 fzf = "0.74.1"
 fd = { version = "10.4.2", os = ["linux", "macos/arm64"] }
 "cargo:fd-find" = { version = "10.4.2", os = ["macos/x64"], depends = ["rust"] }
