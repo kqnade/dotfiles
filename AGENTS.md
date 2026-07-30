@@ -94,7 +94,9 @@ Keep this mapping consistent when editing Vim or Neovim:
 - Read active work items in `.dev/todo/` first, then follow their links to
   `.dev/designdoc/`, `.dev/adr/`, `.dev/research/`, and `.dev/contexts/`.
 - `.dev/todo/` contains only active work. Delete a work-item file when its final item is
-  complete; Git history is the record of the completed plan.
+  complete. Before deletion, promote durable decisions, design, research, conversation-only
+  context, and verification evidence to the appropriate `.dev/` source of truth. Git history
+  records the completed plan but does not replace those records.
 - The workflow contract is documented in
   `.dev/designdoc/ai-assisted-development.md`.
 

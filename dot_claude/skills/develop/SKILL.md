@@ -64,11 +64,15 @@ tradeoffs. Express what and how through naming and code structure.
 
 After verification:
 
-1. Mark the TODO item complete and record the verification performed. If it is the final
-   item, delete the TODO file instead of keeping a completed work plan.
-2. Review the diff for unrelated changes and accidental generated or secret files.
-3. Commit the implementation, tests, and directly related `.dev/` updates together.
-4. Match the repository's commit-message convention and include an issue or task reference when available.
+1. Mark the TODO item complete and record the verification performed.
+2. Before deleting a final TODO, promote information that must outlive the plan: decisions
+   and design to an ADR or DesignDoc, research facts to research, and conversation-only
+   rationale, failed attempts, constraints, or verification evidence to context.
+3. Delete the final TODO instead of keeping the completed work plan as an archive.
+4. Review the diff for unrelated changes and accidental generated or secret files.
+5. Commit the implementation, tests, and directly related `.dev/` updates together.
+6. Match the repository's commit-message convention and include an issue or task reference
+   when available.
 
 Commit relevant `.dev/contexts/` records so the decision process remains traceable.
 Keep durable decisions in a DesignDoc or ADR and conversation-only handoff facts in a

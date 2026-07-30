@@ -27,8 +27,9 @@ code、test、実行結果も独立した証拠であり、`.dev`の記述と矛
 2. 各TODOを一つのcommitへ対応させる。
 3. TDDを原則とし、期待する理由でtestが失敗することを確認する。
 4. そのtestを通す最小実装を行い、関連testと必要な広域検証を通す。
-5. greenになったTODO itemだけをcommitする。最終itemのcommitではTODO fileを削除し、
-   完了済み計画をarchiveとして残さない。
+5. greenになったTODO itemだけをcommitする。最終itemでは、TODOにしかない再利用可能な
+   判断をADRまたはDesignDoc、調査事実をresearch、会話固有の経緯と検証証跡をcontextsへ
+   分解してからTODO fileを削除する。完了済み計画そのものはarchiveとして残さない。
 6. inline commentはcodeから読めないWhyだけに限定する。
 
 調査、DesignDoc、ADRが必要な変更は、実装TODOより前に作成または更新する。

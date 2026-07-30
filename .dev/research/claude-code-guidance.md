@@ -1,6 +1,7 @@
 # Claude Codeの指示設計に関する調査
 
 - 調査日: 2026-07-29
+- 更新日: 2026-07-30
 - 状態: 採用判断へ反映済み
 
 ## 問い
@@ -57,6 +58,10 @@ Claude Codeへ常時読み込ませるruleと、必要時だけ読むskillをど
   claude.ai connectorも無効化し、承認済みpluginだけを明示的に有効化する。
 - PreToolUseの構造化decisionはstdoutへJSONを出してexit 0にする。exit 2ではstdoutの
   JSONが無視されるため、`ask`として機能しない。
+- `Stop` hookはmain Claude Code agentが応答を完了した時に発火し、user interruptでは
+  発火しない。API errorでturnが終了した場合は`Stop`ではなく`StopFailure`が発火する。
+- command hookはClaudeのBash tool選択とは別のdeterministicなlifecycle処理である。
+  read-only reviewerへBash toolを許可せず、終了通知だけをhookから送れる。
 
 ## このリポジトリへの適用
 
