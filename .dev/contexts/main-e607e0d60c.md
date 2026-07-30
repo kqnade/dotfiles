@@ -18,6 +18,7 @@ local変更、remote writeを人間が追跡・管理できる開発workflowへ�
 - DesignDoc: [AI支援開発workflow](../designdoc/ai-assisted-development.md)
 - ADR: [Herdr上の同一CLIでAdversarial Reviewを行う](../adr/0001-herdr-adversarial-review.md)
 - 調査: [Claude Codeの指示設計に関する調査](../research/claude-code-guidance.md)
+- Memory: 該当なし
 
 ## 会話で確定した要件・制約
 
@@ -211,3 +212,17 @@ local変更、remote writeを人間が追跡・管理できる開発workflowへ�
 - TODO: yaskkserv2を新しいmise管理serviceとして再登録する。
   - 開始条件: Claude再設計とは別のmachine bootstrap作業として扱うこと。
   - 最初の操作: 現在の旧processを安全に停止する手順と新plistのapply内容を確認する。
+
+## 2026-07-30 後続状態
+
+- このfileは`main`上で行ったClaude rules / skills再設計の詳細な対話出力と作業証跡として
+  保持する。branch削除や後続contextへの移行を理由に削減しない。
+- repositoryのdefault branchは`trunk`へ移行し、local / remote `main`は削除済み。
+- 現在の判断と後続作業は
+  [trunk context](trunk-94879c6585.md)、
+  [AI支援開発workflow](../designdoc/ai-assisted-development.md)、
+  [ADR 0001](../adr/0001-herdr-adversarial-review.md)を正本とする。
+- 3列＋Completion paneによるHerdr mechanics testは当時の作業証跡であり、現在の標準構成は
+  ADR 0001の2 pane＋Claude lifecycle hookによる直接通知である。
+- yaskkserv2の新service再登録は後続作業で完了し、`mise run doctor`と
+  `127.0.0.1:1178`接続を確認済み。
