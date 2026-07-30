@@ -92,11 +92,18 @@ Keep this mapping consistent when editing Vim or Neovim:
 
 - `.dev/` is the source of truth for AI-assisted work in this repository.
 - Read active work items in `.dev/todo/` first, then follow their links to
-  `.dev/designdoc/`, `.dev/adr/`, `.dev/research/`, and `.dev/contexts/`.
+  `.dev/designdoc/`, `.dev/adr/`, `.dev/research/`, `.dev/contexts/`, and `.dev/memory/`.
+- `.dev/contexts/` records detailed task-relevant dialogue output, implementation work,
+  failures, and verification for a branch, change, or PR. It is PR and Sanity Review
+  evidence; never reduce or delete existing task evidence.
+- `.dev/memory/` contains confirmed repository knowledge selected for reuse across work
+  items. Context is not memory: never load unrelated contexts as reusable memory or reduce
+  context when deriving a memory entry.
 - `.dev/todo/` contains only active work. Delete a work-item file when its final item is
-  complete. Before deletion, promote durable decisions, design, research, conversation-only
-  context, and verification evidence to the appropriate `.dev/` source of truth. Git history
-  records the completed plan but does not replace those records.
+  complete. Before deletion, promote durable decisions, design, and research, and preserve
+  the completed AI work and dialogue evidence in the relevant context. Add memory only when
+  a confirmed fact should be reused beyond the current work item. Git history records the
+  completed plan but does not replace those records.
 - The workflow contract is documented in
   `.dev/designdoc/ai-assisted-development.md`.
 

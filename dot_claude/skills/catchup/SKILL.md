@@ -43,4 +43,5 @@ context_path=".dev/contexts/${context_id}.md"
 
 Treat `.dev/` as authoritative for intent and Git as authoritative for implemented state.
 Call out disagreement between them instead of silently choosing one. Use
-`/conversation-context-export` to save a handoff.
+`/conversation-context-export` to save detailed work context. Do not read an unrelated
+branch context as memory; use `project-memory` for reusable repository knowledge.

@@ -20,7 +20,8 @@ Use one canonical location for each kind of information:
 - `.dev/designdoc/`: the proposed implementation, constraints, interfaces, rollout, and verification
 - `.dev/adr/`: a durable decision with alternatives and consequences
 - `.dev/todo/`: the active executable work plan, removed when the work is complete
-- `.dev/contexts/`: session handoff context, not duplicated design documentation
+- `.dev/contexts/`: detailed dialogue output and work evidence for a branch, change, or PR
+- `.dev/memory/`: confirmed repository knowledge reusable across work items
 
 Create or update an artifact only when it has durable value:
 
@@ -66,21 +67,24 @@ After verification:
 
 1. Mark the TODO item complete and record the verification performed.
 2. Before deleting a final TODO, promote information that must outlive the plan: decisions
-   and design to an ADR or DesignDoc, research facts to research, and conversation-only
-   rationale, failed attempts, constraints, or verification evidence to context.
+   and design to an ADR or DesignDoc and research facts to research. Preserve detailed
+   dialogue output, completed work, failed attempts, verification, constraints, and decision
+   inputs in context without reducing existing entries.
 3. Delete the final TODO instead of keeping the completed work plan as an archive.
 4. Review the diff for unrelated changes and accidental generated or secret files.
 5. Commit the implementation, tests, and directly related `.dev/` updates together.
 6. Match the repository's commit-message convention and include an issue or task reference
    when available.
 
-Commit relevant `.dev/contexts/` records so the decision process remains traceable.
-Keep durable decisions in a DesignDoc or ADR and conversation-only handoff facts in a
-context; do not retain the completed TODO as an archive. Never commit a red state, combine
-multiple unfinished TODOs, or generate a pull request body.
+Commit relevant `.dev/contexts/` records so PR and Sanity Review can inspect the detailed
+dialogue output and reconstruct the work. Context is not memory: do not reduce it or load
+unrelated context into another work item. Use `project-memory` only when confirmed knowledge
+should be reused beyond the current work item. Keep durable decisions in a DesignDoc or ADR;
+do not retain the completed TODO as an archive. Never commit a red state, combine multiple
+unfinished TODOs, or generate a pull request body.
 
 ## 5. Finish or hand off
 
 Continue with the next TODO only after the previous commit succeeds. When stopping with
-unfinished work, update the TODO and use `/conversation-context-export` to preserve
-conversation-only context without duplicating the DesignDoc, ADR, research, or TODO.
+unfinished work, update the TODO and use `/conversation-context-export` to preserve the
+work evidence without duplicating the DesignDoc, ADR, research, or TODO.

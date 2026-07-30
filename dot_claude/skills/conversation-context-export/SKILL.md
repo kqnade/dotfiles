@@ -1,16 +1,17 @@
 ---
 name: conversation-context-export
 description: >-
-  会話で共有された目的、判断、却下案、失敗、制約、検証証跡、次の作業を
-  Git追跡する`.dev/contexts/`へexportする。ユーザーが明示的にpublishを求めた場合だけ、
-  同じ内容を日本語の折りたたみPRコメントとして公開する。
+  PRとSanity Reviewに使う詳細な対話出力、実施作業、設計判断、失敗、制約、検証証跡を
+  Git追跡する`.dev/contexts/`へexportする。既存contextを削減しない。ユーザーが明示的に
+  publishを求めた場合だけ、日本語の折りたたみPRコメントとして公開する。
 argument-hint: "[repository | publish]"
 ---
 
 # 対話コンテキストのexport
 
-対話コンテキストは会話を再現する議事録ではない。別セッションの作業者と
-Sanity Reviewが、判断過程と現在地を証拠から復元するための引き継ぎ資料にする。
+contextは特定のbranch、変更、PRに紐づく詳細な対話出力と作業証跡である。別sessionの
+作業者とSanity Reviewが、設計判断と実施内容を証拠から再検証できる粒度で記録する。
+contextはmemoryではなく、無関係なtaskへ横断的に読み込ませない。
 
 ## 1. 対象を特定する
 
@@ -33,7 +34,8 @@ context_path=".dev/contexts/${context_id}.md"
 
 既存ファイル、関連するactiveな`.dev/todo/`、そこから参照されるDesignDoc、ADR、調査結果を
 先に読む。Gitのstatus、対象commit、diff、実行済みの検証結果も確認する。
-`.dev`の各文書が正本であり、contextは会話固有の情報を補足するものとする。
+`.dev`の各文書が正本であり、contextは対話出力、実施したAI作業、判断材料を横断して
+PR単位で記録する。
 
 新形式のファイルがなく、旧形式の`.dev/contexts/<readable-slug>.md`だけがある場合は、
 内容を読んで新形式へ移行する。旧ファイルを無断で削除しない。
@@ -49,12 +51,14 @@ context_path=".dev/contexts/${context_id}.md"
 - 失敗した試行は、操作、観測結果、判断を分ける。
 - 検証は、コマンドまたは観測と結果を対応付ける。証拠なしに成功を主張しない。
 - 意図的な非対応と、単に未着手の作業を分ける。
+- 対象commit、変更path、実行command、結果をreview可能な粒度で記録する。
 - 未完了の次作業がある場合だけ、`.dev/todo/`のcommit単位の項目へリンクする。
-- 作業完了時は、TODOにしかない会話固有の経緯、失敗、制約、検証証跡のうち再利用可能な
-  内容をcontextへ移す。判断、設計、調査はcontextへ複製せず、ADR、DesignDoc、researchへ
-  分解してリンクする。
+- 作業完了時は、詳細な対話出力、実施作業、失敗、制約、検証証跡、判断材料をcontextへ
+  追加する。ADR、DesignDoc、researchへlinkしてもcontextの作業記録を削減しない。
 - 情報を正本へ移した後はTODOへのリンクを残さず、完了した計画自体をcontext内の
   archiveとして複製しない。
+- 複数work itemで再利用する確認済み知識は`project-memory`で`.dev/memory/`へ抽出する。
+  memory作成を理由にcontextを要約、移動、削除しない。
 
 変更ファイル一覧やコードから自明な実装説明は書かない。会話で得た理由、制約、
 反証可能な前提、再発しやすい難所を優先する。日本語で書き、識別子、コマンド、
@@ -62,10 +66,9 @@ context_path=".dev/contexts/${context_id}.md"
 
 ## 3. 既存記録を更新する
 
-同一セッションの再exportでは、会話全体から現時点の正しい内容へ再構成する。
-別セッションの記録は、追試で反証できた項目だけ修正または削除する。未検証のまま
-過去の証拠を落とさない。`Exported by`は既存の貢献者を保持して追記する。
-取り消し線や変更履歴は残さず、現時点の正しい内容だけを保持する。
+同一sessionでも別sessionでも、既存の詳細な対話出力、実施作業、失敗、検証、判断材料を
+削減・削除しない。追試で反証した場合は当時の操作と観測を残し、現在の結論を追記する。
+`Exported by`は既存の貢献者を保持して追記する。
 
 `.dev/contexts/*.md`は判断過程を追跡するrepository recordである。関連するTODOや実装と
 同じcommitへ含めるか、独立してreview可能なcontext更新としてcommitする。exportだけを

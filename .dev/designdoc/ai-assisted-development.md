@@ -16,7 +16,8 @@ AIの速度を使いながら、判断過程、実装、テスト、レビュー
 - `.dev/designdoc/`: 実装前後に更新する設計
 - `.dev/adr/`: 重要な選択と却下理由
 - `.dev/research/`: 一次資料と調査結果
-- `.dev/contexts/`: 会話にしか存在しない判断過程と引き継ぎ
+- `.dev/contexts/`: PR対象となる詳細な対話出力、実施内容、失敗、検証証跡
+- `.dev/memory/`: 複数work itemで再利用する確認済みのrepository知識
 
 code、test、実行結果も独立した証拠であり、`.dev`の記述と矛盾する場合は矛盾を
 解消するまで結論を出さない。
@@ -27,9 +28,10 @@ code、test、実行結果も独立した証拠であり、`.dev`の記述と矛
 2. 各TODOを一つのcommitへ対応させる。
 3. TDDを原則とし、期待する理由でtestが失敗することを確認する。
 4. そのtestを通す最小実装を行い、関連testと必要な広域検証を通す。
-5. greenになったTODO itemだけをcommitする。最終itemでは、TODOにしかない再利用可能な
-   判断をADRまたはDesignDoc、調査事実をresearch、会話固有の経緯と検証証跡をcontextsへ
-   分解してからTODO fileを削除する。完了済み計画そのものはarchiveとして残さない。
+5. greenになったTODO itemだけをcommitする。最終itemでは、判断をADRまたはDesignDoc、
+   調査事実をresearchへ分解し、詳細な対話出力、実施作業、失敗、検証、制約、判断材料を
+   contextsへ記録してからTODO fileを削除する。完了済み計画そのものはarchiveとして
+   残さない。
 6. inline commentはcodeから読めないWhyだけに限定する。
 
 調査、DesignDoc、ADRが必要な変更は、実装TODOより前に作成または更新する。
@@ -111,15 +113,28 @@ Artifactによるclaude.ai page公開と自動connector取得も無効化する�
 
 ## Context exportの品質
 
-contextは会話の要約ではなく、次の作業者とSanity Reviewが判断を再検証できる資料に
-する。目的、設計方針、依存する前提、却下案、失敗した試行、意図的な非対応、
-確認済みの制約、検証証跡、現在地、次のcommit単位TODOを残す。
+contextは特定のbranch、変更、PRに紐づく詳細な対話出力と作業証跡である。次の作業者と
+Sanity Reviewが判断を再検証できるよう、目的、対象commit、対話で確定した要件、
+設計方針、依存する前提、却下案、実施内容、失敗した試行、意図的な非対応、確認済みの
+制約、検証証跡、現在地、次のcommit単位TODOを残す。
 
-事実、推論、決定を分離し、証拠のない成功を記録しない。既存contextを別sessionで
-更新する場合は、追試で反証した項目以外を失わない。
+事実、推論、決定を分離し、証拠のない成功を記録しない。既存contextを更新するときは、
+完了、正本化、要約を理由に記録を削減・削除しない。追試で反証した内容も当時の操作と
+観測を残し、現在の結論を追記する。context file自体をPRのreview対象として扱う。
 
 context filenameは可読なbranch slugだけに依存させず、full branch refのhashを含めて
 一意化する。detached HEADでは自動命名せず、明示的なhandoff名を確認する。
+
+## ContextとMemoryの境界
+
+contextはmemoryではない。current branch、変更、PRの証拠として読むものであり、無関係な
+taskへ横断的に読み込まない。複数work itemで利用すべき確認済み知識だけをcontext、ADR、
+DesignDoc、research、codeから`.dev/memory/`へ抽出し、根拠へlinkする。memory作成を理由に
+contextを要約、移動、削除しない。
+
+memoryは根拠が変われば更新またはsupersedeできる。secret、credential、個人profile、
+未確認の推論、PR固有の作業logはmemoryへ置かない。Claude Codeのbuilt-in auto memoryは
+無効のままにし、repository memoryをGit review可能に保つ。
 
 ## 旧project-local設定の移行
 

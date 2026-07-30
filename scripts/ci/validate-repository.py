@@ -119,6 +119,22 @@ for todo in (ROOT / ".dev/todo").glob("*.md"):
     ):
         fail(f"completed work item must be removed from .dev/todo: {todo.name}")
 
+for required in (
+    ".dev/memory/README.md",
+    "dot_claude/skills/project-memory/SKILL.md",
+):
+    if not (ROOT / required).is_file():
+        fail(f"context and memory boundary file is missing: {required}")
+
+development_rule = (ROOT / "dot_claude/rules/development.md").read_text()
+for fragment in (
+    ".dev/contexts/",
+    ".dev/memory/",
+    "Context is not memory.",
+):
+    if fragment not in development_rule:
+        fail(f"Claude development rule does not separate context and memory: {fragment}")
+
 removals = (ROOT / ".chezmoiremove").read_text().splitlines()
 for target in (
     ".config/project-maker",
@@ -170,6 +186,9 @@ try:
     settings = json.loads(settings_template.split("{{-", 1)[0])
 except json.JSONDecodeError as error:
     fail(f"invalid Claude settings JSON: {error}")
+
+if settings.get("autoMemoryEnabled") is not False:
+    fail("Claude built-in auto memory must remain disabled; use .dev/memory/")
 
 hooks = settings.get("hooks")
 if not isinstance(hooks, dict):

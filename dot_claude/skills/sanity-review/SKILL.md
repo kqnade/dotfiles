@@ -37,7 +37,9 @@ Read AI context separately from a comment marked
 `<!-- ai-conversation-context:<context-id> -->` or `.dev/contexts/`. Read the relevant
 active `.dev/todo/` work items, when present, and follow linked DesignDocs, ADRs, and
 research. A completed change should have no retained TODO file. Keep human claims and
-AI-generated context distinguishable throughout the report.
+AI-generated context distinguishable throughout the report. Context is the detailed
+dialogue and work output for this change, not cross-task memory. Read only memory entries
+explicitly linked by the context or directly relevant to a claim under review.
 
 ## 2. Build an evidence map
 
