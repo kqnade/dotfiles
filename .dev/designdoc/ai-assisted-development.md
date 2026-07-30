@@ -82,6 +82,11 @@ agentの`tools` allowlistを`Read`、`Grep`、`Glob`へ限定する。live comma
 一次証拠で解消できないdecision-changingな対立だけを1往復反駁する。reviewer同士を
 同じ結論へ収束させることは目的にしない。
 
+Design段階をAdversarial Review、最終段階をAdversarial Reviewを含むSanity Reviewとし、
+現行agentに対するChallenger 1体を同じHerdr tabのsibling paneで起動する再設計案は、
+[Adversarial ReviewとSanity Reviewの再設計](adversarial-sanity-review.md)に記載する。
+この案がAcceptedとなりADRとskillへ実装されるまでは、ADR 0001と現行workflowを使う。
+
 ## PRへの出力
 
 - PR本文は人間が書く。AIは本文を生成、補完、書き換え、文案提示しない。
