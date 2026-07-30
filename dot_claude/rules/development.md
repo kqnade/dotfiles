@@ -17,7 +17,7 @@ Development records live under `.dev/`. Do not duplicate the same information; l
 - Before implementation, decompose the work in `.dev/todo/` into independently verifiable items. Each item should map to one cohesive, reviewable, revertible commit.
 - For behavior changes, use TDD: write the test, run it and confirm it fails for the intended reason, implement the minimum change, then run the relevant tests and confirm they pass.
 - Commit each completed TODO after verification. Never mix unrelated work or commit with failing relevant tests.
-- Delete the TODO file in the final implementation commit instead of retaining a completed plan. Preserve only durable decisions or handoff context in the appropriate `.dev/` document.
+- Before deleting the TODO in the final implementation commit, promote durable decisions and design to an ADR or DesignDoc, research facts to research, and conversation-only rationale, failures, constraints, and verification evidence to context. Do not retain the completed plan itself as an archive.
 - If TDD is not applicable, record why and the alternative verification in the TODO.
 
 ## Control boundary
