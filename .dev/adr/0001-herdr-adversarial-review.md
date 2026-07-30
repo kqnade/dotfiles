@@ -70,6 +70,16 @@ model多様性は得られるが、会社情報を個人アカウントへ送る
 追加環境は不要だが、推論contextが分離されず、対立の独立性と監査性が弱いため
 標準手順にはしない。
 
+### reviewer promptからHerdr通知を実行する
+
+hookは不要になるが、inspect-only reviewerへBash toolを与えて実行境界を広げるため
+不採用。通知はClaude `Stop` / `StopFailure` command hookから実行する。
+
+### coordinator paneでreviewerの`done`を待つ
+
+両reviewerの完了を一つの通知へまとめられるが、待機paneと`herdr agent wait`が増え、
+main agentを自動再開するわけでもないため不採用。
+
 ## Forward testで確認したこと
 
 2026-07-29に、このdotfiles再設計を対象として同一Codex CLIを2paneへ起動し、
