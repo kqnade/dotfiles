@@ -19,7 +19,7 @@ chezmoi = "2.71.1"
 sheldon = { version = "0.8.5", os = ["linux", "macos/arm64"] }
 "cargo:sheldon" = { version = "0.8.5", os = ["macos/x64"], depends = ["rust"] }
 starship = "1.26.0"
-gh = "2.96.0"
+gh = "2.97.0"
 ghq = "1.10.1"
 git-lfs = "3.7.1"
 delta = { version = "0.19.2", os = ["linux", "macos/arm64"] }
