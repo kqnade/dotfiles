@@ -1,3 +1,4 @@
+.claude/CLAUDE.md
 .claude/agents/anchor-mapper.md
 .claude/agents/consistency-checker.md
 .claude/agents/summarizer-L1.md
@@ -46,12 +47,15 @@
 .claude/skills/setupdotclaude
 .claude/skills/tdd
 .claude/skills/test-writer
+.codex/AGENTS.md
+.config/opencode/AGENTS.md
 .config/cmux
 .local/bin/cmux-worktree
 .config/zsh/functions/ccc.zsh
 .config/project-maker
 .config/zsh/agent-mail.zsh
 .kimi-code/mcp.json
+.kimi-code/AGENTS.md
 Documents/PowerShell/Microsoft.PowerShell_profile.ps1
 Library/LaunchAgents/com.user.yaskkserv2.plist
 .config/systemd/user/yaskkserv2.service

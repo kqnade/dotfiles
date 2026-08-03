@@ -71,6 +71,7 @@ def strip_json_comments(text: str) -> str:
 
 
 removed_paths = (
+    ".chezmoitemplates/ai-voice.md",
     "Brew" + "file",
     "Dnffile",
     "scoop" + "file.json",
@@ -82,6 +83,10 @@ removed_paths = (
     "scripts/install-linux.sh",
     "dot_config/project-maker",
     "dot_config/zsh/" + "agent-mail.zsh",
+    "dot_claude/CLAUDE.md.tmpl",
+    "dot_codex/AGENTS.md.tmpl",
+    "dot_config/opencode/AGENTS.md.tmpl",
+    "dot_kimi-code/AGENTS.md.tmpl",
     "dot_kimi-code/mcp.json",
     "run_onchange_before_install-" + "mcp-agent-mail.sh.tmpl",
     "run_onchange_before_install-" + "mcp-agent-mail.ps1.tmpl",
@@ -137,8 +142,12 @@ for fragment in (
 
 removals = (ROOT / ".chezmoiremove").read_text().splitlines()
 for target in (
+    ".claude/CLAUDE.md",
+    ".codex/AGENTS.md",
+    ".config/opencode/AGENTS.md",
     ".config/project-maker",
     ".config/zsh/" + "agent-mail.zsh",
+    ".kimi-code/AGENTS.md",
     ".kimi-code/mcp.json",
     "Documents/PowerShell/Microsoft.PowerShell_profile.ps1",
     "Library/LaunchAgents/com.user.yaskkserv2.plist",
