@@ -25,6 +25,16 @@ v2の未完了事項です。CIや実機検証で新しい問題が見つかっ�
   - OS package managerで不足分だけが導入される。
   - その後のbootstrapが通常のjobと同じ結果になる。
 
+## P1: WSL interopの診断
+
+- [ ] Windows executableを起動できないWSLを `mise run doctor` で検出する。
+  - 再現条件は `WSLInterop` が無効または未登録の状態で、`ssh.exe`
+    への委譲が `cannot execute binary file: Exec format error` で失敗すること。
+  - proxyとWindows側executableの存在確認だけでなく、Windows executableを
+    実際に起動できることを検査する。
+  - WSLの完全再起動、interop設定、`binfmt_misc` の確認手順を
+    `docs/setup-linux.md` に記載する。
+
 ## P2: CI運用
 
 - [ ] 初回のfull CI結果からjob時間とnetwork転送量を記録し、cache対象を決める。
