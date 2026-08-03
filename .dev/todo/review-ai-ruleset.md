@@ -17,7 +17,10 @@
   - Red: validatorは`autoupdate: true`を検出して期待どおり失敗した。
   - Green: mise-owned self-update停止、標準`AGENTS.md`二重読込の解消、Gitとpackage操作の
     allow / ask / deny境界を反映し、repository validatorとJSON parseが成功した。
-- [ ] OpenCodeのClaude rules bridgeをsourceとruntime removalへ登録し、validatorで固定する。
+- [x] OpenCodeのClaude rules bridgeをsourceとruntime removalへ登録し、validatorで固定する。
+  - Red: 旧plugin sourceの存在をvalidatorが期待どおり検出した。
+  - Green: source削除、`.chezmoiremove`登録、repository validator、`chezmoi diff`による
+    runtime target削除予定の確認が成功した。
 - [ ] Claudeの未配線hook、重複skill、未使用agentを削除し、reviewer triggerと言語指定を
   整理してvalidatorで固定する。
 - [ ] runtimeへapplyし、driftと全体validationを確認して作業記録を完了する。

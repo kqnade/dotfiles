@@ -49,6 +49,7 @@
 .claude/skills/test-writer
 .codex/AGENTS.md
 .config/opencode/AGENTS.md
+.config/opencode/plugins/claude-rules.ts
 .config/cmux
 .local/bin/cmux-worktree
 .config/zsh/functions/ccc.zsh
