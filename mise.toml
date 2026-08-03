@@ -15,7 +15,7 @@ task.run_auto_install = false
 
 [tools]
 # Bootstrap and shell
-chezmoi = "2.71.1"
+chezmoi = "2.72.0"
 sheldon = { version = "0.8.5", os = ["linux", "macos/arm64"] }
 "cargo:sheldon" = { version = "0.8.5", os = ["macos/x64"], depends = ["rust"] }
 starship = "1.26.0"
