@@ -1,11 +1,14 @@
 # Adversarial ReviewとSanity Reviewの再設計
 
-- 状態: Proposed
-- 更新日: 2026-07-30
+- 状態: Superseded
+- 更新日: 2026-08-04
 - 対象: Claude Code global review workflow
 - 関連ADR: [ADR 0001](../adr/0001-herdr-adversarial-review.md)
 
 ## 目的
+
+> 2026-08-04にClaude global workflow層を一度撤去する方針へ変更したため、本案は
+> 実装せずSupersededとした。後継設計は具体的な利用例から新規に作成する。
 
 AIが作成した設計と実装を、そのAI自身の説明だけで正当化しないreview workflowを作る。
 実装前は設計の必要性と過剰さをAdversarial Reviewで争い、実装後は新しいAdversarial

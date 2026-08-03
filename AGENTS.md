@@ -85,8 +85,8 @@ Keep this mapping consistent when editing Vim or Neovim:
   folded back into the source when intentional.
 - Hooks use the `executable_` prefix and are wired in
   `dot_claude/settings.json.tmpl`.
-- Review agents live in `agents/*.md`; workflow skills live in
-  `skills/*/SKILL.md`.
+- Global rules, custom agents, and workflow skills are intentionally absent while their
+  replacement is redesigned from concrete use cases. The shared Herdr skill remains.
 
 ## AI-assisted development records
 
@@ -94,8 +94,8 @@ Keep this mapping consistent when editing Vim or Neovim:
 - Read active work items in `.dev/todo/` first, then follow their links to
   `.dev/designdoc/`, `.dev/adr/`, `.dev/research/`, `.dev/contexts/`, and `.dev/memory/`.
 - `.dev/contexts/` records detailed task-relevant dialogue output, implementation work,
-  failures, and verification for a branch, change, or PR. It is PR and Sanity Review
-  evidence; never reduce or delete existing task evidence.
+  failures, and verification for a branch, change, or PR. It is review evidence; never
+  reduce or delete existing task evidence.
 - `.dev/memory/` contains confirmed repository knowledge selected for reuse across work
   items. Context is not memory: never load unrelated contexts as reusable memory or reduce
   context when deriving a memory entry.

@@ -160,30 +160,54 @@ for todo in (ROOT / ".dev/todo").glob("*.md"):
     ):
         fail(f"completed work item must be removed from .dev/todo: {todo.name}")
 
-for required in (
-    ".dev/memory/README.md",
-    "dot_claude/skills/conversation-context-export/SKILL.md",
-    "dot_claude/skills/project-memory/SKILL.md",
-    "dot_claude/skills/sanity-review/SKILL.md",
-):
+for required in (".dev/memory/README.md",):
     if not (ROOT / required).is_file():
         fail(f"context and memory boundary file is missing: {required}")
 
-development_rule = (ROOT / "dot_claude/rules/development.md").read_text()
-for fragment in (
-    ".dev/contexts/",
-    ".dev/memory/",
-    "Context is not memory.",
-):
-    if fragment not in development_rule:
-        fail(f"Claude development rule does not separate context and memory: {fragment}")
+claude_rules = list((ROOT / "dot_claude/rules").glob("*.md"))
+if claude_rules:
+    fail(f"legacy Claude rules remain: {[path.name for path in claude_rules]}")
+
+claude_agents = list((ROOT / "dot_claude/agents").glob("*.md"))
+if claude_agents:
+    fail(f"legacy Claude agents remain: {[path.name for path in claude_agents]}")
+
+claude_skills = {
+    path.name for path in (ROOT / "dot_claude/skills").iterdir()
+}
+if claude_skills != {"symlink_herdr"}:
+    fail(f"legacy Claude workflow skills remain: {sorted(claude_skills)}")
+
+if (ROOT / "dot_claude/hooks/executable_herdr-review-notify.sh").exists():
+    fail("legacy Herdr review notification hook remains")
 
 removals = (ROOT / ".chezmoiremove").read_text().splitlines()
 for target in (
     ".claude/CLAUDE.md",
     ".claude/agents/frontend-designer.md",
     ".claude/hooks/auto-test.sh",
+    ".claude/hooks/herdr-review-notify.sh",
+    ".claude/rules/coding.md",
+    ".claude/rules/development.md",
+    ".claude/rules/review.md",
+    ".claude/agents/code-reviewer.md",
+    ".claude/agents/doc-reviewer.md",
+    ".claude/agents/independent-consultant.md",
+    ".claude/agents/performance-reviewer.md",
+    ".claude/agents/pr-test-analyzer.md",
+    ".claude/agents/security-reviewer.md",
+    ".claude/agents/silent-failure-hunter.md",
+    ".claude/skills/adversarial-review",
     ".claude/skills/catchup",
+    ".claude/skills/conversation-context-export",
+    ".claude/skills/conversation-context-import",
+    ".claude/skills/develop",
+    ".claude/skills/library-update-review",
+    ".claude/skills/pr-review",
+    ".claude/skills/project-memory",
+    ".claude/skills/sanity-review",
+    ".claude/skills/ship",
+    ".claude/skills/subagent-consultation",
     ".codex/AGENTS.md",
     ".config/opencode/AGENTS.md",
     ".config/opencode/plugins/claude-rules.ts",
@@ -309,32 +333,19 @@ hooks = settings.get("hooks")
 if not isinstance(hooks, dict):
     fail("Claude settings hooks must be an object")
 
-for event, expected_command in {
-    "Stop": "~/.claude/hooks/herdr-review-notify.sh success",
-    "StopFailure": "~/.claude/hooks/herdr-review-notify.sh failure",
-}.items():
-    commands = {
-        hook.get("command")
-        for group in hooks.get(event, [])
-        for hook in group.get("hooks", [])
-        if isinstance(hook, dict)
-    }
-    if expected_command not in commands:
-        fail(f"Claude {event} hook must notify Herdr reviewer completion")
-
-herdr_notify = ROOT / "dot_claude/hooks/executable_herdr-review-notify.sh"
-if not herdr_notify.is_file():
-    fail("Herdr reviewer completion hook is missing")
-else:
-    notify_script = herdr_notify.read_text()
-    for fragment in ("herdr pane current --current", "herdr notification show"):
-        if fragment not in notify_script:
-            fail(f"Herdr reviewer completion hook is missing {fragment!r}")
-
-adversarial_skill = (ROOT / "dot_claude/skills/adversarial-review/SKILL.md").read_text()
-for obsolete in ("herdr agent wait", "<notification-pane>", "Completion: <scope>"):
-    if obsolete in adversarial_skill:
-        fail(f"adversarial-review still uses polling coordinator: {obsolete}")
+hook_commands = {
+    hook.get("command")
+    for groups in hooks.values()
+    for group in groups
+    for hook in group.get("hooks", [])
+    if isinstance(hook, dict)
+}
+for command in (
+    "~/.claude/hooks/herdr-review-notify.sh success",
+    "~/.claude/hooks/herdr-review-notify.sh failure",
+):
+    if command in hook_commands:
+        fail(f"legacy Herdr review hook remains configured: {command}")
 
 permissions = settings.get("permissions")
 if not isinstance(permissions, dict):
@@ -369,18 +380,6 @@ for level, required in required_permissions.items():
 
 if "Bash(git *)" in permissions["allow"]:
     fail("Claude permissions.allow must not pre-approve the git namespace")
-
-for reviewer in (
-    "code-reviewer.md",
-    "doc-reviewer.md",
-    "performance-reviewer.md",
-    "pr-test-analyzer.md",
-    "security-reviewer.md",
-    "silent-failure-hunter.md",
-):
-    reviewer_text = (ROOT / "dot_claude/agents" / reviewer).read_text()
-    if "Use only when selected by pr-review or sanity-review." not in reviewer_text:
-        fail(f"Claude reviewer trigger bypasses its coordinator: {reviewer}")
 
 try:
     renovate = json.loads(strip_json_comments((ROOT / "renovate.jsonc").read_text()))

@@ -40,5 +40,6 @@ skkeleton は `127.0.0.1:1178` の yaskkserv2 を参照します。source dictio
 
 ## AI CLI / Herdr
 
-Claude Code、Codex、OpenCode の rules、hooks、skills と Herdr integration を
-chezmoi で維持します。Herdr integration は bootstrap task で idempotent に反映します。
+Claude Codeの設定と安全hook、Codex、OpenCode、Herdr integrationをchezmoiで維持します。
+Claude Codeのglobal rules、custom agents、workflow skillsは再設計中のため未配置です。
+Herdr integrationはbootstrap taskでidempotentに反映します。

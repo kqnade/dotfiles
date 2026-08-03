@@ -1,7 +1,7 @@
 # AI支援開発workflow
 
-- 状態: 実装・runtime反映・検証完了
-- 更新日: 2026-07-29
+- 状態: 基盤運用中・Claude workflow再設計中
+- 更新日: 2026-08-04
 
 ## 目的
 
@@ -67,32 +67,20 @@ PR本文を含むGit workflowはこのrepositoryのruleとskillだけを正本�
 
 ## Review workflow
 
-通常のcode reviewはdiffに応じた専門reviewerだけを選ぶ。重要なPRではSanity Reviewを
-行い、人間が書いたPR本文、AI context、`.dev`、code、testを別々の証拠として読む。
-skill frontmatterの`allowed-tools`はtoolを事前承認するだけで、tool集合を制限しない。
-Claude Codeがskill用にdocument化していない`disallowed-tools`も強制境界として扱わない。
-review/import系skillのcoordinatorは明示的にinspect-onlyとするが、main conversationの
-tool集合は通常のpermission境界を保つ。専門reviewerとconsultation subagentはcustom
-agentの`tools` allowlistを`Read`、`Grep`、`Glob`へ限定する。live commandの実行と指摘の
-再現はmain agentが担い、reviewerへchanged pathとhunkを渡す。
+Claudeのglobal review rules、custom agents、workflow skillsは2026-08-04に一度撤去した。
+旧Adversarial ReviewとSanity Reviewは実行せず、欠如をfallbackで補わない。通常のreviewは
+現在のagentがcode、test、command output、一次資料を直接確認する。
 
-設計前提、security、correctness、trade-offを争う必要がある場合は
-[ADR 0001](../adr/0001-herdr-adversarial-review.md)に従ってAdversarial Reviewを行う。
-初回は各reviewer最大3件へ絞り、重要な結論が両立する場合はそこで終了する。
-一次証拠で解消できないdecision-changingな対立だけを1往復反駁する。reviewer同士を
-同じ結論へ収束させることは目的にしない。
-
-Design段階をAdversarial Review、最終段階をAdversarial Reviewを含むSanity Reviewとし、
-現行agentに対するChallenger 1体を同じHerdr tabのsibling paneで起動する再設計案は、
-[Adversarial ReviewとSanity Reviewの再設計](adversarial-sanity-review.md)に記載する。
-この案がAcceptedとなりADRとskillへ実装されるまでは、ADR 0001と現行workflowを使う。
+後継workflowは、具体的な利用例、trigger、必要な出力、許容する外部送信と権限境界を先に
+確定し、一つの責務ごとに最小のruleまたはskillとして新規設計する。旧skill名、agent構成、
+Herdr topologyを互換性のために復元しない。[ADR 0001](../adr/0001-herdr-adversarial-review.md)
+と[旧再設計案](adversarial-sanity-review.md)はSupersededの履歴資料としてのみ参照する。
 
 ## PRへの出力
 
 - PR本文は人間が書く。AIは本文を生成、補完、書き換え、文案提示しない。
 - AI contextは`.dev/contexts/`へ記録し、判断過程をGitで追跡する。
-- ユーザーが`publish`を明示した場合だけ、marker付きの`<details>`コメントとして
-  日本語でPRへ掲載する。
+- AI contextを外部へ投稿するworkflowは現在提供しない。
 - Review reportとAI commentも日本語で書き、識別子、command、引用は原文を保つ。
   Review reportは会話内へ返し、PR投稿・編集は別の明示許可がある場合だけ行う。
 
@@ -107,16 +95,12 @@ Design段階をAdversarial Review、最終段階をAdversarial Reviewを含むSa
 であることは、すべてのrepositoryをそのaccountへ送信できる認可ではない。CLI、account、
 対象repositoryの組み合わせが承認済みであることを送信前に確認する。repository内容、
 diff、`.dev`、promptを個人accountまたは対象repositoryに未承認のaccountへ送らない。
-Claude workflowのAdversarial Reviewとsubagent consultationはClaudeだけを起動する。
-GitHub Copilotは社用accountだが別CLIなので、自動fallbackや同一CLI reviewerとしては
-使わない。
-
-個人accountを使う場合はworkflow外で会社規程と送信対象を個別に確認する。
-Adversarial ReviewやSanity Reviewのfallbackにはしない。このため、Codex、
-CodeRabbit、外部rule/skill bundleはglobal skill/pluginとして有効化しない。
+現在は別sessionやsubagentを自動起動するClaude workflowを提供しない。個人accountを
+使う場合はworkflow外で会社規程と送信対象を個別に確認する。Codex、CodeRabbit、外部
+rule/skill bundleはglobal skill/pluginとして有効化しない。
 Artifactによるclaude.ai page公開と自動connector取得も無効化する。
 
-## Context exportの品質
+## Context記録の品質
 
 contextは特定のbranch、変更、PRに紐づく詳細な対話出力と作業証跡である。次の作業者と
 Sanity Reviewが判断を再検証できるよう、目的、対象commit、対話で確定した要件、

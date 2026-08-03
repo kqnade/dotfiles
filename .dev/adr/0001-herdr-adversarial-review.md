@@ -1,8 +1,12 @@
 # ADR 0001: Herdr上の同一CLIでAdversarial Reviewを行う
 
-- 状態: Accepted
+- 状態: Superseded
 - 決定日: 2026-07-29
-- 更新日: 2026-07-29
+- 更新日: 2026-08-04
+
+> 2026-08-04にClaude global workflow層を一度撤去したため、本決定は現在のruntimeへ
+> 適用しない。履歴とforward testの証拠として保持し、後継ADRは新しいworkflowを採用する
+> 時点で作成する。
 
 ## コンテキスト
 
