@@ -9,7 +9,18 @@
   変更候補と推奨順をresearchへ記録する。
   - Claude / OpenCodeの現行一次資料、repositoryの設定と履歴を突き合わせた。
   - 監査結果は[AI ruleset監査](../research/ai-ruleset-audit.md)へ記録した。
-- [ ] 監査結果から採用する変更を合意し、実装をcommit単位へ分解する。
+- [x] 監査結果から採用する変更を合意し、実装をcommit単位へ分解する。
+  - Claude-centric構成を採用し、OpenCodeへClaude固有ruleをmirrorしない。
+  - 未配線・重複・未使用のhook、skill、agentを削除する。
+  - `Friendly Japanese`は`Japanese`へ変更し、toneではなく会話言語だけを指定する。
+- [x] OpenCodeのself-update、重複instruction、permission driftを修正し、validatorで固定する。
+  - Red: validatorは`autoupdate: true`を検出して期待どおり失敗した。
+  - Green: mise-owned self-update停止、標準`AGENTS.md`二重読込の解消、Gitとpackage操作の
+    allow / ask / deny境界を反映し、repository validatorとJSON parseが成功した。
+- [ ] OpenCodeのClaude rules bridgeをsourceとruntime removalへ登録し、validatorで固定する。
+- [ ] Claudeの未配線hook、重複skill、未使用agentを削除し、reviewer triggerと言語指定を
+  整理してvalidatorで固定する。
+- [ ] runtimeへapplyし、driftと全体validationを確認して作業記録を完了する。
 
 ## 前提
 

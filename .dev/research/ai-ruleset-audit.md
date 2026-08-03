@@ -1,7 +1,7 @@
 # AI ruleset監査
 
 - 調査日: 2026-08-03
-- 状態: 変更候補の合意待ち
+- 状態: cleanup方針採用、実装中
 - 対象: Claude Code、OpenCode、Codex、Kimiのglobal instructions、rules、skills、
   agents、hooks、permissions
 
@@ -133,8 +133,10 @@ deployment / runtime、複数commitにまたがる設計変更を対象にする
 - cleanupとProposed review再設計を一括実装する: drift修正とworkflow変更を独立してreview、
   revertできなくなる。
 
-## 未確認事項
+## 2026-08-03 採用判断
 
-- `frontend-designer`を現在も明示的に利用しているか。
-- Claude-centric構成を採用し、OpenCodeからClaude rules bridgeを削除してよいか。
-- `language: Friendly Japanese`を会話言語指定として残すか、`Japanese`へ変えるか。
+- Claude-centric構成を採用し、OpenCodeからClaude rules bridgeを削除する。
+- repository内に参照と利用記録がない`frontend-designer`は削除する。
+- `language: Friendly Japanese`は`Japanese`へ変更し、AI voicingを再導入せず会話言語だけを
+  指定する。
+- ProposedのAdversarial / Sanity Review再設計はcleanup完了後も別の合意単位として残す。

@@ -190,6 +190,67 @@ for path in tracked_files():
     except json.JSONDecodeError as error:
         fail(f"invalid JSON in {path.relative_to(ROOT)}: {error}")
 
+opencode = json.loads((ROOT / "dot_config/opencode/opencode.json").read_text())
+if opencode.get("autoupdate") is not False:
+    fail("OpenCode self-update must remain disabled; mise owns the pinned version")
+
+opencode_instructions = opencode.get("instructions")
+if not isinstance(opencode_instructions, list):
+    fail("OpenCode instructions must be a list")
+if "AGENTS.md" in opencode_instructions:
+    fail("OpenCode must not load AGENTS.md twice")
+if ".cursor/rules/*.md" not in opencode_instructions:
+    fail("OpenCode must retain project Cursor rule discovery")
+
+opencode_permissions = opencode.get("permission")
+if not isinstance(opencode_permissions, dict):
+    fail("OpenCode permission must be an object")
+opencode_bash = opencode_permissions.get("bash")
+if not isinstance(opencode_bash, dict):
+    fail("OpenCode permission.bash must be an object")
+if opencode_bash.get("*") != "ask":
+    fail("OpenCode shell commands must ask by default")
+if opencode_bash.get("git *") == "allow":
+    fail("OpenCode must not pre-approve the git namespace")
+
+required_opencode_bash = {
+    "allow": {
+        "git status *",
+        "git diff *",
+        "git log *",
+        "git show *",
+        "git rev-parse *",
+        "git ls-files *",
+        "git add *",
+        "git commit *",
+    },
+    "ask": {
+        "git add .",
+        "git add -A *",
+        "git commit --amend *",
+        "git reset *",
+        "git clean *",
+        "git restore *",
+        "git push *",
+        "npm publish *",
+        "cargo publish *",
+        "go install *",
+    },
+    "deny": {
+        "rm -rf *",
+        "git push --force *",
+        "git push --force-with-lease *",
+    },
+}
+for action, patterns in required_opencode_bash.items():
+    invalid = {
+        pattern
+        for pattern in patterns
+        if opencode_bash.get(pattern) != action
+    }
+    if invalid:
+        fail(f"OpenCode permission.bash must set {action}: {sorted(invalid)}")
+
 settings_template = (ROOT / "dot_claude/settings.json.tmpl").read_text()
 try:
     settings = json.loads(settings_template.split("{{-", 1)[0])
