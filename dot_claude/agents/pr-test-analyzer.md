@@ -1,6 +1,8 @@
 ---
 name: pr-test-analyzer
-description: Use when a diff adds or changes tests, or changes behavior without touching tests. Judges whether the tests actually verify the change — catches assertion-free tests, mock theater, tests that can't fail, and weakened or deleted tests.
+description: >-
+  Use only when selected by pr-review or sanity-review. Review behavior and test changes for
+  missing coverage, ineffective assertions, mock-only evidence, and weakened tests.
 tools:
   - Read
   - Grep

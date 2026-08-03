@@ -83,7 +83,10 @@ removed_paths = (
     "scripts/install-linux.sh",
     "dot_config/project-maker",
     "dot_config/zsh/" + "agent-mail.zsh",
+    "dot_claude/agents/frontend-designer.md",
     "dot_claude/CLAUDE.md.tmpl",
+    "dot_claude/hooks/executable_auto-test.sh",
+    "dot_claude/skills/catchup/SKILL.md",
     "dot_codex/AGENTS.md.tmpl",
     "dot_config/opencode/AGENTS.md.tmpl",
     "dot_config/opencode/plugins/claude-rules.ts",
@@ -127,7 +130,9 @@ for todo in (ROOT / ".dev/todo").glob("*.md"):
 
 for required in (
     ".dev/memory/README.md",
+    "dot_claude/skills/conversation-context-export/SKILL.md",
     "dot_claude/skills/project-memory/SKILL.md",
+    "dot_claude/skills/sanity-review/SKILL.md",
 ):
     if not (ROOT / required).is_file():
         fail(f"context and memory boundary file is missing: {required}")
@@ -144,6 +149,9 @@ for fragment in (
 removals = (ROOT / ".chezmoiremove").read_text().splitlines()
 for target in (
     ".claude/CLAUDE.md",
+    ".claude/agents/frontend-designer.md",
+    ".claude/hooks/auto-test.sh",
+    ".claude/skills/catchup",
     ".codex/AGENTS.md",
     ".config/opencode/AGENTS.md",
     ".config/opencode/plugins/claude-rules.ts",
@@ -259,6 +267,9 @@ try:
 except json.JSONDecodeError as error:
     fail(f"invalid Claude settings JSON: {error}")
 
+if settings.get("language") != "Japanese":
+    fail("Claude language must not encode a voice or tone")
+
 if settings.get("autoMemoryEnabled") is not False:
     fail("Claude built-in auto memory must remain disabled; use .dev/memory/")
 
@@ -326,6 +337,18 @@ for level, required in required_permissions.items():
 
 if "Bash(git *)" in permissions["allow"]:
     fail("Claude permissions.allow must not pre-approve the git namespace")
+
+for reviewer in (
+    "code-reviewer.md",
+    "doc-reviewer.md",
+    "performance-reviewer.md",
+    "pr-test-analyzer.md",
+    "security-reviewer.md",
+    "silent-failure-hunter.md",
+):
+    reviewer_text = (ROOT / "dot_claude/agents" / reviewer).read_text()
+    if "Use only when selected by pr-review or sanity-review." not in reviewer_text:
+        fail(f"Claude reviewer trigger bypasses its coordinator: {reviewer}")
 
 try:
     renovate = json.loads(strip_json_comments((ROOT / "renovate.jsonc").read_text()))

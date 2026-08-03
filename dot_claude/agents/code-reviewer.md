@@ -1,6 +1,8 @@
 ---
 name: code-reviewer
-description: Use after any code change, before committing, or when a PR or diff needs review. Catches real bugs — off-by-ones, null derefs, logic inversions, race conditions, swallowed errors, complexity — with evidence. Skips style nitpicks.
+description: >-
+  Use only when selected by pr-review or sanity-review. Review code changes for concrete
+  correctness failures such as logic errors, races, invalid state, and swallowed errors.
 tools:
   - Read
   - Grep

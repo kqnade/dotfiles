@@ -1,6 +1,8 @@
 ---
 name: performance-reviewer
-description: Use proactively after changes to hot paths, API endpoints, DB queries, loops over collections, or rendering code. Finds measurable bottlenecks — N+1 queries, memory leaks, blocking I/O, re-renders — not theoretical micro-optimizations.
+description: >-
+  Use only when selected by pr-review or sanity-review. Review known hot paths, queries,
+  unbounded work, blocking I/O, rendering, and resource ownership for measurable regressions.
 tools:
   - Read
   - Grep

@@ -1,6 +1,8 @@
 ---
 name: doc-reviewer
-description: "Use after .md, docstring, JSDoc, or API-doc changes — or when code changes may have invalidated existing docs. Cross-references docs against actual source: stale references, wrong signatures, missing params, broken examples."
+description: >-
+  Use only when selected by pr-review or sanity-review. Review documentation or public API
+  changes against source for stale references, wrong signatures, and broken examples.
 tools:
   - Read
   - Grep

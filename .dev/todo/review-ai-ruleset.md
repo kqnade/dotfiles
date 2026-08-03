@@ -21,8 +21,12 @@
   - Red: 旧plugin sourceの存在をvalidatorが期待どおり検出した。
   - Green: source削除、`.chezmoiremove`登録、repository validator、`chezmoi diff`による
     runtime target削除予定の確認が成功した。
-- [ ] Claudeの未配線hook、重複skill、未使用agentを削除し、reviewer triggerと言語指定を
+- [x] Claudeの未配線hook、重複skill、未使用agentを削除し、reviewer triggerと言語指定を
   整理してvalidatorで固定する。
+  - Red: 旧`frontend-designer` sourceの存在をvalidatorが期待どおり検出した。
+  - Green: 3 source削除とruntime removal、6 reviewer triggers、`language: Japanese`、
+    repository validator、chezmoi削除予定、Ruby標準YAMLによるskill / agent parseが成功した。
+  - `skill-creator`付属validatorはPyYAML不足で起動できず、dependencyを追加せず代替した。
 - [ ] runtimeへapplyし、driftと全体validationを確認して作業記録を完了する。
 
 ## 前提
