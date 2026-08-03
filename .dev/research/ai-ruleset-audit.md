@@ -1,7 +1,7 @@
 # AI ruleset監査
 
 - 調査日: 2026-08-03
-- 状態: cleanup方針採用、実装中
+- 状態: cleanup実装・runtime反映完了
 - 対象: Claude Code、OpenCode、Codex、Kimiのglobal instructions、rules、skills、
   agents、hooks、permissions
 
@@ -140,3 +140,14 @@ deployment / runtime、複数commitにまたがる設計変更を対象にする
 - `language: Friendly Japanese`は`Japanese`へ変更し、AI voicingを再導入せず会話言語だけを
   指定する。
 - ProposedのAdversarial / Sanity Review再設計はcleanup完了後も別の合意単位として残す。
+
+## 実装結果
+
+- Commit `df6c66a`でOpenCodeのself-update、instruction重複、permission driftを修正した。
+- Commit `57988ca`でOpenCodeのClaude rules bridgeを削除した。
+- Commit `6b57d4d`で未配線hook、重複skill、未使用agentを削除し、reviewer triggerと
+  Claude languageを整理した。
+- repository validatorで採用したboundaryと削除状態を固定した。
+- `mise run apply`でruntimeへ反映し、`chezmoi diff`が空であることを確認した。
+- Adversarial / Sanity Review再設計は実装していない。引き続きProposed DesignDocを
+  独立してreviewする。
