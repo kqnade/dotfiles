@@ -5,9 +5,11 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -68,6 +70,36 @@ def strip_json_comments(text: str) -> str:
             output.append(char)
             index += 1
     return "".join(output)
+
+
+with tempfile.TemporaryDirectory() as temp_dir:
+    fake_home = Path(temp_dir) / "home"
+    fake_bin = Path(temp_dir) / "bin"
+    fake_home.mkdir()
+    fake_bin.mkdir()
+    codex_stub = fake_bin / "codex"
+    codex_stub.write_text("#!/bin/sh\nexit 0\n")
+    codex_stub.chmod(0o755)
+    herdr_stub = fake_bin / "herdr"
+    herdr_stub.write_text(
+        "#!/bin/sh\n"
+        'test "$1 $2 $3" = "integration install codex" || exit 1\n'
+        'test -d "$HOME/.codex" || exit 42\n'
+    )
+    herdr_stub.chmod(0o755)
+    configure_env = dict(os.environ)
+    configure_env.update(
+        HOME=str(fake_home),
+        PATH=f"{fake_bin}:/usr/bin:/bin",
+    )
+    configure_result = subprocess.run(
+        ["bash", str(ROOT / "scripts/configure-herdr.sh")],
+        cwd=ROOT,
+        env=configure_env,
+        check=False,
+    )
+    if configure_result.returncode != 0:
+        fail("Herdr setup must initialize Codex's config directory")
 
 
 removed_paths = (
