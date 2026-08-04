@@ -1,0 +1,4 @@
+interface:
+  display_name: "Evidence Review"
+  short_description: "Review changes and dependency updates from evidence"
+  default_prompt: "Review a code change or dependency update using an independent evidence model and report actionable findings and limitations."

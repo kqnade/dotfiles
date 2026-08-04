@@ -1,0 +1,4 @@
+interface:
+  display_name: "Security Audit"
+  short_description: "Maintain evidence-backed security coverage"
+  default_prompt: "Audit one bounded attack surface, verify prior coverage against current code, and update an evidence-backed coverage ledger."

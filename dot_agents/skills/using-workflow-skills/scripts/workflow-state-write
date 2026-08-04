@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  echo "usage: workflow-state-write [--expect HASH|missing] ABSOLUTE_TARGET" >&2
+  exit 2
+}
+
+expected=""
+if [[ "${1:-}" == "--expect" ]]; then
+  [[ $# -ge 3 && -n "$2" ]] || usage
+  expected=$2
+  shift 2
+fi
+[[ $# -eq 1 && "$1" == /* ]] || usage
+target=$1
+
+script_dir=$(cd "$(dirname "$0")" && pwd -P)
+repository_state=$("$script_dir/workflow-state-root" --ensure)
+contexts_dir="$repository_state/contexts"
+security_dir="$repository_state/security"
+reports_dir="$security_dir/reports"
+
+target_dir=$(dirname "$target")
+target_name=$(basename "$target")
+target_dir=$(cd "$target_dir" && pwd -P)
+case "$target_dir" in
+  "$contexts_dir"|"$reports_dir") ;;
+  "$security_dir") [[ "$target_name" == "coverage.md" ]] || usage ;;
+  *) usage ;;
+esac
+[[ "$target_name" != "." && "$target_name" != ".." ]] || usage
+
+validate_target_type() {
+  if [[ -L "$target" || -d "$target" || ( -e "$target" && ! -f "$target" ) ]]; then
+    echo "workflow-state-write: target must be a regular file or missing: $target" >&2
+    exit 2
+  fi
+}
+validate_target_type
+
+lock_dir="$target.lock"
+if ! mkdir -- "$lock_dir" 2>/dev/null; then
+  echo "workflow-state-write: record is locked: $target" >&2
+  exit 3
+fi
+
+temp_file=""
+cleanup() {
+  if [[ -n "$temp_file" && -e "$temp_file" ]]; then
+    rm -f -- "$temp_file"
+  fi
+  rmdir -- "$lock_dir" 2>/dev/null || true
+}
+trap cleanup EXIT HUP INT TERM
+
+if [[ -n "$expected" ]]; then
+  if [[ -f "$target" ]]; then
+    current=$(git hash-object --no-filters "$target")
+  else
+    current=missing
+  fi
+  if [[ "$current" != "$expected" ]]; then
+    echo "workflow-state-write: record changed (expected $expected, found $current)" >&2
+    exit 4
+  fi
+fi
+
+umask 077
+temp_file=$(mktemp "$target.tmp.XXXXXX")
+cat >"$temp_file"
+chmod 600 -- "$temp_file"
+validate_target_type
+mv -f -- "$temp_file" "$target"
+temp_file=""

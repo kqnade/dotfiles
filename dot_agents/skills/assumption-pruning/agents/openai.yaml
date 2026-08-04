@@ -1,0 +1,4 @@
+interface:
+  display_name: "Assumption Pruning"
+  short_description: "Remove assumptions to find simpler solutions"
+  default_prompt: "Challenge the current design by testing one assumption at a time and compare simpler alternatives without displacing complexity."

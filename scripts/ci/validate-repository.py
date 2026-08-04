@@ -172,16 +172,857 @@ claude_agents = list((ROOT / "dot_claude/agents").glob("*.md"))
 if claude_agents:
     fail(f"legacy Claude agents remain: {[path.name for path in claude_agents]}")
 
-claude_skills = {
-    path.name for path in (ROOT / "dot_claude/skills").iterdir()
+expected_agent_skills = {
+    "assumption-pruning",
+    "context-handoff",
+    "evidence-review",
+    "herdr",
+    "peer-consultation",
+    "prose-proofreading",
+    "security-audit",
+    "test-driven-development",
+    "using-workflow-skills",
 }
-if claude_skills != {"symlink_herdr"}:
-    fail(f"legacy Claude workflow skills remain: {sorted(claude_skills)}")
+
+agent_skills_root = ROOT / "dot_agents/skills"
+agent_skills = {path.name for path in agent_skills_root.iterdir() if path.is_dir()}
+if agent_skills != expected_agent_skills:
+    fail(
+        "canonical agent skill set differs from the reviewed set: "
+        f"expected {sorted(expected_agent_skills)}, got {sorted(agent_skills)}"
+    )
+
+combined_skill_description_size = 0
+for skill_name in expected_agent_skills:
+    skill_file = agent_skills_root / skill_name / "SKILL.md"
+    if not skill_file.is_file():
+        fail(f"canonical agent skill is missing SKILL.md: {skill_name}")
+    skill_text = skill_file.read_text()
+    if not skill_text.startswith("---\n"):
+        fail(f"agent skill frontmatter is missing: {skill_name}")
+    skill_parts = skill_text.split("---\n", 2)
+    if len(skill_parts) != 3:
+        fail(f"agent skill frontmatter is not closed: {skill_name}")
+    skill_frontmatter = skill_parts[1]
+    skill_frontmatter_keys = re.findall(
+        r"^([A-Za-z0-9_-]+):", skill_frontmatter, re.MULTILINE
+    )
+    if skill_frontmatter_keys != ["name", "description"]:
+        fail(
+            "agent skill frontmatter must contain only name and description "
+            f"in that order: {skill_name} has {skill_frontmatter_keys}"
+        )
+    if not re.search(rf"^name: {re.escape(skill_name)}$", skill_text, re.MULTILINE):
+        fail(f"agent skill name must match its directory: {skill_name}")
+    if not re.search(r"^description:", skill_text, re.MULTILINE):
+        fail(f"agent skill description is missing: {skill_name}")
+    skill_description = skill_frontmatter.partition("description:")[2].strip()
+    if not skill_description:
+        fail(f"agent skill description is empty: {skill_name}")
+    if len(skill_description) > 1024:
+        fail(f"agent skill description exceeds 1024 characters: {skill_name}")
+    combined_skill_description_size += len(skill_description)
+
+if combined_skill_description_size > 8000:
+    fail(
+        "combined agent skill descriptions exceed the Codex discovery budget: "
+        f"{combined_skill_description_size} characters"
+    )
+
+claude_skill_links = {path.name for path in (ROOT / "dot_claude/skills").iterdir()}
+expected_claude_skill_links = {
+    f"symlink_{skill_name}" for skill_name in expected_agent_skills
+}
+if claude_skill_links != expected_claude_skill_links:
+    fail(
+        "Claude skill links differ from the canonical agent skill set: "
+        f"expected {sorted(expected_claude_skill_links)}, "
+        f"got {sorted(claude_skill_links)}"
+    )
+
+for skill_name in expected_agent_skills:
+    link_source = ROOT / "dot_claude/skills" / f"symlink_{skill_name}"
+    expected_target = f"../../.agents/skills/{skill_name}\n"
+    if link_source.read_text() != expected_target:
+        fail(f"Claude skill link must target the canonical skill: {skill_name}")
+
+tdd_skill = (agent_skills_root / "test-driven-development/SKILL.md").read_text()
+for required_tdd_phrase in (
+    "test list",
+    "exactly one",
+    "expected reason",
+    "List → Red → Green → Refactor",
+):
+    if required_tdd_phrase not in tdd_skill:
+        fail(f"TDD skill is missing t-wada workflow evidence: {required_tdd_phrase}")
+
+effect_contracts = {
+    "assumption-pruning": ("remove one assumption", "displaced complexity"),
+    "context-handoff": ("export mode", "import mode", "provenance"),
+    "evidence-review": ("change review", "dependency update", "independent evidence model"),
+    "security-audit": ("attack surface", "coverage ledger", "source commit"),
+}
+for skill_name, required_phrases in effect_contracts.items():
+    skill_text = (agent_skills_root / skill_name / "SKILL.md").read_text()
+    for required_phrase in required_phrases:
+        phrase_pattern = r"\s+".join(re.escape(part) for part in required_phrase.split())
+        if not re.search(phrase_pattern, skill_text, re.IGNORECASE):
+            fail(f"{skill_name} is missing its effect contract: {required_phrase}")
+
+for evidence_skill_name in ("context-handoff", "evidence-review", "security-audit"):
+    evidence_skill = (agent_skills_root / evidence_skill_name / "SKILL.md").read_text()
+    if not re.search(r"untrusted\s+evidence", evidence_skill, re.IGNORECASE):
+        fail(f"saved records must not be treated as authority: {evidence_skill_name}")
+
+context_handoff_contract = (
+    agent_skills_root / "context-handoff/SKILL.md"
+).read_text()
+for required_context_phrase in (
+    "content-addressed",
+    "Write the handoff last",
+    "Never store a known credential",
+    "Pin the handoff's own content hash",
+    "context-snapshot/v1",
+    "raw, uncompressed",
+    "Capture the source snapshot before writing managed state",
+):
+    context_phrase_pattern = r"\s+".join(
+        re.escape(part) for part in required_context_phrase.split()
+    )
+    if not re.search(context_phrase_pattern, context_handoff_contract):
+        fail(f"context handoff checkpoint contract is incomplete: {required_context_phrase}")
+
+security_audit_contract = (agent_skills_root / "security-audit/SKILL.md").read_text()
+for required_security_phrase in (
+    "audit run IDs not yet indexed",
+    "Never update the ledger first",
+    "monotonic publish order",
+):
+    security_phrase_pattern = r"\s+".join(
+        re.escape(part) for part in required_security_phrase.split()
+    )
+    if not re.search(security_phrase_pattern, security_audit_contract):
+        fail(f"security audit checkpoint contract is incomplete: {required_security_phrase}")
+
+evidence_review_contract = (agent_skills_root / "evidence-review/SKILL.md").read_text()
+for required_review_phrase in (
+    "Bind the review and final disposition to this snapshot hash",
+    "establish causality",
+    "classification explains provenance only",
+    "Regeneration or equivalent resolver evidence is required",
+    "affected supported target without equivalent current evidence",
+    "any unresolved `blocking-defect` yields `changes required`",
+):
+    review_phrase_pattern = r"\s+".join(
+        re.escape(part) for part in required_review_phrase.split()
+    )
+    if not re.search(review_phrase_pattern, evidence_review_contract):
+        fail(f"evidence review disposition contract is incomplete: {required_review_phrase}")
+
+workflow_skill = (agent_skills_root / "using-workflow-skills/SKILL.md").read_text()
+for required_workflow_phrase in (
+    "one canonical owner",
+    "User and system instructions take precedence",
+    "test-driven-development",
+    "evidence-review",
+):
+    if required_workflow_phrase not in workflow_skill:
+        fail(f"workflow routing guardrail is incomplete: {required_workflow_phrase}")
+
+routed_skill_names = re.findall(
+    r"^\|[^|]+\| `([^`]+)` \|$", workflow_skill, re.MULTILINE
+)
+expected_routed_skill_names = expected_agent_skills - {"using-workflow-skills"}
+if len(routed_skill_names) != len(set(routed_skill_names)):
+    fail(f"workflow routing guardrail has duplicate owners: {routed_skill_names}")
+if set(routed_skill_names) != expected_routed_skill_names:
+    fail(
+        "workflow routing guardrail differs from the canonical skills: "
+        f"expected {sorted(expected_routed_skill_names)}, "
+        f"got {sorted(routed_skill_names)}"
+    )
+
+workflow_state_script = (
+    agent_skills_root / "using-workflow-skills/scripts/workflow-state-root"
+)
+if not workflow_state_script.is_file() or not os.access(workflow_state_script, os.X_OK):
+    fail("workflow-state resolver must exist and be executable")
+
+workflow_state_digest = (
+    agent_skills_root / "using-workflow-skills/scripts/workflow-state-digest"
+)
+if not workflow_state_digest.is_file() or not os.access(workflow_state_digest, os.X_OK):
+    fail("external workflow-state identity digest must exist and be executable")
+
+local_dev_ignore = (
+    agent_skills_root / "using-workflow-skills/scripts/ensure-local-dev-ignore"
+)
+if not local_dev_ignore.is_file() or not os.access(local_dev_ignore, os.X_OK):
+    fail("company repository local .dev ignore helper must exist and be executable")
+
+workflow_state_candidates = (
+    agent_skills_root / "using-workflow-skills/scripts/workflow-state-candidates"
+)
+if not workflow_state_candidates.is_file() or not os.access(
+    workflow_state_candidates, os.X_OK
+):
+    fail("workflow-state candidate discovery must exist and be executable")
+
+workflow_state_writer = (
+    agent_skills_root / "using-workflow-skills/scripts/workflow-state-write"
+)
+if not workflow_state_writer.is_file() or not os.access(workflow_state_writer, os.X_OK):
+    fail("workflow-state writer must exist and be executable")
+
+context_path_script = agent_skills_root / "context-handoff/scripts/context-path"
+if not context_path_script.is_file() or not os.access(context_path_script, os.X_OK):
+    fail("context handoff path resolver must exist and be executable")
+
+context_candidates_script = agent_skills_root / "context-handoff/scripts/context-candidates"
+if not context_candidates_script.is_file() or not os.access(
+    context_candidates_script, os.X_OK
+):
+    fail("context handoff candidate discovery must exist and be executable")
+
+state_home_template = ROOT / "dot_config/agent-workflows/state-home.tmpl"
+if state_home_template.exists():
+    fail("repository .dev is the default; managed external state-home must be removed")
+
+workflow_state_reference = (
+    agent_skills_root / "using-workflow-skills/references/persistent-state.md"
+).read_text()
+for required_state_phrase in (
+    "Claude automatic memory is disabled",
+    "current Git worktree",
+    "livesense-inc",
+    "jobtalk",
+    "untrusted evidence",
+    "AGENT_WORKFLOW_STATE_HOME",
+):
+    state_phrase_pattern = r"\s+".join(
+        re.escape(part) for part in required_state_phrase.split()
+    )
+    if not re.search(state_phrase_pattern, workflow_state_reference):
+        fail(f"workflow-state contract is incomplete: {required_state_phrase}")
+
+state_skill_resolvers = {
+    "context-handoff": "scripts/context-path --ensure",
+    "security-audit": "workflow-state-root --ensure",
+}
+for state_skill_name, expected_resolver in state_skill_resolvers.items():
+    state_skill = (agent_skills_root / state_skill_name / "SKILL.md").read_text()
+    if expected_resolver not in state_skill:
+        fail(f"{state_skill_name} must use its workflow-state resolver")
+
+with tempfile.TemporaryDirectory() as temp_dir:
+    state_test_root = Path(temp_dir)
+    state_test_repo = state_test_root / "repo"
+    state_test_xdg = state_test_root / "state"
+    state_test_config = state_test_root / "config"
+    subprocess.run(
+        ["git", "init", "-q", "-b", "trunk", str(state_test_repo)], check=True
+    )
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(state_test_repo),
+            "config",
+            "remote.origin.url",
+            "ssh://example.invalid/owner/repository.git",
+        ],
+        check=True,
+    )
+    state_test_env = dict(os.environ)
+    state_test_env["XDG_STATE_HOME"] = str(state_test_xdg)
+    state_test_env["XDG_CONFIG_HOME"] = str(state_test_config)
+    state_test_env.pop("AGENT_WORKFLOW_STATE_HOME", None)
+    ordinary_exclude = state_test_repo / ".git/info/exclude"
+    ordinary_exclude_before = ordinary_exclude.read_bytes()
+
+    unresolved_state = Path(
+        subprocess.check_output(
+            [str(workflow_state_script)], cwd=state_test_repo, env=state_test_env, text=True
+        ).strip()
+    )
+    if unresolved_state != state_test_repo / ".dev":
+        fail("workflow-state resolver must default to the current worktree's .dev")
+    if unresolved_state.exists():
+        fail("workflow-state resolver must not write without --ensure")
+
+    resolved_state = Path(
+        subprocess.check_output(
+            [str(workflow_state_script), "--ensure"],
+            cwd=state_test_repo,
+            env=state_test_env,
+            text=True,
+        ).strip()
+    )
+    if not resolved_state.is_dir():
+        fail("workflow-state resolver did not create the repository state directory")
+    if resolved_state.stat().st_mode & 0o077:
+        fail("workflow-state repository directory must not grant group/other access")
+    if ordinary_exclude.read_bytes() != ordinary_exclude_before:
+        fail("ordinary repositories must not receive a local .dev ignore rule")
+
+    state_test_subdir = state_test_repo / "nested" / "directory"
+    state_test_subdir.mkdir(parents=True)
+    nested_state = subprocess.check_output(
+        [str(workflow_state_script)], cwd=state_test_subdir, env=state_test_env, text=True
+    ).strip()
+    if nested_state != str(resolved_state):
+        fail("workflow-state identity must be stable from repository subdirectories")
+
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(state_test_repo),
+            "-c",
+            "user.name=validator",
+            "-c",
+            "user.email=validator@example.invalid",
+            "-c",
+            "commit.gpgsign=false",
+            "commit",
+            "--allow-empty",
+            "-qm",
+            "initial",
+        ],
+        check=True,
+    )
+    state_test_worktree = state_test_root / "worktree"
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(state_test_repo),
+            "worktree",
+            "add",
+            "-q",
+            "-b",
+            "state-test",
+            str(state_test_worktree),
+        ],
+        check=True,
+    )
+    worktree_state = subprocess.check_output(
+        [str(workflow_state_script)],
+        cwd=state_test_worktree,
+        env=state_test_env,
+        text=True,
+    ).strip()
+    if worktree_state != str(state_test_worktree / ".dev"):
+        fail("each linked worktree must resolve its own repository-local .dev")
+
+    main_task_context = Path(
+        subprocess.check_output(
+            [str(context_path_script), "--ensure", "--task", "cross-client-task"],
+            cwd=state_test_repo,
+            env=state_test_env,
+            text=True,
+        ).strip()
+    )
+    worktree_task_context = Path(
+        subprocess.check_output(
+            [str(context_path_script), "--task", "cross-client-task"],
+            cwd=state_test_worktree,
+            env=state_test_env,
+            text=True,
+        ).strip()
+    )
+    if main_task_context == worktree_task_context:
+        fail("linked worktrees must not share the same .dev context record")
+    if main_task_context.name != worktree_task_context.name:
+        fail("explicit task keys must keep the same filename across worktrees")
+    if main_task_context.exists() or not main_task_context.parent.is_dir():
+        fail("context path resolver must create only the private parent directory")
+    if worktree_task_context.parent.exists():
+        fail("read-only context resolution must not create another worktree's .dev")
+
+    subprocess.run(
+        [str(workflow_state_script), "--ensure"],
+        cwd=state_test_worktree,
+        env=state_test_env,
+        check=True,
+        stdout=subprocess.DEVNULL,
+    )
+    other_worktree_candidates = subprocess.check_output(
+        [str(workflow_state_candidates)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+    )
+    if f"other-worktree-dev\t{worktree_state}" not in other_worktree_candidates:
+        fail("candidate discovery must expose, but not merge, another worktree's .dev")
+
+    first_context = "# First context\n"
+    first_write = subprocess.run(
+        [
+            str(workflow_state_writer),
+            "--expect",
+            "missing",
+            str(main_task_context),
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=first_context,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if first_write.returncode != 0 or main_task_context.read_text() != first_context:
+        fail("workflow-state writer must atomically create an expected missing record")
+    if main_task_context.stat().st_mode & 0o177:
+        fail("workflow-state records must be owner-readable only")
+
+    first_context_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(main_task_context)], text=True
+    ).strip()
+    conflicting_write = subprocess.run(
+        [
+            str(workflow_state_writer),
+            "--expect",
+            "definitely-wrong",
+            str(main_task_context),
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input="# Must not replace the record\n",
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if conflicting_write.returncode == 0 or main_task_context.read_text() != first_context:
+        fail("workflow-state writer must reject a stale expected hash")
+
+    second_context = "# Reconciled context\n"
+    second_write = subprocess.run(
+        [
+            str(workflow_state_writer),
+            "--expect",
+            first_context_hash,
+            str(main_task_context),
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=second_context,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if second_write.returncode != 0 or main_task_context.read_text() != second_context:
+        fail("workflow-state writer must update a record with the current expected hash")
+
+    context_lock = Path(f"{main_task_context}.lock")
+    context_lock.mkdir()
+    locked_write = subprocess.run(
+        [str(workflow_state_writer), str(main_task_context)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input="# Must not bypass the lock\n",
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if locked_write.returncode == 0 or main_task_context.read_text() != second_context:
+        fail("workflow-state writer must reject a concurrently locked record")
+    context_lock.rmdir()
+
+    repository_metadata = resolved_state / "repository.meta"
+    repository_metadata.write_text("repository state only\n")
+    metadata_before = repository_metadata.read_text()
+    outside_write = subprocess.run(
+        [str(workflow_state_writer), str(repository_metadata)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input="must not write outside record directories\n",
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if outside_write.returncode == 0 or repository_metadata.read_text() != metadata_before:
+        fail("workflow-state writer must reject targets outside record directories")
+
+    directory_target = main_task_context.parent / "directory-target.md"
+    directory_target.mkdir()
+    directory_write = subprocess.run(
+        [str(workflow_state_writer), str(directory_target)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input="must not become a file inside a directory\n",
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if directory_write.returncode == 0 or any(directory_target.iterdir()):
+        fail("workflow-state writer must reject a directory as the final target")
+
+    outside_directory = state_test_root / "outside-state"
+    outside_directory.mkdir()
+    symlink_target = main_task_context.parent / "symlink-target.md"
+    symlink_target.symlink_to(outside_directory, target_is_directory=True)
+    symlink_write = subprocess.run(
+        [str(workflow_state_writer), str(symlink_target)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input="must not follow a final symlink\n",
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if symlink_write.returncode == 0 or any(outside_directory.iterdir()):
+        fail("workflow-state writer must reject a symlink as the final target")
+
+    main_branch_context = subprocess.check_output(
+        [str(context_path_script)], cwd=state_test_repo, env=state_test_env, text=True
+    ).strip()
+    worktree_branch_context = subprocess.check_output(
+        [str(context_path_script)],
+        cwd=state_test_worktree,
+        env=state_test_env,
+        text=True,
+    ).strip()
+    if main_branch_context == worktree_branch_context:
+        fail("different full branch refs must not collide in context paths")
+
+    custom_state_home = state_test_root / "custom-state"
+    state_test_env["AGENT_WORKFLOW_STATE_HOME"] = str(custom_state_home)
+    custom_state = Path(
+        subprocess.check_output(
+            [str(workflow_state_script), "--ensure"],
+            cwd=state_test_repo,
+            env=state_test_env,
+            text=True,
+        ).strip()
+    )
+    if custom_state_home not in custom_state.parents:
+        fail("AGENT_WORKFLOW_STATE_HOME must override the default state root")
+    state_identity_hash = custom_state.name.rsplit("-", 1)[-1]
+    if not re.fullmatch(r"[0-9a-f]{64}", state_identity_hash):
+        fail("external workflow-state identity must use a stable SHA-256 digest")
+    external_metadata = custom_state / "repository.meta"
+    if not external_metadata.is_file():
+        fail("external workflow-state resolver must create identity metadata")
+    if external_metadata.stat().st_mode & 0o177:
+        fail("external workflow-state metadata must be owner-readable only")
+    external_metadata_text = external_metadata.read_text()
+    for metadata_prefix in (
+        "schema=1\n",
+        "identity-method=remote.origin.url\n",
+        "identity-hash=",
+        "git-common-hash=",
+        "created-at=",
+    ):
+        if metadata_prefix not in external_metadata_text:
+            fail(f"external workflow-state metadata is missing {metadata_prefix!r}")
+    if "ssh://example.invalid" in external_metadata_text:
+        fail("external workflow-state metadata must not store the raw remote URL")
+
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(state_test_repo),
+            "config",
+            "remote.origin.url",
+            "ssh://example.invalid/renamed/repository.git",
+        ],
+        check=True,
+    )
+    changed_remote_candidates = subprocess.check_output(
+        [str(workflow_state_candidates)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+    )
+    if str(custom_state) not in changed_remote_candidates:
+        fail("candidate discovery must find external state after a remote URL change")
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(state_test_repo),
+            "config",
+            "remote.origin.url",
+            "ssh://example.invalid/owner/repository.git",
+        ],
+        check=True,
+    )
+
+    physical_state_home = state_test_root / "physical-state"
+    physical_state_home.mkdir()
+    linked_state_home = state_test_root / "linked-state"
+    linked_state_home.symlink_to(physical_state_home, target_is_directory=True)
+    state_test_env["AGENT_WORKFLOW_STATE_HOME"] = str(
+        linked_state_home / ".." / linked_state_home.name
+    )
+    linked_state = Path(
+        subprocess.check_output(
+            [str(workflow_state_script), "--ensure"],
+            cwd=state_test_repo,
+            env=state_test_env,
+            text=True,
+        ).strip()
+    )
+    if physical_state_home not in linked_state.parents:
+        fail("workflow-state resolver must canonicalize symlinked external roots")
+    linked_context = Path(
+        subprocess.check_output(
+            [str(context_path_script), "--ensure", "--task", "linked-state"],
+            cwd=state_test_repo,
+            env=state_test_env,
+            text=True,
+        ).strip()
+    )
+    linked_write = subprocess.run(
+        [str(workflow_state_writer), "--expect", "missing", str(linked_context)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input="# Linked state root\n",
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if linked_write.returncode != 0 or not linked_context.is_file():
+        fail("workflow-state writer must accept a canonicalized symlink state root")
+
+    state_test_env.pop("AGENT_WORKFLOW_STATE_HOME", None)
+    legacy_identity = "remote.origin.url:ssh://example.invalid/owner/repository.git"
+    legacy_repository_hash = subprocess.check_output(
+        ["git", "hash-object", "--stdin"],
+        cwd=state_test_repo,
+        input=legacy_identity,
+        text=True,
+    ).strip()
+    legacy_context_hash = subprocess.check_output(
+        ["git", "hash-object", "--stdin"],
+        cwd=state_test_repo,
+        input="task:legacy-task",
+        text=True,
+    ).strip()
+    legacy_context = (
+        state_test_xdg
+        / "agent-workflows/repos"
+        / f"repository-{legacy_repository_hash}"
+        / "contexts"
+        / f"legacy-task-{legacy_context_hash[:12]}.md"
+    )
+    legacy_context.parent.mkdir(parents=True)
+    legacy_context.write_text("Record schema: context-handoff/v0\n")
+    legacy_candidates = subprocess.check_output(
+        [str(context_candidates_script), "--task", "legacy-task"],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+    )
+    if str(legacy_context) not in legacy_candidates:
+        fail("context candidate discovery must find the legacy Git-hash location")
+
+    state_test_env["AGENT_WORKFLOW_STATE_HOME"] = "relative-state"
+    relative_state = subprocess.run(
+        [str(workflow_state_script)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if relative_state.returncode == 0:
+        fail("workflow-state resolver must reject a relative state root")
+
+    invalid_task = subprocess.run(
+        [str(context_path_script), "--task", "Not Lowercase"],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if invalid_task.returncode == 0:
+        fail("context handoff task keys must be stable lowercase slugs")
+
+    company_repo = state_test_root / "company-remote"
+    subprocess.run(
+        ["git", "init", "-q", "-b", "trunk", str(company_repo)], check=True
+    )
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(company_repo),
+            "config",
+            "remote.origin.url",
+            "git@github.com:livesense-inc/jobtalk.git",
+        ],
+        check=True,
+    )
+    company_env = dict(os.environ)
+    company_env.pop("AGENT_WORKFLOW_STATE_HOME", None)
+    company_state = Path(
+        subprocess.check_output(
+            [str(workflow_state_script), "--ensure"],
+            cwd=company_repo,
+            env=company_env,
+            text=True,
+        ).strip()
+    )
+    if company_state != company_repo / ".dev":
+        fail("company repository workflow state must remain in its local .dev")
+    company_exclude = company_repo / ".git/info/exclude"
+    if company_exclude.read_text().splitlines().count("/.dev/") != 1:
+        fail("repositories in the livesense-inc namespace must locally ignore .dev")
+    company_ignore_check = subprocess.run(
+        ["git", "check-ignore", "--quiet", ".dev/contexts"],
+        cwd=company_repo,
+        check=False,
+    )
+    if company_ignore_check.returncode != 0:
+        fail("company repository local exclude must actually ignore root .dev content")
+    subprocess.run(
+        [str(workflow_state_script), "--ensure"],
+        cwd=company_repo,
+        env=company_env,
+        check=True,
+        stdout=subprocess.DEVNULL,
+    )
+    if company_exclude.read_text().splitlines().count("/.dev/") != 1:
+        fail("company repository local .dev ignore must be idempotent")
+
+    tracked_company_repo = state_test_root / "company-tracked-dev"
+    subprocess.run(
+        ["git", "init", "-q", "-b", "trunk", str(tracked_company_repo)], check=True
+    )
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(tracked_company_repo),
+            "config",
+            "remote.origin.url",
+            "https://github.com/livesense-inc/jobtalk.git",
+        ],
+        check=True,
+    )
+    tracked_dev = tracked_company_repo / ".dev"
+    tracked_dev.mkdir()
+    (tracked_dev / "tracked.md").write_text("tracked project record\n")
+    subprocess.run(
+        ["git", "-C", str(tracked_company_repo), "add", "-f", ".dev/tracked.md"],
+        check=True,
+    )
+    tracked_company_result = subprocess.run(
+        [str(workflow_state_script), "--ensure"],
+        cwd=tracked_company_repo,
+        env=company_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if tracked_company_result.returncode == 0:
+        fail("local ignore policy must not pretend an already tracked .dev is hidden")
+    tracked_company_exclude = tracked_company_repo / ".git/info/exclude"
+    if "/.dev/" in tracked_company_exclude.read_text().splitlines():
+        fail("tracked .dev failure must not partially update the local exclude")
+    if (tracked_dev / "contexts").exists():
+        fail("tracked .dev failure must occur before workflow layout mutation")
+
+    path_company_repo = state_test_root / "repos/livesense-inc/jobtalk"
+    subprocess.run(
+        ["git", "init", "-q", "-b", "trunk", str(path_company_repo)], check=True
+    )
+    subprocess.run(
+        [str(workflow_state_script), "--ensure"],
+        cwd=path_company_repo,
+        env=company_env,
+        check=True,
+        stdout=subprocess.DEVNULL,
+    )
+    path_company_exclude = path_company_repo / ".git/info/exclude"
+    if path_company_exclude.read_text().splitlines().count("/.dev/") != 1:
+        fail("livesense-inc local namespace fallback must locally ignore .dev")
+
+    jobtalk_org_repo = state_test_root / "jobtalk-org-repository"
+    subprocess.run(
+        ["git", "init", "-q", "-b", "trunk", str(jobtalk_org_repo)], check=True
+    )
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(jobtalk_org_repo),
+            "config",
+            "remote.origin.url",
+            "git@github.com:jobtalk/internal-app.git",
+        ],
+        check=True,
+    )
+    subprocess.run(
+        [str(workflow_state_script), "--ensure"],
+        cwd=jobtalk_org_repo,
+        env=company_env,
+        check=True,
+        stdout=subprocess.DEVNULL,
+    )
+    jobtalk_org_exclude = jobtalk_org_repo / ".git/info/exclude"
+    if jobtalk_org_exclude.read_text().splitlines().count("/.dev/") != 1:
+        fail("repositories in the jobtalk namespace must locally ignore .dev")
+
+    path_jobtalk_repo = state_test_root / "repos/jobtalk/internal-app"
+    subprocess.run(
+        ["git", "init", "-q", "-b", "trunk", str(path_jobtalk_repo)], check=True
+    )
+    subprocess.run(
+        [str(workflow_state_script), "--ensure"],
+        cwd=path_jobtalk_repo,
+        env=company_env,
+        check=True,
+        stdout=subprocess.DEVNULL,
+    )
+    path_jobtalk_exclude = path_jobtalk_repo / ".git/info/exclude"
+    if path_jobtalk_exclude.read_text().splitlines().count("/.dev/") != 1:
+        fail("jobtalk local namespace fallback must locally ignore .dev")
+
+    unrelated_jobtalk_repo = state_test_root / "unrelated-jobtalk-repository"
+    subprocess.run(
+        ["git", "init", "-q", "-b", "trunk", str(unrelated_jobtalk_repo)],
+        check=True,
+    )
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(unrelated_jobtalk_repo),
+            "config",
+            "remote.origin.url",
+            "git@github.com:someone-else/jobtalk.git",
+        ],
+        check=True,
+    )
+    unrelated_exclude_before = (
+        unrelated_jobtalk_repo / ".git/info/exclude"
+    ).read_bytes()
+    subprocess.run(
+        [str(workflow_state_script), "--ensure"],
+        cwd=unrelated_jobtalk_repo,
+        env=company_env,
+        check=True,
+        stdout=subprocess.DEVNULL,
+    )
+    if (
+        unrelated_jobtalk_repo / ".git/info/exclude"
+    ).read_bytes() != unrelated_exclude_before:
+        fail("a repository named jobtalk outside the two namespaces must not be ignored")
 
 if (ROOT / "dot_claude/hooks/executable_herdr-review-notify.sh").exists():
     fail("legacy Herdr review notification hook remains")
 
 removals = (ROOT / ".chezmoiremove").read_text().splitlines()
+for restored_skill_name in expected_agent_skills:
+    restored_target = f".claude/skills/{restored_skill_name}"
+    if restored_target in removals:
+        fail(f"restored Claude skill must not remain in .chezmoiremove: {restored_target}")
+
 for target in (
     ".claude/CLAUDE.md",
     ".claude/agents/frontend-designer.md",
@@ -211,6 +1052,7 @@ for target in (
     ".codex/AGENTS.md",
     ".config/opencode/AGENTS.md",
     ".config/opencode/plugins/claude-rules.ts",
+    ".config/agent-workflows/state-home",
     ".config/project-maker",
     ".config/zsh/" + "agent-mail.zsh",
     ".kimi-code/AGENTS.md",
@@ -327,7 +1169,7 @@ if settings.get("language") != "Japanese":
     fail("Claude language must not encode a voice or tone")
 
 if settings.get("autoMemoryEnabled") is not False:
-    fail("Claude built-in auto memory must remain disabled; use .dev/memory/")
+    fail("Claude automatic memory must remain disabled; use explicit workflow state")
 
 hooks = settings.get("hooks")
 if not isinstance(hooks, dict):

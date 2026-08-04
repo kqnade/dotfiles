@@ -41,5 +41,29 @@ skkeleton は `127.0.0.1:1178` の yaskkserv2 を参照します。source dictio
 ## AI CLI / Herdr
 
 Claude Codeの設定と安全hook、Codex、OpenCode、Herdr integrationをchezmoiで維持します。
-Claude Codeのglobal rules、custom agents、workflow skillsは再設計中のため未配置です。
+workflow skillのcanonical sourceは`~/.agents/skills/`です。Claudeはsymlink、CodexとOpenCodeは
+native discoveryで同じ内容を利用します。source workflowの構造ではなく、得たい効果ごとに
+`evidence-review`、`context-handoff`、`security-audit`、`prose-proofreading`、
+`assumption-pruning`、`peer-consultation`を構成し、`using-workflow-skills`がtaskをownerへ
+routeします。TDDのcanonical workflowはt-wadaのList → Red → Green → Refactorです。
+
+このintegrationの目的は、skill数や文章量を小さくすることではありません。change reviewと
+dependency update reviewは同じsnapshot・claim ledger・verification contractを使うため
+`evidence-review`へ、handoffのexport/importは同じidentity・provenance・staleness contractを
+使うため`context-handoff`へ統合しています。peerを呼ぶtransportも、独立した意見をcurrent
+evidenceで再検証する`peer-consultation`が一貫して管理します。これによりtriggerの競合、client間の
+判定差、片方のworkflowだけが古くなるdriftを減らせます。
+
+tradeoffとして、各skillの内部に明示的なmode分岐が増え、以前の細かなskill名から目的を探す
+discoverabilityは下がります。また、共通contractの変更は複数use caseへ影響し、state resolverが
+continuityのcentral dependencyになります。mode別の手順、owner境界、atomic writeと
+optimistic concurrencyの実動test、stateを書けない場合のchat fallbackでこれらを制御します。
+
+Claudeのautomatic memoryは無効のままです。handoffとsecurity coverageは、defaultではcurrent
+worktreeの`.dev`へ保存します。ADR、design doc、todoを含むため、linked worktree間で`.dev`の
+contentは共有しません。`livesense-inc`または`jobtalk`namespaceのrepoだけは、resolverが
+`/.dev/`をclone-localな`.git/info/exclude`へidempotentに追加します。他のrepoを自動ignoreしません。
+repositoryへ`.dev`を置けない場合に限り、明示的な`AGENT_WORKFLOW_STATE_HOME`でexternal fallbackを
+選べます。どのbackendでもstateはmemoryやauthorityではなくuntrusted evidenceです。current code、
+Git、tests、runtime、primary sourcesとreconcileします。
 Herdr integrationはbootstrap taskでidempotentに反映します。

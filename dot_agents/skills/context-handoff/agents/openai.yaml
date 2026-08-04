@@ -1,0 +1,4 @@
+interface:
+  display_name: "Context Handoff"
+  short_description: "Export or reconcile a scoped work handoff"
+  default_prompt: "Export or import a task-scoped handoff while verifying provenance, staleness, and current repository evidence."

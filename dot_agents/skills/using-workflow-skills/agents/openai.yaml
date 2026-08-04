@@ -1,0 +1,4 @@
+interface:
+  display_name: "Workflow Skills"
+  short_description: "Route work to the canonical workflow skill"
+  default_prompt: "Check the available workflow skills, select the one canonical owner for this task, and follow it before acting."

@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -ne 0 ]]; then
+  echo "usage: ensure-local-dev-ignore" >&2
+  exit 2
+fi
+
+repository_root=$(git rev-parse --show-toplevel 2>/dev/null) || {
+  echo "ensure-local-dev-ignore: not inside a Git worktree" >&2
+  exit 1
+}
+repository_root=$(cd "$repository_root" && pwd -P)
+
+remote_url=$(git config --get remote.origin.url || true)
+remote_url=${remote_url%/}
+remote_url=${remote_url%.git}
+
+local_ignore_repository=0
+if [[ "$remote_url" =~ (^|[:/])(livesense-inc|jobtalk)/[^/]+$ ]]; then
+  local_ignore_repository=1
+elif [[ "$repository_root" =~ /(livesense-inc|jobtalk)/[^/]+$ ]]; then
+  local_ignore_repository=1
+fi
+
+[[ "$local_ignore_repository" -eq 1 ]] || exit 0
+
+while IFS= read -r worktree_root; do
+  if [[ -n "$(git -C "$worktree_root" ls-files -- .dev)" ]]; then
+    echo "ensure-local-dev-ignore: .dev is already tracked in $worktree_root; local ignore cannot hide it" >&2
+    exit 1
+  fi
+done < <(git worktree list --porcelain | sed -n 's/^worktree //p')
+
+exclude_file=$(git rev-parse --path-format=absolute --git-path info/exclude)
+exclude_dir=$(dirname "$exclude_file")
+mkdir -p -- "$exclude_dir"
+
+if [[ -L "$exclude_file" || ( -e "$exclude_file" && ! -f "$exclude_file" ) ]]; then
+  echo "ensure-local-dev-ignore: refusing non-regular exclude file: $exclude_file" >&2
+  exit 1
+fi
+if [[ -f "$exclude_file" ]] && grep -Fqx '/.dev/' "$exclude_file"; then
+  exit 0
+fi
+
+lock_dir="$exclude_file.agent-workflow.lock"
+if ! mkdir -- "$lock_dir" 2>/dev/null; then
+  echo "ensure-local-dev-ignore: exclude file is locked: $exclude_file" >&2
+  exit 3
+fi
+
+temp_file=""
+cleanup() {
+  if [[ -n "$temp_file" && -e "$temp_file" ]]; then
+    rm -f -- "$temp_file"
+  fi
+  rmdir -- "$lock_dir" 2>/dev/null || true
+}
+trap cleanup EXIT HUP INT TERM
+
+umask 077
+temp_file=$(mktemp "$exclude_dir/.exclude.agent-workflow.XXXXXX")
+if [[ -f "$exclude_file" ]]; then
+  cat -- "$exclude_file" >"$temp_file"
+fi
+printf '\n/.dev/\n' >>"$temp_file"
+chmod 600 -- "$temp_file"
+mv -f -- "$temp_file" "$exclude_file"
+temp_file=""

@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -ne 0 ]]; then
+  echo "usage: workflow-state-candidates" >&2
+  exit 2
+fi
+
+git rev-parse --show-toplevel >/dev/null 2>&1 || {
+  echo "workflow-state-candidates: not inside a Git worktree" >&2
+  exit 1
+}
+
+script_dir=$(cd "$(dirname "$0")" && pwd -P)
+current_state=$("$script_dir/workflow-state-root")
+git_common=$(git rev-parse --path-format=absolute --git-common-dir)
+git_common=$(cd "$git_common" && pwd -P)
+git_common_hash=$(printf '%s' "$git_common" | "$script_dir/workflow-state-digest")
+
+if [[ -d "$current_state" ]]; then
+  printf 'current\t%s\n' "$current_state"
+fi
+
+while IFS= read -r worktree_root; do
+  [[ -d "$worktree_root" ]] || continue
+  worktree_root=$(cd "$worktree_root" && pwd -P)
+  worktree_dev="$worktree_root/.dev"
+  if [[ -d "$worktree_dev" && "$worktree_dev" != "$current_state" ]]; then
+    printf 'other-worktree-dev\t%s\n' "$worktree_dev"
+  fi
+done < <(git worktree list --porcelain | sed -n 's/^worktree //p')
+
+if remote_url=$(git config --get remote.origin.url) && [[ -n "$remote_url" ]]; then
+  repository_identity="remote.origin.url:$remote_url"
+  slug_source=${remote_url%/}
+  slug_source=${slug_source##*/}
+  slug_source=${slug_source%.git}
+else
+  repository_identity="git-common-dir:$git_common"
+  slug_source=${git_common%/.git}
+  slug_source=${slug_source##*/}
+fi
+repo_slug=$(printf '%s' "$slug_source" | tr -cs 'A-Za-z0-9._-' '-' | sed 's/^-//; s/-$//')
+[[ -n "$repo_slug" ]] || repo_slug=repository
+sha256_identity=$(printf '%s' "$repository_identity" | "$script_dir/workflow-state-digest")
+legacy_identity=$(printf '%s' "$repository_identity" | git hash-object --stdin)
+
+external_homes=()
+if [[ -n "${AGENT_WORKFLOW_STATE_HOME:-}" ]]; then
+  external_homes+=("$AGENT_WORKFLOW_STATE_HOME")
+fi
+legacy_config=${XDG_CONFIG_HOME:-${HOME}/.config}/agent-workflows/state-home
+if [[ -f "$legacy_config" ]]; then
+  IFS= read -r legacy_config_home <"$legacy_config"
+  if [[ "$legacy_config_home" == /* ]]; then
+    external_homes+=("$legacy_config_home")
+  fi
+fi
+external_homes+=("${XDG_STATE_HOME:-${HOME}/.local/state}/agent-workflows")
+
+for external_home in "${external_homes[@]}"; do
+  [[ "$external_home" == /* ]] || continue
+  repos_dir="$external_home/repos"
+  [[ -d "$repos_dir" ]] || continue
+
+  sha256_state="$repos_dir/$repo_slug-$sha256_identity"
+  legacy_state="$repos_dir/$repo_slug-$legacy_identity"
+  if [[ -d "$sha256_state" && "$sha256_state" != "$current_state" ]]; then
+    printf 'sha256-identity\t%s\n' "$sha256_state"
+  fi
+  if [[ -d "$legacy_state" && "$legacy_state" != "$current_state" ]]; then
+    printf 'legacy-git-identity\t%s\n' "$legacy_state"
+  fi
+
+  while IFS= read -r metadata; do
+    if grep -Fqx "git-common-hash=$git_common_hash" "$metadata"; then
+      metadata_state=${metadata%/repository.meta}
+      if [[ "$metadata_state" != "$current_state" \
+        && "$metadata_state" != "$sha256_state" \
+        && "$metadata_state" != "$legacy_state" ]]; then
+        printf 'matching-git-common\t%s\n' "$metadata_state"
+      fi
+    fi
+  done < <(find "$repos_dir" -mindepth 2 -maxdepth 2 -type f -name repository.meta -print)
+done

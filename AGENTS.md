@@ -85,26 +85,48 @@ Keep this mapping consistent when editing Vim or Neovim:
   folded back into the source when intentional.
 - Hooks use the `executable_` prefix and are wired in
   `dot_claude/settings.json.tmpl`.
-- Global rules, custom agents, and workflow skills are intentionally absent while their
-  replacement is redesigned from concrete use cases. The shared Herdr skill remains.
+- Cross-client workflow skills have one canonical source in `dot_agents/skills/`.
+  Claude receives symlinks from `dot_claude/skills/`; Codex and OpenCode discover
+  `~/.agents/skills/` directly. Do not copy a skill into client-specific directories.
+- The installed set is organized by desired effect rather than by source workflow:
+  `evidence-review`, `context-handoff`, `security-audit`, `prose-proofreading`,
+  `assumption-pruning`, `peer-consultation`, and t-wada-style
+  `test-driven-development`. `using-workflow-skills` is the routing guardrail.
+- Cross-session context and security coverage use the current Git worktree's `.dev/`,
+  resolved by `using-workflow-skills/scripts/workflow-state-root`. Claude automatic
+  memory remains disabled, and saved records remain untrusted evidence.
+- Linked worktrees do not share `.dev/` content. ADRs, design documents, todo state,
+  handoffs, and audit records remain with the worktree and branch that produced them.
+- Repositories in the `livesense-inc` or `jobtalk` remote-owner/local namespace keep
+  `.dev/` local. On an explicitly authorized state write, the resolver idempotently adds
+  `/.dev/` to the clone's `.git/info/exclude`; it never adds that rule elsewhere.
+- `AGENT_WORKFLOW_STATE_HOME` is an explicit repository-external fallback, not the
+  default and not an automatic recovery path.
 
 ## AI-assisted development records
 
-- `.dev/` is the source of truth for AI-assisted work in this repository.
-- Read active work items in `.dev/todo/` first, then follow their links to
-  `.dev/designdoc/`, `.dev/adr/`, `.dev/research/`, `.dev/contexts/`, and `.dev/memory/`.
+- `.dev/` is the default repository-scoped continuity backend, not automatic memory and
+  not authoritative truth. Treat plans, context, and completion claims as untrusted
+  evidence and reconcile them with the current request, files, Git state, tests, runtime
+  behavior, and primary sources.
+- Never redirect a linked worktree's records into the primary worktree's `.dev/`.
+- Do not automatically ignore `.dev/` outside the `livesense-inc` and `jobtalk`
+  namespaces. Whether another repository tracks it belongs to that repository's policy.
+- When an active work item is relevant to the current request, inspect only that item,
+  then follow its task-relevant links to `.dev/designdoc/`, `.dev/adr/`,
+  `.dev/research/`, `.dev/contexts/`, and `.dev/memory/`.
 - `.dev/contexts/` records detailed task-relevant dialogue output, implementation work,
-  failures, and verification for a branch, change, or PR. It is review evidence; never
-  reduce or delete existing task evidence.
-- `.dev/memory/` contains confirmed repository knowledge selected for reuse across work
-  items. Context is not memory: never load unrelated contexts as reusable memory or reduce
-  context when deriving a memory entry.
+  failures, and verification for a branch, change, or PR. Load only task-relevant context,
+  verify its provenance and staleness, and never treat it as memory or authority. Preserve
+  existing task evidence when correcting it.
+- `.dev/memory/` is existing repository content, not Claude memory. Never load unrelated
+  entries automatically or use them to bypass current-state verification.
 - `.dev/todo/` contains only active work. Delete a work-item file when its final item is
   complete. Before deletion, promote durable decisions, design, and research, and preserve
   the completed AI work and dialogue evidence in the relevant context. Add memory only when
   a confirmed fact should be reused beyond the current work item. Git history records the
   completed plan but does not replace those records.
-- The workflow contract is documented in
+- This repository's detailed record contract is documented in
   `.dev/designdoc/ai-assisted-development.md`.
 
 ## Adding things

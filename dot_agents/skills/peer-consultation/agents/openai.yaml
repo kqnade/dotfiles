@@ -1,0 +1,4 @@
+interface:
+  display_name: "Peer Consultation"
+  short_description: "Seek and verify an independent agent opinion"
+  default_prompt: "Get an independent second opinion and reconcile it with primary evidence."

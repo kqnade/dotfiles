@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  echo "usage: context-candidates [--task TASK_NAME]" >&2
+  exit 2
+}
+
+task_name=""
+if [[ "${1:-}" == "--task" ]]; then
+  [[ $# -eq 2 && -n "$2" ]] || usage
+  task_name=$2
+elif [[ $# -ne 0 ]]; then
+  usage
+fi
+
+if [[ -n "$task_name" ]]; then
+  if [[ ! "$task_name" =~ ^[a-z0-9][a-z0-9._-]{0,79}$ ]]; then
+    echo "context-candidates: task name must be a lowercase slug (1-80 characters)" >&2
+    exit 2
+  fi
+  context_identity="task:$task_name"
+  context_label=$task_name
+elif full_ref=$(git symbolic-ref -q HEAD); then
+  context_identity="ref:$full_ref"
+  context_label=${full_ref#refs/heads/}
+else
+  echo "context-candidates: detached HEAD requires --task TASK_NAME" >&2
+  exit 2
+fi
+
+script_dir=$(cd "$(dirname "$0")" && pwd -P)
+shared_scripts="$script_dir/../../using-workflow-skills/scripts"
+sha256_hash=$(printf '%s' "$context_identity" | "$shared_scripts/workflow-state-digest")
+legacy_hash=$(printf '%s' "$context_identity" | git hash-object --stdin)
+context_slug=$(printf '%s' "$context_label" | LC_ALL=C tr -cs 'A-Za-z0-9._-' '-')
+context_slug=$(printf '%s' "$context_slug" | sed 's/^-//; s/-$//' | cut -c1-80)
+[[ -n "$context_slug" ]] || context_slug=task
+
+while IFS=$'\t' read -r repository_scheme repository_state; do
+  contexts_dir="$repository_state/contexts"
+  [[ -d "$contexts_dir" ]] || continue
+  sha256_context="$contexts_dir/$context_slug-${sha256_hash:0:12}.md"
+  legacy_context="$contexts_dir/$context_slug-${legacy_hash:0:12}.md"
+  if [[ -f "$sha256_context" ]]; then
+    printf 'exact-sha256:%s\t%s\n' "$repository_scheme" "$sha256_context"
+  fi
+  if [[ -f "$legacy_context" && "$legacy_context" != "$sha256_context" ]]; then
+    printf 'exact-legacy:%s\t%s\n' "$repository_scheme" "$legacy_context"
+  fi
+  while IFS= read -r plausible_context; do
+    if [[ "$plausible_context" != "$sha256_context" \
+      && "$plausible_context" != "$legacy_context" ]]; then
+      printf 'plausible:%s\t%s\n' "$repository_scheme" "$plausible_context"
+    fi
+  done < <(find "$contexts_dir" -mindepth 1 -maxdepth 1 -type f -name '*.md' -print)
+done < <("$shared_scripts/workflow-state-candidates")

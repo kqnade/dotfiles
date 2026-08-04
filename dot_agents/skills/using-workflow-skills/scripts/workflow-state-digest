@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -ne 0 ]]; then
+  echo "usage: workflow-state-digest < INPUT" >&2
+  exit 2
+fi
+
+if command -v sha256sum >/dev/null 2>&1; then
+  digest=$(sha256sum)
+elif command -v shasum >/dev/null 2>&1; then
+  digest=$(shasum -a 256)
+else
+  echo "workflow-state-digest: sha256sum or shasum is required" >&2
+  exit 1
+fi
+
+printf '%s\n' "${digest%% *}"

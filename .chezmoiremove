@@ -74,6 +74,7 @@
 .codex/AGENTS.md
 .config/opencode/AGENTS.md
 .config/opencode/plugins/claude-rules.ts
+.config/agent-workflows/state-home
 .config/cmux
 .local/bin/cmux-worktree
 .config/zsh/functions/ccc.zsh

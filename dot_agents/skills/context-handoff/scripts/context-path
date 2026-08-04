@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  echo "usage: context-path [--ensure] [--task TASK_NAME]" >&2
+  exit 2
+}
+
+ensure=0
+task_name=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --ensure)
+      ensure=1
+      shift
+      ;;
+    --task)
+      [[ $# -ge 2 && -n "$2" ]] || usage
+      task_name=$2
+      shift 2
+      ;;
+    *) usage ;;
+  esac
+done
+
+git rev-parse --show-toplevel >/dev/null 2>&1 || {
+  echo "context-path: not inside a Git repository" >&2
+  exit 1
+}
+
+if [[ -n "$task_name" ]]; then
+  if [[ ! "$task_name" =~ ^[a-z0-9][a-z0-9._-]{0,79}$ ]]; then
+    echo "context-path: task name must be a lowercase slug (1-80 characters)" >&2
+    exit 2
+  fi
+  context_identity="task:$task_name"
+  context_label=$task_name
+elif full_ref=$(git symbolic-ref -q HEAD); then
+  context_identity="ref:$full_ref"
+  context_label=${full_ref#refs/heads/}
+else
+  echo "context-path: detached HEAD requires --task TASK_NAME" >&2
+  exit 2
+fi
+
+script_dir=$(cd "$(dirname "$0")" && pwd -P)
+shared_scripts="$script_dir/../../using-workflow-skills/scripts"
+context_hash=$(printf '%s' "$context_identity" | "$shared_scripts/workflow-state-digest")
+context_slug=$(printf '%s' "$context_label" | LC_ALL=C tr -cs 'A-Za-z0-9._-' '-')
+context_slug=$(printf '%s' "$context_slug" | sed 's/^-//; s/-$//' | cut -c1-80)
+[[ -n "$context_slug" ]] || context_slug=task
+
+state_resolver="$script_dir/../../using-workflow-skills/scripts/workflow-state-root"
+if [[ "$ensure" -eq 1 ]]; then
+  repository_state=$("$state_resolver" --ensure)
+else
+  repository_state=$("$state_resolver")
+fi
+
+printf '%s/contexts/%s-%s.md\n' \
+  "$repository_state" "$context_slug" "${context_hash:0:12}"

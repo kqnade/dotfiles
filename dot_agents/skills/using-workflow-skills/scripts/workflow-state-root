@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  echo "usage: workflow-state-root [--ensure]" >&2
+  exit 2
+}
+
+ensure=0
+case "${1:-}" in
+  "") ;;
+  --ensure) ensure=1 ;;
+  *) usage ;;
+esac
+[[ $# -le 1 ]] || usage
+
+current_worktree=$(git rev-parse --show-toplevel 2>/dev/null) || {
+  echo "workflow-state-root: not inside a Git worktree" >&2
+  exit 1
+}
+current_worktree=$(cd "$current_worktree" && pwd -P)
+
+git_common=$(git rev-parse --path-format=absolute --git-common-dir)
+git_common=$(cd "$git_common" && pwd -P)
+script_dir=$(cd "$(dirname "$0")" && pwd -P)
+digest_script="$script_dir/workflow-state-digest"
+
+if [[ -n "${AGENT_WORKFLOW_STATE_HOME:-}" ]]; then
+  workflow_state_home=$AGENT_WORKFLOW_STATE_HOME
+  if [[ "$workflow_state_home" != /* ]]; then
+    echo "workflow-state-root: state home must be an absolute path" >&2
+    exit 1
+  fi
+
+  if remote_url=$(git config --get remote.origin.url) && [[ -n "$remote_url" ]]; then
+    identity_method=remote.origin.url
+    repository_identity="remote.origin.url:$remote_url"
+    slug_source=${remote_url%/}
+    slug_source=${slug_source##*/}
+    slug_source=${slug_source%.git}
+  else
+    identity_method=git-common-dir
+    repository_identity="git-common-dir:$git_common"
+    slug_source=${git_common%/.git}
+    slug_source=${slug_source##*/}
+  fi
+
+  identity_hash=$(printf '%s' "$repository_identity" | "$digest_script")
+  git_common_hash=$(printf '%s' "$git_common" | "$digest_script")
+  repo_slug=$(printf '%s' "$slug_source" | tr -cs 'A-Za-z0-9._-' '-' | sed 's/^-//; s/-$//')
+  [[ -n "$repo_slug" ]] || repo_slug=repository
+  repository_state="$workflow_state_home/repos/$repo_slug-$identity_hash"
+  state_backend=external
+else
+  repository_state="$current_worktree/.dev"
+  state_backend=repository
+fi
+
+if [[ "$ensure" -eq 1 ]]; then
+  if [[ "$state_backend" == repository ]]; then
+    "$script_dir/ensure-local-dev-ignore"
+  fi
+  umask 077
+  mkdir -p -- \
+    "$repository_state/contexts" \
+    "$repository_state/security/reports"
+  repository_state=$(cd "$repository_state" && pwd -P)
+  chmod 700 -- \
+    "$repository_state" \
+    "$repository_state/contexts" \
+    "$repository_state/security" \
+    "$repository_state/security/reports"
+
+  if [[ "$state_backend" == external ]]; then
+    metadata="$repository_state/repository.meta"
+    if [[ ! -e "$metadata" ]]; then
+      metadata_temp=$(mktemp "$repository_state/.repository.meta.tmp.XXXXXX")
+      {
+        printf 'schema=1\n'
+        printf 'identity-method=%s\n' "$identity_method"
+        printf 'identity-hash=%s\n' "$identity_hash"
+        printf 'git-common-hash=%s\n' "$git_common_hash"
+        printf 'created-at=%s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')"
+      } >"$metadata_temp"
+      chmod 600 -- "$metadata_temp"
+      if ! ln -- "$metadata_temp" "$metadata" 2>/dev/null; then
+        [[ -f "$metadata" ]] || {
+          rm -f -- "$metadata_temp"
+          echo "workflow-state-root: cannot create repository metadata" >&2
+          exit 1
+        }
+      fi
+      rm -f -- "$metadata_temp"
+    fi
+  fi
+elif [[ -d "$repository_state" ]]; then
+  repository_state=$(cd "$repository_state" && pwd -P)
+fi
+
+printf '%s\n' "$repository_state"
