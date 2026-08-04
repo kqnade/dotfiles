@@ -464,7 +464,10 @@ for state_skill_name, expected_resolver in state_skill_resolvers.items():
         fail(f"{state_skill_name} must use its workflow-state resolver")
 
 with tempfile.TemporaryDirectory() as temp_dir:
-    state_test_root = Path(temp_dir)
+    state_test_physical_root = Path(temp_dir) / "physical"
+    state_test_physical_root.mkdir()
+    state_test_root = Path(temp_dir) / "logical"
+    state_test_root.symlink_to(state_test_physical_root, target_is_directory=True)
     state_test_repo = state_test_root / "repo"
     state_test_xdg = state_test_root / "state"
     state_test_config = state_test_root / "config"
@@ -494,7 +497,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
             [str(workflow_state_script)], cwd=state_test_repo, env=state_test_env, text=True
         ).strip()
     )
-    if unresolved_state != state_test_repo / ".dev":
+    if unresolved_state != state_test_repo.resolve() / ".dev":
         fail("workflow-state resolver must default to the current worktree's .dev")
     if unresolved_state.exists():
         fail("workflow-state resolver must not write without --ensure")
@@ -561,7 +564,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
         env=state_test_env,
         text=True,
     ).strip()
-    if worktree_state != str(state_test_worktree / ".dev"):
+    if worktree_state != str(state_test_worktree.resolve() / ".dev"):
         fail("each linked worktree must resolve its own repository-local .dev")
 
     main_task_context = Path(
@@ -745,7 +748,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
             text=True,
         ).strip()
     )
-    if custom_state_home not in custom_state.parents:
+    if custom_state_home.resolve() not in custom_state.parents:
         fail("AGENT_WORKFLOW_STATE_HOME must override the default state root")
     state_identity_hash = custom_state.name.rsplit("-", 1)[-1]
     if not re.fullmatch(r"[0-9a-f]{64}", state_identity_hash):
@@ -785,7 +788,12 @@ with tempfile.TemporaryDirectory() as temp_dir:
         env=state_test_env,
         text=True,
     )
-    if str(custom_state) not in changed_remote_candidates:
+    changed_remote_candidate_paths = {
+        Path(line.split("\t", 1)[1]).resolve()
+        for line in changed_remote_candidates.splitlines()
+        if "\t" in line
+    }
+    if custom_state.resolve() not in changed_remote_candidate_paths:
         fail("candidate discovery must find external state after a remote URL change")
     subprocess.run(
         [
@@ -814,7 +822,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
             text=True,
         ).strip()
     )
-    if physical_state_home not in linked_state.parents:
+    if physical_state_home.resolve() not in linked_state.parents:
         fail("workflow-state resolver must canonicalize symlinked external roots")
     linked_context = Path(
         subprocess.check_output(
@@ -916,7 +924,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
             text=True,
         ).strip()
     )
-    if company_state != company_repo / ".dev":
+    if company_state != company_repo.resolve() / ".dev":
         fail("company repository workflow state must remain in its local .dev")
     company_exclude = company_repo / ".git/info/exclude"
     if company_exclude.read_text().splitlines().count("/.dev/") != 1:
