@@ -1302,13 +1302,21 @@ if renovate.get("lockFileMaintenance", {}).get("enabled") is not True:
     fail("Renovate lockFileMaintenance must remain enabled")
 if "customManagers" in renovate:
     fail("Renovate must use the standard mise manager, not customManagers")
+if renovate.get("customDatasources", {}).get("onepassword-cli") != {
+    "defaultRegistryUrlTemplate": "https://mise-versions.jdx.dev/1password-cli",
+    "format": "plain",
+}:
+    fail("Renovate must resolve 1Password CLI through mise's version endpoint")
 if not any(
     rule.get("matchManagers") == ["mise"]
     and rule.get("matchPackageNames") == ["1password/cli"]
-    and rule.get("enabled") is False
+    and rule.get("overrideDatasource") == "custom.onepassword-cli"
+    and rule.get("versioning") == "semver"
+    and rule.get("minimumReleaseAge") is None
+    and rule.get("enabled") is not False
     for rule in renovate.get("packageRules", [])
 ):
-    fail("Renovate must ignore the unresolvable 1Password CLI datasource")
+    fail("Renovate must track stable 1Password CLI releases")
 
 keymaps = (ROOT / "dot_config/nvim/lua/core/keymaps.lua").read_text()
 for mapping in (

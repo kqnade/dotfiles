@@ -33,16 +33,25 @@
     "enabled": true
   },
 
+  "customDatasources": {
+    "onepassword-cli": {
+      "defaultRegistryUrlTemplate": "https://mise-versions.jdx.dev/1password-cli",
+      "format": "plain"
+    }
+  },
+
   "packageRules": [
     {
-      "description": "Ignore 1Password CLI because the mise registry maps it to a nonexistent GitHub repository. mise run update remains its update path.",
+      "description": "Track stable 1Password CLI releases through mise's version endpoint because the aqua registry package has no resolvable upstream repository.",
       "matchManagers": [
         "mise"
       ],
       "matchPackageNames": [
         "1password/cli"
       ],
-      "enabled": false
+      "overrideDatasource": "custom.onepassword-cli",
+      "versioning": "semver",
+      "minimumReleaseAge": null
     },
     {
       "description": "Create security PRs immediately, bypassing the default 1-day release age.",
