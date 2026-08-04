@@ -1548,6 +1548,12 @@ if settings.get("model") != "opus":
 if settings.get("autoMemoryEnabled") is not False:
     fail("Claude automatic memory must remain disabled; use explicit workflow state")
 
+enabled_plugins = settings.get("enabledPlugins")
+if not isinstance(enabled_plugins, dict):
+    fail("Claude enabledPlugins must be an object")
+if enabled_plugins.get("datadog@claude-plugins-official") is not True:
+    fail("Claude must enable the official Datadog plugin")
+
 hooks = settings.get("hooks")
 if not isinstance(hooks, dict):
     fail("Claude settings hooks must be an object")
