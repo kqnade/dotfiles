@@ -47,6 +47,17 @@
       {
         "hooks": [
           {
+            "command": "~/.claude/hooks/authorize-repository.sh",
+            "statusMessage": "Checking Claude repository authorization...",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": "*"
+      },
+      {
+        "hooks": [
+          {
             "command": "~/.claude/hooks/protect-files.sh",
             "statusMessage": "Checking file protections...",
             "timeout": 10,
@@ -100,6 +111,18 @@
           }
         ],
         "matcher": "*"
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "command": "~/.claude/hooks/authorize-repository.sh",
+            "statusMessage": "Checking Claude repository authorization...",
+            "timeout": 5,
+            "type": "command"
+          }
+        ]
       }
     ]
   },

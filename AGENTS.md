@@ -84,6 +84,10 @@ Keep this mapping consistent when editing Vim or Neovim:
   folded back into the source when intentional.
 - Hooks use the `executable_` prefix and are wired in
   `dot_claude/settings.json.tmpl`.
+- Claude is authorized only for GitHub repositories whose remote owner is
+  `livesense-inc` or `jobtalk`. The shell wrapper checks before launching Claude, and
+  the `UserPromptSubmit` and `PreToolUse` hooks reject every other repository,
+  including missing or unrecognized remotes.
 - Cross-client workflow skills have one canonical source in `dot_agents/skills/`.
   Claude receives symlinks from `dot_claude/skills/`; Codex and OpenCode discover
   `~/.agents/skills/` directly. Do not copy a skill into client-specific directories.

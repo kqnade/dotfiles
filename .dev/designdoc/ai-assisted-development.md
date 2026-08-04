@@ -91,10 +91,15 @@ Herdr topologyを互換性のために復元しない。[ADR 0001](../adr/0001-h
 - 社用account: Claude、GitHub Copilot
 - 個人account: OpenCode、Codex、Kimi
 
-自動workflowは、現在利用中の会社承認済みCLIとaccountだけを使う。ただし、社用account
-であることは、すべてのrepositoryをそのaccountへ送信できる認可ではない。CLI、account、
-対象repositoryの組み合わせが承認済みであることを送信前に確認する。repository内容、
-diff、`.dev`、promptを個人accountまたは対象repositoryに未承認のaccountへ送らない。
+ClaudeはGitHub remote ownerが`livesense-inc`または`jobtalk`のrepositoryだけで使う。
+shell wrapperがbinary起動前にremoteを確認し、`UserPromptSubmit`と`PreToolUse`のglobal
+hookもprompt処理前とtool実行前に確認する。それ以外、originなし、Git worktree外はexit 2で
+拒否する。許可repositoryでは個人accountのOpenCode、Codex、Kimi、Lunaへrepository内容、
+diff、`.dev`、promptを送らない。逆に許可owner以外のrepositoryではClaudeを使わず、
+承認済みの個人clientを使う。
+
+社用accountであることは、すべてのrepositoryをそのaccountへ送信できる認可ではない。
+CLI、account、対象repositoryの組み合わせが承認済みであることを送信前に確認する。
 現在は別sessionやsubagentを自動起動するClaude workflowを提供しない。個人accountを
 使う場合はworkflow外で会社規程と送信対象を個別に確認する。Codex、CodeRabbit、外部
 rule/skill bundleはglobal skill/pluginとして有効化しない。

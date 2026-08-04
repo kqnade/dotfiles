@@ -102,6 +102,189 @@ with tempfile.TemporaryDirectory() as temp_dir:
         fail("Herdr setup must initialize Codex's config directory")
 
 
+claude_repository_guard = (
+    ROOT / "dot_claude/hooks/executable_authorize-repository.sh"
+)
+
+
+def run_claude_repository_guard(
+    repository: Path, event_name: str
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["bash", str(claude_repository_guard)],
+        cwd=repository,
+        input=json.dumps(
+            {
+                "cwd": str(repository),
+                "hook_event_name": event_name,
+                "prompt": "test",
+            }
+        ),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+
+def create_test_repository(
+    parent: Path, name: str, remote_url: str | None
+) -> Path:
+    repository = parent / name
+    subprocess.run(
+        ["git", "init", "-q", "-b", "trunk", str(repository)],
+        check=True,
+    )
+    if remote_url is not None:
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(repository),
+                "config",
+                "remote.origin.url",
+                remote_url,
+            ],
+            check=True,
+        )
+    return repository
+
+
+with tempfile.TemporaryDirectory() as temp_dir:
+    test_root = Path(temp_dir)
+    allowed_repository = create_test_repository(
+        test_root,
+        "allowed-repository",
+        "git@github.com:livesense-inc/example.git",
+    )
+    allowed_prompt = run_claude_repository_guard(
+        allowed_repository, "UserPromptSubmit"
+    )
+    if allowed_prompt.returncode != 0:
+        fail("Claude must be available in livesense-inc repositories")
+
+    jobtalk_repository = create_test_repository(
+        test_root,
+        "jobtalk-repository",
+        "https://github.com/jobtalk/example.git",
+    )
+    jobtalk_prompt = run_claude_repository_guard(
+        jobtalk_repository, "UserPromptSubmit"
+    )
+    if jobtalk_prompt.returncode != 0:
+        fail("Claude must be available in jobtalk repositories")
+
+    livesense_https_repository = create_test_repository(
+        test_root,
+        "livesense-https-repository",
+        "https://github.com/livesense-inc/example.git",
+    )
+    livesense_https_prompt = run_claude_repository_guard(
+        livesense_https_repository, "UserPromptSubmit"
+    )
+    if livesense_https_prompt.returncode != 0:
+        fail("Claude repository authorization must support GitHub HTTPS remotes")
+
+    jobtalk_ssh_repository = create_test_repository(
+        test_root,
+        "jobtalk-ssh-repository",
+        "git@github.com:jobtalk/example.git",
+    )
+    jobtalk_ssh_prompt = run_claude_repository_guard(
+        jobtalk_ssh_repository, "UserPromptSubmit"
+    )
+    if jobtalk_ssh_prompt.returncode != 0:
+        fail("Claude repository authorization must support GitHub SSH remotes")
+
+    allowed_tool = run_claude_repository_guard(
+        allowed_repository, "PreToolUse"
+    )
+    if allowed_tool.returncode != 0:
+        fail("Claude tools must be available in authorized repositories")
+
+    denied_repositories = {
+        "unapproved owner": create_test_repository(
+            test_root,
+            "unapproved-owner",
+            "git@github.com:kqnade/dotfiles.git",
+        ),
+        "misleading repository name": create_test_repository(
+            test_root,
+            "misleading-name",
+            "git@github.com:someone-else/jobtalk.git",
+        ),
+        "missing origin": create_test_repository(
+            test_root,
+            "missing-origin",
+            None,
+        ),
+    }
+    non_repository = test_root / "not-a-repository"
+    non_repository.mkdir()
+    denied_repositories["non-Git directory"] = non_repository
+
+    for description, repository in denied_repositories.items():
+        denied_prompt = run_claude_repository_guard(
+            repository, "UserPromptSubmit"
+        )
+        if denied_prompt.returncode != 2:
+            fail(f"Claude must reject {description}")
+        if "authorized only" not in denied_prompt.stderr:
+            fail(f"Claude rejection must explain its repository boundary: {description}")
+
+    denied_tool = run_claude_repository_guard(
+        denied_repositories["unapproved owner"], "PreToolUse"
+    )
+    if denied_tool.returncode != 2:
+        fail("Claude tools must be blocked in unauthorized repositories")
+
+    launcher_home = test_root / "launcher-home"
+    launcher_hooks = launcher_home / ".claude/hooks"
+    launcher_hooks.mkdir(parents=True)
+    launcher_guard = launcher_hooks / "authorize-repository.sh"
+    launcher_guard.write_bytes(claude_repository_guard.read_bytes())
+    launcher_guard.chmod(0o755)
+    launcher_bin = test_root / "launcher-bin"
+    launcher_bin.mkdir()
+    launcher_stub = launcher_bin / "claude"
+    launcher_stub.write_text("#!/bin/sh\nexit 0\n")
+    launcher_stub.chmod(0o755)
+    launcher_env = dict(os.environ)
+    launcher_env.update(
+        HOME=str(launcher_home),
+        PATH=f"{launcher_bin}:/usr/bin:/bin",
+        GITHUB_PERSONAL_ACCESS_TOKEN="test-token",
+    )
+    unauthorized_launch = subprocess.run(
+        [
+            "zsh",
+            "-c",
+            f"source {ROOT / 'dot_config/zsh/functions/claude.zsh'}; claude --version",
+        ],
+        cwd=denied_repositories["unapproved owner"],
+        env=launcher_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if unauthorized_launch.returncode == 0:
+        fail("Claude launcher must reject unauthorized repositories before startup")
+
+    authorized_launch = subprocess.run(
+        [
+            "zsh",
+            "-c",
+            f"source {ROOT / 'dot_config/zsh/functions/claude.zsh'}; claude --version",
+        ],
+        cwd=allowed_repository,
+        env=launcher_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if authorized_launch.returncode != 0:
+        fail("Claude launcher must start in authorized repositories")
+
+
 removed_paths = (
     ".chezmoitemplates/ai-voice.md",
     "Brew" + "file",
@@ -1234,6 +1417,21 @@ if settings.get("autoMemoryEnabled") is not False:
 hooks = settings.get("hooks")
 if not isinstance(hooks, dict):
     fail("Claude settings hooks must be an object")
+
+
+def hook_commands_for(event_name: str) -> set[str | None]:
+    return {
+        hook.get("command")
+        for group in hooks.get(event_name, [])
+        for hook in group.get("hooks", [])
+        if isinstance(hook, dict)
+    }
+
+
+repository_guard_command = "~/.claude/hooks/authorize-repository.sh"
+for event_name in ("UserPromptSubmit", "PreToolUse"):
+    if repository_guard_command not in hook_commands_for(event_name):
+        fail(f"Claude repository authorization must guard {event_name}")
 
 hook_commands = {
     hook.get("command")
