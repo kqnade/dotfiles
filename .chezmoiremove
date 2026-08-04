@@ -39,7 +39,6 @@
 .claude/.dotclaude.json
 .claude/hooks/auto-test.sh
 .claude/hooks/herdr-review-notify.sh
-.claude/rules/coding.md
 .claude/rules/development.md
 .claude/rules/review.md
 .claude/agents/code-reviewer.md
@@ -71,7 +70,6 @@
 .claude/skills/setupdotclaude
 .claude/skills/tdd
 .claude/skills/test-writer
-.codex/AGENTS.md
 .config/opencode/AGENTS.md
 .config/opencode/plugins/claude-rules.ts
 .config/agent-workflows/state-home

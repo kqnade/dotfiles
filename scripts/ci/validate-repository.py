@@ -347,9 +347,76 @@ for required in (".dev/memory/README.md",):
     if not (ROOT / required).is_file():
         fail(f"context and memory boundary file is missing: {required}")
 
-claude_rules = list((ROOT / "dot_claude/rules").glob("*.md"))
-if claude_rules:
-    fail(f"legacy Claude rules remain: {[path.name for path in claude_rules]}")
+expected_claude_rules = {
+    "coding.md",
+    "delivery.md",
+    "git.md",
+    "operations.md",
+    "verification.md",
+}
+claude_rules = {
+    path.name for path in (ROOT / "dot_claude/rules").glob("*.md")
+}
+if claude_rules != expected_claude_rules:
+    fail(
+        "Claude global rules differ from the reviewed set: "
+        f"expected {sorted(expected_claude_rules)}, got {sorted(claude_rules)}"
+    )
+
+required_claude_rule_fragments = {
+    "coding.md": (
+        "smallest correct change",
+        "Preserve user-authored and pre-existing changes",
+        "Handle failures explicitly",
+    ),
+    "verification.md": (
+        "List -> Red -> Green -> Refactor",
+        "Never describe an unrun check as passing",
+        "current primary sources",
+    ),
+    "operations.md": (
+        "planned local\n  commits",
+        "remote writes or publication",
+        "Do not invoke\n  Codex, OpenCode, Kimi, Luna, or `git cc`",
+    ),
+    "git.md": (
+        "one cohesive, reviewable, and revertible Green increment",
+        "Do not run `git cc` from Claude",
+        "`git diff --staged` and `git log --oneline -50`",
+    ),
+    "delivery.md": (
+        "PRD, STD, and implementation",
+        "separate\n  review units and separate pull requests",
+        "Remote\n  operations still require an explicit request",
+    ),
+}
+for rule_name, required_fragments in required_claude_rule_fragments.items():
+    rule_text = (ROOT / "dot_claude/rules" / rule_name).read_text()
+    if rule_text.startswith("---\n"):
+        fail(f"Claude global rule must remain unconditional: {rule_name}")
+    missing_fragments = [
+        fragment for fragment in required_fragments if fragment not in rule_text
+    ]
+    if missing_fragments:
+        fail(f"Claude global rule is missing reviewed behavior: {rule_name}")
+
+codex_global_rule = ROOT / "dot_agents/rules/git.md"
+if not codex_global_rule.is_file():
+    fail("Codex global Git rule is missing")
+codex_global_rule_text = codex_global_rule.read_text()
+for required_fragment in (
+    "must not inspect or modify repositories whose GitHub remote owner is",
+    "Use `git cc` for normal local commits",
+    "one cohesive, reviewable, and revertible Green",
+):
+    if required_fragment not in codex_global_rule_text:
+        fail("Codex global Git rule is missing reviewed behavior")
+
+codex_global_rule_link = ROOT / "dot_codex/symlink_AGENTS.md"
+if not codex_global_rule_link.is_file():
+    fail("Codex global AGENTS.md symlink source is missing")
+if codex_global_rule_link.read_text().strip() != "../.agents/rules/git.md":
+    fail("Codex global AGENTS.md must link to the canonical Git rule")
 
 claude_agents = list((ROOT / "dot_claude/agents").glob("*.md"))
 if claude_agents:
@@ -1258,6 +1325,14 @@ if (ROOT / "dot_claude/hooks/executable_herdr-review-notify.sh").exists():
     fail("legacy Herdr review notification hook remains")
 
 removals = (ROOT / ".chezmoiremove").read_text().splitlines()
+for restored_rule_name in expected_claude_rules:
+    restored_target = f".claude/rules/{restored_rule_name}"
+    if restored_target in removals:
+        fail(f"restored Claude rule must not remain in .chezmoiremove: {restored_target}")
+
+if ".codex/AGENTS.md" in removals:
+    fail("restored Codex global AGENTS.md must not remain in .chezmoiremove")
+
 for restored_skill_name in expected_agent_skills:
     restored_target = f".claude/skills/{restored_skill_name}"
     if restored_target in removals:
@@ -1268,7 +1343,6 @@ for target in (
     ".claude/agents/frontend-designer.md",
     ".claude/hooks/auto-test.sh",
     ".claude/hooks/herdr-review-notify.sh",
-    ".claude/rules/coding.md",
     ".claude/rules/development.md",
     ".claude/rules/review.md",
     ".claude/agents/code-reviewer.md",
@@ -1289,7 +1363,6 @@ for target in (
     ".claude/skills/sanity-review",
     ".claude/skills/ship",
     ".claude/skills/subagent-consultation",
-    ".codex/AGENTS.md",
     ".config/opencode/AGENTS.md",
     ".config/opencode/plugins/claude-rules.ts",
     ".config/agent-workflows/state-home",

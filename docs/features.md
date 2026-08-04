@@ -43,6 +43,8 @@ skkeleton は `127.0.0.1:1178` の yaskkserv2 を参照します。source dictio
 Claude Codeの設定と安全hook、Codex、OpenCode、Herdr integrationをchezmoiで維持します。
 ClaudeはGitHub remote ownerが`livesense-inc`または`jobtalk`のrepositoryだけで利用でき、
 shell wrapperが起動前に、hookがprompt送信前とtool実行前にそれ以外を拒否します。
+Claudeのglobal rulesはcoding、verification、operations、Git、PRD / STD deliveryに限定します。
+Codexはcanonicalなglobal Git ruleを読み、Claude専用namespace以外では`git cc`を使います。
 workflow skillのcanonical sourceは`~/.agents/skills/`です。Claudeはsymlink、CodexとOpenCodeは
 native discoveryで同じ内容を利用します。source workflowの構造ではなく、得たい効果ごとに
 `evidence-review`、`context-handoff`、`security-audit`、`prose-proofreading`、

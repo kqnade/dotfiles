@@ -88,6 +88,10 @@ Keep this mapping consistent when editing Vim or Neovim:
   `livesense-inc` or `jobtalk`. The shell wrapper checks before launching Claude, and
   the `UserPromptSubmit` and `PreToolUse` hooks reject every other repository,
   including missing or unrecognized remotes.
+- Claude's unconditional global rules live in `dot_claude/rules/` and are limited to
+  coding, verification, operations, Git, and PRD/STD delivery boundaries.
+- Codex receives `~/.codex/AGENTS.md` as a symlink to the canonical
+  `~/.agents/rules/git.md`. It uses `git cc` outside the two Claude-only namespaces.
 - Cross-client workflow skills have one canonical source in `dot_agents/skills/`.
   Claude receives symlinks from `dot_claude/skills/`; Codex and OpenCode discover
   `~/.agents/skills/` directly. Do not copy a skill into client-specific directories.

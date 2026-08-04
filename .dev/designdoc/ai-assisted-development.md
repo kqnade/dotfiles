@@ -1,6 +1,6 @@
 # AI支援開発workflow
 
-- 状態: 基盤運用中・Claude workflow再設計中
+- 状態: 基盤・global rules運用中、review workflow未提供
 - 更新日: 2026-08-04
 
 ## 目的
@@ -67,9 +67,14 @@ PR本文を含むGit workflowはこのrepositoryのruleとskillだけを正本�
 
 ## Review workflow
 
-Claudeのglobal review rules、custom agents、workflow skillsは2026-08-04に一度撤去した。
-旧Adversarial ReviewとSanity Reviewは実行せず、欠如をfallbackで補わない。通常のreviewは
-現在のagentがcode、test、command output、一次資料を直接確認する。
+Claudeのglobal rulesは2026-08-04にblank-slate resetした後、具体的な利用例から
+`coding.md`、`verification.md`、`operations.md`、`git.md`、`delivery.md`の5責務だけを
+再構築した。常時守る短い不変条件だけをruleに置き、TDD、review、handoffなどの複数stepを
+持つ手順はcanonical skillへ委譲する。
+
+旧Adversarial ReviewとSanity Reviewは実行せず、欠如をfallbackで補わない。review専用の
+global rule、custom agent、workflow skillは引き続き配置しない。通常のreviewは現在のagentが
+code、test、command output、一次資料を直接確認する。
 
 後継workflowは、具体的な利用例、trigger、必要な出力、許容する外部送信と権限境界を先に
 確定し、一つの責務ごとに最小のruleまたはskillとして新規設計する。旧skill名、agent構成、
@@ -97,6 +102,11 @@ hookもprompt処理前とtool実行前に確認する。それ以外、originな
 拒否する。許可repositoryでは個人accountのOpenCode、Codex、Kimi、Lunaへrepository内容、
 diff、`.dev`、promptを送らない。逆に許可owner以外のrepositoryではClaudeを使わず、
 承認済みの個人clientを使う。
+
+Codexのglobal `AGENTS.md`はcanonicalな`~/.agents/rules/git.md`へのsymlinkとする。このruleは
+Claude専用namespaceで停止し、それ以外の承認済みrepositoryではGreenなincrementだけを
+stageして`git cc`でcommitする。Claude側は`git cc`を起動せず、同じmessage formatを現在の
+Claude sessionで生成して`git commit -m`を使う。
 
 社用accountであることは、すべてのrepositoryをそのaccountへ送信できる認可ではない。
 CLI、account、対象repositoryの組み合わせが承認済みであることを送信前に確認する。
