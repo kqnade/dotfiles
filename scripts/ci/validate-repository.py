@@ -1658,6 +1658,16 @@ for fragment in (
 workflow = (ROOT / ".github/workflows/ci.yml").read_text()
 if "--dry-" + "run" in workflow:
     fail("CI must execute bootstrap interfaces instead of previewing them")
+
+static_job = workflow.split("  package-bootstrap:", 1)[0]
+zsh_install = "sudo apt-get install --yes zsh"
+if zsh_install not in static_job:
+    fail("CI static validation must install zsh")
+if static_job.index(zsh_install) > static_job.index(
+    "python3 scripts/ci/validate-repository.py"
+):
+    fail("CI static validation must install zsh before running the repository validator")
+
 for fragment in (
     "bash install.sh",
     "mise run apply",

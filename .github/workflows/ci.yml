@@ -26,6 +26,11 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: install zsh
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes zsh
+
       - name: install mise
         run: |
           echo "MISE_CONFIG_DIR=$RUNNER_TEMP/mise-config" >> "$GITHUB_ENV"
