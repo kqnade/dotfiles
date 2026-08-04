@@ -101,6 +101,30 @@ with tempfile.TemporaryDirectory() as temp_dir:
     if configure_result.returncode != 0:
         fail("Herdr setup must initialize Codex's config directory")
 
+herdr_config_template = ROOT / "dot_config/herdr/config.toml.tmpl"
+if not herdr_config_template.is_file():
+    fail("Herdr config must be templated for WSL remote SSH behavior")
+rendered_herdr_config = subprocess.check_output(
+    ["chezmoi", "execute-template", "--file", str(herdr_config_template)],
+    cwd=ROOT,
+    text=True,
+)
+herdr_managed_ssh_disabled = bool(
+    re.search(
+        r"^manage_ssh_config\s*=\s*false\s*$",
+        rendered_herdr_config,
+        re.MULTILINE,
+    )
+)
+running_on_wsl = (
+    sys.platform.startswith("linux")
+    and "microsoft" in os.uname().release.lower()
+)
+if running_on_wsl and not herdr_managed_ssh_disabled:
+    fail("Herdr must use plain Windows OpenSSH on WSL remote attaches")
+if not running_on_wsl and herdr_managed_ssh_disabled:
+    fail("Herdr must retain managed SSH config on native platforms")
+
 
 claude_repository_guard = (
     ROOT / "dot_claude/hooks/executable_authorize-repository.sh"
