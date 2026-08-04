@@ -269,10 +269,38 @@ for skill_name, required_phrases in effect_contracts.items():
         if not re.search(phrase_pattern, skill_text, re.IGNORECASE):
             fail(f"{skill_name} is missing its effect contract: {required_phrase}")
 
-for evidence_skill_name in ("context-handoff", "evidence-review", "security-audit"):
-    evidence_skill = (agent_skills_root / evidence_skill_name / "SKILL.md").read_text()
-    if not re.search(r"untrusted\s+evidence", evidence_skill, re.IGNORECASE):
-        fail(f"saved records must not be treated as authority: {evidence_skill_name}")
+trust_contracts = {
+    "context-handoff": (
+        "current worktree",
+        "repository-owned",
+        "provenance",
+        "freshness",
+        "another worktree",
+    ),
+    "evidence-review": (
+        "repository-owned",
+        "current code",
+        "another worktree",
+        "legacy",
+    ),
+    "security-audit": (
+        "canonical audit history",
+        "not proof of safety",
+        "source commit",
+        "another worktree",
+    ),
+}
+for evidence_skill_name, required_phrases in trust_contracts.items():
+    evidence_skill = (
+        agent_skills_root / evidence_skill_name / "SKILL.md"
+    ).read_text()
+    for required_phrase in required_phrases:
+        phrase_pattern = r"\s+".join(re.escape(part) for part in required_phrase.split())
+        if not re.search(phrase_pattern, evidence_skill, re.IGNORECASE):
+            fail(
+                f"{evidence_skill_name} is missing its tiered trust contract: "
+                f"{required_phrase}"
+            )
 
 context_handoff_contract = (
     agent_skills_root / "context-handoff/SKILL.md"
@@ -394,9 +422,12 @@ workflow_state_reference = (
 for required_state_phrase in (
     "Claude automatic memory is disabled",
     "current Git worktree",
+    "repository-owned",
+    "provenance",
+    "freshness",
+    "another worktree",
     "livesense-inc",
     "jobtalk",
-    "untrusted evidence",
     "AGENT_WORKFLOW_STATE_HOME",
 ):
     state_phrase_pattern = r"\s+".join(
@@ -404,6 +435,24 @@ for required_state_phrase in (
     )
     if not re.search(state_phrase_pattern, workflow_state_reference):
         fail(f"workflow-state contract is incomplete: {required_state_phrase}")
+
+if re.search(
+    r"every\s+record\s+is\s+(?:\*\*)?untrusted\s+evidence",
+    workflow_state_reference,
+    re.IGNORECASE,
+):
+    fail(
+        "current-worktree repository-owned workflow state must not be "
+        "blanket-distrusted"
+    )
+
+agents_instructions = (ROOT / "AGENTS.md").read_text()
+if re.search(
+    r"saved\s+records\s+remain\s+untrusted\s+evidence",
+    agents_instructions,
+    re.IGNORECASE,
+):
+    fail("AGENTS.md must distinguish current-worktree .dev from imported evidence")
 
 state_skill_resolvers = {
     "context-handoff": "scripts/context-path --ensure",

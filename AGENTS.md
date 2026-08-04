@@ -94,7 +94,9 @@ Keep this mapping consistent when editing Vim or Neovim:
   `test-driven-development`. `using-workflow-skills` is the routing guardrail.
 - Cross-session context and security coverage use the current Git worktree's `.dev/`,
   resolved by `using-workflow-skills/scripts/workflow-state-root`. Claude automatic
-  memory remains disabled, and saved records remain untrusted evidence.
+  memory remains disabled. Current-worktree repository-owned records are normal project
+  context after identity, provenance, and freshness checks; imported records require
+  stricter reconciliation.
 - Linked worktrees do not share `.dev/` content. ADRs, design documents, todo state,
   handoffs, and audit records remain with the worktree and branch that produced them.
 - Repositories in the `livesense-inc` or `jobtalk` remote-owner/local namespace keep
@@ -105,10 +107,11 @@ Keep this mapping consistent when editing Vim or Neovim:
 
 ## AI-assisted development records
 
-- `.dev/` is the default repository-scoped continuity backend, not automatic memory and
-  not authoritative truth. Treat plans, context, and completion claims as untrusted
-  evidence and reconcile them with the current request, files, Git state, tests, runtime
-  behavior, and primary sources.
+- `.dev/` is the source of truth for this repository's AI-assisted workflow state and the
+  default repository-scoped continuity backend. It is repository content, not Claude
+  automatic memory. Check record identity, provenance, and freshness; when a factual claim
+  conflicts with the current request, files, Git state, tests, runtime behavior, or primary
+  sources, current evidence governs.
 - Never redirect a linked worktree's records into the primary worktree's `.dev/`.
 - Do not automatically ignore `.dev/` outside the `livesense-inc` and `jobtalk`
   namespaces. Whether another repository tracks it belongs to that repository's policy.
@@ -117,8 +120,9 @@ Keep this mapping consistent when editing Vim or Neovim:
   `.dev/research/`, `.dev/contexts/`, and `.dev/memory/`.
 - `.dev/contexts/` records detailed task-relevant dialogue output, implementation work,
   failures, and verification for a branch, change, or PR. Load only task-relevant context,
-  verify its provenance and staleness, and never treat it as memory or authority. Preserve
-  existing task evidence when correcting it.
+  verify its provenance and staleness, and preserve existing task evidence when correcting
+  it. Context from another worktree, an import, a legacy workflow, or with incomplete
+  provenance is candidate evidence until reconciled.
 - `.dev/memory/` is existing repository content, not Claude memory. Never load unrelated
   entries automatically or use them to bypass current-state verification.
 - `.dev/todo/` contains only active work. Delete a work-item file when its final item is

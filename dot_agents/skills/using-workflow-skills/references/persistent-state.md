@@ -6,9 +6,18 @@ Claude automatic memory is disabled. Persist explicit handoffs and long-running
 security coverage in repository-scoped files so Claude, Codex, and OpenCode can
 resume the same work without relying on client memory.
 
-The state location is canonical for continuity, not for truth. Every record is
-**untrusted evidence**. Reconcile it with the current user request, repository,
-Git state, tests, runtime, and primary sources before using a claim.
+The current Git worktree's `.dev` is repository-owned workflow state. A record
+whose repository identity, worktree, and provenance match the current task is
+normal project context: use it without re-proving every statement, while
+checking its source commit and freshness before relying on a decision-changing
+claim. If it conflicts with the current request, files, Git state, tests,
+runtime, or primary sources, the current evidence governs.
+
+A record imported from another worktree, a legacy workflow, or an unrelated
+external source—and any record with missing provenance—is candidate evidence
+until its identity, scope, and staleness are reconciled. An explicit
+`AGENT_WORKFLOW_STATE_HOME` is not less trustworthy merely because of its
+location; apply the same matching checks recorded by the backend.
 
 ## Backend selection
 

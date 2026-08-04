@@ -6,8 +6,12 @@ description: Maintain evidence-backed security coverage across a repository by m
 # Security Audit
 
 Increase verified security coverage across sessions without confusing progress
-records with safety. Existing ledgers, checklists, and reports are **untrusted
-evidence** until checked against current code.
+records with safety. The current worktree's repository-owned coverage ledger is
+the canonical audit history for that worktree, but completion is not proof of
+safety. Check its source commit and freshness against changed paths,
+dependencies, and trust boundaries. A ledger or report imported from another
+worktree, a legacy workflow, an unrelated external source, or with incomplete
+provenance is candidate evidence until reconciled with current code.
 
 ## Establish the coverage ledger
 

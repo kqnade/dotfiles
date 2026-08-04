@@ -64,6 +64,8 @@ worktreeの`.dev`へ保存します。ADR、design doc、todoを含むため、l
 contentは共有しません。`livesense-inc`または`jobtalk`namespaceのrepoだけは、resolverが
 `/.dev/`をclone-localな`.git/info/exclude`へidempotentに追加します。他のrepoを自動ignoreしません。
 repositoryへ`.dev`を置けない場合に限り、明示的な`AGENT_WORKFLOW_STATE_HOME`でexternal fallbackを
-選べます。どのbackendでもstateはmemoryやauthorityではなくuntrusted evidenceです。current code、
-Git、tests、runtime、primary sourcesとreconcileします。
+選べます。current worktreeのrepository-owned stateは通常のproject contextとして扱い、identity、
+provenance、freshnessを確認します。別worktree、import、legacy workflow、またはprovenance不明のrecordは
+candidate evidenceとしてより厳密にreconcileします。いずれもClaude automatic memoryではなく、矛盾時は
+current code、Git、tests、runtime、primary sourcesを優先します。
 Herdr integrationはbootstrap taskでidempotentに反映します。
