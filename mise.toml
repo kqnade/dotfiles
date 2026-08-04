@@ -239,7 +239,3 @@ run = "bash \"${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/f
 [tasks.pre-commit]
 description = "Check staged repository TOML formatting"
 run = "bash \"${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/pre-commit.sh\""
-
-[tasks.update]
-description = "Update explicit tool pins and all lockfile platforms"
-run = "bash \"${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/update.sh\""

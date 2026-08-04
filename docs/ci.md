@@ -16,11 +16,7 @@ GitHub-hosted runnerのlogin shellを、対象macOSと同じ標準`/bin/zsh`へ�
 - `mise run doctor`
 - 2回目の `mise bootstrap --yes`
 - 2回目の `mise run doctor`
-- 一時checkoutでの `mise run update`
 - UDEV Gothic、SKK辞書、launchd service、`127.0.0.1:1178`
-
-`mise run update` は一時checkoutだけを変更し、変更対象が `mise.toml` と
-`mise.lock` に限定されることも検査します。
 
 ### Intel Mac
 

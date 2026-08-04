@@ -180,7 +180,7 @@ jobs:
           ln -s "$GITHUB_WORKSPACE" "$canonical_root"
           test -f "$canonical_root/mise.toml"
 
-      - name: run install.sh and every non-update public command
+      - name: run install.sh and every public command
         run: |
           canonical_root="$HOME/repos/github.com/kqnade/dotfiles"
           bash install.sh
@@ -195,24 +195,6 @@ jobs:
 
           cd "$HOME"
           mise run doctor
-
-      - name: run update in a disposable checkout
-        run: |
-          unset MISE_LOCKED
-          export PATH="$HOME/.local/bin:$PATH"
-          update_root="$RUNNER_TEMP/update-checkout"
-          git clone --local --no-hardlinks "$GITHUB_WORKSPACE" "$update_root"
-
-          DOTFILES_ROOT="$update_root" mise -C "$update_root" run update
-          python3 "$update_root/scripts/ci/validate-mise.py"
-          python3 "$update_root/scripts/ci/validate-repository.py"
-          git -C "$update_root" diff --check
-
-          unexpected="$(
-            git -C "$update_root" diff --name-only |
-              grep -Ev '^(mise\.toml|mise\.lock)$' || true
-          )"
-          test -z "$unexpected"
 
   intel-fallback:
     name: Intel Mac public interfaces and source fallbacks

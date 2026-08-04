@@ -1318,6 +1318,20 @@ if not any(
 ):
     fail("Renovate must track stable 1Password CLI releases")
 
+if (ROOT / "scripts/update.sh").exists():
+    fail("dependency updates must be owned by Renovate, not scripts/update.sh")
+for relative in (
+    "AGENTS.md",
+    "README.md",
+    "docs/ci.md",
+    "mise.toml",
+    ".github/workflows/ci.yml",
+):
+    if "mise run update" in (ROOT / relative).read_text():
+        fail(f"obsolete mise run update interface remains in {relative}")
+if "[tasks.update]" in (ROOT / "mise.toml").read_text():
+    fail("obsolete mise update task remains in mise.toml")
+
 keymaps = (ROOT / "dot_config/nvim/lua/core/keymaps.lua").read_text()
 for mapping in (
     'map({ "n", "x", "o" }, "m", "h", opts)',
@@ -1375,7 +1389,6 @@ for fragment in (
     "mise run apply",
     "mise run doctor",
     "mise bootstrap --yes",
-    'DOTFILES_ROOT="$update_root" mise -C "$update_root" run update',
     "mise bootstrap packages apply --yes",
     "format --check --stdin-filepath mise.lock - < mise.lock",
     "cargo:sheldon",
@@ -1413,7 +1426,6 @@ for relative in (
     "scripts/bootstrap.sh",
     "scripts/build-skk-dictionary.sh",
     "scripts/doctor.sh",
-    "scripts/update.sh",
     "scripts/yaskkserv2-serve.sh",
 ):
     script = (ROOT / relative).read_text()

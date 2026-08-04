@@ -38,7 +38,6 @@ mise bootstrap --yes  # packages, tools, dotfiles, defaults, services を収束
 mise run apply         # chezmoi で dotfile を反映
 mise run doctor        # tools, packages, dotfiles, fonts, services を診断
 mise run format        # CI が検査する mise.toml / mise.lock を整形
-mise run update        # tool pin と 3 platform の lock を更新
 ```
 
 root の [mise.toml](mise.toml) が bootstrap と global tool の唯一の定義です。

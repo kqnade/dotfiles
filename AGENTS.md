@@ -15,7 +15,6 @@ are macOS arm64/x64, Fedora x64, Arch Linux x64, and Fedora/Arch under WSL x64.
 | Apply dotfiles | `mise run apply` |
 | Diagnose state | `mise run doctor` |
 | Format manifest and lockfile | `mise run format` |
-| Update pins and lockfile | `mise run update` |
 | Preview chezmoi changes | `chezmoi diff` |
 | Generate commit message | `git cc` |
 
