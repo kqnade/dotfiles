@@ -69,7 +69,7 @@ fi
 umask 077
 temp_file=$(mktemp "$target.tmp.XXXXXX")
 cat >"$temp_file"
-chmod 600 -- "$temp_file"
+chmod 600 "$temp_file"
 validate_target_type
 mv -f -- "$temp_file" "$target"
 temp_file=""

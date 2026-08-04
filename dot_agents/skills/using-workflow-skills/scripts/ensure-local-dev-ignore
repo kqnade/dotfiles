@@ -65,6 +65,6 @@ if [[ -f "$exclude_file" ]]; then
   cat -- "$exclude_file" >"$temp_file"
 fi
 printf '\n/.dev/\n' >>"$temp_file"
-chmod 600 -- "$temp_file"
+chmod 600 "$temp_file"
 mv -f -- "$temp_file" "$exclude_file"
 temp_file=""

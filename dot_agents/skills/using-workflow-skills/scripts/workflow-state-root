@@ -65,7 +65,7 @@ if [[ "$ensure" -eq 1 ]]; then
     "$repository_state/contexts" \
     "$repository_state/security/reports"
   repository_state=$(cd "$repository_state" && pwd -P)
-  chmod 700 -- \
+  chmod 700 \
     "$repository_state" \
     "$repository_state/contexts" \
     "$repository_state/security" \
@@ -82,7 +82,7 @@ if [[ "$ensure" -eq 1 ]]; then
         printf 'git-common-hash=%s\n' "$git_common_hash"
         printf 'created-at=%s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')"
       } >"$metadata_temp"
-      chmod 600 -- "$metadata_temp"
+      chmod 600 "$metadata_temp"
       if ! ln -- "$metadata_temp" "$metadata" 2>/dev/null; then
         [[ -f "$metadata" ]] || {
           rm -f -- "$metadata_temp"
