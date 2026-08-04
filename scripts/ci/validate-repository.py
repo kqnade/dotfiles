@@ -108,11 +108,11 @@ claude_repository_guard = (
 
 
 def run_claude_repository_guard(
-    repository: Path, event_name: str
+    repository: Path, event_name: str, process_cwd: Path | None = None
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ["bash", str(claude_repository_guard)],
-        cwd=repository,
+        cwd=process_cwd or repository,
         input=json.dumps(
             {
                 "cwd": str(repository),
@@ -162,6 +162,14 @@ with tempfile.TemporaryDirectory() as temp_dir:
     if allowed_prompt.returncode != 0:
         fail("Claude must be available in livesense-inc repositories")
 
+    allowed_prompt_from_other_cwd = run_claude_repository_guard(
+        allowed_repository,
+        "UserPromptSubmit",
+        process_cwd=test_root,
+    )
+    if allowed_prompt_from_other_cwd.returncode != 0:
+        fail("Claude repository authorization must use cwd from the hook input")
+
     jobtalk_repository = create_test_repository(
         test_root,
         "jobtalk-repository",
@@ -194,6 +202,17 @@ with tempfile.TemporaryDirectory() as temp_dir:
     )
     if jobtalk_ssh_prompt.returncode != 0:
         fail("Claude repository authorization must support GitHub SSH remotes")
+
+    livesense_ssh_url_repository = create_test_repository(
+        test_root,
+        "livesense-ssh-url-repository",
+        "ssh://git@github.com/livesense-inc/example.git",
+    )
+    livesense_ssh_url_prompt = run_claude_repository_guard(
+        livesense_ssh_url_repository, "UserPromptSubmit"
+    )
+    if livesense_ssh_url_prompt.returncode != 0:
+        fail("Claude repository authorization must support GitHub SSH URLs")
 
     allowed_tool = run_claude_repository_guard(
         allowed_repository, "PreToolUse"
@@ -230,12 +249,54 @@ with tempfile.TemporaryDirectory() as temp_dir:
             fail(f"Claude must reject {description}")
         if "authorized only" not in denied_prompt.stderr:
             fail(f"Claude rejection must explain its repository boundary: {description}")
+        if (
+            description == "unapproved owner"
+            and "repository owner is not authorized" not in denied_prompt.stderr
+        ):
+            fail("Claude rejection must identify an unauthorized repository owner")
 
     denied_tool = run_claude_repository_guard(
         denied_repositories["unapproved owner"], "PreToolUse"
     )
     if denied_tool.returncode != 2:
         fail("Claude tools must be blocked in unauthorized repositories")
+
+    denied_prompt_from_allowed_cwd = run_claude_repository_guard(
+        denied_repositories["unapproved owner"],
+        "UserPromptSubmit",
+        process_cwd=allowed_repository,
+    )
+    if denied_prompt_from_allowed_cwd.returncode != 2:
+        fail("Claude repository authorization must reject the hook input cwd")
+
+    missing_cwd_prompt = subprocess.run(
+        ["bash", str(claude_repository_guard)],
+        cwd=allowed_repository,
+        input=json.dumps(
+            {
+                "hook_event_name": "UserPromptSubmit",
+                "prompt": "test",
+            }
+        ),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if missing_cwd_prompt.returncode != 2:
+        fail("Claude repository authorization must reject missing hook input cwd")
+    if "hook input cwd is missing or invalid" not in missing_cwd_prompt.stderr:
+        fail("Claude repository authorization must report an invalid hook cwd")
+
+    malformed_prompt = subprocess.run(
+        ["bash", str(claude_repository_guard)],
+        cwd=allowed_repository,
+        input="not-json",
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if malformed_prompt.returncode != 2:
+        fail("Claude repository authorization must reject malformed hook input")
 
     launcher_home = test_root / "launcher-home"
     launcher_hooks = launcher_home / ".claude/hooks"
