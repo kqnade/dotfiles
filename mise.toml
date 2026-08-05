@@ -84,6 +84,15 @@ opencode = "1.18.11"
   "rust",
 ], install_env = { CARGO_NET_GIT_FETCH_WITH_CLI = "true", GIT_CONFIG_GLOBAL = "/dev/null" } }
 
+[tools."http:mole"]
+version = "1.49.2"
+os = ["macos"]
+url = "https://github.com/tw93/Mole/archive/refs/tags/V{{ version }}.tar.gz"
+checksum = "sha256:ffa39b625416ac150587bcc93dfccac83c6eece6922b87ccc8d3000875ff3885"
+strip_components = 1
+bin_path = "."
+postinstall = "bash \"${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/install-mole-helpers.sh\""
+
 [bootstrap.packages]
 # macOS
 "brew-cask:scroll-reverser" = "latest"

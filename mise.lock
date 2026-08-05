@@ -301,6 +301,21 @@ checksum = "sha256:3fe50c4a63dc8102306b1322178628ddb3655cd3ae56d784f094153408d69
 url = "https://github.com/ogulcancelik/herdr/releases/download/v0.7.5/herdr-macos-x86_64"
 url_api = "https://api.github.com/repos/ogulcancelik/herdr/releases/assets/484992541"
 
+[[tools."http:mole"]]
+version = "1.49.2"
+backend = "http:mole"
+
+[tools."http:mole".options]
+strip_components = "1"
+
+[tools."http:mole"."platforms.macos-arm64"]
+checksum = "sha256:ffa39b625416ac150587bcc93dfccac83c6eece6922b87ccc8d3000875ff3885"
+url = "https://github.com/tw93/Mole/archive/refs/tags/V1.49.2.tar.gz"
+
+[tools."http:mole"."platforms.macos-x64"]
+checksum = "sha256:ffa39b625416ac150587bcc93dfccac83c6eece6922b87ccc8d3000875ff3885"
+url = "https://github.com/tw93/Mole/archive/refs/tags/V1.49.2.tar.gz"
+
 [[tools.jq]]
 version = "1.8.2"
 backend = "aqua:jqlang/jq"

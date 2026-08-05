@@ -35,6 +35,7 @@ EXPECTED_TOOLS = {
     "ghq",
     "git-lfs",
     "herdr",
+    "http:mole",
     "jq",
     "just",
     "neovim",
@@ -174,6 +175,18 @@ eza = tools["cargo:eza"]
 if not isinstance(eza, dict) or eza.get("features") != ["vendored-libgit2"]:
     fail("eza must build its bundled libgit2 instead of linking a system copy")
 
+mole = tools["http:mole"]
+if not isinstance(mole, dict) or mole != {
+    "version": "1.49.2",
+    "os": ["macos"],
+    "url": "https://github.com/tw93/Mole/archive/refs/tags/V{{ version }}.tar.gz",
+    "checksum": "sha256:ffa39b625416ac150587bcc93dfccac83c6eece6922b87ccc8d3000875ff3885",
+    "strip_components": 1,
+    "bin_path": ".",
+    "postinstall": 'bash "${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/install-mole-helpers.sh"',
+}:
+    fail("Mole must use the pinned source archive and verified helper installer")
+
 for fallback in INTEL_FALLBACKS:
     value = tools[fallback]
     if not isinstance(value, dict) or value.get("os") != ["macos/x64"]:
@@ -203,6 +216,9 @@ if lock_tools["cargo:eza"][-1].get("options") != {
     "features": "vendored-libgit2"
 }:
     fail("eza lock entry must preserve its vendored-libgit2 build option")
+
+if lock_tools["http:mole"][-1].get("options") != {"strip_components": "1"}:
+    fail("Mole lock entry must strip the source archive root directory")
 
 for name, value in tools.items():
     requested_version = configured_version(value)
