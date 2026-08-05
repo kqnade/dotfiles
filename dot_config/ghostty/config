@@ -6,5 +6,5 @@ cursor-style = block
 shell-integration-features = no-cursor
 
 theme = "Kanagawa Wave"
-background-opacity = 0.85
-background-blur = true
+background-opacity = 0.80
+background-blur = 8
