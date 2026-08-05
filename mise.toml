@@ -71,7 +71,7 @@ pnpm = { version = "11.19.0", os = [
 uv = "0.12.1"
 
 # Agent and application CLIs
-1password-cli = "2.35.0"
+1password-cli = "2.38.1"
 herdr = "0.7.5"
 claude = "2.1.220"
 codex = { version = "0.145.0", depends = ["node"] }
