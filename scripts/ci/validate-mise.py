@@ -207,10 +207,13 @@ if lock_tools["cargo:eza"][-1].get("options") != {
 for name, value in tools.items():
     requested_version = configured_version(value)
     locked_entries = lock_tools[name]
-    if not any(entry.get("version") == requested_version for entry in locked_entries):
+    requested_entries = [
+        entry for entry in locked_entries if entry.get("version") == requested_version
+    ]
+    if not requested_entries:
         fail(f"{name}@{requested_version} is not present in mise.lock")
 
-    backend = locked_entries[-1].get("backend", name)
+    backend = requested_entries[-1].get("backend", name)
     source_backend = backend.startswith(("cargo:", "npm:"))
     if source_backend or name in NON_URL_LOCKS:
         continue
@@ -219,8 +222,8 @@ for name, value in tools.items():
         if not active_on(value, platform):
             continue
         key = f"platforms.{platform}"
-        if not any(entry.get(key, {}).get("url") for entry in locked_entries):
-            fail(f"{name} has no locked URL for {platform}")
+        if not any(entry.get(key, {}).get("url") for entry in requested_entries):
+            fail(f"{name}@{requested_version} has no locked URL for {platform}")
 
 config_template = (ROOT / "dot_config/mise/config.toml.tmpl").read_text().strip()
 lock_template = (ROOT / "dot_config/mise/mise.lock.tmpl").read_text().strip()
