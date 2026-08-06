@@ -165,6 +165,7 @@ backend = "aqua:anthropics/claude-code"
 url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.221/linux-x64/claude"
 
 [tools.claude."platforms.macos-arm64"]
+checksum = "blake3:f7c73702a838dd969ee7a6940b828b58a359a8f3de90158a72f02b7f0e9ca5f5"
 url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.221/darwin-arm64/claude"
 
 [tools.claude."platforms.macos-x64"]
@@ -306,6 +307,10 @@ backend = "http:mole"
 
 [tools."http:mole".options]
 strip_components = "1"
+
+[tools."http:mole"."platforms.linux-x64"]
+checksum = "sha256:ffa39b625416ac150587bcc93dfccac83c6eece6922b87ccc8d3000875ff3885"
+url = "https://github.com/tw93/Mole/archive/refs/tags/V1.49.2.tar.gz"
 
 [tools."http:mole"."platforms.macos-arm64"]
 checksum = "sha256:ffa39b625416ac150587bcc93dfccac83c6eece6922b87ccc8d3000875ff3885"
