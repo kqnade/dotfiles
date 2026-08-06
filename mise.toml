@@ -75,7 +75,7 @@ uv = "0.12.1"
 herdr = "0.7.5"
 claude = "2.1.221"
 codex = { version = "0.145.0", depends = ["node"] }
-opencode = "1.18.11"
+opencode = "1.18.13"
 "npm:ccusage" = { version = "20.0.19", depends = ["node"] }
 
 # SKK server and dictionary builder. Keep this on the Cargo git backend on
