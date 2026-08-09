@@ -1759,6 +1759,14 @@ if static_job.index(zsh_install) > static_job.index(
 ):
     fail("CI static validation must install zsh before running the repository validator")
 
+chezmoi_install = "mise install --locked chezmoi"
+if chezmoi_install not in static_job:
+    fail("CI static validation must install chezmoi")
+if static_job.index(chezmoi_install) > static_job.index(
+    "python3 scripts/ci/validate-repository.py"
+):
+    fail("CI static validation must install chezmoi before the repository validator")
+
 for fragment in (
     "bash install.sh",
     "mise run apply",
