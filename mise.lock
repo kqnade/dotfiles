@@ -419,19 +419,19 @@ url = "https://github.com/anomalyco/opencode/releases/download/v1.18.15/opencode
 url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/504765570"
 
 [[tools.pnpm]]
-version = "11.19.0"
+version = "11.20.0"
 backend = "aqua:pnpm/pnpm"
 
 [tools.pnpm."platforms.linux-x64"]
-checksum = "sha256:01562375e2b05b5cdc8d67e0bbfed549221c8a739b485ee0dac13d32d383ec24"
-url = "https://github.com/pnpm/pnpm/releases/download/v11.19.0/pnpm-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/496485123"
+checksum = "sha256:b4ad6ad2b21db2f8cd50af416c3aa148ba704c31c84893f465a770a01c2c4572"
+url = "https://github.com/pnpm/pnpm/releases/download/v11.20.0/pnpm-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/500142376"
 provenance = "github-attestations"
 
 [tools.pnpm."platforms.macos-arm64"]
-checksum = "sha256:00075435e24d20f5d369c9aec1ee1c29ebb78b52de8ea9807013fc70187ea0e5"
-url = "https://github.com/pnpm/pnpm/releases/download/v11.19.0/pnpm-darwin-arm64.tar.gz"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/496485121"
+checksum = "sha256:4bc97fea72e5c92eec1fefc8d410c35d01e0d0d52f3160c59f38c32db58b5cd2"
+url = "https://github.com/pnpm/pnpm/releases/download/v11.20.0/pnpm-darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/500142373"
 provenance = "github-attestations"
 
 [[tools.ripgrep]]
