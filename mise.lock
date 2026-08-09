@@ -162,6 +162,7 @@ version = "2.1.221"
 backend = "aqua:anthropics/claude-code"
 
 [tools.claude."platforms.linux-x64"]
+checksum = "blake3:83969d6842039c374eeecb275a5f0412e63719b2b7b0515da9d8ca91c2a1d881"
 url = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/2.1.221/linux-x64/claude"
 
 [tools.claude."platforms.macos-arm64"]
