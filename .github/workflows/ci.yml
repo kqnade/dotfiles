@@ -40,6 +40,7 @@ jobs:
       - name: validate manifest and repository invariants
         run: |
           python3 scripts/ci/test-validate-mise.py
+          python3 scripts/ci/test-claude-settings.py
           python3 scripts/ci/validate-mise.py
           python3 scripts/ci/validate-repository.py
           mise trust mise.toml

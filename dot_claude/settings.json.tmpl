@@ -4,9 +4,11 @@
     "pr": ""
   },
   "autoMemoryEnabled": false,
+  "awaySummaryEnabled": false,
   "cleanupPeriodDays": 14,
   "disableArtifact": true,
   "disableClaudeAiConnectors": true,
+  "editorMode": "normal",
   "effortLevel": "high",
   "enabledPlugins": {
     "datadog@claude-plugins-official": true,
@@ -231,6 +233,9 @@
       "Edit(**/*.key)"
     ]
   },
+  "preferredNotifChannel": "notifications_disabled",
+  "promptSuggestionEnabled": false,
+  "remoteControlAtStartup": true,
   "spinnerTipsEnabled": false,
   "statusLine": {
     "command": "bunx -y ccstatusline@2.2.23",
@@ -238,10 +243,5 @@
     "type": "command"
   },
   "theme": "dark-daltonize",
-  "editorMode": "normal",
-  "promptSuggestionEnabled": false,
-  "awaySummaryEnabled": false,
-  "preferredNotifChannel": "notifications_disabled",
-  "remoteControlAtStartup": true,
   "verbose": true
 }{{- /* Herdr's Claude integration writes JSON without a trailing newline. */ -}}
