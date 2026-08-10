@@ -67,7 +67,7 @@ pnpm = { version = "11.20.0", os = [
 ], depends = [
   "node",
 ] }
-"npm:pnpm" = { version = "11.19.0", os = ["macos/x64"], depends = ["node"] }
+"npm:pnpm" = { version = "11.20.0", os = ["macos/x64"], depends = ["node"] }
 uv = "0.12.3"
 
 # Agent and application CLIs
