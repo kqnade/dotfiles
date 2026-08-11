@@ -26,6 +26,9 @@ class HerdrWorktreeTests(unittest.TestCase):
         herdr_response: str | None = None,
         git_ref_valid: bool = True,
         shell_exit_stdout: str | None = None,
+        registered_worktree: bool = True,
+        git_worktree_add_stdout: str | None = None,
+        hook_stdout: str | None = None,
     ) -> tuple[subprocess.CompletedProcess[str], list[str]]:
         with tempfile.TemporaryDirectory() as temporary_directory:
             fixture_root = Path(temporary_directory)
@@ -51,7 +54,10 @@ set +e
 /bin/zsh -f -c '
 _wt_base() { print -r -- "$FAKE_BASE_REPO"; }
 _wt_branch_to_dir() { print -r -- "synthetic-branch"; }
-_wt_run_hook() { return 0; }
+_wt_run_hook() {
+  print -r -- "hook $*" >> "$FAKE_LOG"
+  [[ -z "$FAKE_HOOK_STDOUT" ]] || print -r -- "$FAKE_HOOK_STDOUT"
+}
 eval "$HERDR_WORKTREE_BODY"
 ' -- "$@"
 command_status=$?
@@ -83,10 +89,15 @@ case "${1-} ${2-}" in
     exit 0
     ;;
   "worktree list")
-    printf 'worktree %s\\nbranch refs/heads/%s\\n' "$FAKE_WORKTREE_PATH" "$EXPECTED_BRANCH"
+    if [ "$FAKE_REGISTERED_WORKTREE" = "1" ]; then
+      printf 'worktree %s\\nbranch refs/heads/%s\\n' "$FAKE_WORKTREE_PATH" "$EXPECTED_BRANCH"
+    fi
     exit 0
     ;;
-  "worktree add") exit 0 ;;
+  "worktree add")
+    [ -z "$FAKE_GIT_WORKTREE_ADD_STDOUT" ] || printf '%s\\n' "$FAKE_GIT_WORKTREE_ADD_STDOUT"
+    exit 0
+    ;;
   "show-ref --verify") exit 0 ;;
 esac
 exit 99
@@ -117,6 +128,9 @@ fi
                     "FAKE_HERDR_RESPONSE": herdr_response or "",
                     "FAKE_GIT_REF_VALID": "1" if git_ref_valid else "0",
                     "FAKE_ZSH_EXIT_STDOUT": shell_exit_stdout or "",
+                    "FAKE_REGISTERED_WORKTREE": "1" if registered_worktree else "0",
+                    "FAKE_GIT_WORKTREE_ADD_STDOUT": git_worktree_add_stdout or "",
+                    "FAKE_HOOK_STDOUT": hook_stdout or "",
                 }
             )
             command = ["/bin/bash", str(SCRIPT)]
@@ -199,6 +213,29 @@ fi
         except json.JSONDecodeError as error:
             self.fail(f"shell exit contaminated JSON ({error}): {result.stdout!r}")
         self.assertEqual(stdout_response, expected_response)
+
+    def test_existing_unregistered_branch_keeps_creation_noise_off_stdout(self) -> None:
+        branch = "feat/existing-unregistered"
+        expected_response = {
+            "result": {
+                "workspace": {"workspace_id": "w-fixture"},
+                "root_pane": {"pane_id": "w-fixture:p-root"},
+            }
+        }
+        result, _ = self.run_worktree(
+            branch_argument=branch,
+            stdin_branch="feat/ignored-stdin",
+            expected_branch=branch,
+            herdr_response=json.dumps(expected_response),
+            registered_worktree=False,
+            git_worktree_add_stdout="noisy git worktree add",
+            hook_stdout="noisy post-new hook",
+        )
+
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        self.assertEqual(json.loads(result.stdout), expected_response)
+        self.assertIn("noisy git worktree add", result.stderr)
+        self.assertIn("noisy post-new hook", result.stderr)
 
     def test_invalid_explicit_branch_fails_before_prompt_or_workspace_open(self) -> None:
         branch = "invalid branch"
