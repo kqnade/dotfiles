@@ -40,7 +40,7 @@ jobs:
       - name: validate manifest and repository invariants
         run: |
           mise trust mise.toml
-          mise install --locked chezmoi
+          mise install --locked chezmoi yq
           python3 scripts/ci/test-validate-mise.py
           python3 scripts/ci/test-claude-settings.py
           python3 scripts/ci/validate-mise.py
@@ -56,8 +56,8 @@ jobs:
           shfmt_bin="$(mise which shfmt)"
           taplo_bin="$(mise which taplo)"
           mapfile -t shell_files < <(find scripts -type f -name '*.sh' -print | sort)
-          mapfile -t toml_files < <(find . -type f -name '*.toml' -not -path './.git/*' -print | sort)
-          shell_files+=(install.sh dot_local/bin/executable_op dot_local/bin/executable_ssh dot_local/bin/executable_ssh-add)
+          mapfile -t toml_files < <(find . -type f -name '*.toml' -not -path './.git/*' -not -path './dot_codex/modify_private_config.toml' -print | sort)
+          shell_files+=(install.sh dot_codex/modify_private_config.toml dot_local/bin/executable_op dot_local/bin/executable_ssh dot_local/bin/executable_ssh-add)
           "$shellcheck_bin" -e SC1091 -S warning "${shell_files[@]}"
           "$shfmt_bin" -i 2 -ci -d "${shell_files[@]}"
           "$taplo_bin" lint "${toml_files[@]}"

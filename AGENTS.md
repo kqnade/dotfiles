@@ -35,6 +35,8 @@ are macOS arm64/x64, Fedora x64, Arch Linux x64, and Fedora/Arch under WSL x64.
   Brewfile or an external `brew` CLI.
 - Intel macOS uses Cargo fallbacks for sheldon, delta, fd, and atuin, plus an
   npm fallback for pnpm.
+- `dot_codex/modify_private_config.toml` enforces stable Codex defaults in
+  `~/.codex/config.toml` while preserving Codex-managed tables and sibling runtime state.
 - `mise run apply` is the only normal dotfile mutation path. Chezmoi does not
   install packages or manage services.
 
