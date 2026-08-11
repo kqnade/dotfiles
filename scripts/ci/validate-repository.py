@@ -10,6 +10,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -502,6 +503,84 @@ if not codex_global_rule_link.is_file():
     fail("Codex global AGENTS.md symlink source is missing")
 if codex_global_rule_link.read_text().strip() != "../.agents/rules/git.md":
     fail("Codex global AGENTS.md must link to the canonical Git rule")
+
+codex_config_modifier = ROOT / "dot_codex/modify_config.toml"
+if not codex_config_modifier.is_file():
+    fail("Codex stable defaults modifier is missing")
+
+codex_runtime_config = """\
+approvals_reviewer = "auto_review"
+model = "runtime-model"
+model_reasoning_effort = "low"
+runtime_marker = "preserve-me"
+
+[agents]
+default_subagent_model = "runtime-subagent"
+default_subagent_reasoning_effort = "medium"
+
+[notice]
+hide_rate_limit_model_nudge = true
+
+[projects."/tmp/runtime-project"]
+trust_level = "trusted"
+
+[tui.model_availability_nux]
+"runtime-model" = 4
+
+[features]
+hooks = false
+
+[hooks.state."/tmp/hooks.json:session_start:0:0"]
+trusted_hash = "sha256:runtime-owned"
+"""
+codex_modified_result = subprocess.run(
+    ["bash", str(codex_config_modifier)],
+    cwd=ROOT,
+    input=codex_runtime_config,
+    text=True,
+    capture_output=True,
+    check=False,
+)
+if codex_modified_result.returncode != 0:
+    fail(f"Codex config modifier failed: {codex_modified_result.stderr.strip()}")
+codex_modified_config = tomllib.loads(codex_modified_result.stdout)
+
+expected_codex_defaults = {
+    "approvals_reviewer": "user",
+    "model": "gpt-5.6-sol",
+    "model_reasoning_effort": "high",
+}
+for key, expected_value in expected_codex_defaults.items():
+    if codex_modified_config.get(key) != expected_value:
+        fail(f"Codex config modifier did not enforce {key}")
+
+expected_agent_defaults = {
+    "default_subagent_model": "gpt-5.6-luna",
+    "default_subagent_reasoning_effort": "max",
+}
+for key, expected_value in expected_agent_defaults.items():
+    if codex_modified_config.get("agents", {}).get(key) != expected_value:
+        fail(f"Codex config modifier did not enforce agents.{key}")
+
+if codex_modified_config.get("features", {}).get("hooks") is not True:
+    fail("Codex config modifier must enable lifecycle hooks")
+
+preserved_codex_runtime_state = {
+    "runtime_marker": "preserve-me",
+    "notice": {"hide_rate_limit_model_nudge": True},
+    "projects": {"/tmp/runtime-project": {"trust_level": "trusted"}},
+    "tui": {"model_availability_nux": {"runtime-model": 4}},
+    "hooks": {
+        "state": {
+            "/tmp/hooks.json:session_start:0:0": {
+                "trusted_hash": "sha256:runtime-owned"
+            }
+        }
+    },
+}
+for key, expected_value in preserved_codex_runtime_state.items():
+    if codex_modified_config.get(key) != expected_value:
+        fail(f"Codex config modifier changed runtime-owned {key}")
 
 claude_agents = list((ROOT / "dot_claude/agents").glob("*.md"))
 if claude_agents:
