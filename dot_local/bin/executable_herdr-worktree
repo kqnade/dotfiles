@@ -76,7 +76,7 @@ zsh_program='
   fi
 '
 
-if (( $# > 0 )); then
+if (($# > 0)); then
   response_file=$(mktemp)
   trap 'rm -f "$response_file"' EXIT
   if HERDR_WORKTREE_RESPONSE_FILE="$response_file" \
