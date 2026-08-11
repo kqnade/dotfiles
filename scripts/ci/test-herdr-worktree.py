@@ -24,6 +24,7 @@ class HerdrWorktreeTests(unittest.TestCase):
         stdin_branch: str,
         expected_branch: str,
         herdr_response: str | None = None,
+        git_ref_valid: bool = True,
     ) -> tuple[subprocess.CompletedProcess[str], list[str]]:
         with tempfile.TemporaryDirectory() as temporary_directory:
             fixture_root = Path(temporary_directory)
@@ -69,7 +70,10 @@ esac
 set -eu
 printf 'git %s\\n' "$*" >> "$FAKE_LOG"
 case "${1-} ${2-}" in
-  "check-ref-format --branch") exit 0 ;;
+  "check-ref-format --branch")
+    [ "$FAKE_GIT_REF_VALID" = "1" ] || exit 1
+    exit 0
+    ;;
   "worktree list")
     printf 'worktree %s\\nbranch refs/heads/%s\\n' "$FAKE_WORKTREE_PATH" "$EXPECTED_BRANCH"
     exit 0
@@ -103,6 +107,7 @@ fi
                     "FAKE_WORKTREE_PATH": str(worktree_path),
                     "EXPECTED_BRANCH": expected_branch,
                     "FAKE_HERDR_RESPONSE": herdr_response or "",
+                    "FAKE_GIT_REF_VALID": "1" if git_ref_valid else "0",
                 }
             )
             command = ["/bin/bash", str(SCRIPT)]
@@ -162,6 +167,21 @@ fi
         self.assertIn(f"--label {branch}", herdr_calls[0])
         self.assertIn("--no-focus", herdr_calls[0])
         self.assertNotIn("--focus", herdr_calls[0])
+
+    def test_invalid_explicit_branch_fails_before_prompt_or_workspace_open(self) -> None:
+        branch = "invalid branch"
+        result, herdr_calls = self.run_worktree(
+            branch_argument=branch,
+            stdin_branch="feat/ignored-stdin",
+            expected_branch=branch,
+            git_ref_valid=False,
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn("Branch name (for example issue/123 or feat/login):", result.stdout)
+        self.assertIn(f"error: invalid branch name: {branch}", result.stderr)
+        self.assertEqual(herdr_calls, [])
+        self.assertNotIn('"result"', result.stdout)
 
     def test_no_argument_prompts_and_opens_focused_stdin_branch(self) -> None:
         branch = "feat/from-stdin"
