@@ -29,6 +29,8 @@ class HerdrWorktreeTests(unittest.TestCase):
         registered_worktree: bool = True,
         git_worktree_add_stdout: str | None = None,
         hook_stdout: str | None = None,
+        existing_branch: bool = True,
+        wt_new_stdout: str | None = None,
     ) -> tuple[subprocess.CompletedProcess[str], list[str]]:
         with tempfile.TemporaryDirectory() as temporary_directory:
             fixture_root = Path(temporary_directory)
@@ -75,6 +77,9 @@ set -eu
 printf 'wt %s\\n' "$*" >> "$FAKE_LOG"
 case "${1-}" in
   home-path) printf '%s\\n' "$FAKE_BASE_REPO" ;;
+  new)
+    [ -z "$FAKE_WT_NEW_STDOUT" ] || printf '%s\\n' "$FAKE_WT_NEW_STDOUT"
+    ;;
 esac
 """,
                 encoding="utf-8",
@@ -98,7 +103,10 @@ case "${1-} ${2-}" in
     [ -z "$FAKE_GIT_WORKTREE_ADD_STDOUT" ] || printf '%s\\n' "$FAKE_GIT_WORKTREE_ADD_STDOUT"
     exit 0
     ;;
-  "show-ref --verify") exit 0 ;;
+  "show-ref --verify")
+    [ "$FAKE_EXISTING_BRANCH" = "1" ] || exit 1
+    exit 0
+    ;;
 esac
 exit 99
 """,
@@ -131,6 +139,8 @@ fi
                     "FAKE_REGISTERED_WORKTREE": "1" if registered_worktree else "0",
                     "FAKE_GIT_WORKTREE_ADD_STDOUT": git_worktree_add_stdout or "",
                     "FAKE_HOOK_STDOUT": hook_stdout or "",
+                    "FAKE_EXISTING_BRANCH": "1" if existing_branch else "0",
+                    "FAKE_WT_NEW_STDOUT": wt_new_stdout or "",
                 }
             )
             command = ["/bin/bash", str(SCRIPT)]
@@ -236,6 +246,28 @@ fi
         self.assertEqual(json.loads(result.stdout), expected_response)
         self.assertIn("noisy git worktree add", result.stderr)
         self.assertIn("noisy post-new hook", result.stderr)
+
+    def test_new_branch_keeps_wt_noise_off_stdout(self) -> None:
+        branch = "feat/new-branch"
+        expected_response = {
+            "result": {
+                "workspace": {"workspace_id": "w-fixture"},
+                "root_pane": {"pane_id": "w-fixture:p-root"},
+            }
+        }
+        result, _ = self.run_worktree(
+            branch_argument=branch,
+            stdin_branch="feat/ignored-stdin",
+            expected_branch=branch,
+            herdr_response=json.dumps(expected_response),
+            registered_worktree=False,
+            existing_branch=False,
+            wt_new_stdout="noisy wt new",
+        )
+
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        self.assertEqual(json.loads(result.stdout), expected_response)
+        self.assertIn("noisy wt new", result.stderr)
 
     def test_invalid_explicit_branch_fails_before_prompt_or_workspace_open(self) -> None:
         branch = "invalid branch"
