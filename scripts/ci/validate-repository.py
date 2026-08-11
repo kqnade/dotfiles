@@ -432,28 +432,52 @@ for required in (".dev/memory/README.md",):
     if not (ROOT / required).is_file():
         fail(f"context and memory boundary file is missing: {required}")
 
-expected_claude_rules = {
+expected_claude_rule_sources = {
+    "delivery.md",
+    "git.md",
+    "operations.md",
+    "symlink_coding.md",
+    "verification.md",
+}
+expected_claude_rule_targets = {
     "coding.md",
     "delivery.md",
     "git.md",
     "operations.md",
     "verification.md",
 }
-claude_rules = {
+claude_rule_sources = {
     path.name for path in (ROOT / "dot_claude/rules").glob("*.md")
 }
-if claude_rules != expected_claude_rules:
+if claude_rule_sources != expected_claude_rule_sources:
     fail(
-        "Claude global rules differ from the reviewed set: "
-        f"expected {sorted(expected_claude_rules)}, got {sorted(claude_rules)}"
+        "Claude global rule sources differ from the reviewed set: "
+        f"expected {sorted(expected_claude_rule_sources)}, "
+        f"got {sorted(claude_rule_sources)}"
     )
 
+shared_coding_rule = ROOT / "dot_agents/rules/coding.md"
+if not shared_coding_rule.is_file():
+    fail("shared coding rule is missing")
+shared_coding_rule_text = shared_coding_rule.read_text()
+for required_fragment in (
+    "smallest correct change",
+    "Preserve user-authored and pre-existing changes",
+    "Make names and structure explain what the code does",
+    "when the code would otherwise look surprising to a future reader",
+    "Do not comment merely to\n  explain why ordinary-looking code exists",
+    "Handle failures explicitly",
+):
+    if required_fragment not in shared_coding_rule_text:
+        fail("shared coding rule is missing reviewed behavior")
+
+claude_coding_rule_link = ROOT / "dot_claude/rules/symlink_coding.md"
+if not claude_coding_rule_link.is_file():
+    fail("Claude shared coding rule symlink source is missing")
+if claude_coding_rule_link.read_text().strip() != "../../.agents/rules/coding.md":
+    fail("Claude coding rule must link to the canonical shared rule")
+
 required_claude_rule_fragments = {
-    "coding.md": (
-        "smallest correct change",
-        "Preserve user-authored and pre-existing changes",
-        "Handle failures explicitly",
-    ),
     "verification.md": (
         "List -> Red -> Green -> Refactor",
         "Never describe an unrun check as passing",
@@ -497,11 +521,41 @@ for required_fragment in (
     if required_fragment not in codex_global_rule_text:
         fail("Codex global Git rule is missing reviewed behavior")
 
+codex_global_rule_template = ROOT / "dot_agents/rules/AGENTS.md.tmpl"
+if not codex_global_rule_template.is_file():
+    fail("Codex global rule aggregate is missing")
+codex_global_rule_template_text = codex_global_rule_template.read_text()
+for required_include in (
+    '{{ include "dot_agents/rules/coding.md" }}',
+    '{{ include "dot_agents/rules/git.md" }}',
+):
+    if required_include not in codex_global_rule_template_text:
+        fail(
+            "Codex global rule aggregate must include shared coding and Codex Git rules"
+        )
+codex_global_rule_aggregate = subprocess.check_output(
+    [
+        "chezmoi",
+        "--source",
+        str(ROOT),
+        "execute-template",
+        "--file",
+        str(codex_global_rule_template),
+    ],
+    text=True,
+)
+for required_fragment in (
+    "Make names and structure explain what the code does",
+    "Use `git cc` for normal local commits",
+):
+    if required_fragment not in codex_global_rule_aggregate:
+        fail("rendered Codex global rule aggregate is missing reviewed behavior")
+
 codex_global_rule_link = ROOT / "dot_codex/symlink_AGENTS.md"
 if not codex_global_rule_link.is_file():
     fail("Codex global AGENTS.md symlink source is missing")
-if codex_global_rule_link.read_text().strip() != "../.agents/rules/git.md":
-    fail("Codex global AGENTS.md must link to the canonical Git rule")
+if codex_global_rule_link.read_text().strip() != "../.agents/rules/AGENTS.md":
+    fail("Codex global AGENTS.md must link to the canonical rule aggregate")
 
 claude_agents = list((ROOT / "dot_claude/agents").glob("*.md"))
 if claude_agents:
@@ -1410,7 +1464,7 @@ if (ROOT / "dot_claude/hooks/executable_herdr-review-notify.sh").exists():
     fail("legacy Herdr review notification hook remains")
 
 removals = (ROOT / ".chezmoiremove").read_text().splitlines()
-for restored_rule_name in expected_claude_rules:
+for restored_rule_name in expected_claude_rule_targets:
     restored_target = f".claude/rules/{restored_rule_name}"
     if restored_target in removals:
         fail(f"restored Claude rule must not remain in .chezmoiremove: {restored_target}")
