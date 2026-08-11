@@ -1,0 +1,70 @@
+---
+name: route-large-implementation
+description: Route an explicitly requested or clearly large implementation into independent isolated Herdr worktree units. Use only for outer topology and dispatch; ordinary small changes and execution in an existing worktree belong to their canonical skills.
+---
+
+# Route Large Implementation
+
+Use this skill only when the user explicitly asks for outer orchestration or
+the scope is clearly large enough to need independent isolated worktree units.
+Do not trigger for an ordinary/small change or for execution in an already
+routed worktree. It owns outer topology; ordinary executable changes remain
+with `$test-driven-development`, and a coordinator in an existing worktree
+must invoke `$execute-worktree-implementation`.
+
+## Route
+
+1. Keep the top-level Sol high router to shallow decomposition and dispatch.
+   Identify genuinely independent units and their disjoint paths from the
+   request and known context. Do not implement, perform deep exploration, or
+   make unit-level design decisions here.
+2. Require `HERDR_ENV=1`, validate each branch with
+   `git check-ref-format --branch`, and invoke the existing noninteractive
+   helper for each unit:
+
+   ```bash
+   $HOME/.local/bin/herdr-worktree "$branch"
+   ```
+
+   Do not create a worktree with `git worktree`, `wt`, or another manager.
+3. Parse the helper's Herdr JSON. Use the returned `.result.workspace` and
+   `.result.root_pane`; start exactly one top-level `gpt-5.6-sol` coordinator
+   at high reasoning effort per returned worktree. Do not start a duplicate
+   coordinator for a worktree.
+4. Make the coordinator's first input a bounded English `/goal` containing a
+   minimal WHAT/HOW/DONE packet:
+
+   - WHAT: objective, independent unit, and relevant target paths;
+   - HOW: constraints and the instruction to explicitly invoke
+     `$execute-worktree-implementation` in the existing worktree;
+   - DONE: acceptance criteria and required evidence/verification.
+
+   The goal must include the objective, key constraints, and an observable
+   completion condition. Treat `/goal` as execution-starting input: once the
+   coordinator begins pursuing it, do not immediately send a duplicate task
+   prompt; send only missing details or later steering. Lower-level agent
+   instructions are English by default.
+
+   Never transport a broad conversation or transcript, `.dev` context, or
+   unrelated source. If the helper, JSON, or coordinator setup fails, stop and
+   report the bounded failure.
+
+## Dispatch failures
+
+A capacity or concurrency failure while starting a coordinator is terminal for
+that dispatch attempt. Do not retry automatically, poll in a loop, weaken the
+requested model or effort, switch transport, create a Herdr fallback worker, or
+change workspace or pane topology. Report the blocked unit with concise
+evidence, notify the parent or human, and stop that unit.
+
+The outer router does not wait or poll after dispatch. Continue other
+independent dispatch work and react only to a later blocked or done
+notification. Do not impose an arbitrary low parallelism limit: capacity policy
+defines failure handling, not a fixed concurrency cap.
+
+## Boundary
+
+The router never recursively invokes itself. It does not execute packets,
+edit implementation or test files, broadly transport conversation or `.dev`
+context, or start another Sol coordinator. The executor owns worktree-local
+implementation; this skill owns only the outer worktree topology and dispatch.

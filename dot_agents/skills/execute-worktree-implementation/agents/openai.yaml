@@ -1,0 +1,4 @@
+interface:
+  display_name: "Execute Worktree Implementation"
+  short_description: "Execute a bounded worktree packet"
+  default_prompt: "Use $execute-worktree-implementation to execute this bounded packet in the existing isolated worktree."

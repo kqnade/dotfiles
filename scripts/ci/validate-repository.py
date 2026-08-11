@@ -510,10 +510,12 @@ if claude_agents:
 expected_agent_skills = {
     "assumption-pruning",
     "context-handoff",
+    "execute-worktree-implementation",
     "evidence-review",
     "herdr",
     "peer-consultation",
     "prose-proofreading",
+    "route-large-implementation",
     "security-audit",
     "test-driven-development",
     "using-workflow-skills",
@@ -564,6 +566,21 @@ if combined_skill_description_size > 8000:
         f"{combined_skill_description_size} characters"
     )
 
+worktree_openai_prompts = {
+    "route-large-implementation": "$route-large-implementation",
+    "execute-worktree-implementation": "$execute-worktree-implementation",
+}
+for worktree_skill_name, prompt_token in worktree_openai_prompts.items():
+    worktree_metadata = (
+        agent_skills_root / worktree_skill_name / "agents/openai.yaml"
+    )
+    if not worktree_metadata.is_file():
+        fail(f"{worktree_skill_name} must provide agents/openai.yaml")
+    if prompt_token not in worktree_metadata.read_text():
+        fail(
+            f"{worktree_skill_name} default prompt must mention {prompt_token}"
+        )
+
 claude_skill_links = {path.name for path in (ROOT / "dot_claude/skills").iterdir()}
 expected_claude_skill_links = {
     f"symlink_{skill_name}" for skill_name in expected_agent_skills
@@ -603,6 +620,153 @@ for skill_name, required_phrases in effect_contracts.items():
         phrase_pattern = r"\s+".join(re.escape(part) for part in required_phrase.split())
         if not re.search(phrase_pattern, skill_text, re.IGNORECASE):
             fail(f"{skill_name} is missing its effect contract: {required_phrase}")
+
+worktree_effect_contracts = {
+    "route-large-implementation": {
+        "required": (
+            "explicitly asks for outer orchestration",
+            "independent isolated worktree units",
+            "HERDR_ENV=1",
+            "$HOME/.local/bin/herdr-worktree",
+            "Herdr JSON",
+            ".result.workspace",
+            ".result.root_pane",
+            "exactly one",
+            "gpt-5.6-sol",
+            "high reasoning effort",
+            "WHAT/HOW/DONE",
+            "$execute-worktree-implementation",
+            "English `/goal`",
+            "objective",
+            "key constraints",
+            "observable completion condition",
+            "execution-starting input",
+            "do not immediately send a duplicate task prompt",
+            "broad conversation or transcript",
+            ".dev",
+            "never recursively invokes itself",
+            "capacity or concurrency failure",
+            "terminal for that dispatch attempt",
+            "Do not retry automatically",
+            "poll in a loop",
+            "weaken the requested model or effort",
+            "switch transport",
+            "Herdr fallback worker",
+            "workspace or pane topology",
+            "blocked unit",
+            "notify the parent or human",
+            "does not wait or poll after dispatch",
+            "blocked or done notification",
+            "arbitrary low parallelism limit",
+            "not a fixed concurrency cap",
+        ),
+        "ordered": (
+            "decomposition and dispatch",
+            "$HOME/.local/bin/herdr-worktree",
+            "Parse the helper's Herdr JSON",
+            "start exactly one top-level",
+            "first input",
+            "minimal WHAT/HOW/DONE packet",
+            "Dispatch failures",
+        ),
+    },
+    "execute-worktree-implementation": {
+        "required": (
+            "explicitly invokes it",
+            "existing isolated worktree",
+            "active",
+            "/goal",
+            "English `/goal`",
+            "objective",
+            "key constraints",
+            "observable completion condition",
+            "execution-starting input",
+            "do not immediately send a duplicate task prompt",
+            "concrete todo list",
+            "behavior-test list",
+            "parallel, read-only",
+            "gpt-5.6-luna",
+            "file references",
+            "test seams",
+            "dependencies",
+            "uncertainties",
+            "Sol high coordinator selects",
+            "very small atomic packets",
+            "target files/seam",
+            "verification command",
+            "constraints/non-goals",
+            "completion evidence",
+            "Partition disjoint writes",
+            "serialize any overlapping writes",
+            "fresh `gpt-5.6-luna`",
+            "max effort",
+            "$test-driven-development",
+            "List → Red → Green → Refactor",
+            "git status",
+            "staged diff",
+            "git cc",
+            "Commit every Green",
+            "clean-status check",
+            "before push",
+            "never create or choose a worktree",
+            "herdr-worktree",
+            "`wt`",
+            "`git worktree`",
+            "another Sol coordinator",
+            "$route-large-implementation",
+            "capacity or concurrency failure",
+            "terminal for that dispatch attempt",
+            "Do not retry automatically",
+            "poll in a loop",
+            "weaken the requested model or effort",
+            "switch transport",
+            "Herdr fallback worker",
+            "workspace or pane topology",
+            "blocked unit",
+            "notify the coordinator or human",
+            "stop that unit",
+            "blocked or done notifications",
+            "arbitrary low parallelism limit",
+            "not a fixed concurrency cap",
+        ),
+        "ordered": (
+            "Create a concrete todo list",
+            "parallel, read-only",
+            "very small atomic packets",
+            "fresh `gpt-5.6-luna`",
+            "Dispatch failures",
+            "Verify each Green",
+            "Commit every Green",
+            "clean-status check",
+        ),
+    },
+}
+
+for worktree_skill_name, contract in worktree_effect_contracts.items():
+    worktree_skill_text = (agent_skills_root / worktree_skill_name / "SKILL.md").read_text()
+    for required_phrase in contract["required"]:
+        phrase_pattern = r"\s+".join(
+            re.escape(part) for part in required_phrase.split()
+        )
+        if not re.search(phrase_pattern, worktree_skill_text, re.IGNORECASE):
+            fail(
+                f"{worktree_skill_name} is missing its effect contract: "
+                f"{required_phrase}"
+            )
+    previous_end = 0
+    for ordered_phrase in contract["ordered"]:
+        phrase_pattern = r"\s+".join(
+            re.escape(part) for part in ordered_phrase.split()
+        )
+        ordered_match = re.search(
+            phrase_pattern, worktree_skill_text[previous_end:], re.IGNORECASE
+        )
+        if ordered_match is None:
+            fail(
+                f"{worktree_skill_name} has an invalid workflow order at: "
+                f"{ordered_phrase}"
+            )
+        previous_end += ordered_match.end()
 
 trust_contracts = {
     "context-handoff": (
