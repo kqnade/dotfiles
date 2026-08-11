@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import tempfile
@@ -22,6 +23,7 @@ class HerdrWorktreeTests(unittest.TestCase):
         branch_argument: str | None,
         stdin_branch: str,
         expected_branch: str,
+        herdr_response: str | None = None,
     ) -> tuple[subprocess.CompletedProcess[str], list[str]]:
         with tempfile.TemporaryDirectory() as temporary_directory:
             fixture_root = Path(temporary_directory)
@@ -83,6 +85,9 @@ exit 99
                 """#!/bin/sh
 set -eu
 printf 'herdr %s\\n' "$*" >> "$FAKE_LOG"
+if [ -n "$FAKE_HERDR_RESPONSE" ]; then
+  printf '%s\\n' "$FAKE_HERDR_RESPONSE"
+fi
 """,
                 encoding="utf-8",
             )
@@ -97,6 +102,7 @@ printf 'herdr %s\\n' "$*" >> "$FAKE_LOG"
                     "FAKE_BASE_REPO": str(base_repo),
                     "FAKE_WORKTREE_PATH": str(worktree_path),
                     "EXPECTED_BRANCH": expected_branch,
+                    "FAKE_HERDR_RESPONSE": herdr_response or "",
                 }
             )
             command = ["/bin/bash", str(SCRIPT)]
@@ -130,6 +136,32 @@ printf 'herdr %s\\n' "$*" >> "$FAKE_LOG"
         self.assertEqual(len(herdr_calls), 1)
         self.assertIn(f"--label {branch}", herdr_calls[0])
         self.assertNotIn(f"--label {stdin_branch}", herdr_calls[0])
+
+    def test_explicit_branch_returns_background_herdr_json(self) -> None:
+        branch = "feat/machine-branch"
+        expected_response = {
+            "result": {
+                "workspace": {"workspace_id": "w-fixture"},
+                "root_pane": {"pane_id": "w-fixture:p-root"},
+            }
+        }
+        result, herdr_calls = self.run_worktree(
+            branch_argument=branch,
+            stdin_branch="feat/ignored-stdin",
+            expected_branch=branch,
+            herdr_response=json.dumps(expected_response),
+        )
+
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        try:
+            stdout_response = json.loads(result.stdout)
+        except json.JSONDecodeError as error:
+            self.fail(f"stdout is not exactly one JSON document ({error}): {result.stdout!r}")
+        self.assertEqual(stdout_response, expected_response)
+        self.assertEqual(len(herdr_calls), 1)
+        self.assertIn(f"--label {branch}", herdr_calls[0])
+        self.assertIn("--no-focus", herdr_calls[0])
+        self.assertNotIn("--focus", herdr_calls[0])
 
     def test_no_argument_prompts_and_opens_focused_stdin_branch(self) -> None:
         branch = "feat/from-stdin"
