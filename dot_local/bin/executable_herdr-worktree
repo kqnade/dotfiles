@@ -4,8 +4,12 @@ set -euo pipefail
 # wt is a zsh function loaded by sheldon. Use it instead of duplicating its
 # checkout path convention and post-new lifecycle hooks.
 exec zsh -lic '
-  printf "Branch name (for example issue/123 or feat/login): "
-  IFS= read -r branch
+  if (( $# > 0 )); then
+    branch="$1"
+  else
+    printf "Branch name (for example issue/123 or feat/login): "
+    IFS= read -r branch
+  fi
   [[ -n "$branch" ]] || { print -u2 "error: branch name is required"; exit 1; }
   git check-ref-format --branch "$branch" >/dev/null 2>&1 || {
     print -u2 "error: invalid branch name: $branch"
@@ -49,4 +53,4 @@ exec zsh -lic '
   herdr worktree open --path "$worktree_path" --label "$branch" --focus --json \
     >/dev/null || exit
   print "✓ opened in Herdr: $branch"
-'
+' -- "$@"

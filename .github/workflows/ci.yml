@@ -43,6 +43,7 @@ jobs:
           mise install --locked chezmoi
           python3 scripts/ci/test-validate-mise.py
           python3 scripts/ci/test-claude-settings.py
+          python3 scripts/ci/test-herdr-worktree.py
           python3 scripts/ci/validate-mise.py
           mise exec -- python3 scripts/ci/validate-repository.py
           mise tasks validate
