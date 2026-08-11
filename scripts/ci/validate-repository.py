@@ -504,7 +504,7 @@ if not codex_global_rule_link.is_file():
 if codex_global_rule_link.read_text().strip() != "../.agents/rules/git.md":
     fail("Codex global AGENTS.md must link to the canonical Git rule")
 
-codex_config_modifier = ROOT / "dot_codex/modify_config.toml"
+codex_config_modifier = ROOT / "dot_codex/modify_private_config.toml"
 if not codex_config_modifier.is_file():
     fail("Codex stable defaults modifier is missing")
 
@@ -581,6 +581,35 @@ preserved_codex_runtime_state = {
 for key, expected_value in preserved_codex_runtime_state.items():
     if codex_modified_config.get(key) != expected_value:
         fail(f"Codex config modifier changed runtime-owned {key}")
+
+with tempfile.TemporaryDirectory() as temp_dir:
+    codex_home = Path(temp_dir) / "home"
+    codex_config = codex_home / ".codex" / "config.toml"
+    codex_config.parent.mkdir(parents=True)
+    codex_config.write_text(codex_runtime_config)
+    codex_config.chmod(0o600)
+    codex_apply_result = subprocess.run(
+        [
+            "chezmoi",
+            "--source",
+            str(ROOT),
+            "--destination",
+            str(codex_home),
+            "--persistent-state",
+            str(Path(temp_dir) / "chezmoistate.boltdb"),
+            "--no-tty",
+            "apply",
+            ".codex/config.toml",
+        ],
+        cwd=codex_home,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if codex_apply_result.returncode != 0:
+        fail(f"Codex config apply failed: {codex_apply_result.stderr.strip()}")
+    if codex_config.stat().st_mode & 0o777 != 0o600:
+        fail("Codex config must remain private after chezmoi apply")
 
 claude_agents = list((ROOT / "dot_claude/agents").glob("*.md"))
 if claude_agents:
