@@ -40,7 +40,7 @@ jobs:
       - name: validate manifest and repository invariants
         run: |
           mise trust mise.toml
-          mise install --locked chezmoi
+          mise install --locked chezmoi yq
           python3 scripts/ci/test-validate-mise.py
           python3 scripts/ci/test-claude-settings.py
           python3 scripts/ci/validate-mise.py
