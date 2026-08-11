@@ -1,1 +1,1 @@
-../.agents/rules/git.md
+../.agents/rules/AGENTS.md
