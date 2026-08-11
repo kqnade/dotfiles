@@ -104,7 +104,9 @@ Keep this mapping consistent when editing Vim or Neovim:
 - The installed set is organized by desired effect rather than by source workflow:
   `evidence-review`, `context-handoff`, `security-audit`, `prose-proofreading`,
   `assumption-pruning`, `peer-consultation`, and t-wada-style
-  `test-driven-development`. `using-workflow-skills` is the routing guardrail.
+  `test-driven-development`, `route-large-implementation`, and
+  `execute-worktree-implementation`. `using-workflow-skills` is the routing
+  guardrail.
 - Cross-session context and security coverage use the current Git worktree's `.dev/`,
   resolved by `using-workflow-skills/scripts/workflow-state-root`. Claude automatic
   memory remains disabled. Current-worktree repository-owned records are normal project

@@ -29,6 +29,8 @@ current-state evidence.
 
 | Task | Canonical owner |
 |---|---|
+| Route a large implementation into independent isolated Herdr worktree units | `route-large-implementation` |
+| Execute an explicitly invoked packet in an existing isolated worktree | `execute-worktree-implementation` |
 | Add or change executable behavior; fix a defect | `test-driven-development` |
 | Review a code change or dependency update | `evidence-review` |
 | Export, import, or reconcile a task handoff | `context-handoff` |
@@ -44,6 +46,14 @@ Each capability has **one canonical owner**. Do not recreate separate skills
 for review transports, context directions, dependency review, or a second TDD
 workflow. A capability may call a supporting owner—for example,
 `evidence-review` may call `peer-consultation`—without taking over its contract.
+`route-large-implementation` owns only outer topology and dispatch for large
+changes; `execute-worktree-implementation` owns execution in an existing
+worktree; `test-driven-development` still owns the List → Red → Green →
+Refactor contract applied to each executable increment. These two worktree
+owners have non-overlapping triggers: route the outer topology, or explicitly
+execute a packet in the already selected worktree. Do not infer outer routing
+from an ordinary implementation request unless orchestration is explicit or
+the work is clearly large enough to require independent worktree units.
 Likewise, “use Herdr to ask another agent” is led by `peer-consultation`, with
 `herdr` as the explicitly requested transport; direct pane, tab, and workspace
 control remains owned by `herdr`.

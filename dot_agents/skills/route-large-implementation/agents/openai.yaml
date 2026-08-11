@@ -1,0 +1,4 @@
+interface:
+  display_name: "Route Large Implementation"
+  short_description: "Route large worktree implementation"
+  default_prompt: "Use $route-large-implementation to route a large implementation through isolated worktrees."
