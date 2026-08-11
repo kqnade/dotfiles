@@ -3,7 +3,7 @@ set -euo pipefail
 
 # wt is a zsh function loaded by sheldon. Use it instead of duplicating its
 # checkout path convention and post-new lifecycle hooks.
-exec zsh -lic '
+zsh_program='
   machine_mode=0
   if (( $# > 0 )); then
     branch="$1"
@@ -67,10 +67,26 @@ exec zsh -lic '
   # Register the wt-managed checkout in Herdr. Herdr reuses an already-open
   # workspace and groups a newly opened one below the source repository.
   if (( machine_mode )); then
-    herdr worktree open --path "$worktree_path" --label "$branch" --no-focus --json || exit
+    herdr worktree open --path "$worktree_path" --label "$branch" --no-focus --json \
+      >"$HERDR_WORKTREE_RESPONSE_FILE" || exit
   else
     herdr worktree open --path "$worktree_path" --label "$branch" --focus --json \
       >/dev/null || exit
     print "✓ opened in Herdr: $branch"
   fi
-' -- "$@"
+'
+
+if (( $# > 0 )); then
+  response_file=$(mktemp)
+  trap 'rm -f "$response_file"' EXIT
+  if HERDR_WORKTREE_RESPONSE_FILE="$response_file" \
+    zsh -lic "$zsh_program" -- "$@" >/dev/null; then
+    cat "$response_file"
+    exit 0
+  else
+    command_status=$?
+    exit "$command_status"
+  fi
+fi
+
+exec zsh -lic "$zsh_program" -- "$@"

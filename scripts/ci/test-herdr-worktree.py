@@ -25,6 +25,7 @@ class HerdrWorktreeTests(unittest.TestCase):
         expected_branch: str,
         herdr_response: str | None = None,
         git_ref_valid: bool = True,
+        shell_exit_stdout: str | None = None,
     ) -> tuple[subprocess.CompletedProcess[str], list[str]]:
         with tempfile.TemporaryDirectory() as temporary_directory:
             fixture_root = Path(temporary_directory)
@@ -46,12 +47,19 @@ if [ "${1-}" = "--" ]; then
   shift
 fi
 export HERDR_WORKTREE_BODY="$body"
-exec /bin/zsh -f -c '
+set +e
+/bin/zsh -f -c '
 _wt_base() { print -r -- "$FAKE_BASE_REPO"; }
 _wt_branch_to_dir() { print -r -- "synthetic-branch"; }
 _wt_run_hook() { return 0; }
 eval "$HERDR_WORKTREE_BODY"
 ' -- "$@"
+command_status=$?
+set -e
+if [ -n "$FAKE_ZSH_EXIT_STDOUT" ]; then
+  printf '%s' "$FAKE_ZSH_EXIT_STDOUT"
+fi
+exit "$command_status"
 """,
                 encoding="utf-8",
             )
@@ -108,6 +116,7 @@ fi
                     "EXPECTED_BRANCH": expected_branch,
                     "FAKE_HERDR_RESPONSE": herdr_response or "",
                     "FAKE_GIT_REF_VALID": "1" if git_ref_valid else "0",
+                    "FAKE_ZSH_EXIT_STDOUT": shell_exit_stdout or "",
                 }
             )
             command = ["/bin/bash", str(SCRIPT)]
@@ -167,6 +176,29 @@ fi
         self.assertIn(f"--label {branch}", herdr_calls[0])
         self.assertIn("--no-focus", herdr_calls[0])
         self.assertNotIn("--focus", herdr_calls[0])
+
+    def test_explicit_branch_ignores_login_shell_exit_stdout(self) -> None:
+        branch = "feat/shell-exit-noise"
+        expected_response = {
+            "result": {
+                "workspace": {"workspace_id": "w-fixture"},
+                "root_pane": {"pane_id": "w-fixture:p-root"},
+            }
+        }
+        result, _ = self.run_worktree(
+            branch_argument=branch,
+            stdin_branch="feat/ignored-stdin",
+            expected_branch=branch,
+            herdr_response=json.dumps(expected_response),
+            shell_exit_stdout="\x1b[H\x1b[2J\x1b[3J",
+        )
+
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        try:
+            stdout_response = json.loads(result.stdout)
+        except json.JSONDecodeError as error:
+            self.fail(f"shell exit contaminated JSON ({error}): {result.stdout!r}")
+        self.assertEqual(stdout_response, expected_response)
 
     def test_invalid_explicit_branch_fails_before_prompt_or_workspace_open(self) -> None:
         branch = "invalid branch"
