@@ -809,6 +809,7 @@ expected_claude_rule_sources = {
     "git.md",
     "operations.md",
     "symlink_coding.md",
+    "symlink_workflow-state.md",
     "verification.md",
 }
 expected_claude_rule_targets = {
@@ -817,6 +818,7 @@ expected_claude_rule_targets = {
     "git.md",
     "operations.md",
     "verification.md",
+    "workflow-state.md",
 }
 claude_rule_sources = {
     path.name for path in (ROOT / "dot_claude/rules").glob("*.md")
@@ -848,6 +850,29 @@ if not claude_coding_rule_link.is_file():
     fail("Claude shared coding rule symlink source is missing")
 if claude_coding_rule_link.read_text().strip() != "../../.agents/rules/coding.md":
     fail("Claude coding rule must link to the canonical shared rule")
+
+shared_workflow_state_rule = ROOT / "dot_agents/rules/workflow-state.md"
+if not shared_workflow_state_rule.is_file():
+    fail("shared workflow-state rule is missing")
+shared_workflow_state_text = shared_workflow_state_rule.read_text()
+for required_fragment in (
+    "current Git worktree",
+    "task-relevant",
+    "provenance",
+    "freshness",
+    "Do not create or write",
+):
+    if required_fragment not in shared_workflow_state_text:
+        fail(f"shared workflow-state rule is missing reviewed behavior: {required_fragment}")
+
+claude_workflow_state_link = ROOT / "dot_claude/rules/symlink_workflow-state.md"
+if not claude_workflow_state_link.is_file():
+    fail("Claude workflow-state rule symlink source is missing")
+if (
+    claude_workflow_state_link.read_text().strip()
+    != "../../.agents/rules/workflow-state.md"
+):
+    fail("Claude workflow-state rule must link to the canonical shared rule")
 
 required_claude_rule_fragments = {
     "verification.md": (
@@ -900,6 +925,7 @@ codex_global_rule_template_text = codex_global_rule_template.read_text()
 for required_include in (
     '{{ include "dot_agents/rules/coding.md" }}',
     '{{ include "dot_agents/rules/git.md" }}',
+    '{{ include "dot_agents/rules/workflow-state.md" }}',
 ):
     if required_include not in codex_global_rule_template_text:
         fail(
@@ -919,6 +945,7 @@ codex_global_rule_aggregate = subprocess.check_output(
 for required_fragment in (
     "Make names and structure explain what the code does",
     "Use `git cc` for normal local commits",
+    "current Git worktree",
 ):
     if required_fragment not in codex_global_rule_aggregate:
         fail("rendered Codex global rule aggregate is missing reviewed behavior")
@@ -2114,6 +2141,17 @@ for restored_rule_name in expected_claude_rule_targets:
 
 if ".codex/AGENTS.md" in removals:
     fail("restored Codex global AGENTS.md must not remain in .chezmoiremove")
+if ".config/opencode/AGENTS.md" in removals:
+    fail("restored OpenCode global AGENTS.md must not remain in .chezmoiremove")
+
+opencode_global_rule_link = ROOT / "dot_config/opencode/symlink_AGENTS.md"
+if not opencode_global_rule_link.is_file():
+    fail("OpenCode global AGENTS.md symlink source is missing")
+if (
+    opencode_global_rule_link.read_text().strip()
+    != "../../.agents/rules/workflow-state.md"
+):
+    fail("OpenCode global AGENTS.md must link to the canonical workflow-state rule")
 
 for restored_skill_name in expected_agent_skills:
     restored_target = f".claude/skills/{restored_skill_name}"
@@ -2145,7 +2183,6 @@ for target in (
     ".claude/skills/sanity-review",
     ".claude/skills/ship",
     ".claude/skills/subagent-consultation",
-    ".config/opencode/AGENTS.md",
     ".config/opencode/plugins/claude-rules.ts",
     ".config/agent-workflows/state-home",
     ".config/project-maker",

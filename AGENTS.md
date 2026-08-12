@@ -92,14 +92,16 @@ Keep this mapping consistent when editing Vim or Neovim:
   `livesense-inc` or `jobtalk`. The shell wrapper checks before launching Claude, and
   the `UserPromptSubmit` and `PreToolUse` hooks reject every other repository,
   including missing or unrecognized remotes.
-- Shared unconditional coding conventions have one canonical source in
-  `dot_agents/rules/coding.md`. Claude receives it through a rule symlink; Codex receives it in a
-  generated global-rule aggregate.
+- Shared unconditional coding and repository workflow-state conventions have canonical sources in
+  `dot_agents/rules/{coding,workflow-state}.md`. Claude receives both through rule symlinks; Codex
+  receives both in a generated global-rule aggregate; OpenCode receives the workflow-state rule as
+  its global `AGENTS.md`.
 - Claude's client-specific unconditional global rules live in `dot_claude/rules/` and cover
   verification, operations, Git, and PRD/STD delivery boundaries.
 - Codex receives `~/.codex/AGENTS.md` as a symlink to the generated
-  `~/.agents/rules/AGENTS.md`, which combines shared coding conventions with the Codex-specific
-  Git and repository-authorization rule. It uses `git cc` outside the two Claude-only namespaces.
+  `~/.agents/rules/AGENTS.md`, which combines shared coding and workflow-state conventions with the
+  Codex-specific Git and repository-authorization rule. It uses `git cc` outside the two
+  Claude-only namespaces.
 - Cross-client workflow skills have one canonical source in `dot_agents/skills/`.
   Claude receives symlinks from `dot_claude/skills/`; Codex and OpenCode discover
   `~/.agents/skills/` directly. Do not copy a skill into client-specific directories.
@@ -160,6 +162,7 @@ Keep this mapping consistent when editing Vim or Neovim:
 - Neovim formatter: `dot_config/nvim/lua/modules/configs/editor/conform.lua`
 - OpenCode config: `dot_config/opencode/opencode.json`
 - Shared coding rule: `dot_agents/rules/coding.md`
+- Shared workflow-state rule: `dot_agents/rules/workflow-state.md`
 - Cross-client workflow skill: `dot_agents/skills/<name>/`
 - Claude-specific rule or hook: `dot_claude/{rules,hooks}/`
 

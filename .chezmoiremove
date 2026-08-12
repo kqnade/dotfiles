@@ -70,7 +70,6 @@
 .claude/skills/setupdotclaude
 .claude/skills/tdd
 .claude/skills/test-writer
-.config/opencode/AGENTS.md
 .config/opencode/plugins/claude-rules.ts
 .config/agent-workflows/state-home
 .config/cmux

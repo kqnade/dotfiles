@@ -52,6 +52,9 @@ native discoveryで同じ内容を利用します。source workflowの構造で�
 `evidence-review`、`context-handoff`、`security-audit`、`prose-proofreading`、
 `assumption-pruning`、`peer-consultation`を構成し、`using-workflow-skills`がtaskをownerへ
 routeします。TDDのcanonical workflowはt-wadaのList → Red → Green → Refactorです。
+`.dev/`の基本的な読込境界は`~/.agents/rules/workflow-state.md`を正本とし、Claude、Codex、
+OpenCodeがglobal ruleとして共有します。repository固有のlayoutとlifecycleは各repositoryの
+`AGENTS.md`を優先します。
 
 このintegrationの目的は、skill数や文章量を小さくすることではありません。change reviewと
 dependency update reviewは同じsnapshot・claim ledger・verification contractを使うため
