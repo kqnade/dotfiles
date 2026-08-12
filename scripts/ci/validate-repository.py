@@ -373,6 +373,70 @@ with tempfile.TemporaryDirectory() as temp_dir:
 
 
 with tempfile.TemporaryDirectory() as temp_dir:
+    test_root = Path(temp_dir)
+    fake_home = test_root / "home"
+    fake_bin = test_root / "bin"
+    fake_cache = test_root / "cache"
+    fake_functions = test_root / "functions"
+    command_log = test_root / "commands.log"
+    fake_home.mkdir()
+    fake_bin.mkdir()
+    (fake_cache / "zsh").mkdir(parents=True)
+    fake_functions.mkdir()
+    (fake_functions / "compinit").write_text(":\n")
+    (fake_cache / "zsh/generated-init.zsh").write_text(
+        'if [[ -z "${ATUIN_SESSION:-}" || "${ATUIN_SHLVL:-}" != "$SHLVL" ]]; then\n'
+        "  export ATUIN_SESSION=$(atuin uuid)\n"
+        "  export ATUIN_SHLVL=$SHLVL\n"
+        "fi\n"
+    )
+    atuin_stub = fake_bin / "atuin"
+    atuin_stub.write_text(
+        "#!/bin/sh\n"
+        'printf \'atuin %s\\n\' "$*" >>"$COMMAND_LOG"\n'
+        "printf '00000000000000000000000000000000\\n'\n"
+    )
+    atuin_stub.chmod(0o755)
+
+    atuin_env = dict(os.environ)
+    atuin_env.pop("ATUIN_SESSION", None)
+    atuin_env.pop("ATUIN_SHLVL", None)
+    atuin_env.update(
+        HOME=str(fake_home),
+        XDG_CACHE_HOME=str(fake_cache),
+        FPATH=str(fake_functions),
+        PATH=f"{fake_bin}:/usr/bin:/bin",
+        COMMAND_LOG=str(command_log),
+    )
+    atuin_result = subprocess.run(
+        [
+            "zsh",
+            "-dfi",
+            "-c",
+            (
+                "TTY=/dev/pts/test; OSTYPE=darwin25.0; "
+                f'source "{ROOT / "dot_zshrc"}"; '
+                'print -r -- "$ATUIN_SESSION:$ATUIN_SHLVL:$SHLVL"'
+            ),
+        ],
+        cwd=ROOT,
+        env=atuin_env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if atuin_result.returncode != 0:
+        fail("zsh must initialize an Atuin shell session")
+    session_id, atuin_level, shell_level = atuin_result.stdout.strip().split(":")
+    if not re.fullmatch(r"[0-9a-f]{32}", session_id):
+        fail("zsh must generate an Atuin-compatible session ID")
+    if atuin_level != shell_level:
+        fail("Atuin session level must match the current shell")
+    if command_log.exists():
+        fail("zsh must not spawn Atuin to generate a session ID")
+
+
+with tempfile.TemporaryDirectory() as temp_dir:
     fake_home = Path(temp_dir) / "home"
     fake_bin = Path(temp_dir) / "bin"
     fake_home.mkdir()

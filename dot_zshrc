@@ -48,6 +48,15 @@ else
 fi
 unset _zcompdump
 
+# Avoid spawning `atuin uuid` from Atuin's generated shell initialization.
+if [[ -z ${ATUIN_SESSION:-} || ${ATUIN_SHLVL:-} != $SHLVL ]]; then
+  printf -v ATUIN_SESSION '%04x%04x%04x4%03x%x%03x%04x%04x%04x' \
+    $RANDOM $RANDOM $RANDOM $((RANDOM & 0xfff)) \
+    $((8 + RANDOM % 4)) $((RANDOM & 0xfff)) $RANDOM $RANDOM $RANDOM
+  export ATUIN_SESSION
+  export ATUIN_SHLVL=$SHLVL
+fi
+
 if [[ -r $_zsh_init_cache ]]; then
   source "$_zsh_init_cache"
 else
