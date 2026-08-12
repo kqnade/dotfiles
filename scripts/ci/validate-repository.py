@@ -332,7 +332,10 @@ with tempfile.TemporaryDirectory() as temp_dir:
     (fake_cache / "zsh").mkdir(parents=True)
     fake_functions.mkdir()
     (fake_home / ".config/op/plugins.sh").write_text(
-        "OP_PLUGIN_LOADED=1\n"
+        "export OP_PLUGIN_ALIASES_SOURCED=1\n"
+        'if [[ "$(uname -r)" != *microsoft* && "$(uname -r)" != *WSL* ]]; then\n'
+        '  alias gh="op plugin run -- gh"\n'
+        "fi\n"
     )
     (fake_cache / "zsh/generated-init.zsh").write_text("")
     (fake_functions / "compinit").write_text(":\n")
@@ -361,7 +364,8 @@ with tempfile.TemporaryDirectory() as temp_dir:
             (
                 "TTY=/dev/pts/test; OSTYPE=darwin25.0; "
                 f'source "{ROOT / "dot_zshrc"}"; '
-                "[[ $GPG_TTY == /dev/pts/test && $OP_PLUGIN_LOADED == 1 ]]"
+                '[[ $GPG_TTY == /dev/pts/test && "$(alias gh)" == '
+                '"gh=\'op plugin run -- gh\'" ]]'
             ),
         ],
         cwd=ROOT,
