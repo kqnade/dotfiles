@@ -206,6 +206,56 @@ with tempfile.TemporaryDirectory() as temp_dir:
 
 
 with tempfile.TemporaryDirectory() as temp_dir:
+    test_root = Path(temp_dir)
+    fake_home = test_root / "home"
+    fake_bin = test_root / "bin"
+    fake_cache = test_root / "cache"
+    command_log = test_root / "commands.log"
+    fake_home.mkdir()
+    fake_bin.mkdir()
+    (fake_cache / "zsh").mkdir(parents=True)
+    (fake_cache / "zsh/generated-init.zsh").write_text(
+        "ZSH_CACHE_EVENTS+=(cached)\n"
+    )
+    for command in ("mise", "sheldon", "starship", "zoxide", "atuin"):
+        executable = fake_bin / command
+        executable.write_text(
+            "#!/bin/sh\n"
+            f'printf \'{command}\\n\' >>"$COMMAND_LOG"\n'
+        )
+        executable.chmod(0o755)
+
+    zsh_env = dict(os.environ)
+    zsh_env.update(
+        HOME=str(fake_home),
+        XDG_CACHE_HOME=str(fake_cache),
+        PATH=f"{fake_bin}:/usr/bin:/bin",
+        COMMAND_LOG=str(command_log),
+    )
+    zsh_result = subprocess.run(
+        [
+            "zsh",
+            "-dfi",
+            "-c",
+            (
+                f'source "{ROOT / "dot_zshrc"}"; '
+                '[[ "${ZSH_CACHE_EVENTS[*]}" == cached ]] || exit 41; '
+                '(( ${path[(Ie)$HOME/.local/share/mise/shims]} )) || exit 42'
+            ),
+        ],
+        cwd=ROOT,
+        env=zsh_env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if zsh_result.returncode != 0:
+        fail("zsh must load cached initialization with mise shims")
+    if command_log.exists():
+        fail("cached zsh startup must not execute initialization commands")
+
+
+with tempfile.TemporaryDirectory() as temp_dir:
     fake_home = Path(temp_dir) / "home"
     fake_bin = Path(temp_dir) / "bin"
     fake_home.mkdir()
