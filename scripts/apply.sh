@@ -13,3 +13,4 @@ export DOTFILES_ROOT
 
 chezmoi init --source "$DOTFILES_ROOT"
 chezmoi --source "$DOTFILES_ROOT" apply
+bash "$SCRIPT_DIR/build-zsh-init-cache.sh"

@@ -152,6 +152,60 @@ with tempfile.TemporaryDirectory() as temp_dir:
 
 
 with tempfile.TemporaryDirectory() as temp_dir:
+    test_root = Path(temp_dir)
+    fake_checkout = test_root / "dotfiles"
+    fake_scripts = fake_checkout / "scripts"
+    fake_lib = fake_scripts / "lib"
+    fake_bin = test_root / "bin"
+    fake_home = test_root / "home"
+    command_log = test_root / "commands.log"
+    fake_lib.mkdir(parents=True)
+    fake_bin.mkdir()
+    fake_home.mkdir()
+    (fake_checkout / "mise.toml").write_text("")
+    (fake_scripts / "apply.sh").write_text(
+        (ROOT / "scripts/apply.sh").read_text()
+    )
+    (fake_lib / "runtime.sh").write_text(
+        (ROOT / "scripts/lib/runtime.sh").read_text()
+    )
+    (fake_scripts / "build-zsh-init-cache.sh").write_text(
+        "#!/bin/sh\n"
+        'printf \'zsh-cache\\n\' >>"$COMMAND_LOG"\n'
+    )
+    chezmoi_stub = fake_bin / "chezmoi"
+    chezmoi_stub.write_text(
+        "#!/bin/sh\n"
+        'printf \'chezmoi %s\\n\' "$*" >>"$COMMAND_LOG"\n'
+    )
+    chezmoi_stub.chmod(0o755)
+
+    apply_env = dict(os.environ)
+    apply_env.update(
+        HOME=str(fake_home),
+        PATH=f"{fake_bin}:/usr/bin:/bin",
+        DOTFILES_ROOT=str(fake_checkout),
+        COMMAND_LOG=str(command_log),
+    )
+    apply_result = subprocess.run(
+        ["bash", str(fake_scripts / "apply.sh")],
+        cwd=fake_checkout,
+        env=apply_env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if apply_result.returncode != 0:
+        fail("dotfile apply must refresh the zsh initialization cache")
+    if command_log.read_text().splitlines() != [
+        f"chezmoi init --source {fake_checkout}",
+        f"chezmoi --source {fake_checkout} apply",
+        "zsh-cache",
+    ]:
+        fail("dotfile apply must refresh the zsh cache after chezmoi")
+
+
+with tempfile.TemporaryDirectory() as temp_dir:
     fake_home = Path(temp_dir) / "home"
     fake_bin = Path(temp_dir) / "bin"
     fake_home.mkdir()
