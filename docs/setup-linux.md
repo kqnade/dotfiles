@@ -15,7 +15,7 @@ curl -fsSL https://raw.githubusercontent.com/kqnade/dotfiles/trunk/install.sh | 
 
 ## system packages
 
-root `mise.toml` の `[bootstrap.packages]` が次を管理します。
+[mise/config.toml](../mise/config.toml) の `[bootstrap.packages]` が次を管理します。
 
 - zsh、Git、OpenSSH
 - C/C++ build toolchain、OpenSSL headers、pkg-config

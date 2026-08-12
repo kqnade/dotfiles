@@ -17,7 +17,7 @@ taplo_bin="$("$MISE_BIN" -C "$DOTFILES_ROOT" which taplo)"
 readonly taplo_bin
 
 cd "$DOTFILES_ROOT"
-"$taplo_bin" format mise.toml
+"$taplo_bin" format mise.toml mise/config.toml
 
 formatted_lock="$(mktemp "${DOTFILES_ROOT}/.mise.lock.XXXXXX")"
 trap 'rm -f "$formatted_lock"' EXIT
@@ -25,4 +25,4 @@ trap 'rm -f "$formatted_lock"' EXIT
 mv -f "$formatted_lock" mise.lock
 trap - EXIT
 
-printf 'Formatted mise.toml and mise.lock.\n'
+printf 'Formatted mise manifests and mise.lock.\n'

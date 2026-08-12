@@ -1,0 +1,137 @@
+#:schema https://mise.jdx.dev/schema/mise.json
+
+[bootstrap.packages]
+# macOS
+"brew-cask:scroll-reverser" = "latest"
+
+# Fedora
+"dnf:zsh" = "latest"
+"dnf:git" = "latest"
+"dnf:openssh-clients" = "latest"
+"dnf:gcc" = "latest"
+"dnf:gcc-c++" = "latest"
+"dnf:make" = "latest"
+"dnf:openssl-devel" = "latest"
+"dnf:pkgconf-pkg-config" = "latest"
+"dnf:fontconfig" = "latest"
+"dnf:google-noto-sans-cjk-fonts" = "latest"
+"dnf:google-noto-serif-cjk-fonts" = "latest"
+"dnf:curl" = "latest"
+"dnf:ca-certificates" = "latest"
+"dnf:unzip" = "latest"
+
+# Arch Linux
+"pacman:zsh" = "latest"
+"pacman:git" = "latest"
+"pacman:openssh" = "latest"
+"pacman:base-devel" = "latest"
+"pacman:openssl" = "latest"
+"pacman:pkgconf" = "latest"
+"pacman:fontconfig" = "latest"
+"pacman:noto-fonts-cjk" = "latest"
+"pacman:curl" = "latest"
+"pacman:ca-certificates" = "latest"
+"pacman:unzip" = "latest"
+
+[bootstrap.user]
+login_shell = "/bin/zsh"
+
+[bootstrap.macos.dock]
+autohide = true
+magnification = true
+largesize = 61
+tilesize = 26
+orientation = "left"
+show_recents = false
+mru_spaces = false
+
+[bootstrap.macos.finder]
+show_all_files = true
+show_pathbar = true
+show_status_bar = true
+show_extensions_warning = false
+preferred_view_style = "icon"
+
+[bootstrap.macos.keyboard]
+key_repeat = 2
+initial_key_repeat = 15
+press_and_hold = false
+fn_state = true
+
+[bootstrap.macos.trackpad]
+tap_to_click = true
+
+[bootstrap.macos.defaults.NSGlobalDomain]
+AppleShowAllExtensions = true
+AppleMiniaturizeOnDoubleClick = false
+AppleActionOnDoubleClick = "Minimize"
+AppleMenuBarVisibleInFullscreen = false
+AppleReduceDesktopTinting = true
+"com.apple.trackpad.scaling" = 1.5
+"com.apple.trackpad.forceClick" = true
+AppleKeyboardUIMode = 3
+NSNavPanelExpandedStateForSaveMode = true
+NSNavPanelExpandedStateForSaveMode2 = true
+NSDocumentSaveNewDocumentsToCloud = false
+
+[bootstrap.macos.defaults."com.apple.dock"]
+mineffect = "genie"
+showAppExposeGestureEnabled = false
+showLaunchpadGestureEnabled = true
+expose-group-apps = false
+
+[bootstrap.macos.defaults."com.apple.finder"]
+FXRemoveOldTrashItems = true
+NewWindowTarget = "PfHm"
+ShowExternalHardDrivesOnDesktop = true
+ShowHardDrivesOnDesktop = false
+ShowMountedServersOnDesktop = true
+ShowRemovableMediaOnDesktop = true
+_FXSortFoldersFirst = true
+FXDefaultSearchScope = "SCcf"
+_FXShowPosixPathInTitle = true
+FXArrangeGroupViewBy = "Name"
+
+[bootstrap.macos.defaults."com.apple.menuextra.clock"]
+ShowAMPM = true
+ShowDate = 0
+ShowDayOfWeek = true
+
+[bootstrap.macos.defaults."com.apple.WindowManager"]
+GloballyEnabled = false
+HideDesktop = true
+
+[bootstrap.macos.defaults."com.apple.ncprefs"]
+summarize_previews = 0
+
+[bootstrap.macos.defaults."com.apple.screencapture"]
+type = "png"
+disable-shadow = true
+
+[bootstrap.macos.defaults."com.apple.TextEdit"]
+RichText = 0
+PlainTextEncoding = 4
+PlainTextEncodingForWrite = 4
+
+[bootstrap.macos.launchd.agents.yaskkserv2]
+program = "~/repos/github.com/kqnade/dotfiles/scripts/yaskkserv2-serve.sh"
+run_at_load = true
+keep_alive = true
+kickstart = true
+stdout_path = "~/Library/Logs/yaskkserv2.log"
+stderr_path = "~/Library/Logs/yaskkserv2.err"
+
+[bootstrap.linux.systemd.units.yaskkserv2]
+description = "Local SKK dictionary server"
+exec_start = "~/repos/github.com/kqnade/dotfiles/scripts/yaskkserv2-serve.sh"
+after = ["network.target"]
+restart = "on-failure"
+restart_sec = "2s"
+standard_output = "journal"
+standard_error = "journal"
+
+[bootstrap.hooks.pre-packages]
+run = "bash \"${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/remove-legacy-yaskkserv2.sh\""
+
+[bootstrap.hooks.post-defaults]
+run = "bash \"${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/macos-finalize.sh\""

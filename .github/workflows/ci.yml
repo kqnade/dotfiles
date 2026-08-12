@@ -63,6 +63,7 @@ jobs:
           "$shfmt_bin" -i 2 -ci -d "${shell_files[@]}"
           "$taplo_bin" lint "${toml_files[@]}"
           "$taplo_bin" format --check mise.toml
+          "$taplo_bin" format --check mise/config.toml
           "$taplo_bin" format --check --stdin-filepath mise.lock - < mise.lock
 
       - name: verify runtime root override
@@ -231,7 +232,7 @@ jobs:
             ~/.rustup
             ~/.cargo/registry
             ~/.cargo/git
-          key: intel-macos-mise-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mise.toml', 'mise.lock') }}
+          key: intel-macos-mise-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mise.toml', 'mise/config.toml', 'mise.lock') }}
           restore-keys: |
             intel-macos-mise-v1-${{ runner.os }}-${{ runner.arch }}-
 

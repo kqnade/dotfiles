@@ -2427,6 +2427,8 @@ if "microsoft" not in wsl_mise or 'disable_tools = ["1password-cli"]' not in wsl
 installer = (ROOT / "install.sh").read_text()
 if "MISE_DISABLE_TOOLS" not in installer:
     fail("fresh WSL bootstrap must disable the native 1Password CLI")
+if '"$MISE_BIN" trust "$REPO_DIR/mise.toml"' not in installer:
+    fail("installer must trust the repository mise project root")
 for fragment in (
     '[[ "$(uname -s)" == Linux ]] || return 0',
     "[[ -r /proc/sys/kernel/osrelease ]] || return 0",
@@ -2446,6 +2448,21 @@ for fragment in (
 workflow = (ROOT / ".github/workflows/ci.yml").read_text()
 if "--dry-" + "run" in workflow:
     fail("CI must execute bootstrap interfaces instead of previewing them")
+for formatted_manifest in ("mise.toml", "mise/config.toml"):
+    if f'"$taplo_bin" format --check {formatted_manifest}' not in workflow:
+        fail(f"CI must format-check split manifest: {formatted_manifest}")
+
+format_script = (ROOT / "scripts/format.sh").read_text()
+pre_commit_script = (ROOT / "scripts/pre-commit.sh").read_text()
+for formatted_manifest in ("mise.toml", "mise/config.toml"):
+    if not re.search(
+        rf'^"\$taplo_bin" format [^\n]*\b{re.escape(formatted_manifest)}\b',
+        format_script,
+        re.MULTILINE,
+    ):
+        fail(f"format task must format split manifest: {formatted_manifest}")
+    if formatted_manifest not in pre_commit_script:
+        fail(f"pre-commit must inspect split manifest: {formatted_manifest}")
 
 static_job = workflow.split("  package-bootstrap:", 1)[0]
 zsh_install = "sudo apt-get install --yes zsh"

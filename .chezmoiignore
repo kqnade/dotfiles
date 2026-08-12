@@ -8,6 +8,7 @@ AGENTS.md
 CLAUDE.md
 install.sh
 mise.toml
+mise/
 mise.lock
 renovate.jsonc
 .config/nvim/README.md

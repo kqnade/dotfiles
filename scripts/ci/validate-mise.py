@@ -128,6 +128,14 @@ def active_on(value: Any, platform: str) -> bool:
 
 
 config = load_toml(ROOT / "mise.toml")
+bootstrap_config = load_toml(ROOT / "mise/config.toml")
+overlapping_sections = set(config) & set(bootstrap_config)
+if overlapping_sections:
+    fail(
+        "split mise manifests must own disjoint top-level sections: "
+        f"{sorted(overlapping_sections)}"
+    )
+config.update(bootstrap_config)
 lock = load_toml(ROOT / "mise.lock")
 
 if config.get("min_version") != "2026.7.12":
@@ -243,8 +251,10 @@ for name, value in tools.items():
 
 config_template = (ROOT / "dot_config/mise/config.toml.tmpl").read_text().strip()
 lock_template = (ROOT / "dot_config/mise/mise.lock.tmpl").read_text().strip()
-if config_template != '{{ include "mise.toml" -}}':
-    fail("deployed mise config must include the root mise.toml verbatim")
+if config_template != (
+    '{{ include "mise.toml" }}\n{{ include "mise/config.toml" -}}'
+):
+    fail("deployed mise config must concatenate the split manifest sources")
 if lock_template != '{{ include "mise.lock" -}}':
     fail("deployed mise lockfile must include the root mise.lock verbatim")
 

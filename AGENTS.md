@@ -24,12 +24,14 @@ are macOS arm64/x64, Fedora x64, Arch Linux x64, and Fedora/Arch under WSL x64.
 
 ## Architecture facts
 
-- Root `mise.toml` is the only bootstrap and global-tool definition.
-- `dot_config/mise/config.toml.tmpl` includes root `mise.toml` verbatim so
-  chezmoi can materialize it as `~/.config/mise/config.toml`.
+- Root `mise.toml` owns settings, global tools, and public tasks.
+- `mise/config.toml` owns bootstrap packages, user settings, OS defaults, services, and hooks.
+- `dot_config/mise/config.toml.tmpl` concatenates both manifests so chezmoi can materialize the
+  same configuration as `~/.config/mise/config.toml`.
 - All tools are explicitly pinned. `mise.lock` covers `macos-arm64`,
   `macos-x64`, and `linux-x64`.
-- macOS GUI apps and Fedora/Arch system packages live in `[bootstrap.packages]`.
+- macOS GUI apps and Fedora/Arch system packages live in
+  `mise/config.toml`'s `[bootstrap.packages]`.
 - macOS uses its built-in zsh, Git, SSH, and Xcode Command Line Tools.
 - macOS Casks use mise's built-in `brew-cask` manager; the repository does not require a
   Brewfile or an external `brew` CLI.
@@ -150,7 +152,8 @@ Keep this mapping consistent when editing Vim or Neovim:
 
 ## Adding things
 
-- mise tool, system package, or macOS Cask: root `mise.toml`
+- mise tool: root `mise.toml`
+- system package, macOS Cask, OS default, or service: `mise/config.toml`
 - zsh alias: `dot_config/zsh/aliases.zsh`
 - zsh function: `dot_config/zsh/functions/<name>.zsh`
 - Neovim LSP: `dot_config/nvim/lua/modules/configs/lsp/init.lua`

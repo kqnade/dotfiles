@@ -37,15 +37,17 @@ macOS で Xcode Command Line Tools が未導入の場合だけ、OS のインス
 mise bootstrap --yes  # packages, tools, dotfiles, defaults, services を収束
 mise run apply         # chezmoi で dotfile を反映
 mise run doctor        # tools, packages, dotfiles, fonts, services を診断
-mise run format        # CI が検査する mise.toml / mise.lock を整形
+mise run format        # CI が検査するmise manifest / lockfileを整形
 ```
 
-root の [mise.toml](mise.toml) が bootstrap と global tool の唯一の定義です。
+root の [mise.toml](mise.toml) がsettings、global tool、public taskを、
+[mise/config.toml](mise/config.toml) がbootstrap設定を管理します。chezmoiは両方を
+`~/.config/mise/config.toml`へ統合するため、repositoryとglobal configで同じ設定が有効です。
 全 tool は明示 pin し、`mise.lock` は `macos-arm64`、`macos-x64`、
 `linux-x64` を収録します。Intel Mac では sheldon、delta、fd、atuin を
 Cargo backend で build し、pnpm は npm backend から導入します。
 
-bootstrap はこのリポジトリへ pre-commit hook も生成します。`mise.toml` または
+bootstrap はこのリポジトリへ pre-commit hook も生成します。mise manifestまたは
 `mise.lock` をcommitするときは、staged内容がTaploで整形済みか検査します。
 
 ## 維持している設定
