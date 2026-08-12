@@ -256,6 +256,46 @@ with tempfile.TemporaryDirectory() as temp_dir:
 
 
 with tempfile.TemporaryDirectory() as temp_dir:
+    test_root = Path(temp_dir)
+    fake_home = test_root / "home"
+    fake_cache = test_root / "cache"
+    fake_functions = test_root / "functions"
+    command_log = test_root / "compinit.log"
+    fake_home.mkdir()
+    (fake_cache / "zsh").mkdir(parents=True)
+    fake_functions.mkdir()
+    init_cache = fake_cache / "zsh/generated-init.zsh"
+    init_cache.write_text("")
+    zcompdump = fake_home / ".zcompdump"
+    zcompdump.write_text("cached completions\n")
+    os.utime(init_cache, (1, 1))
+    os.utime(zcompdump, (2, 2))
+    (fake_functions / "compinit").write_text(
+        'printf \'%s\\n\' "$*" >"$COMMAND_LOG"\n'
+    )
+
+    compinit_env = dict(os.environ)
+    compinit_env.update(
+        HOME=str(fake_home),
+        XDG_CACHE_HOME=str(fake_cache),
+        FPATH=str(fake_functions),
+        COMMAND_LOG=str(command_log),
+    )
+    compinit_result = subprocess.run(
+        ["zsh", "-dfi", "-c", f'source "{ROOT / "dot_zshrc"}"'],
+        cwd=ROOT,
+        env=compinit_env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if compinit_result.returncode != 0:
+        fail("zsh must initialize completions from a warm dump")
+    if command_log.read_text().strip() != "-C":
+        fail("zsh must skip completion auditing for a fresh dump")
+
+
+with tempfile.TemporaryDirectory() as temp_dir:
     fake_home = Path(temp_dir) / "home"
     fake_bin = Path(temp_dir) / "bin"
     fake_home.mkdir()

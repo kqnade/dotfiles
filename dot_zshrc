@@ -31,10 +31,16 @@ _sheldon_data="${XDG_DATA_HOME:-$HOME/.local/share}/sheldon"
   && fpath=("$_sheldon_data/repos/github.com/zsh-users/zsh-completions/src" $fpath)
 unset _sheldon_data
 
-autoload -Uz compinit
-compinit
-
 _zsh_init_cache="${XDG_CACHE_HOME:-$HOME/.cache}/zsh/generated-init.zsh"
+_zcompdump="${ZDOTDIR:-$HOME}/.zcompdump"
+autoload -Uz compinit
+if [[ -r $_zsh_init_cache && -s $_zcompdump && $_zcompdump -nt $_zsh_init_cache ]]; then
+  compinit -C
+else
+  compinit
+fi
+unset _zcompdump
+
 if [[ -r $_zsh_init_cache ]]; then
   source "$_zsh_init_cache"
 else
