@@ -73,6 +73,84 @@ def strip_json_comments(text: str) -> str:
     return "".join(output)
 
 
+zsh_cache_builder = ROOT / "scripts/build-zsh-init-cache.sh"
+if not zsh_cache_builder.is_file():
+    fail("zsh initialization cache builder is missing")
+
+with tempfile.TemporaryDirectory() as temp_dir:
+    test_root = Path(temp_dir)
+    fake_home = test_root / "home"
+    fake_bin = test_root / "bin"
+    fake_cache = test_root / "cache"
+    command_log = test_root / "commands.log"
+    fake_home.mkdir()
+    fake_bin.mkdir()
+
+    command_outputs = {
+        "sheldon": (
+            "#!/bin/sh\n"
+            'printf \'sheldon %s\\n\' "$*" >>"$COMMAND_LOG"\n'
+            'if test "$1" = source; then\n'
+            "  printf 'ZSH_CACHE_EVENTS+=(sheldon)\\n'\n"
+            "fi\n"
+        ),
+        "starship": (
+            "#!/bin/sh\n"
+            'printf \'starship %s\\n\' "$*" >>"$COMMAND_LOG"\n'
+            "printf 'ZSH_CACHE_EVENTS+=(starship)\\n'\n"
+        ),
+        "zoxide": (
+            "#!/bin/sh\n"
+            'printf \'zoxide %s\\n\' "$*" >>"$COMMAND_LOG"\n'
+            "printf 'ZSH_CACHE_EVENTS+=(zoxide)\\n'\n"
+        ),
+        "atuin": (
+            "#!/bin/sh\n"
+            'printf \'atuin %s\\n\' "$*" >>"$COMMAND_LOG"\n'
+            "printf 'ZSH_CACHE_EVENTS+=(atuin)\\n'\n"
+        ),
+    }
+    for command, script in command_outputs.items():
+        executable = fake_bin / command
+        executable.write_text(script)
+        executable.chmod(0o755)
+
+    cache_env = dict(os.environ)
+    cache_env.update(
+        HOME=str(fake_home),
+        XDG_CACHE_HOME=str(fake_cache),
+        PATH=f"{fake_bin}:/usr/bin:/bin",
+        COMMAND_LOG=str(command_log),
+    )
+    cache_result = subprocess.run(
+        ["bash", str(zsh_cache_builder)],
+        cwd=ROOT,
+        env=cache_env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if cache_result.returncode != 0:
+        fail("zsh initialization cache builder must succeed with installed tools")
+
+    generated_cache = fake_cache / "zsh/generated-init.zsh"
+    if generated_cache.read_text().splitlines() != [
+        "ZSH_CACHE_EVENTS+=(sheldon)",
+        "ZSH_CACHE_EVENTS+=(starship)",
+        "ZSH_CACHE_EVENTS+=(zoxide)",
+        "ZSH_CACHE_EVENTS+=(atuin)",
+    ]:
+        fail("zsh initialization cache must preserve initializer order")
+    if command_log.read_text().splitlines() != [
+        "sheldon lock",
+        "sheldon source",
+        "starship init zsh",
+        "zoxide init zsh --cmd cd",
+        "atuin init zsh",
+    ]:
+        fail("zsh initialization cache builder invoked unexpected commands")
+
+
 with tempfile.TemporaryDirectory() as temp_dir:
     fake_home = Path(temp_dir) / "home"
     fake_bin = Path(temp_dir) / "bin"
