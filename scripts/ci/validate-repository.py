@@ -150,6 +150,27 @@ with tempfile.TemporaryDirectory() as temp_dir:
     ]:
         fail("zsh initialization cache builder invoked unexpected commands")
 
+    generated_cache.write_text("known-good\n")
+    failing_initializer = fake_bin / "atuin"
+    failing_initializer.write_text(
+        "#!/bin/sh\n"
+        "printf 'partial-output\\n'\n"
+        "exit 9\n"
+    )
+    failing_initializer.chmod(0o755)
+    failed_cache_result = subprocess.run(
+        ["bash", str(zsh_cache_builder)],
+        cwd=ROOT,
+        env=cache_env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if failed_cache_result.returncode == 0:
+        fail("zsh initialization cache failures must be reported")
+    if generated_cache.read_text() != "known-good\n":
+        fail("failed zsh initialization must preserve the previous cache")
+
 
 with tempfile.TemporaryDirectory() as temp_dir:
     test_root = Path(temp_dir)
