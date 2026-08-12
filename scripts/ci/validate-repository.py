@@ -317,6 +317,62 @@ with tempfile.TemporaryDirectory() as temp_dir:
 
 
 with tempfile.TemporaryDirectory() as temp_dir:
+    test_root = Path(temp_dir)
+    fake_home = test_root / "home"
+    fake_bin = test_root / "bin"
+    fake_cache = test_root / "cache"
+    fake_functions = test_root / "functions"
+    command_log = test_root / "commands.log"
+    (fake_home / ".config/op").mkdir(parents=True)
+    fake_bin.mkdir()
+    (fake_cache / "zsh").mkdir(parents=True)
+    fake_functions.mkdir()
+    (fake_home / ".config/op/plugins.sh").write_text(
+        "OP_PLUGIN_LOADED=1\n"
+    )
+    (fake_cache / "zsh/generated-init.zsh").write_text("")
+    (fake_functions / "compinit").write_text(":\n")
+    for command, output in (("tty", "/dev/probed"), ("uname", "Darwin")):
+        executable = fake_bin / command
+        executable.write_text(
+            "#!/bin/sh\n"
+            f'printf \'{command}\\n\' >>"$COMMAND_LOG"\n'
+            f"printf '%s\\n' '{output}'\n"
+        )
+        executable.chmod(0o755)
+
+    darwin_env = dict(os.environ)
+    darwin_env.update(
+        HOME=str(fake_home),
+        XDG_CACHE_HOME=str(fake_cache),
+        FPATH=str(fake_functions),
+        PATH=f"{fake_bin}:/usr/bin:/bin",
+        COMMAND_LOG=str(command_log),
+    )
+    darwin_result = subprocess.run(
+        [
+            "zsh",
+            "-dfi",
+            "-c",
+            (
+                "TTY=/dev/pts/test; OSTYPE=darwin25.0; "
+                f'source "{ROOT / "dot_zshrc"}"; '
+                "[[ $GPG_TTY == /dev/pts/test && $OP_PLUGIN_LOADED == 1 ]]"
+            ),
+        ],
+        cwd=ROOT,
+        env=darwin_env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if darwin_result.returncode != 0:
+        fail("Darwin zsh startup must use built-in terminal and 1Password state")
+    if command_log.exists():
+        fail("Darwin zsh startup must not run tty or uname probes")
+
+
+with tempfile.TemporaryDirectory() as temp_dir:
     fake_home = Path(temp_dir) / "home"
     fake_bin = Path(temp_dir) / "bin"
     fake_home.mkdir()
