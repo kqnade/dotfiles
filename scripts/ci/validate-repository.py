@@ -85,6 +85,8 @@ with tempfile.TemporaryDirectory() as temp_dir:
     command_log = test_root / "commands.log"
     fake_home.mkdir()
     fake_bin.mkdir()
+    zcompdump = fake_home / ".zcompdump"
+    zcompdump.write_text("stale completions\n")
 
     command_outputs = {
         "sheldon": (
@@ -132,6 +134,8 @@ with tempfile.TemporaryDirectory() as temp_dir:
     )
     if cache_result.returncode != 0:
         fail("zsh initialization cache builder must succeed with installed tools")
+    if zcompdump.exists():
+        fail("zsh initialization cache refresh must invalidate completion state")
 
     generated_cache = fake_cache / "zsh/generated-init.zsh"
     if generated_cache.read_text().splitlines() != [

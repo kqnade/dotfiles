@@ -41,7 +41,7 @@ unset _sheldon_data
 _zsh_init_cache="${XDG_CACHE_HOME:-$HOME/.cache}/zsh/generated-init.zsh"
 _zcompdump="${ZDOTDIR:-$HOME}/.zcompdump"
 autoload -Uz compinit
-if [[ -r $_zsh_init_cache && -s $_zcompdump && $_zcompdump -nt $_zsh_init_cache ]]; then
+if [[ -r $_zsh_init_cache && -s $_zcompdump ]]; then
   compinit -C
 else
   compinit

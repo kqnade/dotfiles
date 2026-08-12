@@ -6,6 +6,8 @@ zsh_cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
 readonly zsh_cache_dir
 zsh_cache_file="$zsh_cache_dir/generated-init.zsh"
 readonly zsh_cache_file
+zcompdump="${ZDOTDIR:-$HOME}/.zcompdump"
+readonly zcompdump
 
 mkdir -p "$zsh_cache_dir"
 
@@ -22,4 +24,5 @@ trap 'rm -f "$zsh_cache_tmp"' EXIT
 } >"$zsh_cache_tmp"
 
 mv "$zsh_cache_tmp" "$zsh_cache_file"
+rm -f "$zcompdump"
 trap - EXIT
