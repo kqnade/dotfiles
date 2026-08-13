@@ -9,9 +9,6 @@ expression='
   .model_reasoning_effort = "high" |
   .agents.default_subagent_model = "gpt-5.6-luna" |
   .agents.default_subagent_reasoning_effort = "max" |
-  .mcp_servers."new-relic-mcp-server" = {
-    "url": "https://mcp.newrelic.com/mcp/"
-  } |
   .features.hooks = true
 '
 
