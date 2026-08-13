@@ -20,6 +20,31 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class ValidateMiseTests(unittest.TestCase):
+    def test_ci_git_config_keeps_https_clone_urls(self) -> None:
+        chezmoi = shutil.which("chezmoi")
+        self.assertIsNotNone(chezmoi, "chezmoi must be installed to render git config")
+
+        environment = dict(os.environ)
+        environment["CI"] = "true"
+        result = subprocess.run(
+            [
+                chezmoi,
+                "--source",
+                str(ROOT),
+                "execute-template",
+                "--file",
+                str(ROOT / "dot_gitconfig.tmpl"),
+            ],
+            env=environment,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn('[url "git@github.com:"]', result.stdout)
+        self.assertNotIn('[url "git@gitlab.com:"]', result.stdout)
+
     def test_codex_usage_exporter_runs_every_five_minutes(self) -> None:
         config = tomllib.loads((ROOT / "mise/config.toml").read_text())
 

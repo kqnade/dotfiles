@@ -63,6 +63,7 @@
 [tag]
 	gpgSign = true
 
+{{- if ne (env "CI") "true" }}
 # `ghq get foo/bar` や bare な https clone を SSH に rewrite。
 # WSL では ssh.exe proxy、macOS/Linux では 1Password agent を使う。
 [url "git@github.com:"]
@@ -70,6 +71,7 @@
 
 [url "git@gitlab.com:"]
 	insteadOf = https://gitlab.com/
+{{- end }}
 
 [filter "lfs"]
 	clean = git-lfs clean -- %f

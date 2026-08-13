@@ -41,7 +41,7 @@ jobs:
         run: |
           mise trust mise.toml
           mise install --locked chezmoi yq
-          python3 scripts/ci/test-validate-mise.py
+          mise exec -- python3 scripts/ci/test-validate-mise.py
           python3 scripts/ci/test-codex-usage-exporter.py
           python3 scripts/ci/test-claude-settings.py
           python3 scripts/ci/test-herdr-worktree.py

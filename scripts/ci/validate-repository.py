@@ -2670,6 +2670,10 @@ if static_job.index(codex_config_tools_install) > static_job.index(
 ):
     fail("CI static validation must install chezmoi and yq before the repository validator")
 
+mise_scoped_mise_tests = "mise exec -- python3 scripts/ci/test-validate-mise.py"
+if mise_scoped_mise_tests not in static_job:
+    fail("CI mise tests must run with installed tools on PATH")
+
 for fragment in (
     "bash install.sh",
     "mise run apply",
