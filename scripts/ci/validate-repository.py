@@ -992,6 +992,7 @@ codex_modified_result = subprocess.run(
     text=True,
     capture_output=True,
     check=False,
+    env={**os.environ, "NEW_RELIC_LICENSE_KEY": "test-new-relic-license-key"},
 )
 if codex_modified_result.returncode != 0:
     fail(f"Codex config modifier failed: {codex_modified_result.stderr.strip()}")
@@ -1016,6 +1017,66 @@ for key, expected_value in expected_agent_defaults.items():
 
 if codex_modified_config.get("features", {}).get("hooks") is not True:
     fail("Codex config modifier must enable lifecycle hooks")
+
+expected_codex_otel = {
+    "environment": "prod",
+    "log_user_prompt": False,
+    "exporter": {
+        "otlp-http": {
+            "endpoint": "https://otlp.nr-data.net/v1/logs",
+            "protocol": "binary",
+            "headers": {"api-key": "test-new-relic-license-key"},
+        }
+    },
+    "trace_exporter": {
+        "otlp-http": {
+            "endpoint": "https://otlp.nr-data.net/v1/traces",
+            "protocol": "binary",
+            "headers": {"api-key": "test-new-relic-license-key"},
+        }
+    },
+    "metrics_exporter": {
+        "otlp-http": {
+            "endpoint": "https://otlp.nr-data.net/v1/metrics",
+            "protocol": "binary",
+            "headers": {"api-key": "test-new-relic-license-key"},
+        }
+    },
+}
+if codex_modified_config.get("otel") != expected_codex_otel:
+    fail("Codex config modifier did not configure New Relic OTLP telemetry")
+
+codex_preserved_otel = """\
+[otel]
+environment = "test"
+exporter = "none"
+log_user_prompt = false
+"""
+codex_preserved_otel_env = {
+    key: value
+    for key, value in os.environ.items()
+    if key != "NEW_RELIC_LICENSE_KEY"
+}
+codex_preserved_otel_result = subprocess.run(
+    ["bash", str(codex_config_modifier)],
+    cwd=ROOT,
+    input=codex_runtime_config + codex_preserved_otel,
+    text=True,
+    capture_output=True,
+    check=False,
+    env=codex_preserved_otel_env,
+)
+if codex_preserved_otel_result.returncode != 0:
+    fail(
+        "Codex config modifier failed without a New Relic key: "
+        f"{codex_preserved_otel_result.stderr.strip()}"
+    )
+if tomllib.loads(codex_preserved_otel_result.stdout).get("otel") != {
+    "environment": "test",
+    "exporter": "none",
+    "log_user_prompt": False,
+}:
+    fail("Codex config modifier changed OTLP telemetry without a New Relic key")
 
 preserved_codex_runtime_state = {
     "runtime_marker": "preserve-me",
@@ -1057,6 +1118,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
         text=True,
         capture_output=True,
         check=False,
+        env={**os.environ, "NEW_RELIC_LICENSE_KEY": "test-new-relic-license-key"},
     )
     if codex_apply_result.returncode != 0:
         fail(f"Codex config apply failed: {codex_apply_result.stderr.strip()}")

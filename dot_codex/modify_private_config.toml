@@ -12,6 +12,37 @@ expression='
   .features.hooks = true
 '
 
+if [[ -n "${NEW_RELIC_LICENSE_KEY:-}" ]]; then
+  export NEW_RELIC_LICENSE_KEY
+  expression+=' |
+    .otel = {
+      "environment": "prod",
+      "log_user_prompt": false,
+      "exporter": {
+        "otlp-http": {
+          "endpoint": "https://otlp.nr-data.net/v1/logs",
+          "protocol": "binary",
+          "headers": {"api-key": strenv(NEW_RELIC_LICENSE_KEY)}
+        }
+      },
+      "trace_exporter": {
+        "otlp-http": {
+          "endpoint": "https://otlp.nr-data.net/v1/traces",
+          "protocol": "binary",
+          "headers": {"api-key": strenv(NEW_RELIC_LICENSE_KEY)}
+        }
+      },
+      "metrics_exporter": {
+        "otlp-http": {
+          "endpoint": "https://otlp.nr-data.net/v1/metrics",
+          "protocol": "binary",
+          "headers": {"api-key": strenv(NEW_RELIC_LICENSE_KEY)}
+        }
+      }
+    }
+  '
+fi
+
 if [[ -n "$config" ]]; then
   printf '%s\n' "$config" | yq -p toml -o toml "$expression"
 else
