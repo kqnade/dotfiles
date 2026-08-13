@@ -1106,6 +1106,11 @@ for key, expected_value in expected_agent_defaults.items():
 if codex_modified_config.get("features", {}).get("hooks") is not True:
     fail("Codex config modifier must enable lifecycle hooks")
 
+if codex_modified_config.get("mcp_servers", {}).get(
+    "new-relic-mcp-server"
+) != {"url": "https://mcp.newrelic.com/mcp/"}:
+    fail("Codex config modifier must configure the New Relic MCP server")
+
 expected_codex_otel = {
     "environment": "prod",
     "log_user_prompt": False,
