@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
 import unittest
 from pathlib import Path
 
@@ -19,6 +20,22 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class ValidateMiseTests(unittest.TestCase):
+    def test_codex_usage_exporter_runs_every_five_minutes(self) -> None:
+        config = tomllib.loads((ROOT / "mise/config.toml").read_text())
+
+        self.assertEqual(
+            config["bootstrap"]["macos"]["launchd"]["agents"][
+                "codex-usage-exporter"
+            ]["start_interval"],
+            300,
+        )
+        self.assertEqual(
+            config["bootstrap"]["linux"]["systemd"]["units"][
+                "codex-usage-exporter"
+            ]["restart_sec"],
+            "5m",
+        )
+
     def test_repository_loads_split_manifest(self) -> None:
         mise = shutil.which("mise")
         self.assertIsNotNone(mise, "mise must be installed to validate config discovery")

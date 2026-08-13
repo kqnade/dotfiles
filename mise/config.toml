@@ -121,12 +121,28 @@ kickstart = true
 stdout_path = "~/Library/Logs/yaskkserv2.log"
 stderr_path = "~/Library/Logs/yaskkserv2.err"
 
+[bootstrap.macos.launchd.agents.codex-usage-exporter]
+program = "~/repos/github.com/kqnade/dotfiles/scripts/codex_usage_exporter.py"
+run_at_load = true
+start_interval = 300
+stdout_path = "~/Library/Logs/codex-usage-exporter.log"
+stderr_path = "~/Library/Logs/codex-usage-exporter.err"
+
 [bootstrap.linux.systemd.units.yaskkserv2]
 description = "Local SKK dictionary server"
 exec_start = "~/repos/github.com/kqnade/dotfiles/scripts/yaskkserv2-serve.sh"
 after = ["network.target"]
 restart = "on-failure"
 restart_sec = "2s"
+standard_output = "journal"
+standard_error = "journal"
+
+[bootstrap.linux.systemd.units.codex-usage-exporter]
+description = "Export Codex account usage to New Relic"
+exec_start = "~/repos/github.com/kqnade/dotfiles/scripts/codex_usage_exporter.py"
+after = ["network-online.target"]
+restart = "always"
+restart_sec = "5m"
 standard_output = "journal"
 standard_error = "journal"
 

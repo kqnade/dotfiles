@@ -201,9 +201,30 @@ with tempfile.TemporaryDirectory() as temp_dir:
     chezmoi_stub = fake_bin / "chezmoi"
     chezmoi_stub.write_text(
         "#!/bin/sh\n"
+        'if test "${EXPECT_NEW_RELIC_KEY:-}" = 1; then\n'
+        '  test "$NEW_RELIC_LICENSE_KEY" = test-new-relic-key || exit 23\n'
+        "fi\n"
         'printf \'chezmoi %s\\n\' "$*" >>"$COMMAND_LOG"\n'
     )
     chezmoi_stub.chmod(0o755)
+    op_stub = fake_bin / "op"
+    op_stub.write_text(
+        "#!/bin/sh\n"
+        'test "${OP_MUST_NOT_RUN:-}" != 1 || exit 97\n'
+        'printf \'op %s\\n\' "$*" >>"$COMMAND_LOG"\n'
+        'test "${OP_READ_FAIL:-}" != 1 || exit 98\n'
+        "printf 'test-new-relic-key\\n'\n"
+    )
+    op_stub.chmod(0o755)
+    mise_stub = fake_bin / "mise"
+    mise_stub.write_text(
+        "#!/bin/sh\n"
+        'printf \'mise %s\\n\' "$*" >>"$COMMAND_LOG"\n'
+    )
+    mise_stub.chmod(0o755)
+    uname_stub = fake_bin / "uname"
+    uname_stub.write_text("#!/bin/sh\nprintf 'Darwin\\n'\n")
+    uname_stub.chmod(0o755)
 
     apply_env = dict(os.environ)
     apply_env.update(
@@ -211,7 +232,9 @@ with tempfile.TemporaryDirectory() as temp_dir:
         PATH=f"{fake_bin}:/usr/bin:/bin",
         DOTFILES_ROOT=str(fake_checkout),
         COMMAND_LOG=str(command_log),
+        EXPECT_NEW_RELIC_KEY="1",
     )
+    apply_env.pop("NEW_RELIC_LICENSE_KEY", None)
     apply_result = subprocess.run(
         ["bash", str(fake_scripts / "apply.sh")],
         cwd=fake_checkout,
@@ -222,12 +245,77 @@ with tempfile.TemporaryDirectory() as temp_dir:
     )
     if apply_result.returncode != 0:
         fail("dotfile apply must refresh the zsh initialization cache")
-    if command_log.read_text().splitlines() != [
-        f"chezmoi init --source {fake_checkout}",
-        f"chezmoi --source {fake_checkout} apply",
+    expected_apply_commands = [
+        "op read op://Personal/j465rncuz4fcf2rc7aogcosypi/credential",
+        f"chezmoi init --source {fake_checkout.resolve()}",
+        f"chezmoi --source {fake_checkout.resolve()} apply",
         "zsh-cache",
-    ]:
-        fail("dotfile apply must refresh the zsh cache after chezmoi")
+        f"mise -C {fake_checkout.resolve()} bootstrap macos launchd-agents apply --yes",
+    ]
+    actual_apply_commands = command_log.read_text().splitlines()
+    if actual_apply_commands != expected_apply_commands:
+        fail(
+            "dotfile apply must refresh the zsh cache and managed services: "
+            f"{actual_apply_commands}"
+        )
+
+    command_log.write_text("")
+    existing_key_env = dict(apply_env)
+    existing_key_env.update(
+        NEW_RELIC_LICENSE_KEY="test-new-relic-key",
+        OP_MUST_NOT_RUN="1",
+    )
+    existing_key_result = subprocess.run(
+        ["bash", str(fake_scripts / "apply.sh")],
+        cwd=fake_checkout,
+        env=existing_key_env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if existing_key_result.returncode != 0:
+        fail(
+            "dotfile apply must preserve an existing New Relic key: "
+            f"exit={existing_key_result.returncode} "
+            f"stdout={existing_key_result.stdout.strip()!r} "
+            f"stderr={existing_key_result.stderr.strip()!r} "
+            f"commands={command_log.read_text().splitlines()}"
+        )
+    if command_log.read_text().splitlines() != expected_apply_commands[1:]:
+        fail("dotfile apply must not query 1Password when the key is already set")
+
+    command_log.write_text("")
+    failing_op_env = dict(apply_env)
+    failing_op_env["OP_READ_FAIL"] = "1"
+    failing_op_result = subprocess.run(
+        ["bash", str(fake_scripts / "apply.sh")],
+        cwd=fake_checkout,
+        env=failing_op_env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if failing_op_result.returncode == 0:
+        fail("dotfile apply must fail when the 1Password key lookup fails")
+    if "failed to load the New Relic key from 1Password" not in failing_op_result.stderr:
+        fail("dotfile apply must explain a failed 1Password key lookup")
+
+    command_log.write_text("")
+    ci_env = dict(apply_env)
+    ci_env.pop("EXPECT_NEW_RELIC_KEY")
+    ci_env.update(CI="true", OP_MUST_NOT_RUN="1")
+    ci_result = subprocess.run(
+        ["bash", str(fake_scripts / "apply.sh")],
+        cwd=fake_checkout,
+        env=ci_env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if ci_result.returncode != 0:
+        fail("dotfile apply must remain usable without 1Password in CI")
+    if command_log.read_text().splitlines() != expected_apply_commands[1:]:
+        fail("dotfile apply must not query 1Password in CI")
 
 
 with tempfile.TemporaryDirectory() as temp_dir:
@@ -1097,8 +1185,10 @@ for key, expected_value in preserved_codex_runtime_state.items():
 
 with tempfile.TemporaryDirectory() as temp_dir:
     codex_home = Path(temp_dir) / "home"
+    codex_home.mkdir()
+    codex_home = codex_home.resolve()
     codex_config = codex_home / ".codex" / "config.toml"
-    codex_config.parent.mkdir(parents=True)
+    codex_config.parent.mkdir()
     codex_config.write_text(codex_runtime_config)
     codex_config.chmod(0o600)
     codex_apply_result = subprocess.run(
