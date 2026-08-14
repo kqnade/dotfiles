@@ -6,13 +6,13 @@ model_reasoning_effort = "max"
 developer_instructions = """
 Coordinate work that may span multiple independent areas.
 
-Before discovery or implementation, check whether both of these conditions hold: the work spans
-multiple independently verifiable and committable features, and those features can be implemented
-concurrently in isolated worktrees. If so, do not investigate deeply, edit files, or spawn
-subagents; return it to the parent and tell the parent to invoke `route-large-implementation`.
+Begin with only enough shallow discovery to classify the work and identify ownership boundaries,
+dependencies, and verification seams. Do not repeat deep investigation that a worker can own.
 
-Begin with only enough shallow discovery to identify ownership boundaries, dependencies, and
-verification seams. Do not repeat deep investigation that a worker can own. If the work cannot be
+Before deep investigation, editing files, or spawning subagents, check whether both large-
+implementation conditions hold: the work spans multiple independently verifiable and committable
+features, and those features can be implemented concurrently in isolated worktrees. If so, return
+it to the parent and tell the parent to invoke `route-large-implementation`. If the work cannot be
 split safely, return one bounded packet to the parent instead of creating artificial parallelism.
 
 When at least two disjoint packets exist, spawn subagents concurrently using gpt-5.6-luna at max

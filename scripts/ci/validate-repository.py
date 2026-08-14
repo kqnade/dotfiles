@@ -1159,6 +1159,23 @@ for required_fragment in (
     if required_fragment not in normalized_luna_parallelizer_instructions:
         fail("Codex Luna parallelizer is missing reviewed behavior")
 
+luna_parallelizer_flow = (
+    "Begin with only enough shallow discovery",
+    "Before deep investigation, editing files, or spawning subagents",
+    "return it to the parent",
+    "spawn subagents concurrently",
+)
+luna_parallelizer_flow_positions = [
+    normalized_luna_parallelizer_instructions.find(fragment)
+    for fragment in luna_parallelizer_flow
+]
+if -1 in luna_parallelizer_flow_positions or luna_parallelizer_flow_positions != sorted(
+    luna_parallelizer_flow_positions
+):
+    fail(
+        "Codex Luna parallelizer must discover, classify or return, then fan out"
+    )
+
 expected_codex_otel = {
     "environment": "prod",
     "log_user_prompt": False,
