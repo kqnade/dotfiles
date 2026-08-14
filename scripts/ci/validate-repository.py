@@ -1011,13 +1011,19 @@ codex_delegation_rule = ROOT / "dot_agents/rules/delegation.md"
 if not codex_delegation_rule.is_file():
     fail("Codex global delegation rule is missing")
 codex_delegation_rule_text = codex_delegation_rule.read_text()
+normalized_codex_delegation_rule_text = " ".join(codex_delegation_rule_text.split())
 for required_fragment in (
     "Delegate independent, bounded work",
     "Prefer Luna",
+    "both of the following are true",
+    "independently verifiable and committable features",
+    "implemented concurrently in isolated worktrees",
+    "`route-large-implementation` owns large implementations",
+    "Do not delegate them to `luna_parallelizer`",
     "luna_parallelizer",
     "Serialize overlapping writes",
 ):
-    if required_fragment not in codex_delegation_rule_text:
+    if required_fragment not in normalized_codex_delegation_rule_text:
         fail("Codex global delegation rule is missing reviewed behavior")
 
 codex_global_rule_template = ROOT / "dot_agents/rules/AGENTS.md.tmpl"
@@ -1128,6 +1134,9 @@ codex_luna_parallelizer = ROOT / "dot_codex/agents/luna-parallelizer.toml"
 if not codex_luna_parallelizer.is_file():
     fail("Codex Luna parallelizer agent is missing")
 codex_luna_parallelizer_config = tomllib.loads(codex_luna_parallelizer.read_text())
+normalized_luna_parallelizer_instructions = " ".join(
+    codex_luna_parallelizer_config.get("developer_instructions", "").split()
+)
 expected_luna_parallelizer = {
     "name": "luna_parallelizer",
     "model": "gpt-5.6-luna",
@@ -1139,13 +1148,15 @@ for key, expected_value in expected_luna_parallelizer.items():
 for required_fragment in (
     "shallow discovery",
     "disjoint packets",
+    "independently verifiable and committable features",
+    "implemented concurrently in isolated worktrees",
+    "return it to the parent",
+    "`route-large-implementation`",
     "spawn subagents",
     "Wait for every worker",
     "verify",
 ):
-    if required_fragment not in codex_luna_parallelizer_config.get(
-        "developer_instructions", ""
-    ):
+    if required_fragment not in normalized_luna_parallelizer_instructions:
         fail("Codex Luna parallelizer is missing reviewed behavior")
 
 expected_codex_otel = {
@@ -1378,6 +1389,9 @@ for skill_name, required_phrases in effect_contracts.items():
 worktree_effect_contracts = {
     "route-large-implementation": (
         "independent isolated worktree units",
+        "both of the following are true",
+        "independently verifiable and committable features",
+        "implemented concurrently in isolated worktrees",
         "HERDR_ENV=1",
         "$HOME/.local/bin/herdr-worktree",
         "Herdr JSON",

@@ -19,6 +19,12 @@ coordinator in an existing worktree must explicitly invoke
 `$execute-worktree-implementation` in Codex or
 `/execute-worktree-implementation` in Claude.
 
+Treat an implementation as large only when both of the following are true: it
+spans multiple independently verifiable and committable features, and those
+features can be implemented concurrently in isolated worktrees. This
+scope-based definition does not limit an explicit user request for outer
+orchestration.
+
 ## Route
 
 1. Keep the current top-level router to shallow decomposition and dispatch.
