@@ -6,10 +6,10 @@ Resolved workflow state root: /Users/kanato.momose/repos/github.com/kqnade/dotfi
 Repository root at write: /Users/kanato.momose/repos/github.com/kqnade/dotfiles
 Source worktree: /Users/kanato.momose/repos/github.com/kqnade/dotfiles
 Source ref: refs/heads/trunk
-Source commit: 007ce93324f6893f0ab9689fd1d6c0d9bc1b0e75
-Dirty worktree: yes; final completion increment and two unrelated untracked TODOs
+Source commit: cee023643c4410d007524caab3be2bf2cfef75c6
+Dirty worktree: yes; this context update and two unrelated untracked TODOs
 Created: 2026-08-14T18:43:48+0900
-Updated: 2026-08-14T19:09:33+0900
+Updated: 2026-08-14T19:20:18+0900
 Producing client: Codex
 
 # Workflow TODO management implementation context
@@ -18,6 +18,8 @@ Producing client: Codex
 
 - User: `.dev`の修理を次の優先作業にするか確認し、その後「じゃあ開始して」と実装開始を
   指示した。
+- User: 2回のreviewで合計4件のblocking defectを報告し、2回目のreview後にcontextは追記では
+  なく最新状態へ更新し、履歴はGitに任せるよう指示した。
 - Decision: `.dev/todo/`のlifecycleを先に安定させ、その上にskill-driven persistenceを
   構築できる順序にした。
 
@@ -32,6 +34,8 @@ Producing client: Codex
   再利用し、deleteはeligibleなactive TODOだけに限定した。
 - Decision: 完了gateは未完了または空のchecklist、missing/out-of-scope durable link、
   `None`とlinkの混在、stale hash、symlink、nonregular targetを拒否する。
+- Decision: checklistではindentと空labelを許容し、Markdown unordered bulletの`-`、`*`、`+`を
+  task markerとして認識する。
 
 ## Implemented work
 
@@ -39,8 +43,11 @@ Producing client: Codex
   active TODOをtracking対象に追加した。
 - Commit `007ce93`でskill routing、Claude materialization、current-worktree path resolver、
   TODO名allowlist、CAS create/update、回帰testを追加した。
-- Final incrementで`todo-complete`、TODO限定CAS delete、durable record/checklist gate、
+- Commit `1d719ee`で`todo-complete`、TODO限定CAS delete、durable record/checklist gate、
   linked-worktreeと削除範囲の回帰test、shared state contract、`.dev/todo/README.md`を整合した。
+- Commits `0df415a`、`dfdd90c`、`9338e85`でCASなしwrite、空label・nested unchecked task、
+  空白だけの`None`理由をそれぞれ拒否し、`dcf6f63`でREADMEのfilename contractを明確化した。
+- Commit `cee0236`で`* [ ]`と`+ [ ]`を未完了taskとして検出する回帰testと修正を追加した。
 
 ## TDD evidence
 
@@ -55,6 +62,15 @@ Producing client: Codex
   TODO限定`--delete`を追加し、current hash一致時だけ削除。
 - Added Green regression coverage: stale hash、linked-worktree分離、external backend拒否、
   invalid task key、owned area外link拒否、実在context link受理、context record削除拒否。
+- Review snapshot `546aa607..1d719ee0`では、CASなしwrite、空label・nested unchecked task、
+  空白だけの`None`理由を隔離fixtureで再現し、それぞれ期待理由でRedを確認してGreenにした。
+  reviewed diff SHA-256は
+  `2e430997da8214facf6b190efbd54a6c0b545a00f423ef41521fbec989b63bd6`。
+- Review snapshot `1d719ee..dcf6f63`では、`* [ ] Unfinished verification.`を持つfixtureで
+  helperがTODOを削除し、validatorが
+  `TODO completion must preserve a star-bullet unchecked item`でRedになった。`* [ ]`と
+  `+ [ ]`の両fixtureが内容を保持して完了を拒否するGreenを確認した。reviewed diff SHA-256は
+  `a8b7d103cdb2bf50b9365ee02414febc27a1790f091e2390132c0530413173cd`。
 
 ## Failed attempts and constraints
 
@@ -79,35 +95,12 @@ Producing client: Codex
   `todo-complete`がexit 0でactive TODOを削除した。
 - Observed: active TODO削除後にrepository validator、ShellCheck、`git diff --check`を再実行し、
   すべてexit 0。
+- Observed: commit `cee0236`とこのcontext更新を含むworktreeでrepository validator、3 helperの
+  ShellCheck、`git diff --check`を再実行し、すべてexit 0。
 
 ## Remaining work
 
-- このactive TODOに残作業はなく、完了gateを通してTODO fileを削除済み。
+- 既知の4 blocking defectは修正済み。最終判定は再レビュー待ち。
+- Linuxとlive CIは未確認。
 - `skill-driven-workflow-persistence.md`と`codex-luna-coordinator-model-availability.md`は別の
   untracked active itemであり、この変更では編集、stage、commitしない。
-
-## Review correction: 2026-08-14
-
-- User: commit range `546aa607..1d719ee0`のreview結果を`changes required`とし、3件の
-  blocking defectとREADMEの曖昧さを報告した。review snapshotのcommitted diff SHA-256は
-  `2e430997da8214facf6b190efbd54a6c0b545a00f423ef41521fbec989b63bd6`。
-- Correction: 上記`Remaining work`と初回完了報告は、review対象snapshotでは誤りだった。
-  repository validatorとShellCheckがGreenでも、未検証の入力で既存TODOの上書きと誤削除が
-  可能だったため、当時のcompletion claimはcontradicted。
-- Observed Red: `--expect`なしの既存TODO writeが内容を置換し、新しい回帰testが
-  `workflow-state writer must require --expect for active TODO writes`でexit 1。
-- Observed Green: commit `0df415a`でactive TODOのcreate/update/deleteすべてに`--expect`を
-  必須化し、CASなしwriteが元内容を保持して失敗する回帰testを追加。
-- Observed Red: 空labelの`- [ ]`とindentされたnested `- [ ]`を旧parserが数えず、完了削除を
-  許した。空label fixtureは`TODO completion must preserve an empty-label unchecked item`で
-  exit 1を確認。
-- Observed Green: commit `dfdd90c`で先頭空白と行末を含むMarkdown task markerを検出し、
-  空labelとnestedの両fixtureがTODOを保持してGreen。
-- Observed Red: 空白だけの`- None:`理由を旧parserが受理し、回帰testが
-  `TODO completion must preserve an item with a blank None reason`でexit 1。
-- Observed Green: commit `9338e85`で理由部分に非空白文字を必須化し、空白のみのfixtureを
-  内容保持のまま拒否。
-- Decision: READMEのfilename contractを`.dev/todo/<task-key>.md`へ明確化した。
-- Correction source commit: `9338e85f04902b2b85d7686c2069dd41cc9a52af`。
-- Observed: 修正3commitと文書訂正を含むworktreeでrepository validator、3 helperの
-  ShellCheck、`git diff --check`を再実行し、すべてexit 0。
