@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -1604,46 +1605,135 @@ if set(routed_skill_names) != expected_routed_skill_names:
     )
 
 workflow_state_script = (
-    agent_skills_root / "using-workflow-skills/scripts/workflow-state-root"
+    agent_skills_root / "using-workflow-skills/scripts/executable_workflow-state-root"
 )
-if not workflow_state_script.is_file() or not os.access(workflow_state_script, os.X_OK):
-    fail("workflow-state resolver must exist and be executable")
+if not workflow_state_script.is_file():
+    fail("workflow-state resolver executable source must exist")
 
 workflow_state_digest = (
-    agent_skills_root / "using-workflow-skills/scripts/workflow-state-digest"
+    agent_skills_root / "using-workflow-skills/scripts/executable_workflow-state-digest"
 )
-if not workflow_state_digest.is_file() or not os.access(workflow_state_digest, os.X_OK):
-    fail("external workflow-state identity digest must exist and be executable")
+if not workflow_state_digest.is_file():
+    fail("external workflow-state identity digest executable source must exist")
 
 local_dev_ignore = (
-    agent_skills_root / "using-workflow-skills/scripts/ensure-local-dev-ignore"
+    agent_skills_root
+    / "using-workflow-skills/scripts/executable_ensure-local-dev-ignore"
 )
-if not local_dev_ignore.is_file() or not os.access(local_dev_ignore, os.X_OK):
-    fail("company repository local .dev ignore helper must exist and be executable")
+if not local_dev_ignore.is_file():
+    fail("company repository local .dev ignore executable source must exist")
 
 workflow_state_candidates = (
-    agent_skills_root / "using-workflow-skills/scripts/workflow-state-candidates"
+    agent_skills_root
+    / "using-workflow-skills/scripts/executable_workflow-state-candidates"
 )
-if not workflow_state_candidates.is_file() or not os.access(
-    workflow_state_candidates, os.X_OK
-):
-    fail("workflow-state candidate discovery must exist and be executable")
+if not workflow_state_candidates.is_file():
+    fail("workflow-state candidate discovery executable source must exist")
 
 workflow_state_writer = (
-    agent_skills_root / "using-workflow-skills/scripts/workflow-state-write"
+    agent_skills_root / "using-workflow-skills/scripts/executable_workflow-state-write"
 )
-if not workflow_state_writer.is_file() or not os.access(workflow_state_writer, os.X_OK):
-    fail("workflow-state writer must exist and be executable")
+if not workflow_state_writer.is_file():
+    fail("workflow-state writer executable source must exist")
 
-context_path_script = agent_skills_root / "context-handoff/scripts/context-path"
-if not context_path_script.is_file() or not os.access(context_path_script, os.X_OK):
-    fail("context handoff path resolver must exist and be executable")
+context_path_script = (
+    agent_skills_root / "context-handoff/scripts/executable_context-path"
+)
+if not context_path_script.is_file():
+    fail("context handoff path resolver executable source must exist")
 
-context_candidates_script = agent_skills_root / "context-handoff/scripts/context-candidates"
-if not context_candidates_script.is_file() or not os.access(
-    context_candidates_script, os.X_OK
-):
-    fail("context handoff candidate discovery must exist and be executable")
+context_candidates_script = (
+    agent_skills_root / "context-handoff/scripts/executable_context-candidates"
+)
+if not context_candidates_script.is_file():
+    fail("context handoff candidate discovery executable source must exist")
+
+workflow_helper_targets = (
+    "context-handoff/scripts/context-candidates",
+    "context-handoff/scripts/context-path",
+    "using-workflow-skills/scripts/ensure-local-dev-ignore",
+    "using-workflow-skills/scripts/workflow-state-candidates",
+    "using-workflow-skills/scripts/workflow-state-digest",
+    "using-workflow-skills/scripts/workflow-state-root",
+    "using-workflow-skills/scripts/workflow-state-write",
+)
+workflow_test_directory = tempfile.TemporaryDirectory()
+workflow_test_root = Path(workflow_test_directory.name)
+workflow_test_home = workflow_test_root / "home"
+workflow_test_home.mkdir()
+workflow_test_home = workflow_test_home.resolve()
+(workflow_test_home / ".agents").mkdir()
+workflow_apply_result = subprocess.run(
+    [
+        "chezmoi",
+        "--source",
+        str(ROOT),
+        "--destination",
+        str(workflow_test_home),
+        "--persistent-state",
+        str(workflow_test_root / "chezmoistate.boltdb"),
+        "--no-tty",
+        "apply",
+        ".agents/skills",
+    ],
+    cwd=workflow_test_home,
+    text=True,
+    capture_output=True,
+    check=False,
+)
+if workflow_apply_result.returncode != 0:
+    fail(
+        "workflow helper materialization failed: "
+        f"{workflow_apply_result.stderr.strip()}"
+    )
+
+deployed_skills_root = workflow_test_home / ".agents/skills"
+for helper_target in workflow_helper_targets:
+    deployed_helper = deployed_skills_root / helper_target
+    if not deployed_helper.is_file() or not os.access(deployed_helper, os.X_OK):
+        fail(f"deployed workflow helper must be executable: {helper_target}")
+
+workflow_state_script = (
+    deployed_skills_root / "using-workflow-skills/scripts/workflow-state-root"
+)
+workflow_state_digest = (
+    deployed_skills_root / "using-workflow-skills/scripts/workflow-state-digest"
+)
+local_dev_ignore = (
+    deployed_skills_root / "using-workflow-skills/scripts/ensure-local-dev-ignore"
+)
+workflow_state_candidates = (
+    deployed_skills_root / "using-workflow-skills/scripts/workflow-state-candidates"
+)
+workflow_state_writer = (
+    deployed_skills_root / "using-workflow-skills/scripts/workflow-state-write"
+)
+context_path_script = deployed_skills_root / "context-handoff/scripts/context-path"
+context_candidates_script = (
+    deployed_skills_root / "context-handoff/scripts/context-candidates"
+)
+
+context_path_result = subprocess.run(
+    [str(context_path_script), "--task", "workflow-skill-script-permissions"],
+    cwd=ROOT,
+    text=True,
+    capture_output=True,
+    check=False,
+)
+if context_path_result.returncode != 0:
+    fail(
+        "deployed context-path must execute nested workflow helpers: "
+        f"{context_path_result.stderr.strip()}"
+    )
+context_path_hash = hashlib.sha256(
+    b"task:workflow-skill-script-permissions"
+).hexdigest()[:12]
+expected_context_path = (
+    ROOT
+    / f".dev/contexts/workflow-skill-script-permissions-{context_path_hash}.md"
+).resolve()
+if Path(context_path_result.stdout.strip()) != expected_context_path:
+    fail("deployed context-path returned an unexpected context location")
 
 state_home_template = ROOT / "dot_config/agent-workflows/state-home.tmpl"
 if state_home_template.exists():
@@ -2303,6 +2393,8 @@ with tempfile.TemporaryDirectory() as temp_dir:
         unrelated_jobtalk_repo / ".git/info/exclude"
     ).read_bytes() != unrelated_exclude_before:
         fail("a repository named jobtalk outside the two namespaces must not be ignored")
+
+workflow_test_directory.cleanup()
 
 if (ROOT / "dot_claude/hooks/executable_herdr-review-notify.sh").exists():
     fail("legacy Herdr review notification hook remains")
