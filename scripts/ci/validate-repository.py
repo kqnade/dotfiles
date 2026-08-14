@@ -2014,6 +2014,18 @@ Repair state.
     if first_todo_write.returncode != 0 or todo_path.read_text() != first_todo:
         fail("workflow-state writer must create an expected missing active TODO")
 
+    unprotected_todo_write = subprocess.run(
+        [str(workflow_state_writer), str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input="# Must not overwrite an active TODO without CAS\n",
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if unprotected_todo_write.returncode == 0 or todo_path.read_text() != first_todo:
+        fail("workflow-state writer must require --expect for active TODO writes")
+
     first_todo_hash = subprocess.check_output(
         ["git", "hash-object", "--no-filters", str(todo_path)], text=True
     ).strip()

@@ -56,6 +56,10 @@ case "$target_dir" in
   *) usage ;;
 esac
 [[ "$delete" -eq 0 || "$is_todo" -eq 1 ]] || usage
+if [[ "$is_todo" -eq 1 && -z "$expected" ]]; then
+  echo "workflow-state-write: active TODO writes require --expect" >&2
+  exit 2
+fi
 [[ "$target_name" != "." && "$target_name" != ".." ]] || usage
 
 validate_target_type() {
