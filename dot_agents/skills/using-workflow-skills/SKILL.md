@@ -1,6 +1,6 @@
 ---
 name: using-workflow-skills
-description: Route software changes, evidence reviews, context handoffs, security audits, prose checks, assumption pruning, and peer challenges to the one canonical workflow skill before acting. Use at the start of those tasks or whenever the user names an installed workflow; do not use for unrelated questions.
+description: Route software changes, evidence reviews, context handoffs, security audits, active TODO management, prose checks, assumption pruning, and peer challenges to the one canonical workflow skill before acting. Use at the start of those tasks or whenever the user names an installed workflow; do not use for unrelated questions.
 ---
 
 # Using Workflow Skills
@@ -35,6 +35,7 @@ current-state evidence.
 | Review a code change or dependency update | `evidence-review` |
 | Export, import, or reconcile a task handoff | `context-handoff` |
 | Maintain security coverage across bounded repository areas | `security-audit` |
+| Create, update, or complete an active repository `.dev/todo/` work item | `todo-management` |
 | Proofread Markdown or plain-text prose | `prose-proofreading` |
 | Remove assumptions to find a simpler design | `assumption-pruning` |
 | Obtain and verify an independent technical opinion | `peer-consultation` |

@@ -20,6 +20,12 @@ repository_state=$("$script_dir/workflow-state-root" --ensure)
 contexts_dir="$repository_state/contexts"
 security_dir="$repository_state/security"
 reports_dir="$security_dir/reports"
+current_worktree=$(git rev-parse --show-toplevel 2>/dev/null) || {
+  echo "workflow-state-write: not inside a Git worktree" >&2
+  exit 1
+}
+current_worktree=$(cd "$current_worktree" && pwd -P)
+current_todo_dir="$current_worktree/.dev/todo"
 
 target_dir=$(dirname "$target")
 target_name=$(basename "$target")
@@ -27,6 +33,10 @@ target_dir=$(cd "$target_dir" && pwd -P)
 case "$target_dir" in
   "$contexts_dir"|"$reports_dir") ;;
   "$security_dir") [[ "$target_name" == "coverage.md" ]] || usage ;;
+  "$current_todo_dir")
+    [[ "$repository_state" == "$current_worktree/.dev" ]] || usage
+    [[ "$target_name" =~ ^[a-z0-9][a-z0-9._-]*\.md$ ]] || usage
+    ;;
   *) usage ;;
 esac
 [[ "$target_name" != "." && "$target_name" != ".." ]] || usage

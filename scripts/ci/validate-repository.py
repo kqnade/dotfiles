@@ -1301,6 +1301,7 @@ expected_agent_skills = {
     "route-large-implementation",
     "security-audit",
     "test-driven-development",
+    "todo-management",
     "using-workflow-skills",
 }
 
@@ -1604,6 +1605,17 @@ if set(routed_skill_names) != expected_routed_skill_names:
         f"got {sorted(routed_skill_names)}"
     )
 
+todo_management_contract = (agent_skills_root / "todo-management/SKILL.md").read_text()
+for required_todo_phrase in (
+    "explicitly requested the exact TODO",
+    "current Git worktree",
+    "AGENT_WORKFLOW_STATE_HOME",
+    "git hash-object --no-filters",
+    "do not delete it manually",
+):
+    if required_todo_phrase not in todo_management_contract:
+        fail(f"TODO management contract is incomplete: {required_todo_phrase}")
+
 workflow_state_script = (
     agent_skills_root / "using-workflow-skills/scripts/executable_workflow-state-root"
 )
@@ -1648,9 +1660,14 @@ context_candidates_script = (
 if not context_candidates_script.is_file():
     fail("context handoff candidate discovery executable source must exist")
 
+todo_path_script = agent_skills_root / "todo-management/scripts/executable_todo-path"
+if not todo_path_script.is_file():
+    fail("TODO management path resolver executable source must exist")
+
 workflow_helper_targets = (
     "context-handoff/scripts/context-candidates",
     "context-handoff/scripts/context-path",
+    "todo-management/scripts/todo-path",
     "using-workflow-skills/scripts/ensure-local-dev-ignore",
     "using-workflow-skills/scripts/workflow-state-candidates",
     "using-workflow-skills/scripts/workflow-state-digest",
@@ -1712,6 +1729,7 @@ context_path_script = deployed_skills_root / "context-handoff/scripts/context-pa
 context_candidates_script = (
     deployed_skills_root / "context-handoff/scripts/context-candidates"
 )
+todo_path_script = deployed_skills_root / "todo-management/scripts/todo-path"
 
 context_path_result = subprocess.run(
     [str(context_path_script), "--task", "workflow-skill-script-permissions"],
@@ -1780,6 +1798,7 @@ if re.search(
 state_skill_resolvers = {
     "context-handoff": "scripts/context-path --ensure",
     "security-audit": "workflow-state-root --ensure",
+    "todo-management": "scripts/todo-path --ensure",
 }
 for state_skill_name, expected_resolver in state_skill_resolvers.items():
     state_skill = (agent_skills_root / state_skill_name / "SKILL.md").read_text()
@@ -1889,6 +1908,106 @@ with tempfile.TemporaryDirectory() as temp_dir:
     ).strip()
     if worktree_state != str(state_test_worktree.resolve() / ".dev"):
         fail("each linked worktree must resolve its own repository-local .dev")
+
+    todo_path = Path(
+        subprocess.check_output(
+            [str(todo_path_script), "workflow-state-repair"],
+            cwd=state_test_repo,
+            env=state_test_env,
+            text=True,
+        ).strip()
+    )
+    if todo_path != state_test_repo.resolve() / ".dev/todo/workflow-state-repair.md":
+        fail("TODO path resolver must use the current worktree's .dev/todo")
+    if todo_path.parent.exists():
+        fail("read-only TODO path resolution must not create the todo directory")
+
+    invalid_todo_path = subprocess.run(
+        [str(todo_path_script), "Invalid/Todo"],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if invalid_todo_path.returncode == 0:
+        fail("TODO path resolver must reject an invalid task key")
+
+    external_todo_env = {
+        **state_test_env,
+        "AGENT_WORKFLOW_STATE_HOME": str(state_test_root / "external"),
+    }
+    external_todo_path = subprocess.run(
+        [str(todo_path_script), "workflow-state-repair"],
+        cwd=state_test_repo,
+        env=external_todo_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if external_todo_path.returncode == 0:
+        fail("TODO path resolver must reject external workflow-state redirection")
+
+    ensured_todo_path = Path(
+        subprocess.check_output(
+            [str(todo_path_script), "--ensure", "workflow-state-repair"],
+            cwd=state_test_repo,
+            env=state_test_env,
+            text=True,
+        ).strip()
+    )
+    if ensured_todo_path != todo_path or not todo_path.parent.is_dir():
+        fail("TODO path resolver must create only the current worktree todo directory")
+
+    first_todo = """# Workflow state repair
+
+## Objective
+
+Repair state.
+
+## Scope
+
+- Active TODO management.
+
+## Non-goals
+
+- Unrelated workflow state.
+
+## Durable records
+
+- None: validator fixture.
+
+## Commit checklist
+
+- [ ] Repair workflow state.
+"""
+    first_todo_write = subprocess.run(
+        [str(workflow_state_writer), "--expect", "missing", str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=first_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if first_todo_write.returncode != 0 or todo_path.read_text() != first_todo:
+        fail("workflow-state writer must create an expected missing active TODO")
+
+    first_todo_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    second_todo = first_todo.replace("Repair state.", "Repair repository state.")
+    second_todo_write = subprocess.run(
+        [str(workflow_state_writer), "--expect", first_todo_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=second_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if second_todo_write.returncode != 0 or todo_path.read_text() != second_todo:
+        fail("workflow-state writer must update an active TODO with its current hash")
 
     main_task_context = Path(
         subprocess.check_output(

@@ -44,9 +44,8 @@
 
 - [x] TODO管理のcanonical ownerとlifecycle contractを決定し、必要なDesignDocまたはADRへ
   記録する。
-- [ ] `todo-management` skillを追加し、routingとcross-client materializationの回帰testを
-  Greenにする。
-- [ ] current-worktree限定のpath解決とCAS付きcreate/updateを実装し、state-write境界と
-  concurrencyの回帰testをGreenにする。
+- [x] `todo-management` skill、routing、cross-client materialization、current-worktree限定の
+  path解決、CAS付きcreate/updateを実装し、state-write境界とconcurrencyの回帰testをGreenに
+  する。
 - [ ] durable recordとchecklistの完了gate、CAS付き削除を実装し、作業contextを保存して
   active TODOを削除する。

@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  echo "usage: todo-path [--ensure] TASK_KEY" >&2
+  exit 2
+}
+
+ensure=0
+if [[ "${1:-}" == "--ensure" ]]; then
+  ensure=1
+  shift
+fi
+[[ $# -eq 1 ]] || usage
+task_key=$1
+[[ "$task_key" =~ ^[a-z0-9][a-z0-9._-]*$ ]] || usage
+
+if [[ -n "${AGENT_WORKFLOW_STATE_HOME:-}" ]]; then
+  echo "todo-path: active TODOs must stay in the current worktree's .dev" >&2
+  exit 1
+fi
+
+current_worktree=$(git rev-parse --show-toplevel 2>/dev/null) || {
+  echo "todo-path: not inside a Git worktree" >&2
+  exit 1
+}
+current_worktree=$(cd "$current_worktree" && pwd -P)
+repository_state="$current_worktree/.dev"
+todo_dir="$repository_state/todo"
+
+if [[ -L "$repository_state" || ( -e "$repository_state" && ! -d "$repository_state" ) ]]; then
+  echo "todo-path: .dev must be a real directory or missing" >&2
+  exit 1
+fi
+if [[ -L "$todo_dir" || ( -e "$todo_dir" && ! -d "$todo_dir" ) ]]; then
+  echo "todo-path: .dev/todo must be a real directory or missing" >&2
+  exit 1
+fi
+
+if [[ "$ensure" -eq 1 ]]; then
+  umask 077
+  mkdir -p -- "$todo_dir"
+  chmod 700 "$repository_state" "$todo_dir"
+fi
+
+printf '%s\n' "$todo_dir/$task_key.md"
