@@ -44,9 +44,11 @@ Claude Codeの設定と安全hook、Codex、OpenCode、Herdr integrationをchezm
 ClaudeはGitHub remote ownerが`livesense-inc`または`jobtalk`のrepositoryだけで利用でき、
 shell wrapperが起動前に、hookがprompt送信前とtool実行前にそれ以外を拒否します。
 Claudeのglobal rulesはcoding、verification、operations、Git、PRD / STD deliveryに限定します。
-Codexはcanonicalなglobal Git ruleを読み、Claude専用namespace以外では`git cc`を使います。
-Codexのmodel、reasoning、approval、subagent、hookの安定したdefaultだけをchezmoiで適用し、
-project trust、notice、hook trust hash、session、cacheなどのruntime stateはCodexへ残します。
+Codexはcanonicalなglobal delegation / Git ruleを読み、Claude専用namespace以外では`git cc`を
+使います。複数領域の作業は`luna_parallelizer`が浅く探索し、独立packetをLuna workerへ
+fan-outします。Codexのmodel、reasoning、approval、subagent、hookの安定したdefaultだけを
+chezmoiで適用し、subagent同時実行上限は8、既定subagentはLuna/maxとします。project trust、
+notice、hook trust hash、session、cacheなどのruntime stateはCodexへ残します。
 workflow skillのcanonical sourceは`~/.agents/skills/`です。Claudeはsymlink、CodexとOpenCodeは
 native discoveryで同じ内容を利用します。source workflowの構造ではなく、得たい効果ごとに
 `evidence-review`、`context-handoff`、`security-audit`、`prose-proofreading`、

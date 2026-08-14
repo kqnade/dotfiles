@@ -1007,12 +1007,26 @@ for required_fragment in (
     if required_fragment not in codex_global_rule_text:
         fail("Codex global Git rule is missing reviewed behavior")
 
+codex_delegation_rule = ROOT / "dot_agents/rules/delegation.md"
+if not codex_delegation_rule.is_file():
+    fail("Codex global delegation rule is missing")
+codex_delegation_rule_text = codex_delegation_rule.read_text()
+for required_fragment in (
+    "Delegate independent, bounded work",
+    "Prefer Luna",
+    "luna_parallelizer",
+    "Serialize overlapping writes",
+):
+    if required_fragment not in codex_delegation_rule_text:
+        fail("Codex global delegation rule is missing reviewed behavior")
+
 codex_global_rule_template = ROOT / "dot_agents/rules/AGENTS.md.tmpl"
 if not codex_global_rule_template.is_file():
     fail("Codex global rule aggregate is missing")
 codex_global_rule_template_text = codex_global_rule_template.read_text()
 for required_include in (
     '{{ include "dot_agents/rules/coding.md" }}',
+    '{{ include "dot_agents/rules/delegation.md" }}',
     '{{ include "dot_agents/rules/git.md" }}',
     '{{ include "dot_agents/rules/workflow-state.md" }}',
 ):
@@ -1032,6 +1046,7 @@ codex_global_rule_aggregate = subprocess.check_output(
     text=True,
 )
 for required_fragment in (
+    "Delegate independent, bounded work",
     "Make names and structure explain what the code does",
     "Use `git cc` for normal local commits",
     "current Git worktree",
@@ -1056,6 +1071,7 @@ model_reasoning_effort = "low"
 runtime_marker = "preserve-me"
 
 [agents]
+max_concurrent_threads_per_session = 2
 default_subagent_model = "runtime-subagent"
 default_subagent_reasoning_effort = "medium"
 
@@ -1097,6 +1113,7 @@ for key, expected_value in expected_codex_defaults.items():
         fail(f"Codex config modifier did not enforce {key}")
 
 expected_agent_defaults = {
+    "max_concurrent_threads_per_session": 8,
     "default_subagent_model": "gpt-5.6-luna",
     "default_subagent_reasoning_effort": "max",
 }
@@ -1106,6 +1123,30 @@ for key, expected_value in expected_agent_defaults.items():
 
 if codex_modified_config.get("features", {}).get("hooks") is not True:
     fail("Codex config modifier must enable lifecycle hooks")
+
+codex_luna_parallelizer = ROOT / "dot_codex/agents/luna-parallelizer.toml"
+if not codex_luna_parallelizer.is_file():
+    fail("Codex Luna parallelizer agent is missing")
+codex_luna_parallelizer_config = tomllib.loads(codex_luna_parallelizer.read_text())
+expected_luna_parallelizer = {
+    "name": "luna_parallelizer",
+    "model": "gpt-5.6-luna",
+    "model_reasoning_effort": "max",
+}
+for key, expected_value in expected_luna_parallelizer.items():
+    if codex_luna_parallelizer_config.get(key) != expected_value:
+        fail(f"Codex Luna parallelizer did not enforce {key}")
+for required_fragment in (
+    "shallow discovery",
+    "disjoint packets",
+    "spawn subagents",
+    "Wait for every worker",
+    "verify",
+):
+    if required_fragment not in codex_luna_parallelizer_config.get(
+        "developer_instructions", ""
+    ):
+        fail("Codex Luna parallelizer is missing reviewed behavior")
 
 expected_codex_otel = {
     "environment": "prod",
