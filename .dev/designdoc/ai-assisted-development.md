@@ -1,7 +1,7 @@
 # AI支援開発workflow
 
-- 状態: 基盤・global rules運用中、review workflow未提供
-- 更新日: 2026-08-04
+- 状態: 基盤・global rules運用中、active TODO管理workflow実装中
+- 更新日: 2026-08-14
 
 ## 目的
 
@@ -35,6 +35,37 @@ code、test、実行結果も独立した証拠であり、`.dev`の記述と矛
 6. inline commentはcodeから読めないWhyだけに限定する。
 
 調査、DesignDoc、ADRが必要な変更は、実装TODOより前に作成または更新する。
+
+## Active TODO管理
+
+`todo-management`を`.dev/todo/`のactive work item lifecycleに対する唯一のcanonical
+ownerとする。TDDは実行可能な振る舞いの変更、context handoffはsession間の引き継ぎを
+引き続き所有し、TODO管理へ責務を重複させない。
+
+TODOの作成、更新、完了は、利用者がそのstate writeを明示的に依頼した場合だけ行う。
+別のworkflowがTODOを必要と判断しただけでは書き込みを認可せず、未認可の場合は必要性と
+対象を会話で提示する。管理対象はcurrent Git worktreeの`.dev/todo/`だけとし、別worktreeや
+`AGENT_WORKFLOW_STATE_HOME`へredirectしない。
+
+task keyは小文字英数字で始まり、小文字英数字、`.`、`_`、`-`だけを使用する安定した名前と
+する。fileは`.dev/todo/<task-key>.md`とし、最低限次のsectionを持つ。
+
+- `Objective`: 完了時に成立する状態
+- `Scope`: このwork itemが扱う範囲
+- `Non-goals`: 意図的に扱わない範囲
+- `Durable records`: 完了前に残すDesignDoc、ADR、research、context、memoryへのlink、
+  または保存不要と判断した具体的な理由
+- `Commit checklist`: 一つずつ独立してreview、検証、revertできるGreen increment
+
+active TODOはdurable recordではないため、contextやsecurity recordのidentity blockを要求しない。
+作成と更新はrecord単位のlock、read時のhashを用いたcompare-and-swap、同一directory内の
+temporary fileからのatomic replaceを使う。競合時は最新内容を再読して調整し、blind retryや
+lockのageだけを根拠にした解除を行わない。
+
+完了操作は、すべてのcommit checklistが完了し、`Durable records`の各link先がcurrent
+worktreeの`.dev/`内に存在すること、または保存不要の具体的理由があることを確認してから、
+read時のhashと一致するfileだけを削除する。判断と詳細な作業証跡を先にdurable recordへ保存し、
+完了済みTODOのarchiveは作らずGit historyを使用する。
 
 ## 行動の管理境界
 
