@@ -234,6 +234,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
         COMMAND_LOG=str(command_log),
         EXPECT_NEW_RELIC_KEY="1",
     )
+    apply_env.pop("CI", None)
     apply_env.pop("NEW_RELIC_LICENSE_KEY", None)
     apply_result = subprocess.run(
         ["bash", str(fake_scripts / "apply.sh")],
