@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  echo "usage: todo-complete --expect HASH TASK_KEY" >&2
+  exit 2
+}
+
+[[ "${1:-}" == "--expect" && $# -eq 3 && -n "$2" ]] || usage
+expected=$2
+task_key=$3
+[[ "$expected" != "missing" ]] || usage
+
+script_dir=$(cd "$(dirname "$0")" && pwd -P)
+target=$("$script_dir/todo-path" "$task_key")
+if [[ -L "$target" || ! -f "$target" ]]; then
+  echo "todo-complete: active TODO must be a regular file: $target" >&2
+  exit 1
+fi
+
+current=$(git hash-object --no-filters "$target")
+if [[ "$current" != "$expected" ]]; then
+  echo "todo-complete: active TODO changed (expected $expected, found $current)" >&2
+  exit 4
+fi
+
+for heading in Objective Scope Non-goals "Durable records" "Commit checklist"; do
+  if ! grep -Fxq "## $heading" "$target"; then
+    echo "todo-complete: active TODO is missing the $heading section" >&2
+    exit 5
+  fi
+done
+
+checked_items=0
+unchecked_items=0
+in_checklist=0
+while IFS= read -r line; do
+  if [[ "$line" == "## Commit checklist" ]]; then
+    in_checklist=1
+    continue
+  fi
+  if [[ "$in_checklist" -eq 1 && "$line" == "## "* ]]; then
+    break
+  fi
+  [[ "$in_checklist" -eq 1 ]] || continue
+  if [[ "$line" =~ ^-\ \[[xX]\]\  ]]; then
+    checked_items=$((checked_items + 1))
+  elif [[ "$line" =~ ^-\ \[\ \]\  ]]; then
+    unchecked_items=$((unchecked_items + 1))
+  fi
+done <"$target"
+
+if [[ "$unchecked_items" -gt 0 ]]; then
+  echo "todo-complete: active TODO has unchecked checklist items" >&2
+  exit 5
+fi
+if [[ "$checked_items" -eq 0 ]]; then
+  echo "todo-complete: active TODO has no completed checklist items" >&2
+  exit 5
+fi
+
+current_worktree=$(git rev-parse --show-toplevel)
+current_worktree=$(cd "$current_worktree" && pwd -P)
+todo_dir=$(dirname "$target")
+record_pattern='^- \[[^]]+\]\(([^)]+)\)'
+durable_entries=0
+none_entries=0
+in_durable_records=0
+while IFS= read -r line; do
+  if [[ "$line" == "## Durable records" ]]; then
+    in_durable_records=1
+    continue
+  fi
+  if [[ "$in_durable_records" -eq 1 && "$line" == "## "* ]]; then
+    break
+  fi
+  [[ "$in_durable_records" -eq 1 && "$line" == "- "* ]] || continue
+  durable_entries=$((durable_entries + 1))
+
+  if [[ "$line" =~ ^-\ None:\ .+ ]]; then
+    none_entries=$((none_entries + 1))
+    continue
+  fi
+  if [[ ! "$line" =~ $record_pattern ]]; then
+    echo "todo-complete: invalid Durable records entry: $line" >&2
+    exit 5
+  fi
+
+  record_path=${BASH_REMATCH[1]}
+  if [[ "$record_path" == /* || "$record_path" == *://* ]]; then
+    echo "todo-complete: durable record link must be repository-relative: $record_path" >&2
+    exit 5
+  fi
+  record_candidate="$todo_dir/$record_path"
+  record_dir=$(dirname "$record_candidate")
+  if [[ ! -d "$record_dir" ]]; then
+    echo "todo-complete: durable record does not exist: $record_path" >&2
+    exit 5
+  fi
+  record_dir=$(cd "$record_dir" && pwd -P)
+  record_candidate="$record_dir/$(basename "$record_candidate")"
+  case "$record_candidate" in
+    "$current_worktree/.dev/adr/"*|"$current_worktree/.dev/contexts/"*|\
+    "$current_worktree/.dev/designdoc/"*|"$current_worktree/.dev/memory/"*|\
+    "$current_worktree/.dev/research/"*|"$current_worktree/.dev/security/"*) ;;
+    *)
+      echo "todo-complete: durable record is outside an owned .dev area: $record_path" >&2
+      exit 5
+      ;;
+  esac
+  if [[ -L "$record_candidate" || ! -f "$record_candidate" ]]; then
+    echo "todo-complete: durable record does not exist: $record_path" >&2
+    exit 5
+  fi
+done <"$target"
+
+if [[ "$durable_entries" -eq 0 ]]; then
+  echo "todo-complete: Durable records must contain a link or a None reason" >&2
+  exit 5
+fi
+if [[ "$none_entries" -gt 0 && "$durable_entries" -ne 1 ]]; then
+  echo "todo-complete: a None reason cannot be mixed with durable record links" >&2
+  exit 5
+fi
+
+"$script_dir/../../using-workflow-skills/scripts/workflow-state-write" \
+  --delete --expect "$expected" "$target"

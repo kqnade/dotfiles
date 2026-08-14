@@ -58,10 +58,17 @@ lock and ask before removing that exact lock; never clear it based only on age.
 
 ## Complete an item
 
-Completion deletion is intentionally unavailable until the active
-`workflow-todo-management-skill` work item implements and verifies its gate.
-Until then, preserve the checked TODO and report the remaining tracked work;
-do not delete it manually.
+Before completion, write every linked durable record first. Mark the final
+checklist item complete, re-read the TODO, and hash that exact version. Run
+`scripts/todo-complete --expect <hash> <task-key>`. The helper rejects missing
+required sections, unchecked or empty checklists, missing or out-of-scope
+durable record links, mixed `None` and link entries, stale hashes, symlinks,
+and nonregular targets. A concrete `None` reason is valid only when no durable
+record is warranted.
+
+The helper deletes only an eligible current-worktree TODO through the shared
+record lock and compare-and-swap writer. If validation or deletion fails,
+leave the item active, re-read current state, and report the failed gate.
 
 ## Report
 

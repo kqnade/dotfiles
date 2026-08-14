@@ -1,6 +1,6 @@
 # AI支援開発workflow
 
-- 状態: 基盤・global rules運用中、active TODO管理workflow実装中
+- 状態: 基盤・global rules、active TODO管理workflow運用中
 - 更新日: 2026-08-14
 
 ## 目的

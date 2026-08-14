@@ -68,6 +68,8 @@ Repository backend:
 
 ```text
 .dev/
+  todo/
+    <task-key>.md
   contexts/
     <branch-or-task-key>.md
   security/
@@ -77,7 +79,9 @@ Repository backend:
 ```
 
 The external backend has the same `contexts/` and `security/` children below
-its repository-key directory, plus `repository.meta`.
+its repository-key directory, plus `repository.meta`. Active TODOs are an
+exception: `todo-management` keeps them only in the current worktree's
+`.dev/todo/` and rejects external backend redirection.
 
 Use a sanitized full branch ref plus a hash for attached-branch context files.
 Require a user-provided task name for detached HEAD. Never use a short branch
@@ -105,8 +109,11 @@ evidence.
 
 Write managed records with `scripts/workflow-state-write`, not direct
 truncating writes. The writer accepts content on stdin, restricts targets to
-the current repository's context and security record locations, acquires a
-per-record lock, and atomically replaces one regular file.
+the selected backend's context and security record locations or the current
+worktree's validated active TODO names, acquires a per-record lock, and
+atomically replaces one regular file. Only `todo-management` may request
+deletion, only for an eligible active TODO, and it must supply the current
+expected hash.
 
 Before updating an existing record, compute its current hash with:
 

@@ -2,17 +2,31 @@
 set -euo pipefail
 
 usage() {
-  echo "usage: workflow-state-write [--expect HASH|missing] ABSOLUTE_TARGET" >&2
+  echo "usage: workflow-state-write [--delete] [--expect HASH|missing] ABSOLUTE_TARGET" >&2
   exit 2
 }
 
 expected=""
-if [[ "${1:-}" == "--expect" ]]; then
-  [[ $# -ge 3 && -n "$2" ]] || usage
-  expected=$2
-  shift 2
-fi
+delete=0
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --delete)
+      [[ "$delete" -eq 0 ]] || usage
+      delete=1
+      shift
+      ;;
+    --expect)
+      [[ -z "$expected" && $# -ge 2 && -n "$2" ]] || usage
+      expected=$2
+      shift 2
+      ;;
+    *) break ;;
+  esac
+done
 [[ $# -eq 1 && "$1" == /* ]] || usage
+if [[ "$delete" -eq 1 && ( -z "$expected" || "$expected" == "missing" ) ]]; then
+  usage
+fi
 target=$1
 
 script_dir=$(cd "$(dirname "$0")" && pwd -P)
@@ -26,6 +40,7 @@ current_worktree=$(git rev-parse --show-toplevel 2>/dev/null) || {
 }
 current_worktree=$(cd "$current_worktree" && pwd -P)
 current_todo_dir="$current_worktree/.dev/todo"
+is_todo=0
 
 target_dir=$(dirname "$target")
 target_name=$(basename "$target")
@@ -36,9 +51,11 @@ case "$target_dir" in
   "$current_todo_dir")
     [[ "$repository_state" == "$current_worktree/.dev" ]] || usage
     [[ "$target_name" =~ ^[a-z0-9][a-z0-9._-]*\.md$ ]] || usage
+    is_todo=1
     ;;
   *) usage ;;
 esac
+[[ "$delete" -eq 0 || "$is_todo" -eq 1 ]] || usage
 [[ "$target_name" != "." && "$target_name" != ".." ]] || usage
 
 validate_target_type() {
@@ -74,6 +91,16 @@ if [[ -n "$expected" ]]; then
     echo "workflow-state-write: record changed (expected $expected, found $current)" >&2
     exit 4
   fi
+fi
+
+if [[ "$delete" -eq 1 ]]; then
+  validate_target_type
+  [[ -f "$target" ]] || {
+    echo "workflow-state-write: cannot delete a missing record: $target" >&2
+    exit 4
+  }
+  rm -- "$target"
+  exit 0
 fi
 
 umask 077

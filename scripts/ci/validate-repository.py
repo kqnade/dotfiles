@@ -1611,7 +1611,7 @@ for required_todo_phrase in (
     "current Git worktree",
     "AGENT_WORKFLOW_STATE_HOME",
     "git hash-object --no-filters",
-    "do not delete it manually",
+    "scripts/todo-complete --expect",
 ):
     if required_todo_phrase not in todo_management_contract:
         fail(f"TODO management contract is incomplete: {required_todo_phrase}")
@@ -1664,9 +1664,16 @@ todo_path_script = agent_skills_root / "todo-management/scripts/executable_todo-
 if not todo_path_script.is_file():
     fail("TODO management path resolver executable source must exist")
 
+todo_complete_script = (
+    agent_skills_root / "todo-management/scripts/executable_todo-complete"
+)
+if not todo_complete_script.is_file():
+    fail("TODO management completion helper executable source must exist")
+
 workflow_helper_targets = (
     "context-handoff/scripts/context-candidates",
     "context-handoff/scripts/context-path",
+    "todo-management/scripts/todo-complete",
     "todo-management/scripts/todo-path",
     "using-workflow-skills/scripts/ensure-local-dev-ignore",
     "using-workflow-skills/scripts/workflow-state-candidates",
@@ -1730,6 +1737,7 @@ context_candidates_script = (
     deployed_skills_root / "context-handoff/scripts/context-candidates"
 )
 todo_path_script = deployed_skills_root / "todo-management/scripts/todo-path"
+todo_complete_script = deployed_skills_root / "todo-management/scripts/todo-complete"
 
 context_path_result = subprocess.run(
     [str(context_path_script), "--task", "workflow-skill-script-permissions"],
@@ -1909,6 +1917,17 @@ with tempfile.TemporaryDirectory() as temp_dir:
     if worktree_state != str(state_test_worktree.resolve() / ".dev"):
         fail("each linked worktree must resolve its own repository-local .dev")
 
+    worktree_todo_path = Path(
+        subprocess.check_output(
+            [str(todo_path_script), "workflow-state-repair"],
+            cwd=state_test_worktree,
+            env=state_test_env,
+            text=True,
+        ).strip()
+    )
+    if worktree_todo_path.parent.exists():
+        fail("read-only TODO resolution must not create another worktree's .dev")
+
     todo_path = Path(
         subprocess.check_output(
             [str(todo_path_script), "workflow-state-repair"],
@@ -1919,6 +1938,8 @@ with tempfile.TemporaryDirectory() as temp_dir:
     )
     if todo_path != state_test_repo.resolve() / ".dev/todo/workflow-state-repair.md":
         fail("TODO path resolver must use the current worktree's .dev/todo")
+    if worktree_todo_path == todo_path:
+        fail("linked worktrees must not share active TODO paths")
     if todo_path.parent.exists():
         fail("read-only TODO path resolution must not create the todo directory")
 
@@ -2008,6 +2029,267 @@ Repair state.
     )
     if second_todo_write.returncode != 0 or todo_path.read_text() != second_todo:
         fail("workflow-state writer must update an active TODO with its current hash")
+
+    second_todo_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    incomplete_todo_completion = subprocess.run(
+        [
+            str(todo_complete_script),
+            "--expect",
+            second_todo_hash,
+            "workflow-state-repair",
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if (
+        incomplete_todo_completion.returncode == 0
+        or "unchecked checklist items" not in incomplete_todo_completion.stderr
+        or todo_path.read_text() != second_todo
+    ):
+        fail("TODO completion must preserve an item with an unchecked checklist")
+
+    missing_record_todo = second_todo.replace(
+        "- None: validator fixture.",
+        "- [Missing context](../contexts/missing-context.md)",
+    ).replace("- [ ] Repair workflow state.", "- [x] Repair workflow state.")
+    missing_record_write = subprocess.run(
+        [str(workflow_state_writer), "--expect", second_todo_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=missing_record_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if missing_record_write.returncode != 0:
+        fail("validator could not prepare an active TODO with a missing durable record")
+    missing_record_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    missing_record_completion = subprocess.run(
+        [
+            str(todo_complete_script),
+            "--expect",
+            missing_record_hash,
+            "workflow-state-repair",
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if (
+        missing_record_completion.returncode == 0
+        or "durable record does not exist" not in missing_record_completion.stderr
+        or todo_path.read_text() != missing_record_todo
+    ):
+        fail("TODO completion must preserve an item with a missing durable record")
+
+    completed_todo = missing_record_todo.replace(
+        "- [Missing context](../contexts/missing-context.md)",
+        "- None: validator fixture has no durable decisions or evidence.",
+    )
+    completed_todo_write = subprocess.run(
+        [str(workflow_state_writer), "--expect", missing_record_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=completed_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if completed_todo_write.returncode != 0:
+        fail("validator could not prepare a completed active TODO")
+    completed_todo_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    completed_todo_result = subprocess.run(
+        [
+            str(todo_complete_script),
+            "--expect",
+            completed_todo_hash,
+            "workflow-state-repair",
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if completed_todo_result.returncode != 0 or todo_path.exists():
+        fail("TODO completion must delete an eligible item with its current hash")
+
+    stale_todo_write = subprocess.run(
+        [str(workflow_state_writer), "--expect", "missing", str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=completed_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if stale_todo_write.returncode != 0:
+        fail("validator could not recreate an active TODO for conflict testing")
+    stale_todo_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    concurrently_updated_todo = completed_todo.replace(
+        "validator fixture has no durable decisions or evidence.",
+        "updated validator fixture has no durable decisions or evidence.",
+    )
+    concurrent_todo_write = subprocess.run(
+        [str(workflow_state_writer), "--expect", stale_todo_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=concurrently_updated_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if concurrent_todo_write.returncode != 0:
+        fail("validator could not prepare a concurrent active TODO update")
+    stale_todo_completion = subprocess.run(
+        [
+            str(todo_complete_script),
+            "--expect",
+            stale_todo_hash,
+            "workflow-state-repair",
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if (
+        stale_todo_completion.returncode == 0
+        or "active TODO changed" not in stale_todo_completion.stderr
+        or todo_path.read_text() != concurrently_updated_todo
+    ):
+        fail("TODO completion must preserve a concurrently updated item")
+
+    concurrent_todo_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    outside_record_todo = concurrently_updated_todo.replace(
+        "- None: updated validator fixture has no durable decisions or evidence.",
+        "- [Repository README](../../README.md)",
+    )
+    outside_record_write = subprocess.run(
+        [
+            str(workflow_state_writer),
+            "--expect",
+            concurrent_todo_hash,
+            str(todo_path),
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=outside_record_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if outside_record_write.returncode != 0:
+        fail("validator could not prepare an active TODO with an outside record")
+    outside_record_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    outside_record_completion = subprocess.run(
+        [
+            str(todo_complete_script),
+            "--expect",
+            outside_record_hash,
+            "workflow-state-repair",
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if (
+        outside_record_completion.returncode == 0
+        or "outside an owned .dev area" not in outside_record_completion.stderr
+        or todo_path.read_text() != outside_record_todo
+    ):
+        fail("TODO completion must preserve an item with an outside durable record")
+
+    durable_context = resolved_state / "contexts/todo-completion.md"
+    durable_context_write = subprocess.run(
+        [
+            str(workflow_state_writer),
+            "--expect",
+            "missing",
+            str(durable_context),
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input="# Durable completion evidence\n",
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if durable_context_write.returncode != 0:
+        fail("validator could not create durable TODO completion evidence")
+    linked_record_todo = outside_record_todo.replace(
+        "- [Repository README](../../README.md)",
+        "- [Completion evidence](../contexts/todo-completion.md)",
+    )
+    linked_record_write = subprocess.run(
+        [str(workflow_state_writer), "--expect", outside_record_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=linked_record_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if linked_record_write.returncode != 0:
+        fail("validator could not prepare an active TODO with durable evidence")
+    linked_record_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    linked_record_completion = subprocess.run(
+        [
+            str(todo_complete_script),
+            "--expect",
+            linked_record_hash,
+            "workflow-state-repair",
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if linked_record_completion.returncode != 0 or todo_path.exists():
+        fail("TODO completion must accept existing owned durable records")
+
+    durable_context_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(durable_context)], text=True
+    ).strip()
+    forbidden_context_delete = subprocess.run(
+        [
+            str(workflow_state_writer),
+            "--delete",
+            "--expect",
+            durable_context_hash,
+            str(durable_context),
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if forbidden_context_delete.returncode == 0 or not durable_context.is_file():
+        fail("workflow-state writer must restrict deletion to active TODOs")
 
     main_task_context = Path(
         subprocess.check_output(
