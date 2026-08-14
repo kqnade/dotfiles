@@ -2214,6 +2214,61 @@ Repair state.
     completed_todo_hash = subprocess.check_output(
         ["git", "hash-object", "--no-filters", str(todo_path)], text=True
     ).strip()
+
+    whitespace_none_todo = completed_todo.replace(
+        "- None: validator fixture has no durable decisions or evidence.",
+        "- None:" + "   ",
+    )
+    whitespace_none_write = subprocess.run(
+        [str(workflow_state_writer), "--expect", completed_todo_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=whitespace_none_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if whitespace_none_write.returncode != 0:
+        fail("validator could not prepare an active TODO with a blank None reason")
+    whitespace_none_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    whitespace_none_completion = subprocess.run(
+        [
+            str(todo_complete_script),
+            "--expect",
+            whitespace_none_hash,
+            "workflow-state-repair",
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if (
+        whitespace_none_completion.returncode == 0
+        or "None reason must contain non-whitespace text"
+        not in whitespace_none_completion.stderr
+        or not todo_path.is_file()
+        or todo_path.read_text() != whitespace_none_todo
+    ):
+        fail("TODO completion must preserve an item with a blank None reason")
+
+    restore_completed_todo = subprocess.run(
+        [str(workflow_state_writer), "--expect", whitespace_none_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=completed_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if restore_completed_todo.returncode != 0:
+        fail("validator could not restore the completed active TODO fixture")
+    completed_todo_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
     completed_todo_result = subprocess.run(
         [
             str(todo_complete_script),
