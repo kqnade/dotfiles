@@ -43,9 +43,9 @@ while IFS= read -r line; do
     break
   fi
   [[ "$in_checklist" -eq 1 ]] || continue
-  if [[ "$line" =~ ^-\ \[[xX]\]\  ]]; then
+  if [[ "$line" =~ ^[[:space:]]*-[[:space:]]+\[[xX]\]([[:space:]]|$) ]]; then
     checked_items=$((checked_items + 1))
-  elif [[ "$line" =~ ^-\ \[\ \]\  ]]; then
+  elif [[ "$line" =~ ^[[:space:]]*-[[:space:]]+\[[[:space:]]\]([[:space:]]|$) ]]; then
     unchecked_items=$((unchecked_items + 1))
   fi
 done <"$target"

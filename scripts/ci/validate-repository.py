@@ -2121,6 +2121,99 @@ Repair state.
     completed_todo_hash = subprocess.check_output(
         ["git", "hash-object", "--no-filters", str(todo_path)], text=True
     ).strip()
+
+    empty_label_todo = completed_todo.replace(
+        "- [x] Repair workflow state.",
+        "- [x] Repair workflow state.\n- [ ]",
+    )
+    empty_label_write = subprocess.run(
+        [str(workflow_state_writer), "--expect", completed_todo_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=empty_label_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if empty_label_write.returncode != 0:
+        fail("validator could not prepare an empty-label unchecked TODO item")
+    empty_label_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    empty_label_completion = subprocess.run(
+        [
+            str(todo_complete_script),
+            "--expect",
+            empty_label_hash,
+            "workflow-state-repair",
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if (
+        empty_label_completion.returncode == 0
+        or "unchecked checklist items" not in empty_label_completion.stderr
+        or not todo_path.is_file()
+        or todo_path.read_text() != empty_label_todo
+    ):
+        fail("TODO completion must preserve an empty-label unchecked item")
+
+    nested_unchecked_todo = completed_todo.replace(
+        "- [x] Repair workflow state.",
+        "- [x] Repair workflow state.\n  - [ ] Nested verification.",
+    )
+    nested_unchecked_write = subprocess.run(
+        [str(workflow_state_writer), "--expect", empty_label_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=nested_unchecked_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if nested_unchecked_write.returncode != 0:
+        fail("validator could not prepare a nested unchecked TODO item")
+    nested_unchecked_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    nested_unchecked_completion = subprocess.run(
+        [
+            str(todo_complete_script),
+            "--expect",
+            nested_unchecked_hash,
+            "workflow-state-repair",
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if (
+        nested_unchecked_completion.returncode == 0
+        or "unchecked checklist items" not in nested_unchecked_completion.stderr
+        or not todo_path.is_file()
+        or todo_path.read_text() != nested_unchecked_todo
+    ):
+        fail("TODO completion must preserve a nested unchecked item")
+
+    restore_completed_todo = subprocess.run(
+        [str(workflow_state_writer), "--expect", nested_unchecked_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=completed_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if restore_completed_todo.returncode != 0:
+        fail("validator could not restore the completed active TODO fixture")
+    completed_todo_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
     completed_todo_result = subprocess.run(
         [
             str(todo_complete_script),
