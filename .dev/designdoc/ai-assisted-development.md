@@ -110,9 +110,12 @@ Claude sessionで生成して`git commit -m`を使う。
 
 社用accountであることは、すべてのrepositoryをそのaccountへ送信できる認可ではない。
 CLI、account、対象repositoryの組み合わせが承認済みであることを送信前に確認する。
-現在は別sessionやsubagentを自動起動するClaude workflowを提供しない。個人accountを
-使う場合はworkflow外で会社規程と送信対象を個別に確認する。Codex、CodeRabbit、外部
-rule/skill bundleはglobal skill/pluginとして有効化しない。
+Claudeの別sessionやsubagentは、利用者が大規模実装workflowを明示的に起動した場合だけ、
+同じ承認済みClaude accountと同じ認可repository、そのlinked worktreeに限定して使う。
+scopeが大きいというmodel判断だけではClaude workflowを自動起動しない。accountやcredentialの
+選択を上書きせず、各worktreeでもrepository認可hookを通す。個人accountを使う場合はworkflow外で
+会社規程と送信対象を個別に確認する。Codex、CodeRabbit、外部rule/skill bundleはglobal
+skill/pluginとして有効化しない。
 Artifactによるclaude.ai page公開と自動connector取得も無効化する。
 
 ## Context記録の品質

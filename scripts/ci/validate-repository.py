@@ -1335,143 +1335,43 @@ for skill_name, required_phrases in effect_contracts.items():
             fail(f"{skill_name} is missing its effect contract: {required_phrase}")
 
 worktree_effect_contracts = {
-    "route-large-implementation": {
-        "required": (
-            "explicitly asks for outer orchestration",
-            "independent isolated worktree units",
-            "HERDR_ENV=1",
-            "$HOME/.local/bin/herdr-worktree",
-            "Herdr JSON",
-            ".result.workspace",
-            ".result.root_pane",
-            "exactly one",
-            "Preserve the current client",
-            "--kind codex",
-            "--kind claude",
-            "gpt-5.6-sol",
-            "high reasoning effort",
-            "configured Claude model and effort",
-            "Do not switch clients",
-            "WHAT/HOW/DONE",
-            "$execute-worktree-implementation",
-            "/execute-worktree-implementation",
-            "English `/goal`",
-            "For both clients, send an English `/goal`",
-            "objective",
-            "key constraints",
-            "observable completion condition",
-            "execution-starting input",
-            "do not immediately send a duplicate task prompt",
-            "broad conversation or transcript",
-            ".dev",
-            "never recursively invokes itself",
-            "capacity or concurrency failure",
-            "terminal for that dispatch attempt",
-            "Do not retry automatically",
-            "poll in a loop",
-            "weaken the requested model or effort",
-            "switch transport",
-            "Herdr fallback worker",
-            "workspace or pane topology",
-            "blocked unit",
-            "notify the parent or human",
-            "does not wait or poll after dispatch",
-            "blocked or done notification",
-            "arbitrary low parallelism limit",
-            "not a fixed concurrency cap",
-        ),
-        "ordered": (
-            "decomposition and dispatch",
-            "$HOME/.local/bin/herdr-worktree",
-            "Parse the helper's Herdr JSON",
-            "start exactly one top-level",
-            "first input",
-            "minimal WHAT/HOW/DONE packet",
-            "Dispatch failures",
-        ),
-    },
-    "execute-worktree-implementation": {
-        "required": (
-            "explicitly invokes it",
-            "existing isolated worktree",
-            "active",
-            "/goal",
-            "English `/goal`",
-            "objective",
-            "key constraints",
-            "observable completion condition",
-            "execution-starting input",
-            "do not immediately send a duplicate task prompt",
-            "concrete todo list",
-            "behavior-test list",
-            "parallel, read-only",
-            "preserving the coordinator's client",
-            "gpt-5.6-luna",
-            "fresh Claude general-purpose subagents",
-            "inherit the configured Claude model and effort",
-            "configured Claude model and effort",
-            "file references",
-            "test seams",
-            "dependencies",
-            "uncertainties",
-            "Use `/goal` for both clients",
-            "coordinator selects",
-            "very small atomic packets",
-            "target files/seam",
-            "verification command",
-            "constraints/non-goals",
-            "completion evidence",
-            "Partition disjoint writes",
-            "serialize any overlapping writes",
-            "fresh client-matched worker",
-            "max effort",
-            "$test-driven-development",
-            "/test-driven-development",
-            "List → Red → Green → Refactor",
-            "git status",
-            "staged diff",
-            "git cc",
-            "git commit -m",
-            "Commit every Green",
-            "clean-status check",
-            "before push",
-            "never create or choose a worktree",
-            "herdr-worktree",
-            "`wt`",
-            "`git worktree`",
-            "another top-level coordinator",
-            "$route-large-implementation",
-            "capacity or concurrency failure",
-            "terminal for that dispatch attempt",
-            "Do not retry automatically",
-            "poll in a loop",
-            "weaken the requested model or effort",
-            "switch transport",
-            "Herdr fallback worker",
-            "workspace or pane topology",
-            "blocked unit",
-            "notify the coordinator or human",
-            "stop that unit",
-            "blocked or done notifications",
-            "arbitrary low parallelism limit",
-            "not a fixed concurrency cap",
-        ),
-        "ordered": (
-            "Create a concrete todo list",
-            "parallel, read-only",
-            "very small atomic packets",
-            "fresh client-matched worker",
-            "Dispatch failures",
-            "Verify each Green",
-            "Commit every Green",
-            "clean-status check",
-        ),
-    },
+    "route-large-implementation": (
+        "independent isolated worktree units",
+        "HERDR_ENV=1",
+        "$HOME/.local/bin/herdr-worktree",
+        "Herdr JSON",
+        ".result.workspace",
+        ".result.root_pane",
+        "exactly one top-level coordinator",
+        "--kind codex",
+        "--kind claude",
+        "WHAT/HOW/DONE",
+        "$execute-worktree-implementation",
+        "/execute-worktree-implementation",
+        "English `/goal`",
+        "never recursively invokes itself",
+    ),
+    "execute-worktree-implementation": (
+        "explicitly invokes it",
+        "existing isolated worktree",
+        "English `/goal`",
+        "concrete todo list",
+        "behavior-test list",
+        "parallel, read-only",
+        "fresh client-matched worker",
+        "$test-driven-development",
+        "/test-driven-development",
+        "git cc",
+        "git commit -m",
+        "never create or choose a worktree",
+    ),
 }
 
-for worktree_skill_name, contract in worktree_effect_contracts.items():
+worktree_skill_texts = {}
+for worktree_skill_name, required_phrases in worktree_effect_contracts.items():
     worktree_skill_text = (agent_skills_root / worktree_skill_name / "SKILL.md").read_text()
-    for required_phrase in contract["required"]:
+    worktree_skill_texts[worktree_skill_name] = worktree_skill_text
+    for required_phrase in required_phrases:
         phrase_pattern = r"\s+".join(
             re.escape(part) for part in required_phrase.split()
         )
@@ -1480,20 +1380,55 @@ for worktree_skill_name, contract in worktree_effect_contracts.items():
                 f"{worktree_skill_name} is missing its effect contract: "
                 f"{required_phrase}"
             )
-    previous_end = 0
-    for ordered_phrase in contract["ordered"]:
-        phrase_pattern = r"\s+".join(
-            re.escape(part) for part in ordered_phrase.split()
+
+route_worktree_skill = worktree_skill_texts["route-large-implementation"]
+claude_operations_rule = (ROOT / "dot_claude/rules/operations.md").read_text()
+if "--kind claude" in route_worktree_skill:
+    for required_route_authorization in (
+        "Claude outer orchestration requires an explicit user request",
+        "same approved Claude account",
+        "same authorized repository",
+    ):
+        authorization_pattern = r"\s+".join(
+            re.escape(part) for part in required_route_authorization.split()
         )
-        ordered_match = re.search(
-            phrase_pattern, worktree_skill_text[previous_end:], re.IGNORECASE
-        )
-        if ordered_match is None:
+        if not re.search(authorization_pattern, route_worktree_skill):
             fail(
-                f"{worktree_skill_name} has an invalid workflow order at: "
-                f"{ordered_phrase}"
+                "Claude worktree dispatch is missing its authorization boundary: "
+                f"{required_route_authorization}"
             )
-        previous_end += ordered_match.end()
+    for required_operations_authorization in (
+        "same approved Claude account",
+        "same authorized repository",
+        "isolated worktree sessions and built-in subagents",
+    ):
+        authorization_pattern = r"\s+".join(
+            re.escape(part) for part in required_operations_authorization.split()
+        )
+        if not re.search(authorization_pattern, claude_operations_rule):
+            fail(
+                "Claude operations rule does not authorize worktree dispatch: "
+                f"{required_operations_authorization}"
+            )
+    if re.search(r"use only the current\s+Claude session", claude_operations_rule):
+        fail("Claude operations rule still forbids authorized worktree dispatch")
+
+execute_worktree_skill = worktree_skill_texts["execute-worktree-implementation"]
+delegate_section = execute_worktree_skill.partition("## Plan and delegate")[2].partition(
+    "## Dispatch failures"
+)[0]
+if not delegate_section:
+    fail("execute-worktree-implementation is missing its delegation section")
+if "/goal" in delegate_section:
+    fail("worktree delegates must receive bounded prompts instead of session /goal")
+if re.search(r"\bpreload\w*\b", delegate_section, re.IGNORECASE):
+    fail("Claude delegates must invoke TDD through the Skill tool without preload")
+for required_delegate_behavior in ("bounded ordinary prompt", "Skill tool"):
+    if required_delegate_behavior not in delegate_section:
+        fail(
+            "Claude delegation is missing executable guidance: "
+            f"{required_delegate_behavior}"
+        )
 
 trust_contracts = {
     "context-handoff": (

@@ -1,16 +1,22 @@
 ---
 name: route-large-implementation
-description: Route an explicitly requested or clearly large implementation into independent isolated Herdr worktree units with client-matched coordinators. Use only for outer topology and dispatch; ordinary small changes and execution in an existing worktree belong to their canonical skills.
+description: Route an explicitly requested large implementation, or a clearly large Codex implementation, into independent isolated Herdr worktree units with client-matched coordinators. Claude routing requires an explicit user request and same-account repository authorization. Use only for outer topology and dispatch; ordinary small changes and execution in an existing worktree belong to their canonical skills.
 ---
 
 # Route Large Implementation
 
-Use this skill only when the user explicitly asks for outer orchestration or
-the scope is clearly large enough to need independent isolated worktree units.
-Do not trigger for an ordinary/small change or for execution in an already
-routed worktree. It owns outer topology; ordinary executable changes remain
-with `test-driven-development`, and a coordinator in an existing worktree
-must explicitly invoke `$execute-worktree-implementation` in Codex or
+Use this skill when the user explicitly asks for outer orchestration. Codex may
+also use it when the scope is clearly large enough to need independent isolated
+worktree units. Claude outer orchestration requires an explicit user request;
+scope alone never authorizes Claude dispatch. Before dispatching Claude,
+confirm that the current Operations rule permits isolated worktree sessions and
+built-in subagents with the same approved Claude account and the same authorized
+repository, including its linked worktrees. Do not override account or
+credential selection. Do not trigger for an ordinary/small change or for
+execution in an already routed worktree. This skill owns outer topology;
+ordinary executable changes remain with `test-driven-development`, and a
+coordinator in an existing worktree must explicitly invoke
+`$execute-worktree-implementation` in Codex or
 `/execute-worktree-implementation` in Claude.
 
 ## Route

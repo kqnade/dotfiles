@@ -27,11 +27,10 @@ by default.
    coordinator's client. Use `gpt-5.6-luna` at max effort for Codex delegates;
    use fresh Claude general-purpose subagents that inherit the configured
    Claude model and effort for Claude delegates. Give each scout one bounded
-   English execution-starting input containing the scout objective, read-only
-   constraint, and observable completion condition: concise file references,
-   test seams, dependencies, and uncertainties. Use `/goal` for both clients.
-   Do not follow it with a duplicate task prompt; send only missing details or
-   later steering. Scouts do not write files.
+   ordinary prompt containing the scout objective, read-only constraint, and
+   observable completion condition: concise file references, test seams,
+   dependencies, and uncertainties. Send only missing details or later
+   steering after that prompt. Scouts do not write files.
 3. The coordinator selects the approach from scout evidence and creates very
    small atomic packets. Every packet must state behavior, target files/seam,
    verification command, constraints/non-goals, and completion evidence. Keep
@@ -39,14 +38,13 @@ by default.
    serialize any overlapping writes.
 4. Give each packet to a fresh client-matched worker: `gpt-5.6-luna` at max
    effort for Codex, or a Claude subagent with the configured Claude model and
-   effort. Give the worker one bounded English execution-starting input
-   containing the behavior, target files/seam, key constraints/non-goals, and
-   observable completion evidence/verification command. Use `/goal` for both
-   clients; do not follow it with a duplicate task prompt. Explicitly invoke
-   `$test-driven-development` for a Codex worker or preload and invoke
-   `/test-driven-development` for a Claude worker before each executable
-   behavior cycle. That skill owns the List → Red → Green → Refactor method,
-   so do not duplicate it here.
+   effort. Give the worker one bounded ordinary prompt containing the behavior,
+   target files/seam, key constraints/non-goals, and observable completion
+   evidence/verification command. Explicitly invoke
+   `$test-driven-development` for a Codex worker. For a Claude worker, instruct
+   it in that prompt to use the Skill tool to invoke
+   `/test-driven-development` before each executable behavior cycle. That skill
+   owns the List → Red → Green → Refactor method, so do not duplicate it here.
 
 ## Dispatch failures
 

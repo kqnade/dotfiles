@@ -92,6 +92,9 @@ Keep this mapping consistent when editing Vim or Neovim:
   `livesense-inc` or `jobtalk`. The shell wrapper checks before launching Claude, and
   the `UserPromptSubmit` and `PreToolUse` hooks reject every other repository,
   including missing or unrecognized remotes.
+- Claude worktree sessions and built-in subagents require an explicitly invoked workflow and must
+  use the same approved Claude account and authorized repository, including linked worktrees.
+  Scope alone never authorizes automatic Claude orchestration.
 - Shared unconditional coding and repository workflow-state conventions have canonical sources in
   `dot_agents/rules/{coding,workflow-state}.md`. Claude receives both through rule symlinks; Codex
   receives both in a generated global-rule aggregate; OpenCode receives the workflow-state rule as
