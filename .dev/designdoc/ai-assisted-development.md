@@ -1,7 +1,7 @@
 # AI支援開発workflow
 
 - 状態: 基盤・global rules、active TODO管理workflow運用中
-- 更新日: 2026-08-14
+- 更新日: 2026-08-16
 
 ## 目的
 
@@ -12,12 +12,137 @@ AIの速度を使いながら、判断過程、実装、テスト、レビュー
 
 開発情報は`.dev/`を正本とする。
 
-- `.dev/todo/`: 未完了作業のcommit単位計画。最終item完了時に削除する
+- `.dev/todo/`: 未完了作業のcommit単位計画。active stateでありdurable destinationではない。
+  最終item完了時に削除する
 - `.dev/designdoc/`: 実装前後に更新する設計
 - `.dev/adr/`: 重要な選択と却下理由
 - `.dev/research/`: 一次資料と調査結果
 - `.dev/contexts/`: PR対象となる詳細な対話出力、実施内容、失敗、検証証跡
 - `.dev/memory/`: 複数work itemで再利用する確認済みのrepository知識
+- `.dev/security/coverage.md`: security coverage ledger
+- `.dev/security/reports/`: bounded security areaごとのreport
+
+上記の6領域（`designdoc`、`adr`、`research`、`contexts`、`memory`、`security`）だけを
+durable artifactのcanonical taxonomyとする。`security`のcoverage ledgerとreportsは同じ
+領域の別artifactであり、必要なら別々のobligationとして登録する。`.dev/todo/`、Gitの
+active TODO、会話の出力自体はdurable artifactではない。review専用の`reviews/`領域は
+現時点のcontractへ追加しない。
+
+obligationの`Destination`は、current Git worktreeのrepository rootから見た
+`.dev/`配下のrelative pathでなければならない。絶対path、URL、`..`で外へ出るpath、
+別worktreeやexternal backendのrecord、`.dev/todo/`はdestinationとして認めない。閉じた
+artifactのlinkもこのtaxonomy内の、current worktreeに存在するregular file（symlinkでは
+ないもの）へ解決できなければならない。
+
+## Persistence obligations
+
+active TODOには、必要な場合だけ`## Persistence obligations`を1つ置く。sectionがない、
+または見出しだけでentryがない状態は有効であり、statelessなsingle-session workにactive
+TODOや空のobligationを強制しない。entryはobligationごとに1つの`###`見出しを置き、見出し
+のIDをstable lowercase slug（`[a-z0-9][a-z0-9._-]*`）とする。同一TODO内のIDは一意で、
+更新をまたいでも同じ意味の義務には同じIDを使う。
+
+canonical schemaは次のとおりである（例のpathとIDは説明用）。`Destination`と
+`No-save reason`は相互排他的であり、各entryには必ずちょうど一方だけを置く。artifactで
+閉じるentryは`Destination`を保持し、`Artifact`を追加する。no-saveで閉じるentryには
+`Destination`も`Artifact`も置かない。
+
+```markdown
+## Persistence obligations
+
+### `security-coverage`
+- Owner: `security-audit`
+- Policy: `required`
+- State: `open`
+- Destination: `.dev/security/coverage.md`
+
+### `tdd-context`
+- Owner: `test-driven-development`
+- Policy: `conditional`
+- State: `closed`
+- Destination: `.dev/contexts/example.md`
+- Artifact: [implementation context](../contexts/example.md)
+
+### `stateless-review`
+- Owner: `evidence-review`
+- Policy: `none`
+- State: `closed`
+- No-save reason: Current evidence-review contract returns the report in chat and defines no durable review artifact.
+```
+
+各fieldの意味とvalidationは次のとおり。
+
+- `Owner`は義務を意味的に発生させたcanonical workflow skill名であり、機械的にTODOを
+  保存・更新・削除する`todo-management`ではない。未登録の任意名は使わず、policy matrixの
+  canonical ownerと一致させる。
+- `Policy`は`required`、`conditional`、`none`のいずれかである。`required`は常に
+  `Destination`付きでopenに登録する。`conditional`は条件が真なら同じくopenに登録し、
+  条件が偽ならその判定を具体的に書いた理由でclosedにできる。`none`はdurable artifactを
+  要求せず、entryを作る場合は具体的な理由付きでclosedにする。
+- `State`は`open`または`closed`だけである。登録時のopen、またはno-save policyのclosed
+  が初期状態で、通常の遷移は`open -> closed`だけとする。`required`のopenをno-save
+  reasonで閉じることはできない。閉じたentryのinvalidな証拠は完了時に拒否し、暗黙に
+  reopenしたり、義務を削除して隠したりしない。修正はrecordを再読して明示的にreconcile
+  する。
+- `Destination`はnonblankなrepository-root-relative `.dev` pathで、openのentryと
+  artifactで閉じるentryに必須である。openでは予定先がまだ存在しなくてもよいが、closed
+  では`Artifact`のlink targetが存在し、宣言したdestinationへ対応していなければならない。
+- `Artifact`はclosed entryにだけ置くMarkdown linkである。link targetをTODO fileから
+  解決し、current worktreeのtaxonomy内にある存在するregular fileへ到達できることを
+  完了時に再確認する。外部URL、absolute path、別worktree、symlink、non-regular file、
+  `.dev/todo/`へのlinkは無効である。
+- `No-save reason`はclosed entryにだけ置く、空白だけでない具体的な説明である。
+  `none`ではchat-only/statelessなどの保存不要の根拠を、`conditional`では条件を評価して
+  persistenceが適用されなかった事実を明記する。「なし」「N/A」だけの一般的な文言は
+  concrete reasonではない。
+
+### Lifecycle and authority
+
+workflowは、保存が必要だと判定した時点で、semantic owner、policy、destinationを含むopen
+obligationを登録する。`conditional`が適用されない場合と`none`の場合は、明示的に評価した
+concrete reasonを付けたclosed entryとして記録できる。保存不要であればsection自体を作ら
+ないことも正当である。policyは保存の必要性を決めるだけで、state writeの権限を与えない。
+
+obligation登録・更新・closeとactive TODOの作成・更新・完了には、常に利用者がそのstate write
+を明示的に依頼した、またはworkflowへのstate-write authorizationを明示した、という独立の
+認可が必要である。workflowの起動、policy、`Destination`の存在だけから認可を推測しない。
+認可がない場合は必要なobligationと理由を会話へ返し、書き込まない。
+
+obligationとTODOはcurrent Git worktreeの`.dev/`だけへ解決する。resolverは別worktree、
+`AGENT_WORKFLOW_STATE_HOME`などのexternal backend、手作業で組み立てた別pathへのredirectを
+拒否する。別worktreeのrecordやcandidate stateはこのcompletion evidenceにならず、importや
+移行が必要なら別の明示的な認可とreconciliationを要する。
+
+registration、close、TODO completionの各mutationは、既存のrecord単位lockを取得し、read時の
+`git hash-object --no-filters`をexpected hashとしてcompare-and-swapする。同一directory内の
+temporary fileへ完全な内容を書いてからatomic replaceし、他のrecordを巻き込まない。stale
+hashや残ったlockを見た場合は最新recordを再読してreconcileする。blind retryやlockのageだけ
+を根拠にしたunlockはしない。
+
+### Skill policy matrix
+
+policyは「そのskillがこのwork itemで意味的に発生させる保存義務」の既定値であり、上記の
+state-write authorizationとは別である。複数artifactが必要なskillはartifactごとに一つの
+obligationを登録する。
+
+| Canonical skill | Policy | Default destination, condition, or concrete rationale |
+| --- | --- | --- |
+| `using-workflow-skills` | `none` | Routingだけを行い、独自のdurable outputを作らない。 |
+| `route-large-implementation` | `none` | dispatch/topologyの制御であり、意味的な成果物は実行側ownerが持つ。 |
+| `execute-worktree-implementation` | `conditional` | multi-session、delegated unit、または継続に必要な判断・証跡がある場合は `.dev/contexts/<task>.md`。boundedなstateless executionなら、その条件をno-save reasonにする。 |
+| `test-driven-development` | `conditional` | cycleの判断・失敗・検証を後続sessionへ渡す必要がある場合は `.dev/contexts/<task>.md`。一回のstatelessなcycleで完結する場合は、そう判定した理由を記録する。 |
+| `evidence-review` | `none` | 現行contractはreportをchatへ返すchat-only契約で、durable review artifactを定義しない。`reviews/`は追加しない。別workflowが保存を担当する場合はそのownerのobligationにする。 |
+| `context-handoff` | `conditional` | `export`は `.dev/contexts/<task>.md` へ保存する。read/importだけならwrite obligationを作らず、書かなかった具体的な理由を使える。 |
+| `security-audit` | `required` | 毎回 `.dev/security/coverage.md` と `.dev/security/reports/<area-key>.md` を更新する。各fileを別obligationとして登録する。 |
+| `todo-management` | `none` | active TODOの機械的な保存・lifecycle・completion gateだけを所有し、semantic obligationのownerにはならない。 |
+| `prose-proofreading` | `none` | 指定された文書やdiffへの修正が成果であり、別のdurable artifactを作らない。 |
+| `assumption-pruning` | `conditional` | 複数work itemで再利用する判断・却下案なら `.dev/adr/<slug>.md`。局所的なchat判断なら、その再利用不要の理由を記録する。 |
+| `peer-consultation` | `none` | 独立したchallengeの結果は呼び出し元へ返し、決定の保存は呼び出し元workflowが担当する。 |
+| `herdr` | `none` | session/pane orchestrationだけを行い、各実行のsemantic artifactを所有しない。 |
+
+`security-audit`のreportがcoverage ledgerを参照する場合でも、reportを先に保存し、ledgerを
+最後に更新する既存のmonotonic publish orderを守る。obligationのcloseはlink先が存在してから
+行う。閉じた後にlink先が消えたり差し替えられたりした場合、completion時の再検証で失敗にする。
 
 code、test、実行結果も独立した証拠であり、`.dev`の記述と矛盾する場合は矛盾を
 解消するまで結論を出さない。
