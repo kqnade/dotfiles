@@ -82,6 +82,53 @@ class CodexUsageExporterTests(unittest.TestCase):
         self.assertEqual(data_point("codex.usage.credit_balance")["asDouble"], 12.5)
         self.assertEqual(data_point("codex.usage.limit_reached")["asInt"], 0)
 
+    def test_builds_metrics_for_each_named_rate_limit(self) -> None:
+        payload = exporter.build_otlp_payload(
+            {
+                "rateLimits": {
+                    "limitId": "codex",
+                    "limitName": None,
+                    "primary": {"usedPercent": 37},
+                },
+                "rateLimitsByLimitId": {
+                    "codex": {
+                        "limitId": "codex",
+                        "limitName": None,
+                        "primary": {"usedPercent": 37},
+                    },
+                    "codex_bengalfox": {
+                        "limitId": "codex_bengalfox",
+                        "limitName": "GPT-5.3-Codex-Spark",
+                        "primary": {"usedPercent": 12},
+                    },
+                },
+            },
+            now_ns=1,
+        )
+        metrics = {
+            metric["name"]: metric
+            for metric in payload["resourceMetrics"][0]["scopeMetrics"][0][
+                "metrics"
+            ]
+        }
+        used_points = metrics["codex.usage.used_percent"]["gauge"]["dataPoints"]
+
+        self.assertEqual(
+            [point["asInt"] for point in used_points],
+            [37, 12],
+        )
+        self.assertEqual(
+            {
+                attribute["key"]: attribute["value"]["stringValue"]
+                for attribute in used_points[1]["attributes"]
+            },
+            {
+                "window": "primary",
+                "limit_id": "codex_bengalfox",
+                "limit_name": "GPT-5.3-Codex-Spark",
+            },
+        )
+
     def test_omits_unavailable_optional_values(self) -> None:
         payload = exporter.build_otlp_payload(
             {

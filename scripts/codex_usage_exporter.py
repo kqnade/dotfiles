@@ -118,38 +118,47 @@ def _credit_balance(snapshot: dict[str, Any]) -> float | None:
 
 def build_otlp_payload(response: dict[str, Any], now_ns: int | None = None) -> dict[str, Any]:
     now_ns = time.time_ns() if now_ns is None else now_ns
-    snapshot = response.get("rateLimits") or {}
     metric_points: dict[str, list[dict[str, Any]]] = {}
 
     def add_metric(name: str, value: int | float, **labels: Any) -> None:
         metric_points.setdefault(name, []).append(_point(value, now_ns, **labels))
 
-    for window_name in ("primary", "secondary"):
-        window = snapshot.get(window_name)
-        if not window:
-            continue
-        used_percent = int(window["usedPercent"])
-        labels = {"window": window_name}
-        add_metric(f"{METRIC_PREFIX}.used_percent", used_percent, **labels)
-        add_metric(f"{METRIC_PREFIX}.remaining_percent", 100 - used_percent, **labels)
-        if window.get("resetsAt") is not None:
-            add_metric(f"{METRIC_PREFIX}.reset_at", int(window["resetsAt"]), **labels)
-        if window.get("windowDurationMins") is not None:
+    snapshots = list((response.get("rateLimitsByLimitId") or {}).values())
+    if not snapshots:
+        snapshots = [response.get("rateLimits") or {}]
+
+    for snapshot in snapshots:
+        limit_labels = {
+            "limit_id": snapshot.get("limitId"),
+            "limit_name": snapshot.get("limitName"),
+        }
+        for window_name in ("primary", "secondary"):
+            window = snapshot.get(window_name)
+            if not window:
+                continue
+            used_percent = int(window["usedPercent"])
+            labels = {"window": window_name, **limit_labels}
+            add_metric(f"{METRIC_PREFIX}.used_percent", used_percent, **labels)
+            add_metric(f"{METRIC_PREFIX}.remaining_percent", 100 - used_percent, **labels)
+            if window.get("resetsAt") is not None:
+                add_metric(f"{METRIC_PREFIX}.reset_at", int(window["resetsAt"]), **labels)
+            if window.get("windowDurationMins") is not None:
+                add_metric(
+                    f"{METRIC_PREFIX}.window_duration_minutes",
+                    int(window["windowDurationMins"]),
+                    **labels,
+                )
+
+        balance = _credit_balance(snapshot)
+        if balance is not None:
+            add_metric(f"{METRIC_PREFIX}.credit_balance", balance, **limit_labels)
+
+        if "rateLimitReachedType" in snapshot:
             add_metric(
-                f"{METRIC_PREFIX}.window_duration_minutes",
-                int(window["windowDurationMins"]),
-                **labels,
+                f"{METRIC_PREFIX}.limit_reached",
+                1 if snapshot["rateLimitReachedType"] else 0,
+                **limit_labels,
             )
-
-    balance = _credit_balance(snapshot)
-    if balance is not None:
-        add_metric(f"{METRIC_PREFIX}.credit_balance", balance)
-
-    if "rateLimitReachedType" in snapshot:
-        add_metric(
-            f"{METRIC_PREFIX}.limit_reached",
-            1 if snapshot["rateLimitReachedType"] else 0,
-        )
 
     metrics = [_metric(name, points) for name, points in metric_points.items()]
 
