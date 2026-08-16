@@ -13,6 +13,8 @@ ROOT = Path(__file__).resolve().parents[2]
 ROUTER = ROOT / "dot_agents/skills/using-workflow-skills/SKILL.md"
 EVIDENCE_REVIEW = ROOT / "dot_agents/skills/evidence-review/SKILL.md"
 REVIEWS_README = ROOT / ".dev/reviews/README.md"
+CI_WORKFLOW = ROOT / ".github/workflows/ci.yml"
+CI_COMMAND = "python3 scripts/ci/test-workflow-skill-persistence.py"
 
 EXPECTED_POLICIES = {
     "context-handoff": "conditional",
@@ -124,6 +126,16 @@ class WorkflowSkillPersistenceTests(unittest.TestCase):
                 "Completion": "Return the full report in chat and state that no review artifact was persisted",
                 "Promotion": "No promotion; a later explicit request must route to the canonical owner after support exists",
             },
+        )
+
+        ci_commands = [
+            line.strip()
+            for line in CI_WORKFLOW.read_text(encoding="utf-8").splitlines()
+        ]
+        self.assertEqual(
+            ci_commands.count(CI_COMMAND),
+            1,
+            "CI must invoke the workflow persistence suite exactly once",
         )
 
         for row in rows:
