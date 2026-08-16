@@ -15,7 +15,7 @@ EVIDENCE_REVIEW = ROOT / "dot_agents/skills/evidence-review/SKILL.md"
 REVIEWS_README = ROOT / ".dev/reviews/README.md"
 
 EXPECTED_POLICIES = {
-    "context-handoff": "required",
+    "context-handoff": "conditional",
     "security-audit": "required",
     "todo-management": "required",
     "evidence-review": "conditional",
@@ -85,13 +85,35 @@ class WorkflowSkillPersistenceTests(unittest.TestCase):
             row["Canonical owner"].strip("`"): row["Persistence"].strip("`")
             for row in rows
         }
+        policy_owners = [row["Canonical owner"].strip("`") for row in rows]
         self.assertEqual(
             len(routed_owners),
             len(set(routed_owners)),
             "each canonical workflow must occur exactly once in the route table",
         )
         self.assertEqual(set(routed_owners), set(EXPECTED_POLICIES))
+        self.assertEqual(
+            len(policy_owners),
+            len(set(policy_owners)),
+            "each canonical workflow must occur exactly once in the policy registry",
+        )
+        self.assertEqual(set(policy_owners), set(EXPECTED_POLICIES))
         self.assertEqual(policy_table, EXPECTED_POLICIES)
+
+        policy_rows = {
+            row["Canonical owner"].strip("`"): row for row in rows
+        }
+        self.assertEqual(
+            policy_rows["context-handoff"],
+            {
+                "Canonical owner": "`context-handoff`",
+                "Persistence": "`conditional`",
+                "Destination": "`.dev/contexts/<task-key>.md` only for an explicit export or save request; import and inspect are read-only",
+                "Checkpoint": "Export checkpoints identity, snapshot, and each material decision; import resolves without `--ensure` and creates no state",
+                "Completion": "Export verifies a readable handoff; import reports reconciled provenance and freshness without writing",
+                "Promotion": "Only a separate explicit owner action may promote confirmed reusable facts",
+            },
+        )
 
         for row in rows:
             owner = row["Canonical owner"]
@@ -103,13 +125,13 @@ class WorkflowSkillPersistenceTests(unittest.TestCase):
 
         self.assertRegex(
             guardrail_text,
-            r"(?is)required\s+means\s+an\s+explicit invocation\s+authorizes\s+only\s+that owner's\s+exact\s+state write",
-            "required routes must authorize only their owner's exact state write",
+            r"(?is)required\s+means\s+the\s+explicitly\s+requested\s+outcome\s+is\s+itself\s+a\s+managed\s+state\s+write",
+            "required routes must be selected specifically for a managed state-write outcome",
         )
         self.assertRegex(
             guardrail_text,
-            r"(?is)conditional\s+means\s+the owner.*?separate\s+explicit\s+persistence\s+authorization",
-            "conditional routes must require separate persistence authorization",
+            r"(?is)conditional\s+means\s+the\s+owner\s+has\s+both\s+write\s+and\s+read-only\s+or\s+nonpersistent\s+modes.*?read-only\s+mode\s+never\s+authorizes\s+a\s+write",
+            "conditional routes must distinguish write authorization from read-only modes",
         )
         self.assertRegex(
             guardrail_text,
