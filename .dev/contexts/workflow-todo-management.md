@@ -230,3 +230,82 @@ current-worktree root behavior were reused unchanged.
 - The third increment, aligning all canonical skills and cross-client materialization, remains out
   of scope.
 - No other canonical skill `SKILL.md` changed; live CI and macOS verification remain unverified.
+
+## Adversarial review blocker remediation after trunk integration
+
+### Integration provenance and scope
+
+- The worktree was clean before integration. Local `trunk` was verified at
+  `8a199f9621fe88e442045023b8dacc2738908cd1` and merged without rebase or history rewriting in
+  merge commit `b182f44`.
+- The merge supplied the canonical router persistence registry and trunk's focused persistence and
+  materialization suites. No remote was read or mutated, and the unrelated primary-worktree
+  untracked TODO was not inspected or changed.
+- Authored remediation remained within the seven user-owned paths. The effective post-merge diff
+  changes this context, the DesignDoc, TODO README, todo-management skill and obligation helper,
+  and repository validator; `executable_todo-complete` required no change.
+
+### Decisions
+
+- `dot_agents/skills/using-workflow-skills/SKILL.md` is the sole canonical policy mapping. The
+  helper and DesignDoc are validated mirrors: `context-handoff` is `conditional`,
+  `security-audit` is `required`, and route/execute/TDD/evidence/prose/assumption/peer/herdr are
+  `none`.
+- `todo-management` remains registry-`required` as the mechanical active-state owner, but is an
+  explicit exception from semantic durable-artifact obligation ownership and is rejected as an
+  obligation entry owner.
+- Prospective `.dev/reviews/<review-key>.md` remains unavailable until the existing writer
+  availability gate changes. The shared writer continues to reject `.dev/reviews/`; evidence
+  review therefore remains `none` and chat-returning.
+- Registration transports no-save reasons through a scoped environment value instead of AWK
+  `-v`, preserving backslashes byte-for-byte just as closure already did.
+- Registration and closure run the complete existing obligation schema in mutation mode before
+  transforming the record. Canonical open entries are permitted, while malformed fields,
+  unknown/mismatched pairs, duplicates, invalid paths or closure shapes, and invalid existing
+  evidence anywhere in the section reject the mutation byte-for-byte. The shared writer still
+  provides the record lock, expected-hash CAS, and atomic replacement after preflight.
+
+### Red and Green evidence
+
+- Policy Red: integrated `validate-repository.py` failed with `TODO obligation registration
+  policies drift from the canonical registry`. Green: the helper's registration and two AWK
+  validation maps plus the DesignDoc match the router-derived registry, and a behavioral fixture
+  proves `.dev/reviews/` remains rejected.
+- Literal-reason Red: registration returned zero for both adversarial strings, but `C:\tmp`
+  changed bytes while remaining schema-valid and `C:\new` injected a newline that made schema
+  validation fail. Green: both strings persist byte-exactly and pass `todo-obligation check`.
+- Preflight Red: registration mutated fixtures with malformed fields, an unknown owner, a
+  mismatched policy, an invalid path, an invalid closure, and missing artifact evidence; close
+  also mutated its valid target when another block had an unknown owner. Green: every case returns
+  nonzero with byte-identical TODO content, duplicate IDs remain rejected, and registration still
+  succeeds when another obligation is canonically open.
+
+### Green commits
+
+- `5165720` — centralize workflow persistence policy validation.
+- `f39cf90` — preserve literal backslashes in registration reasons.
+- `568281b` — preflight complete obligation sections before mutation.
+
+### Verification evidence
+
+- Integrated baseline before authored fixes:
+  `python3 scripts/ci/test-workflow-skill-persistence.py` and
+  `python3 scripts/ci/test-workflow-skill-materialization.py` each ran 2 tests and returned `OK`.
+- Each behavior increment ran `python3 scripts/ci/validate-repository.py` to the expected Red and
+  then exit 0 at Green. The final pre-context candidate also returned
+  `validated removals, JSON, Claude permissions, public CI paths, WSL proxies, Neovim, Colemak,
+  and SKK`.
+- The final pre-context candidate reran both focused suites (2 tests each, `OK`), `bash -n` and
+  ShellCheck for `executable_todo-obligation`, and `git diff --check`; all exited 0. The repeated
+  read-only mise cache warning did not affect any exit status.
+- The final candidate including this context reran the repository validator, both focused suites
+  (2 tests each, `OK`), `bash -n` and ShellCheck over `executable_todo-complete` and
+  `executable_todo-obligation`, and `git diff --check b182f44`; every command exited 0.
+
+### Residual risks
+
+- Live CI and native macOS Bash 3.2 were not run locally.
+- The validator intentionally parses the canonical router's Markdown registry table; a future
+  registry format change must update that parser while preserving the cross-check.
+- Policy values necessarily remain executable mirrors inside the obligation helper, but CI now
+  fails if any copy or the DesignDoc drifts from the canonical router registry.
