@@ -617,13 +617,12 @@ if [[ "$operation" == "register" ]]; then
     new_state=closed
   fi
 
-  if ! awk \
+  if ! TODO_OBLIGATION_REGISTER_REASON="$trimmed_reason" awk \
   -v new_id="$obligation_id" \
   -v new_owner="$owner" \
   -v new_policy="$policy" \
   -v new_state="$new_state" \
-  -v new_destination="$destination" \
-  -v new_reason="$trimmed_reason" '
+  -v new_destination="$destination" '
 function emit_entry() {
   if (last_line != "") {
     print ""
@@ -651,6 +650,7 @@ function emit_new_section() {
 }
 
 BEGIN {
+  new_reason = ENVIRON["TODO_OBLIGATION_REGISTER_REASON"]
   in_obligations = 0
   section_count = 0
   checklist_seen = 0

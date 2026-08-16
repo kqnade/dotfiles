@@ -2167,6 +2167,91 @@ Repair state.
     ):
         fail("deployed TODO obligation registration helper is missing")
 
+    literal_reason_failures = []
+    for obligation_id, owner, reason in (
+        ("literal-backslash-t", "test-driven-development", r"Windows path C:\tmp is literal."),
+        ("literal-backslash-n", "assumption-pruning", r"Windows path C:\new is literal."),
+    ):
+        literal_reason_hash = subprocess.check_output(
+            ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+        ).strip()
+        literal_reason_register = subprocess.run(
+            [
+                str(todo_obligation_script),
+                "register",
+                "--expect",
+                literal_reason_hash,
+                "workflow-state-repair",
+                "--id",
+                obligation_id,
+                "--owner",
+                owner,
+                "--policy",
+                "none",
+                "--no-save-reason",
+                reason,
+            ],
+            cwd=state_test_repo,
+            env=state_test_env,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        literal_reason_todo = first_todo.replace(
+            "## Commit checklist",
+            f"""## Persistence obligations
+
+### `{obligation_id}`
+- Owner: `{owner}`
+- Policy: `none`
+- State: `closed`
+- No-save reason: {reason}
+
+## Commit checklist""",
+        )
+        literal_reason_check = subprocess.run(
+            [str(todo_obligation_script), "check", "workflow-state-repair"],
+            cwd=state_test_repo,
+            env=state_test_env,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if (
+            literal_reason_register.returncode != 0
+            or todo_path.read_bytes() != literal_reason_todo.encode()
+            or literal_reason_check.returncode != 0
+        ):
+            literal_reason_failures.append(
+                f"{obligation_id}: register={literal_reason_register.returncode}, "
+                f"schema={literal_reason_check.returncode}"
+            )
+
+        literal_reason_written_hash = subprocess.check_output(
+            ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+        ).strip()
+        literal_reason_restore = subprocess.run(
+            [
+                str(workflow_state_writer),
+                "--expect",
+                literal_reason_written_hash,
+                str(todo_path),
+            ],
+            cwd=state_test_repo,
+            env=state_test_env,
+            input=first_todo,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if literal_reason_restore.returncode != 0 or todo_path.read_text() != first_todo:
+            fail("validator could not restore the TODO after literal reason registration")
+    if literal_reason_failures:
+        fail(
+            "TODO obligation registration must preserve literal backslashes and valid schema: "
+            + "; ".join(literal_reason_failures)
+        )
+
     first_todo_hash = subprocess.check_output(
         ["git", "hash-object", "--no-filters", str(todo_path)], text=True
     ).strip()
