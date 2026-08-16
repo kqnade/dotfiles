@@ -84,8 +84,14 @@ class ValidateMiseTests(unittest.TestCase):
             op.parent.mkdir(parents=True)
             op.write_text("#!/bin/sh\nexit 99\n")
             op.chmod(0o755)
+            reads = home / "op-reads"
             op_exe = home / "op.exe"
-            op_exe.write_text("#!/bin/sh\ntest \"$1\" = read || exit 98\nprintf resolved-key\n")
+            op_exe.write_text(
+                "#!/bin/sh\n"
+                'test "$1" = read || exit 98\n'
+                f"printf x >> {reads}\n"
+                "printf resolved-key\n"
+            )
             op_exe.chmod(0o755)
             exporter = home / "exporter"
             exporter.write_text(
@@ -95,26 +101,36 @@ class ValidateMiseTests(unittest.TestCase):
             op_env = home / ".op.env"
             op_env.write_text("NEW_RELIC_ACCOUNT_APIKey=op://test/item/key\n")
 
-            result = subprocess.run(
-                [str(ROOT / "scripts/codex-usage-exporter.sh")],
-                env={
-                    "HOME": str(home),
-                    "PATH": "/usr/bin:/bin",
-                    "DOTFILES_ROOT": str(ROOT),
-                    "CODEX_USAGE_OP_ENV": str(op_env),
-                    "CODEX_USAGE_OP_EXE": str(op_exe),
-                    "CODEX_USAGE_EXPORTER": str(exporter),
-                },
-                text=True,
-                capture_output=True,
-                check=False,
-            )
+            environment = {
+                "HOME": str(home),
+                "PATH": "/usr/bin:/bin",
+                "XDG_RUNTIME_DIR": str(home / "runtime"),
+                "DOTFILES_ROOT": str(ROOT),
+                "CODEX_USAGE_OP_ENV": str(op_env),
+                "CODEX_USAGE_OP_EXE": str(op_exe),
+                "CODEX_USAGE_EXPORTER": str(exporter),
+            }
+            results = [
+                subprocess.run(
+                    [str(ROOT / "scripts/codex-usage-exporter.sh")],
+                    env=environment,
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+                for _ in range(2)
+            ]
+            cache = home / "runtime/codex-usage-exporter/op.env"
+            read_count = reads.read_text() if reads.is_file() else ""
+            cache_mode = cache.stat().st_mode & 0o777 if cache.is_file() else None
 
-        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual([result.returncode for result in results], [0, 0])
         self.assertEqual(
-            result.stdout.strip(),
-            "resolved-key",
+            [result.stdout.strip() for result in results],
+            ["resolved-key", "resolved-key"],
         )
+        self.assertEqual(read_count, "x")
+        self.assertEqual(cache_mode, 0o600)
 
     def test_repository_loads_split_manifest(self) -> None:
         mise = shutil.which("mise")
