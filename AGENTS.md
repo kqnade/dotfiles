@@ -1,189 +1,144 @@
 # AGENTS.md
 
-Concise guidance for agents working in this dotfiles repository.
+Repository-specific instructions for agents changing this dotfiles repository.
 
-## What this repository is
+## Repository model
 
-Cross-platform dotfiles managed by **mise** and **chezmoi**. Supported targets
-are macOS arm64/x64, Fedora x64, Arch Linux x64, and Fedora/Arch under WSL x64.
+This repository converges a complete user environment on macOS arm64/x64, Fedora x64,
+Arch Linux x64, and Fedora/Arch under WSL x64.
+
+- **mise** owns tools, system packages, user settings, OS defaults, services, hooks, and the
+  public tasks that orchestrate setup.
+- **chezmoi** renders and applies files into the home directory. It does not install packages or
+  own service lifecycles by itself.
+- `install.sh` is the fresh-machine entry point. It installs mise into `~/.local/bin`, clones or
+  reuses `~/repos/github.com/kqnade/dotfiles`, trusts its mise configuration, and runs
+  `mise bootstrap --yes`.
+- Root `mise.toml` owns settings, pinned mise tools, and public tasks. `mise/config.toml` owns
+  bootstrap packages, user settings, OS defaults, services, and hooks. OS packages intentionally
+  use the package managers' `latest` version.
+- `dot_config/mise/config.toml.tmpl` combines both manifests into
+  `~/.config/mise/config.toml`. `mise.lock` covers `macos-arm64`, `macos-x64`, and `linux-x64`.
+
+## Before changing files
+
+1. Confirm the repository remote and inspect `git status`. This Codex account must stop if the
+   GitHub remote owner is `livesense-inc` or `jobtalk`; those repositories require the approved
+   Claude account.
+2. If `.dev/todo/` contains an item relevant to the request, read only that item and follow only
+   its task-relevant links.
+3. Verify decision-changing claims against the current request, files, Git state, tests, runtime
+   behavior, or primary sources. Current evidence overrides stale records.
+4. Make the smallest correct change. Preserve user-authored and concurrent changes, avoid
+   unrelated cleanup, and report failures explicitly.
+5. Use `mise run apply` when the repository should apply its complete managed dotfile state. A
+   direct `chezmoi apply` updates chezmoi-managed files but bypasses zsh cache rebuilding and the
+   service application performed by the wrapper.
 
 ## Public commands
 
 | Task | Command |
-|------|---------|
-| Bootstrap a machine | `mise bootstrap --yes` |
-| Apply dotfiles | `mise run apply` |
-| Diagnose state | `mise run doctor` |
-| Format manifest and lockfile | `mise run format` |
-| Preview chezmoi changes | `chezmoi diff` |
-| Generate commit message | `git cc` |
+|---|---|
+| Converge packages, tools, dotfiles, defaults, and services | `mise bootstrap --yes` |
+| Apply dotfiles, rebuild the zsh cache, and apply managed services | `mise run apply` |
+| Diagnose tools, packages, dotfiles, fonts, SKK, services, and WSL proxies | `mise run doctor` |
+| Format `mise.toml`, `mise/config.toml`, and `mise.lock` | `mise run format` |
+| Preview chezmoi-managed file changes | `chezmoi diff` |
+| Run the repository validators | `mise exec -- python3 scripts/ci/validate-repository.py` |
+| Generate and create a local commit | `git cc` |
 
-`install.sh` is the fresh-machine entry point. It installs mise into
-`~/.local/bin`, checks out this repository at
-`~/repos/github.com/kqnade/dotfiles`, and runs the bootstrap command.
+Run focused checks first, then the repository validator when the affected contract requires it.
+Always inspect the final diff and run `git diff --check` before handing work off.
 
-## Architecture facts
+## Where to make changes
 
-- Root `mise.toml` owns settings, global tools, and public tasks.
-- `mise/config.toml` owns bootstrap packages, user settings, OS defaults, services, and hooks.
-- `dot_config/mise/config.toml.tmpl` concatenates both manifests so chezmoi can materialize the
-  same configuration as `~/.config/mise/config.toml`.
-- All tools are explicitly pinned. `mise.lock` covers `macos-arm64`,
-  `macos-x64`, and `linux-x64`.
-- macOS GUI apps and Fedora/Arch system packages live in
-  `mise/config.toml`'s `[bootstrap.packages]`.
-- macOS uses its built-in zsh, Git, SSH, and Xcode Command Line Tools.
-- macOS Casks use mise's built-in `brew-cask` manager; the repository does not require a
-  Brewfile or an external `brew` CLI.
-- Intel macOS uses Cargo fallbacks for sheldon, delta, fd, and atuin, plus an
-  npm fallback for pnpm.
-- `dot_codex/modify_private_config.toml` enforces stable Codex defaults in
-  `~/.codex/config.toml` while preserving Codex-managed tables and sibling runtime state.
-- `mise run apply` is the only normal dotfile mutation path. Chezmoi does not
-  install packages or manage services.
+| Intent | Source |
+|---|---|
+| mise tool, setting, or public task | `mise.toml` |
+| System package, macOS Cask/default, user setting, service, or bootstrap hook | `mise/config.toml` |
+| Bootstrap/apply/doctor behavior | `scripts/` |
+| zsh alias or function | `dot_config/zsh/aliases.zsh` or `dot_config/zsh/functions/<name>.zsh` |
+| Neovim LSP or formatter | `dot_config/nvim/lua/modules/configs/lsp/init.lua` or `dot_config/nvim/lua/modules/configs/editor/conform.lua` |
+| OpenCode configuration | `dot_config/opencode/opencode.json` |
+| Shared agent rule | `dot_agents/rules/` |
+| Cross-client workflow skill | `dot_agents/skills/<name>/` |
+| Codex adapter or custom agent | `dot_codex/` |
+| Claude-specific rule, setting, or hook | `dot_claude/` |
 
-## chezmoi source layout
+Chezmoi source names describe their deployed targets: `dot_` becomes a leading `.`,
+`dot_config/` deploys to `~/.config/`, and `private_*` enforces private permissions. SKK external
+dictionary sources belong in `.chezmoiexternal.toml.tmpl`; removed managed targets belong in
+`.chezmoiremove`.
 
-- Files prefixed `dot_` deploy to `~/.<name>`.
-- `dot_config/` deploys to `~/.config/`.
-- `private_*` forces private permissions.
-- `.chezmoiexternal.toml.tmpl` owns the SKK dictionary source files.
-- Deleted managed targets must be listed in `.chezmoiremove`.
+## Platform invariants
 
-## yaskkserv2
+- macOS uses its built-in zsh, Git, SSH, and Xcode Command Line Tools. Casks use mise's built-in
+  `brew-cask` manager; no Brewfile or external `brew` CLI is required.
+- Intel macOS uses Cargo fallbacks for sheldon, delta, fd, and atuin, and an npm fallback for pnpm.
+- macOS and Linux desktop use the native 1Password SSH agent socket. WSL deploys
+  `~/.local/bin/{op,ssh,ssh-add}` proxies to the corresponding Windows executables and uses
+  `op-ssh-sign-wsl.exe` for commit signing. Keep WSL proxies separate from native Windows support.
+- yaskkserv2 is built on every supported OS from
+  `cargo:https://github.com/wachikun/yaskkserv2`. It serves the dictionary generated by
+  `scripts/build-skk-dictionary.sh` on `127.0.0.1:1178` through a mise-managed LaunchAgent or
+  systemd user unit. Bootstrap is not complete until the port accepts connections.
+- Bootstrap scripts resolve the checkout through `scripts/lib/runtime.sh`; `DOTFILES_ROOT` is an
+  internal override for CI and disposable worktrees.
+- Do not modify Neovim configuration as part of bootstrap cleanup.
+- Preserve the Colemak Vim/Neovim mapping: `m/n/e/i` maps to `h/j/k/l`, `s/t` maps to `i/a`, and
+  `x/c/v` maps to `d/y/p`.
 
-- Built on every supported OS from
-  `cargo:https://github.com/wachikun/yaskkserv2`.
-- Listens on `127.0.0.1:1178`.
-- Dictionary generation is handled by `scripts/build-skk-dictionary.sh`.
-- mise owns `dev.mise.yaskkserv2` as a LaunchAgent or systemd user unit.
-- `scripts/remove-legacy-yaskkserv2.sh` removes only the previous
-  `com.user.yaskkserv2` / `yaskkserv2.service` definitions before mise enables
-  its service.
-- Bootstrap scripts resolve their checkout through `scripts/lib/runtime.sh`.
-  `DOTFILES_ROOT` is an internal override for CI and disposable worktrees.
-- Bootstrap is not complete until `127.0.0.1:1178` accepts connections.
+## Agent configuration model
 
-## 1Password / SSH
+Agent configuration has a canonical layer and client adapters:
 
-- macOS/Linux desktop use the native 1Password SSH agent socket.
-- WSL deploys `~/.local/bin/{op,ssh,ssh-add}` proxies to the corresponding
-  Windows executables.
-- WSL commit signing uses `op-ssh-sign-wsl.exe`.
+- Shared unconditional rules live in `dot_agents/rules/`. Claude receives shared rules through
+  symlinks, Codex receives the generated `dot_agents/rules/AGENTS.md.tmpl` aggregate through
+  `dot_codex/symlink_AGENTS.md`, and OpenCode receives the shared workflow-state rule. Do not copy
+  canonical rules into client-specific directories.
+- Cross-client skills live only in `dot_agents/skills/`. Claude uses the symlinks in
+  `dot_claude/skills/`; Codex and OpenCode discover the materialized `~/.agents/skills/` tree.
+- Claude-specific unconditional rules and hooks live in `dot_claude/`. Claude may run only in
+  repositories whose GitHub remote owner is `livesense-inc` or `jobtalk`; the wrapper and hooks
+  enforce that boundary. Worktree sessions and built-in subagents also require an explicitly
+  invoked workflow, the same approved account, and an authorized repository.
+- Codex-specific delegation and Git policy live in `dot_agents/rules/{delegation,git}.md`. Luna is
+  the default subagent; `luna_parallelizer` routes non-large multi-area work, while
+  `route-large-implementation` owns work with multiple independently verifiable features that can
+  run concurrently in isolated worktrees. Bounded low-ambiguity packets may use `spark_worker`.
+- `dot_codex/modify_private_config.toml` applies stable Codex defaults while preserving
+  Codex-managed runtime state and sibling tables. Claude Code's expected runtime edits to
+  `settings.json` should be folded back into `dot_claude/settings.json.tmpl` only when intentional.
+- Herdr integration is applied idempotently during bootstrap. Claude automatic memory remains
+  disabled; durable workflow state uses the repository model below.
 
-## Colemak keybindings
+## Repository workflow state
 
-Keep this mapping consistent when editing Vim or Neovim:
+`.dev/` is the current worktree's repository-owned source of truth for AI workflow state, not
+automatic memory. Its detailed contract is in `.dev/designdoc/ai-assisted-development.md`.
 
-| Colemak | QWERTY | Action |
-|---------|--------|--------|
-| `m/n/e/i` | `h/j/k/l` | movement |
-| `s/t` | `i/a` | insert/append |
-| `x/c/v` | `d/y/p` | delete/copy/paste |
+- Keep each linked worktree's `.dev/` independent. Never redirect, merge, or silently copy records
+  into another worktree.
+- `.dev/todo/` contains only active work. Before deleting a completed item, preserve required task
+  evidence in `.dev/contexts/` and promote durable decisions or research to their owning records.
+- Read task-relevant context only. Imported, legacy, cross-worktree, or incompletely provenanced
+  records are candidate evidence until reconciled with current state.
+- Do not create or write `.dev/`, change its ignore policy, or select an external backend unless an
+  explicitly invoked workflow or repository instruction authorizes that state change.
+- Only repositories in the `livesense-inc` or `jobtalk` namespace receive the clone-local
+  `/.dev/` ignore rule. `AGENT_WORKFLOW_STATE_HOME` is an explicit fallback, never an automatic
+  recovery path.
 
-## Claude Code global config
-
-- `dot_claude/` deploys to `~/.claude/`.
-- Claude Code mutates `settings.json` at runtime, so expected drift should be
-  folded back into the source when intentional.
-- Hooks use the `executable_` prefix and are wired in
-  `dot_claude/settings.json.tmpl`.
-- Claude is authorized only for GitHub repositories whose remote owner is
-  `livesense-inc` or `jobtalk`. The shell wrapper checks before launching Claude, and
-  the `UserPromptSubmit` and `PreToolUse` hooks reject every other repository,
-  including missing or unrecognized remotes.
-- Claude worktree sessions and built-in subagents require an explicitly invoked workflow and must
-  use the same approved Claude account and authorized repository, including linked worktrees.
-  Scope alone never authorizes automatic Claude orchestration.
-- Shared unconditional coding and repository workflow-state conventions have canonical sources in
-  `dot_agents/rules/{coding,workflow-state}.md`. Claude receives both through rule symlinks; Codex
-  receives both in a generated global-rule aggregate; OpenCode receives the workflow-state rule as
-  its global `AGENTS.md`.
-- Claude's client-specific unconditional global rules live in `dot_claude/rules/` and cover
-  verification, operations, Git, and PRD/STD delivery boundaries.
-- Codex receives `~/.codex/AGENTS.md` as a symlink to the generated
-  `~/.agents/rules/AGENTS.md`, which combines shared coding and workflow-state conventions with the
-  Codex-specific delegation, Git, and repository-authorization rules. For non-large multi-area
-  work, its `luna_parallelizer` custom agent performs shallow discovery and fans disjoint packets
-  out to model-fit workers: Spark for bounded low-ambiguity execution and Luna for work that needs
-  broader judgment. Luna remains the default subagent. Large implementations remain owned by
-  `route-large-implementation`. Codex uses `git cc` outside the two Claude-only namespaces.
-- Cross-client workflow skills have one canonical source in `dot_agents/skills/`.
-  Claude receives symlinks from `dot_claude/skills/`; Codex and OpenCode discover
-  `~/.agents/skills/` directly. Do not copy a skill into client-specific directories.
-- The installed set is organized by desired effect rather than by source workflow:
-  `evidence-review`, `context-handoff`, `security-audit`, `prose-proofreading`,
-  `assumption-pruning`, `peer-consultation`, and t-wada-style
-  `test-driven-development`, `route-large-implementation`, and
-  `execute-worktree-implementation`. `using-workflow-skills` is the routing
-  guardrail.
-- Cross-session context and security coverage use the current Git worktree's `.dev/`,
-  resolved by `using-workflow-skills/scripts/workflow-state-root`. Claude automatic
-  memory remains disabled. Current-worktree repository-owned records are normal project
-  context after identity, provenance, and freshness checks; imported records require
-  stricter reconciliation.
-- Linked worktrees do not share `.dev/` content. ADRs, design documents, todo state,
-  handoffs, and audit records remain with the worktree and branch that produced them.
-- Repositories in the `livesense-inc` or `jobtalk` remote-owner/local namespace keep
-  `.dev/` local. On an explicitly authorized state write, the resolver idempotently adds
-  `/.dev/` to the clone's `.git/info/exclude`; it never adds that rule elsewhere.
-- `AGENT_WORKFLOW_STATE_HOME` is an explicit repository-external fallback, not the
-  default and not an automatic recovery path.
-
-## AI-assisted development records
-
-- `.dev/` is the source of truth for this repository's AI-assisted workflow state and the
-  default repository-scoped continuity backend. It is repository content, not Claude
-  automatic memory. Check record identity, provenance, and freshness; when a factual claim
-  conflicts with the current request, files, Git state, tests, runtime behavior, or primary
-  sources, current evidence governs.
-- Never redirect a linked worktree's records into the primary worktree's `.dev/`.
-- Do not automatically ignore `.dev/` outside the `livesense-inc` and `jobtalk`
-  namespaces. Whether another repository tracks it belongs to that repository's policy.
-- When an active work item is relevant to the current request, inspect only that item,
-  then follow its task-relevant links to `.dev/designdoc/`, `.dev/adr/`,
-  `.dev/research/`, `.dev/contexts/`, and `.dev/memory/`.
-- `.dev/contexts/` records detailed task-relevant dialogue output, implementation work,
-  failures, and verification for a branch, change, or PR. Load only task-relevant context,
-  verify its provenance and staleness, and preserve existing task evidence when correcting
-  it. Context from another worktree, an import, a legacy workflow, or with incomplete
-  provenance is candidate evidence until reconciled.
-- `.dev/memory/` is existing repository content, not Claude memory. Never load unrelated
-  entries automatically or use them to bypass current-state verification.
-- `.dev/todo/` contains only active work. Delete a work-item file when its final item is
-  complete. Before deletion, promote durable decisions, design, and research, and preserve
-  the completed AI work and dialogue evidence in the relevant context. Add memory only when
-  a confirmed fact should be reused beyond the current work item. Git history records the
-  completed plan but does not replace those records.
-- This repository's detailed record contract is documented in
-  `.dev/designdoc/ai-assisted-development.md`.
-
-## Adding things
-
-- mise tool: root `mise.toml`
-- system package, macOS Cask, OS default, or service: `mise/config.toml`
-- zsh alias: `dot_config/zsh/aliases.zsh`
-- zsh function: `dot_config/zsh/functions/<name>.zsh`
-- Neovim LSP: `dot_config/nvim/lua/modules/configs/lsp/init.lua`
-- Neovim formatter: `dot_config/nvim/lua/modules/configs/editor/conform.lua`
-- OpenCode config: `dot_config/opencode/opencode.json`
-- Shared coding rule: `dot_agents/rules/coding.md`
-- Shared workflow-state rule: `dot_agents/rules/workflow-state.md`
-- Codex-specific delegation rule: `dot_agents/rules/delegation.md`
-- Codex custom agent: `dot_codex/agents/<name>.toml`
-- Cross-client workflow skill: `dot_agents/skills/<name>/`
-- Claude-specific rule or hook: `dot_claude/{rules,hooks}/`
-
-## Conventions
+## Git and CI conventions
 
 - Commit messages use gitmoji prefixes.
 - Default branch is `trunk`.
-- Do not modify Neovim configuration as part of bootstrap cleanup.
-- Keep WSL proxies separate from native Windows support.
-- CI performs real installs and applies rather than preview-only runs. macOS
-  arm64 exercises every public interface; Intel macOS runs install/apply/doctor
-  and builds all source fallbacks; Fedora exercises all Linux components and
-  Arch exercises packages.
-- GitHub-hosted Linux containers cannot run a user systemd manager. The Linux
-  job starts yaskkserv2 directly and checks its port; systemd and WSL runtime
-  coverage require dedicated runners.
+- Each local commit must be a cohesive, reviewable Green increment. Stage only its paths or hunks,
+  inspect the staged diff, and use `git cc`. Pushes and pull-request mutations require separate
+  explicit authorization.
+- CI performs real installs and applies rather than preview-only checks. macOS arm64 exercises all
+  public interfaces; Intel macOS also builds the source/npm fallbacks; Fedora exercises all Linux
+  components; Arch exercises system packages.
+- GitHub-hosted Linux containers cannot run a user systemd manager. CI starts yaskkserv2 directly
+  and checks its port; systemd and WSL runtime coverage require dedicated runners. See
+  `docs/ci.md` for the complete matrix.
