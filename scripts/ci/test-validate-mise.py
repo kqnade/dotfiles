@@ -80,18 +80,19 @@ class ValidateMiseTests(unittest.TestCase):
     def test_codex_usage_exporter_resolves_op_outside_systemd_path(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             home = Path(temporary_directory)
-            op = home / ".local/bin/op"
-            op.parent.mkdir(parents=True)
-            op.write_text("#!/bin/sh\nexit 99\n")
-            op.chmod(0o755)
             reads = home / "op-reads"
-            op_exe = home / "op.exe"
-            op_exe.write_text(
+            op_script = (
                 "#!/bin/sh\n"
                 'test "$1" = read || exit 98\n'
                 f"printf x >> {reads}\n"
                 "printf resolved-key\n"
             )
+            op = home / ".local/bin/op"
+            op.parent.mkdir(parents=True)
+            op.write_text(op_script)
+            op.chmod(0o755)
+            op_exe = home / "op.exe"
+            op_exe.write_text(op_script)
             op_exe.chmod(0o755)
             exporter = home / "exporter"
             exporter.write_text(
