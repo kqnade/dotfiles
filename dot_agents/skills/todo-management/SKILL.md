@@ -111,8 +111,20 @@ checklist item complete, re-read the TODO, and hash that exact version. Run
 `scripts/todo-complete --expect <hash> <task-key>`. The helper rejects missing
 required sections, unchecked or empty checklists, missing or out-of-scope
 durable record links, mixed `None` and link entries, stale hashes, symlinks,
-and nonregular targets. A concrete `None` reason is valid only when no durable
-record is warranted.
+and nonregular targets. Before deletion it invokes the read-only
+`scripts/todo-obligation check <task-key>` seam. The optional `## Persistence
+obligations` section may be absent, heading-only, or contain zero or more
+unique canonical `### \`id\`` blocks, but it may occur at most once before
+`Commit checklist`. Each block uses the exact `Owner`, `Policy`, `State`, and
+one closure form in canonical order. Every block must be `closed`: artifact
+closures keep a safe owner-allowed `Destination` and use a nonempty safe-label
+Markdown link whose target is exactly `../${Destination#.dev/}` and resolves
+through the current worktree to an existing regular non-symlink file; no-save
+closures use `conditional` or `none` with a concrete single-line reason.
+Unknown owner/policy pairs, open or malformed blocks, duplicate IDs, mixed or
+missing closure fields, unsafe paths, invalid links, and stale artifact
+evidence preserve the TODO and block completion. A concrete `None` reason is
+valid only when no durable record is warranted.
 
 The helper deletes only an eligible current-worktree TODO through the shared
 record lock and compare-and-swap writer. If validation or deletion fails,

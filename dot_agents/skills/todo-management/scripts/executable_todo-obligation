@@ -4,6 +4,7 @@ set -euo pipefail
 usage() {
   echo "usage: todo-obligation register --expect HASH TASK_KEY --id ID --owner OWNER --policy POLICY (--destination .dev/PATH | --no-save-reason REASON)" >&2
   echo "       todo-obligation close --expect HASH TASK_KEY --id ID (--artifact .dev/PATH | --no-save-reason REASON)" >&2
+  echo "       todo-obligation check TASK_KEY" >&2
   exit 2
 }
 
@@ -11,7 +12,341 @@ is_safe_path() {
   [[ "$1" =~ ^[-A-Za-z0-9._/]+$ ]]
 }
 
+validate_artifact_evidence() {
+  local owner=$1
+  local destination=$2
+  local artifact_target=$3
+  local expected_target
+  local current_worktree
+  local walk_path
+  local remaining
+  local segment
+
+  if ! is_safe_path "$destination"; then
+    echo "todo-obligation: destination contains unsafe path characters" >&2
+    return 1
+  fi
+  case "$destination" in
+    .dev/adr/*|.dev/contexts/*|.dev/designdoc/*|.dev/research/*|.dev/memory/*|.dev/security/*) ;;
+    *)
+      echo "todo-obligation: destination must be under a canonical .dev area: $destination" >&2
+      return 1
+      ;;
+  esac
+
+  remaining=$destination
+  while [[ "$remaining" == */* ]]; do
+    segment=${remaining%%/*}
+    remaining=${remaining#*/}
+    if [[ -z "$segment" || "$segment" == "." || "$segment" == ".." ]]; then
+      echo "todo-obligation: destination contains an invalid path segment: $destination" >&2
+      return 1
+    fi
+  done
+  if [[ -z "$remaining" || "$remaining" == "." || "$remaining" == ".." ]]; then
+    echo "todo-obligation: destination contains an invalid path segment: $destination" >&2
+    return 1
+  fi
+
+  case "$owner" in
+    security-audit)
+      [[ "$destination" == .dev/security/* ]] || {
+        echo "todo-obligation: security-audit destinations must be under .dev/security/" >&2
+        return 1
+      }
+      ;;
+    execute-worktree-implementation|test-driven-development|context-handoff)
+      [[ "$destination" == .dev/contexts/* ]] || {
+        echo "todo-obligation: $owner destinations must be under .dev/contexts/" >&2
+        return 1
+      }
+      ;;
+    assumption-pruning)
+      [[ "$destination" == .dev/adr/* ]] || {
+        echo "todo-obligation: assumption-pruning destinations must be under .dev/adr/" >&2
+        return 1
+      }
+      ;;
+  esac
+
+  expected_target="../${destination#.dev/}"
+  if [[ "$artifact_target" != "$expected_target" ]]; then
+    echo "todo-obligation: Artifact link target must match Destination: $artifact_target" >&2
+    return 1
+  fi
+  if ! is_safe_path "$artifact_target"; then
+    echo "todo-obligation: Artifact link target contains unsafe path characters" >&2
+    return 1
+  fi
+
+  current_worktree=$(git rev-parse --show-toplevel 2>/dev/null) || {
+    echo "todo-obligation: not inside a Git worktree" >&2
+    return 1
+  }
+  current_worktree=$(cd "$current_worktree" && pwd -P)
+  walk_path=$current_worktree
+  remaining=$destination
+  while [[ "$remaining" == */* ]]; do
+    segment=${remaining%%/*}
+    remaining=${remaining#*/}
+    walk_path="$walk_path/$segment"
+    if [[ -L "$walk_path" ]]; then
+      echo "todo-obligation: artifact path must not traverse a symlink: $destination" >&2
+      return 1
+    fi
+  done
+  walk_path="$walk_path/$remaining"
+  if [[ -L "$walk_path" || ! -f "$walk_path" ]]; then
+    echo "todo-obligation: Artifact must be an existing regular non-symlink file: $destination" >&2
+    return 1
+  fi
+}
+
+check_obligations() {
+  [[ $# -eq 1 ]] || usage
+  local task_key=$1
+  local script_dir
+  local target
+  local parsed
+  local owner
+  local destination
+  local artifact_target
+
+  script_dir=$(cd "$(dirname "$0")" && pwd -P)
+  if ! target=$("$script_dir/todo-path" "$task_key"); then
+    return 1
+  fi
+  if [[ -L "$target" || ! -f "$target" ]]; then
+    echo "todo-obligation: active TODO must be a regular file: $target" >&2
+    return 1
+  fi
+
+  if ! parsed=$(awk '
+function fail(message) {
+  print "todo-obligation: " message > "/dev/stderr"
+  failed = 1
+  exit 1
+}
+
+function canonical_pair(owner, policy) {
+  return (owner == "security-audit" && policy == "required") ||
+    (owner == "execute-worktree-implementation" && policy == "conditional") ||
+    (owner == "test-driven-development" && policy == "conditional") ||
+    (owner == "context-handoff" && policy == "conditional") ||
+    (owner == "assumption-pruning" && policy == "conditional") ||
+    (owner == "route-large-implementation" && policy == "none") ||
+    (owner == "evidence-review" && policy == "none") ||
+    (owner == "prose-proofreading" && policy == "none") ||
+    (owner == "peer-consultation" && policy == "none") ||
+    (owner == "herdr" && policy == "none")
+}
+
+function artifact_target(value,    rest, separator, label, target) {
+  rest = substr(value, length("- Artifact: ") + 1)
+  if (substr(rest, 1, 1) != "[") {
+    fail("Artifact must be a Markdown link with a nonempty safe label")
+  }
+  separator = index(rest, "](")
+  if (separator <= 2 || substr(rest, length(rest), 1) != ")") {
+    fail("Artifact must be a Markdown link with a nonempty safe label")
+  }
+  label = substr(rest, 2, separator - 2)
+  target = substr(rest, separator + 2, length(rest) - separator - 2)
+  if (label !~ /[^[:space:]]/ || index(label, "[") || index(label, "]") || index(label, "\r")) {
+    fail("Artifact must have a nonempty safe label")
+  }
+  if (target == "") {
+    fail("Artifact must have a nonempty link target")
+  }
+  return target
+}
+
+function validate_reason(value,    reason, trimmed, lower) {
+  reason = substr(value, length("- No-save reason: ") + 1)
+  if (index(reason, "\r") || reason !~ /[^[:space:]]/) {
+    fail("No-save reason must contain non-whitespace text")
+  }
+  trimmed = reason
+  sub(/^[[:space:]]+/, "", trimmed)
+  sub(/[[:space:]]+$/, "", trimmed)
+  lower = tolower(trimmed)
+  if (lower == "n/a" || lower == "na" || lower == "none" || lower == "null" ||
+      lower == "nil" || lower == "tbd" || lower == "todo" || lower == "no reason" ||
+      lower == "not applicable" || lower == "なし" || lower == "特になし") {
+    fail("No-save reason must be concrete")
+  }
+}
+
+function validate_block(start, end,    heading, id, count, i, line, owner_line,
+                        policy_line, state_line, destination_line, owner, policy,
+                        state, destination, target) {
+  heading = lines[start]
+  if (heading !~ /^### `[a-z0-9][a-z0-9._-]*`$/) {
+    fail("Persistence obligations contains a non-canonical obligation heading")
+  }
+  id = heading
+  sub(/^### `/, "", id)
+  sub(/`$/, "", id)
+  if (seen_ids[id]) {
+    fail("Persistence obligations contains duplicate obligation ID: " id)
+  }
+  seen_ids[id] = 1
+
+  count = 0
+  for (i = start + 1; i < end; i++) {
+    line = lines[i]
+    if (line !~ /[^[:space:]]/) {
+      continue
+    }
+    count++
+    fields[count] = line
+  }
+  if (count < 4 || count > 5) {
+    fail("obligation block must contain only its canonical fields")
+  }
+  owner_line = fields[1]
+  policy_line = fields[2]
+  state_line = fields[3]
+  destination_line = fields[4]
+  if (owner_line !~ /^- Owner: `[^`]+`$/ || policy_line !~ /^- Policy: `[^`]+`$/ ||
+      state_line !~ /^- State: `[^`]+`$/) {
+    fail("obligation block must use canonical Owner, Policy, and State fields")
+  }
+  owner = owner_line
+  sub(/^- Owner: `/, "", owner)
+  sub(/`$/, "", owner)
+  policy = policy_line
+  sub(/^- Policy: `/, "", policy)
+  sub(/`$/, "", policy)
+  state = state_line
+  sub(/^- State: `/, "", state)
+  sub(/`$/, "", state)
+  if (!canonical_pair(owner, policy)) {
+    fail("obligation block has a non-canonical owner-policy pair")
+  }
+  if (state != "open" && state != "closed") {
+    fail("obligation block has an invalid State")
+  }
+
+  if (state == "open") {
+    if (count != 4 || destination_line !~ /^- Destination: `[^`]+`$/ || policy == "none") {
+      fail("open obligation must use canonical Owner, Policy, State, and Destination fields")
+    }
+    fail("persistence obligation is still open: " id)
+  }
+
+  if (destination_line ~ /^- Destination: `[^`]+`$/) {
+    if (count != 5 || fields[5] !~ /^- Artifact: \[/) {
+      fail("closed artifact obligation must contain Destination followed by Artifact")
+    }
+    if (policy != "required" && policy != "conditional") {
+      fail("none obligations cannot close with an Artifact")
+    }
+    destination = destination_line
+    sub(/^- Destination: `/, "", destination)
+    sub(/`$/, "", destination)
+    target = artifact_target(fields[5])
+    print owner "\t" destination "\t" target
+    return
+  }
+
+  if (destination_line ~ /^- No-save reason: /) {
+    if (count != 4) {
+      fail("closed no-save obligation must contain exactly Owner, Policy, State, and No-save reason")
+    }
+    if (policy != "conditional" && policy != "none") {
+      fail("required obligations cannot close with a No-save reason")
+    }
+    validate_reason(destination_line)
+    return
+  }
+  fail("closed obligation must contain exactly one canonical Destination/Artifact or No-save reason")
+}
+
+BEGIN {
+  section_count = 0
+  section_begin = 0
+  section_end = 0
+  section_open = 0
+  checklist_seen = 0
+  block_start = 0
+}
+
+{
+  lines[NR] = $0
+  if ($0 == "## Commit checklist") {
+    checklist_seen = 1
+  }
+  if ($0 ~ /^## Persistence obligations([[:space:]]|$)/) {
+    if ($0 != "## Persistence obligations") {
+      fail("Persistence obligations heading must be exact")
+    }
+    if (checklist_seen) {
+      fail("Persistence obligations must precede Commit checklist")
+    }
+    section_count++
+    if (section_count > 1) {
+      fail("active TODO must contain at most one Persistence obligations section")
+    }
+    section_begin = NR
+    section_open = 1
+  } else if (section_open && $0 ~ /^## /) {
+    section_end = NR
+    section_open = 0
+  }
+}
+
+END {
+  if (failed) {
+    exit 1
+  }
+  if (section_open) {
+    section_end = NR + 1
+  }
+  if (section_count == 0) {
+    exit 0
+  }
+
+  in_section = 0
+  for (i = 1; i < section_end; i++) {
+    if (i == section_begin) {
+      in_section = 1
+      continue
+    }
+    if (!in_section) {
+      continue
+    }
+    if (lines[i] ~ /^###/) {
+      if (block_start != 0) {
+        validate_block(block_start, i)
+      }
+      block_start = i
+      continue
+    }
+    if (block_start == 0 && lines[i] ~ /[^[:space:]]/) {
+      fail("Persistence obligations contains unexpected content outside an obligation block")
+    }
+  }
+  if (block_start != 0) {
+    validate_block(block_start, section_end)
+  }
+}' "$target"); then
+    return 1
+  fi
+
+  if [[ -n "$parsed" ]]; then
+    while IFS=$'\t' read -r owner destination artifact_target; do
+      validate_artifact_evidence "$owner" "$destination" "$artifact_target" || return 1
+    done <<<"$parsed"
+  fi
+}
+
 operation=${1:-}
+if [[ "$operation" == "check" ]]; then
+  shift
+  check_obligations "$@"
+  exit $?
+fi
 [[ "$operation" == "register" || "$operation" == "close" ]] || usage
 shift
 

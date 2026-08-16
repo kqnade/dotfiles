@@ -1658,6 +1658,7 @@ for required_todo_phrase in (
     "todo-obligation close --expect",
     "state write",
     "scripts/todo-complete --expect",
+    "scripts/todo-obligation check",
 ):
     if required_todo_phrase not in todo_management_contract:
         fail(f"TODO management contract is incomplete: {required_todo_phrase}")
@@ -2953,6 +2954,359 @@ Repair state.
     )
     if restore_completed_todo.returncode != 0:
         fail("validator could not restore the completed active TODO fixture")
+    completed_todo_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    heading_only_todo = completed_todo.replace(
+        "## Commit checklist",
+        "## Persistence obligations\n\n## Commit checklist",
+    )
+    heading_only_write = subprocess.run(
+        [str(workflow_state_writer), "--expect", completed_todo_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=heading_only_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if heading_only_write.returncode != 0:
+        fail("validator could not prepare a heading-only persistence section")
+    heading_only_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    heading_only_completion = subprocess.run(
+        [
+            str(todo_complete_script),
+            "--expect",
+            heading_only_hash,
+            "workflow-state-repair",
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if heading_only_completion.returncode != 0 or todo_path.exists():
+        fail("TODO completion must allow a heading-only persistence section")
+    restore_completed_todo = subprocess.run(
+        [str(workflow_state_writer), "--expect", "missing", str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=completed_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if restore_completed_todo.returncode != 0:
+        fail("validator could not restore the completed active TODO after heading-only gating")
+    completed_todo_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    open_obligation_todo = completed_todo.replace(
+        "## Commit checklist",
+        """## Persistence obligations
+
+### `open-obligation`
+- Owner: `security-audit`
+- Policy: `required`
+- State: `open`
+- Destination: `.dev/security/open.md`
+
+## Commit checklist""",
+    )
+    open_obligation_write = subprocess.run(
+        [str(workflow_state_writer), "--expect", completed_todo_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=open_obligation_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if open_obligation_write.returncode != 0:
+        fail("validator could not prepare an active TODO with an open obligation")
+    open_obligation_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    open_obligation_completion = subprocess.run(
+        [
+            str(todo_complete_script),
+            "--expect",
+            open_obligation_hash,
+            "workflow-state-repair",
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if open_obligation_completion.returncode == 0 or not todo_path.is_file():
+        fail(
+            "TODO completion must preserve an active TODO with an open persistence obligation"
+        )
+    restore_completed_todo = subprocess.run(
+        [str(workflow_state_writer), "--expect", open_obligation_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=completed_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if restore_completed_todo.returncode != 0:
+        fail("validator could not restore the completed active TODO after obligation gating")
+    completed_todo_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    closed_obligations_todo = completed_todo.replace(
+        "## Commit checklist",
+        """## Persistence obligations
+
+### `closed-artifact`
+- Owner: `security-audit`
+- Policy: `required`
+- State: `closed`
+- Destination: `.dev/security/coverage.md`
+- Artifact: [coverage evidence](../security/coverage.md)
+
+### `closed-no-save`
+- Owner: `evidence-review`
+- Policy: `none`
+- State: `closed`
+- No-save reason: Validator fixture has no durable review artifact.
+
+## Commit checklist""",
+    )
+    closed_obligations_write = subprocess.run(
+        [str(workflow_state_writer), "--expect", completed_todo_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=closed_obligations_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if closed_obligations_write.returncode != 0:
+        fail("validator could not prepare closed artifact and no-save obligations")
+    closed_obligations_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    closed_obligations_completion = subprocess.run(
+        [
+            str(todo_complete_script),
+            "--expect",
+            closed_obligations_hash,
+            "workflow-state-repair",
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if closed_obligations_completion.returncode != 0 or todo_path.exists():
+        fail("TODO completion must accept valid closed artifact and no-save obligations")
+    restore_completed_todo = subprocess.run(
+        [str(workflow_state_writer), "--expect", "missing", str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=completed_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if restore_completed_todo.returncode != 0:
+        fail("validator could not restore the completed active TODO after closed obligations")
+    completed_todo_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+
+    closed_artifact_write = subprocess.run(
+        [str(workflow_state_writer), "--expect", completed_todo_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=closed_obligations_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if closed_artifact_write.returncode != 0:
+        fail("validator could not prepare the closed artifact revalidation fixture")
+    closed_artifact_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    artifact_path.unlink()
+    missing_closed_artifact_completion = subprocess.run(
+        [
+            str(todo_complete_script),
+            "--expect",
+            closed_artifact_hash,
+            "workflow-state-repair",
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if (
+        missing_closed_artifact_completion.returncode == 0
+        or not todo_path.is_file()
+        or todo_path.read_text() != closed_obligations_todo
+    ):
+        fail("TODO completion must preserve closed obligations when an artifact is removed")
+    artifact_write = subprocess.run(
+        [str(workflow_state_writer), "--expect", "missing", str(artifact_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input="# Security coverage\n",
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if artifact_write.returncode != 0:
+        fail("validator could not restore the closed obligation artifact")
+    restore_completed_todo = subprocess.run(
+        [str(workflow_state_writer), "--expect", closed_artifact_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=completed_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if restore_completed_todo.returncode != 0:
+        fail("validator could not restore the completed active TODO after artifact revalidation")
+    completed_todo_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+
+    malformed_obligation_todo = completed_todo.replace(
+        "## Commit checklist",
+        """## Persistence obligations
+
+### `malformed-obligation`
+- Owner: `security-audit`
+- State: `closed`
+- Policy: `required`
+- Destination: `.dev/security/coverage.md`
+- Artifact: [coverage evidence](../security/coverage.md)
+
+## Commit checklist""",
+    )
+    malformed_obligation_write = subprocess.run(
+        [str(workflow_state_writer), "--expect", completed_todo_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=malformed_obligation_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if malformed_obligation_write.returncode != 0:
+        fail("validator could not prepare a malformed obligation fixture")
+    malformed_obligation_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    malformed_obligation_completion = subprocess.run(
+        [
+            str(todo_complete_script),
+            "--expect",
+            malformed_obligation_hash,
+            "workflow-state-repair",
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if (
+        malformed_obligation_completion.returncode == 0
+        or not todo_path.is_file()
+        or todo_path.read_text() != malformed_obligation_todo
+    ):
+        fail("TODO completion must preserve a malformed persistence obligation")
+    restore_completed_todo = subprocess.run(
+        [str(workflow_state_writer), "--expect", malformed_obligation_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=completed_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if restore_completed_todo.returncode != 0:
+        fail("validator could not restore the completed active TODO after malformed obligation")
+    completed_todo_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+
+    duplicate_obligation_todo = completed_todo.replace(
+        "## Commit checklist",
+        """## Persistence obligations
+
+### `duplicate-obligation`
+- Owner: `evidence-review`
+- Policy: `none`
+- State: `closed`
+- No-save reason: Validator fixture has no durable review artifact.
+
+### `duplicate-obligation`
+- Owner: `evidence-review`
+- Policy: `none`
+- State: `closed`
+- No-save reason: Validator fixture has no durable review artifact.
+
+## Commit checklist""",
+    )
+    duplicate_obligation_write = subprocess.run(
+        [str(workflow_state_writer), "--expect", completed_todo_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=duplicate_obligation_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if duplicate_obligation_write.returncode != 0:
+        fail("validator could not prepare a duplicate obligation fixture")
+    duplicate_obligation_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    duplicate_obligation_completion = subprocess.run(
+        [
+            str(todo_complete_script),
+            "--expect",
+            duplicate_obligation_hash,
+            "workflow-state-repair",
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if (
+        duplicate_obligation_completion.returncode == 0
+        or not todo_path.is_file()
+        or todo_path.read_text() != duplicate_obligation_todo
+    ):
+        fail("TODO completion must preserve duplicate persistence obligation IDs")
+    restore_completed_todo = subprocess.run(
+        [str(workflow_state_writer), "--expect", duplicate_obligation_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=completed_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if restore_completed_todo.returncode != 0:
+        fail("validator could not restore the completed active TODO after duplicate obligation")
     completed_todo_hash = subprocess.check_output(
         ["git", "hash-object", "--no-filters", str(todo_path)], text=True
     ).strip()
