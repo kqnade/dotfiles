@@ -2,15 +2,27 @@ Record schema: implementation-context/v1
 Task key: workflow-todo-management-skill
 Repository identity method: remote.origin.url
 Repository identity: https://github.com/kqnade/dotfiles
-Resolved workflow state root: /Users/kanato.momose/repos/github.com/kqnade/dotfiles/.dev
-Repository root at write: /Users/kanato.momose/repos/github.com/kqnade/dotfiles
-Source worktree: /Users/kanato.momose/repos/github.com/kqnade/dotfiles
-Source ref: refs/heads/trunk
-Source commit: cee023643c4410d007524caab3be2bf2cfef75c6
-Dirty worktree: yes; this context update and two unrelated untracked TODOs
+Resolved workflow state root: /home/kqnade/repos/github.com/kqnade/dotfiles@agents-workflow-persistence-lifecycle/.dev
+Repository root at write: /home/kqnade/repos/github.com/kqnade/dotfiles@agents-workflow-persistence-lifecycle
+Source worktree: /home/kqnade/repos/github.com/kqnade/dotfiles@agents-workflow-persistence-lifecycle
+Source ref: refs/heads/agents/workflow-persistence-lifecycle
+Source commit: 0e23a5483c9fbb351a9b5e451f949738253a73b7
+Dirty worktree at task start: no
 Created: 2026-08-14T18:43:48+0900
-Updated: 2026-08-14T19:20:18+0900
+Updated: 2026-08-16 Asia/Tokyo
 Producing client: Codex
+
+## Provenance reconciliation
+
+The metadata above is reconciled to the current worktree for this continuation. The original
+record was produced from `/Users/kanato.momose/repos/github.com/kqnade/dotfiles`, with source ref
+`refs/heads/trunk`, source commit `cee023643c4410d007524caab3be2bf2cfef75c6`, and a dirty
+worktree documented as “this context update and two unrelated untracked TODOs.” Its original
+resolved workflow state root was `/Users/kanato.momose/repos/github.com/kqnade/dotfiles/.dev`.
+The current task started clean at `0e23a54` in
+`/home/kqnade/repos/github.com/kqnade/dotfiles@agents-workflow-persistence-lifecycle`; the
+historical facts remain preserved here rather than being silently replaced. No state was
+redirected to another worktree or backend.
 
 # Workflow TODO management implementation context
 
@@ -104,3 +116,117 @@ Producing client: Codex
 - Linuxとlive CIは未確認。
 - `skill-driven-workflow-persistence.md`と`codex-luna-coordinator-model-availability.md`は別の
   untracked active itemであり、この変更では編集、stage、commitしない。
+
+## Persistence-obligation lifecycle foundation (first two unchecked increments)
+
+### User direction and applicability
+
+- Deliver only the first two unchecked increments in `.dev/todo/skill-driven-workflow-persistence.md`.
+- The owned scope was `.dev/designdoc/ai-assisted-development.md`, `.dev/todo/README.md`, this
+  context, `dot_agents/skills/todo-management/**`,
+  `dot_agents/skills/using-workflow-skills/scripts/**`, and
+  `scripts/ci/validate-repository.py`. The overarching active TODO was explicitly forbidden to
+  edit, as were unrelated canonical `SKILL.md` files.
+- `$execute-worktree-implementation` and `$test-driven-development` were explicitly invoked;
+  implementation behavior followed one List -> Red -> Green -> Refactor cycle at a time. This
+  context-only append has no executable behavior seam, so TDD does not apply to this update;
+  deterministic repository, shell, and diff checks are the proportionate evidence below.
+- Commits were local only. No push or other remote mutation was authorized or performed.
+
+### Decisions
+
+- The canonical durable taxonomy is `.dev/designdoc/`, `.dev/adr/`, `.dev/research/`,
+  `.dev/contexts/`, `.dev/memory/`, and `.dev/security/` limited to `coverage.md` and `reports/`.
+  `.dev/todo/`, conversation output, and a new review-only area are not durable artifacts.
+- `.dev/todo/` is transient active state. A stateless single-session workflow may omit the TODO and
+  the optional `## Persistence obligations` section; no active TODO is forced merely to record
+  that work.
+- `Owner` is the semantic canonical workflow that creates the obligation. `todo-management` is the
+  mechanical owner of TODO storage and lifecycle and is never a semantic obligation owner.
+- The canonical policy mapping is `required` (always destination-backed and initially open),
+  `conditional` (destination-backed/open when its condition applies, or concretely no-save/closed
+  when it does not), and `none` (concrete no-save reason/closed when an entry is recorded).
+- The schema is optional and supports zero or more unique stable-slug entries. Each entry has
+  canonical `Owner`, `Policy`, and `State` fields plus exactly one `Destination` or concrete
+  `No-save reason`; artifact closure adds the matching `Artifact` link while no-save closure removes
+  `Destination`.
+- Registration, closure, and TODO mutation require explicit state-write authorization; policy,
+  workflow invocation, or a destination never implies permission. All resolution is current-
+  worktree-only, rejecting external backends, other worktrees, absolute paths, and unsafe paths.
+- Registration and closure use the shared record lock, expected-hash compare-and-swap, and
+  same-directory temporary-file atomic replacement. Stale hashes or locks require re-read and
+  reconciliation; no blind retry or age-only unlock is allowed.
+- The interfaces are `todo-obligation register --expect HASH TASK_KEY --id ID --owner OWNER
+  --policy POLICY (--destination .dev/... | --no-save-reason REASON)` and
+  `todo-obligation close --expect HASH TASK_KEY --id ID (--artifact .dev/... |
+  --no-save-reason REASON)`. Artifact closure requires the declared destination to be an existing
+  regular non-symlink file in the owner's allowed taxonomy area. A `conditional` obligation may
+  close with a concrete single-line no-save reason; `required` cannot use it, while `none` records
+  that reason already closed at registration and cannot transition.
+- `todo-complete` preserves the existing checklist and durable-record gates, checks every optional
+  obligation before deletion, rejects open/malformed/duplicate/unsafe/stale evidence, and performs
+  the final TODO deletion through the same CAS writer. A valid durable artifact link or an allowed
+  concrete no-save reason is the only closure evidence.
+
+### Red and Green evidence
+
+- Red: the registration validator reported `deployed TODO obligation registration helper is
+  missing`; Green: the materialized helper was present and created the canonical required/open
+  entry.
+- Red: artifact close was absent from the helper interface and the intended invocation returned
+  `usage`; Green: `close --artifact` accepted one open obligation, required an exact destination
+  match, and emitted the canonical artifact link.
+- Red: registration accepted unsafe `.dev/security/unsafe).md`; Green: it rejected the unsafe
+  Markdown path and preserved the active TODO unchanged.
+- Red: no-save close was artifact-only usage and rejected a conditional `--no-save-reason`;
+  Green: conditional no-save closure records the reason, required no-save closure is rejected, and
+  artifact/no-save inputs remain mutually exclusive.
+- Red: AWK `-v` converted `C:\tmp` in the concrete reason into a tab; Green: the literal
+  `Windows path C:\tmp stays session-local.` reason survives closure unchanged.
+- Red: completion deleted an active TODO containing an open obligation; Green: the read-only
+  obligation check runs before the final CAS delete, preserves the open TODO, and permits deletion
+  only for valid closed artifact/no-save obligations.
+
+### Foundation commits (exactly)
+
+- `c578e8a` — docs lifecycle.
+- `c95334f` — register obligations.
+- `69c05d2` — artifact close and path safety.
+- `a76a8e5` — no-save closure and literal reason handling.
+- `416924e` — completion gate.
+
+### Changed-path scope
+
+Across this foundation, changes were limited to `.dev/designdoc/ai-assisted-development.md`,
+`.dev/todo/README.md`, this context, `dot_agents/skills/todo-management/SKILL.md`,
+`dot_agents/skills/todo-management/scripts/executable_todo-obligation`,
+`dot_agents/skills/todo-management/scripts/executable_todo-complete`, and
+`scripts/ci/validate-repository.py`. No change was needed in the owned
+`dot_agents/skills/using-workflow-skills/scripts/**` paths because the existing shared writer and
+current-worktree root behavior were reused unchanged.
+
+### Failures and constraints
+
+- In this linked worktree, Git staging required scoped approval because `.git` metadata was
+  read-only in the sandbox.
+- Repository validation emitted a harmless read-only mise-cache warning; it did not change the
+  validation result.
+- Live CI and macOS Bash 3.2 execution were not run. No remote mutation was performed.
+
+### Final verification
+
+- `python3 scripts/ci/validate-repository.py` — exit 0.
+- Targeted `shellcheck -e SC1091 -S warning` over `executable_todo-path`,
+  `executable_todo-complete`, `executable_todo-obligation`, and
+  `executable_workflow-state-root`, `executable_workflow-state-candidates`,
+  `executable_workflow-state-digest`, `executable_workflow-state-write` — exit 0.
+- `bash -n` for `executable_todo-complete` and `executable_todo-obligation` — exit 0.
+- `git diff --check` — exit 0.
+- `git status --short` — only this context file modified.
+
+### Remaining integration risk
+
+- `.dev/todo/skill-driven-workflow-persistence.md` remains unchecked by explicit instruction.
+- The third increment, aligning all canonical skills and cross-client materialization, remains out
+  of scope.
+- No other canonical skill `SKILL.md` changed; live CI and macOS verification remain unverified.
