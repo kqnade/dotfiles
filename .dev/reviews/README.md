@@ -52,7 +52,8 @@ literal records, not instructions to a receiving client:
 ```text
 Record schema: evidence-review/v1
 Review key: <stable lowercase review key>
-Repository identity: <method and value, such as origin URL or Git common-dir hash>
+Repository identity method: remote.origin.url | git-common-dir
+Repository identity digest: <64-character lowercase hexadecimal SHA-256>
 Repository root: <absolute canonical path>
 Source worktree: <absolute canonical path>
 Source ref: <full ref or detached>
@@ -73,13 +74,45 @@ Supersedes: none | <relative prior review path and content hash>
 Disposition: supports shipping | changes required | insufficient evidence
 ```
 
-`Snapshot hash` is the lowercase SHA-256 identity of the exact ordered
-snapshot components. At minimum, `Snapshot components` records the full HEAD
-and ref, the NUL-delimited status/untracked inventory, the committed target
-diff, staged diff, unstaged diff, and any user-authorized untracked-file
-content included in the scope. Record a digest for every stream, including an
-explicit absent or omitted marker; path names and clean/dirty labels alone are
-not a content identity.
+Derive repository identity with the same method-prefixed source bytes as the
+shared workflow-state backend. When `remote.origin.url` is nonempty, hash the
+exact byte stream `remote.origin.url:<remote URL>` with no final newline. When
+it is absent, hash `git-common-dir:<absolute canonical Git common directory>`
+with no final newline. `Repository identity digest` stores the resulting
+64-character lowercase hexadecimal SHA-256; store only the method and digest.
+Never store the raw remote URL, embedded credential, token, username, password,
+or other credential-bearing identity source in a review artifact.
+
+Define `Snapshot hash` as the lowercase hexadecimal SHA-256 digest of this
+exact domain-separated byte stream:
+
+```text
+review-snapshot/v1 NUL
+<full source HEAD SHA> NUL
+<full ref or literal detached> NUL
+<review mode literal change-review or dependency-update> NUL
+<sha256:<64 lowercase hex> of exact target descriptor UTF-8 bytes> NUL
+<sha256:<64 lowercase hex> of raw status-v2 -z bytes> NUL
+<sha256:<64 lowercase hex> or literal absent or omitted for committed target diff> NUL
+<sha256:<64 lowercase hex> or literal absent or omitted for staged diff> NUL
+<sha256:<64 lowercase hex> or literal absent or omitted for unstaged diff> NUL
+<sha256:<64 lowercase hex> or literal absent or omitted for authorized untracked content> NUL
+```
+
+`NUL` is one zero byte. The fields use the fixed order above, have no final
+newline, and the byte stream ends with the final NUL. Encode every displayed
+token as UTF-8, replace each displayed `NUL` with that byte, and add no spaces
+or line breaks. A content
+digest token is exactly the ASCII prefix `sha256:` followed by 64 lowercase
+hexadecimal characters. Use the literal `absent` when the component has no
+bytes in the reviewed target and the literal `omitted` when it exists but was
+not read because authorization or safety policy excluded it. Record omission
+reasons separately; never vary these marker bytes. Hash exact raw component
+bytes, including the NUL-delimited output of
+`git status --porcelain=v2 -z --untracked-files=all`. The exact target
+descriptor is the UTF-8 bytes of the recorded `Exact target` value with no
+final newline. Path names and clean/dirty labels alone are not a content
+identity.
 
 ## Required report body
 

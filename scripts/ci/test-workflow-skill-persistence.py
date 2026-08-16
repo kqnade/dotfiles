@@ -214,7 +214,8 @@ class WorkflowSkillPersistenceTests(unittest.TestCase):
         )
         for field in (
             "Review key",
-            "Repository identity",
+            "Repository identity method",
+            "Repository identity digest",
             "Repository root",
             "Source worktree",
             "Source ref",
@@ -243,6 +244,59 @@ class WorkflowSkillPersistenceTests(unittest.TestCase):
             "timestamp with timezone",
             readme,
             "schema timestamps must include a timezone",
+        )
+        self.assertNotRegex(
+            readme,
+            r"(?m)^Repository identity:",
+            "the schema must not permit a raw repository identity value",
+        )
+        self.assertRegex(
+            readme_contract,
+            r"(?is)Repository\s+identity\s+digest.*?64-character\s+lowercase\s+hexadecimal\s+SHA-256",
+            "repository identity must be a normalized lowercase SHA-256 digest",
+        )
+        self.assertRegex(
+            readme_contract,
+            r"(?is)remote\.origin\.url:.*?no\s+final\s+newline.*?git-common-dir:",
+            "identity hashing must use the method-prefixed remote or Git-common-dir source bytes",
+        )
+        self.assertRegex(
+            readme_contract,
+            r"(?is)never\s+store.*?raw\s+remote\s+URL.*?credential",
+            "review artifacts must never store raw remote URLs or credentials",
+        )
+
+        snapshot_match = re.search(
+            r"(?ms)^```text\n(review-snapshot/v1 NUL\n.*?)^```$", readme
+        )
+        self.assertIsNotNone(
+            snapshot_match,
+            "the contract must define the exact review-snapshot/v1 byte stream",
+        )
+        self.assertEqual(
+            snapshot_match.group(1).splitlines(),
+            [
+                "review-snapshot/v1 NUL",
+                "<full source HEAD SHA> NUL",
+                "<full ref or literal detached> NUL",
+                "<review mode literal change-review or dependency-update> NUL",
+                "<sha256:<64 lowercase hex> of exact target descriptor UTF-8 bytes> NUL",
+                "<sha256:<64 lowercase hex> of raw status-v2 -z bytes> NUL",
+                "<sha256:<64 lowercase hex> or literal absent or omitted for committed target diff> NUL",
+                "<sha256:<64 lowercase hex> or literal absent or omitted for staged diff> NUL",
+                "<sha256:<64 lowercase hex> or literal absent or omitted for unstaged diff> NUL",
+                "<sha256:<64 lowercase hex> or literal absent or omitted for authorized untracked content> NUL",
+            ],
+        )
+        self.assertRegex(
+            readme_contract,
+            r"(?is)NUL\s+is\s+one\s+zero\s+byte.*?fixed\s+order.*?no\s+final\s+newline.*?final\s+NUL",
+            "snapshot framing must define exact byte encoding and termination",
+        )
+        self.assertRegex(
+            readme_contract,
+            r"(?is)content\s+digest\s+token.*?sha256:.*?64\s+lowercase.*?literal\s+absent.*?literal\s+omitted",
+            "snapshot components must have exact digest encoding and absence markers",
         )
 
         for heading in (
