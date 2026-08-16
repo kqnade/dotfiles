@@ -41,6 +41,38 @@ current-state evidence.
 | Obtain and verify an independent technical opinion | `peer-consultation` |
 | Control Herdr after the user explicitly asks for Herdr | `herdr` |
 
+### Canonical persistence policy registry
+
+The routing table is the sole Task-to-owner mapping. This registry is the sole
+owner-to-persistence-policy mapping, and it must contain the same owners
+exactly once. The remaining columns define the required behavior for that
+policy.
+
+| Canonical owner | Persistence | Destination | Checkpoint | Completion | Promotion |
+|---|---|---|---|---|---|
+| `route-large-implementation` | `none` | No workflow-state destination; report the routing decision in chat | No workflow-state checkpoint; do not create state | The routing decision and any dispatch result are reported | No promotion and no workflow-state write |
+| `execute-worktree-implementation` | `none` | No workflow-state destination; report the packet result in chat | No workflow-state checkpoint; do not create state | The packet result and verification are reported | No promotion and no workflow-state write |
+| `test-driven-development` | `none` | No workflow-state destination; use the code and test diff as evidence | No workflow-state checkpoint; do not create state | The tested Green increment is reported | No promotion and no workflow-state write |
+| `evidence-review` | `none` | Prospective `.dev/reviews/<review-key>.md`; runtime persistence is unavailable until `.dev/todo/skill-driven-workflow-persistence.md` completes writer integration | No durable review checkpoint while runtime support is unavailable; keep the prospective snapshot contract for that integration | Return the full report in chat and state that no review artifact was persisted | No promotion; a later explicit request must route to the canonical owner after support exists |
+| `context-handoff` | `conditional` | `.dev/contexts/<task-key>.md` only for an explicit export or save request; import and inspect are read-only | Export checkpoints identity, snapshot, and each material decision; import resolves without `--ensure` and creates no state | Export verifies a readable handoff; import reports reconciled provenance and freshness without writing | Only a separate explicit owner action may promote confirmed reusable facts |
+| `security-audit` | `required` | `.dev/security/coverage.md` and `.dev/security/reports/<area-key>.md` | Checkpoint the ledger and report hashes around each bounded audit run | The report is appended and indexed by the current-worktree ledger | Promote confirmed reusable security facts through the audit record's owner-controlled lifecycle |
+| `todo-management` | `required` | `.dev/todo/<task-key>.md` | Checkpoint the current TODO hash before every compare-and-swap write | The authorized TODO operation passes its schema and completion gates | Promote decisions and evidence to linked durable records before TODO completion |
+| `prose-proofreading` | `none` | No workflow-state destination; return the corrected prose in chat | No workflow-state checkpoint; do not create state | The requested prose is returned with structure and meaning preserved | No promotion and no workflow-state write |
+| `assumption-pruning` | `none` | No workflow-state destination; report alternatives in chat | No workflow-state checkpoint; do not create state | The assumptions and feasible alternatives are reported | No promotion and no workflow-state write |
+| `peer-consultation` | `none` | No workflow-state destination; report the bounded opinion in chat | No workflow-state checkpoint; do not create state | The independent opinion and verification limits are reported | No promotion and no workflow-state write |
+| `herdr` | `none` | No workflow-state destination; report the control result in chat | No workflow-state checkpoint; do not create state | The requested Herdr control result is reported | No promotion and no workflow-state write |
+
+`required` means the explicitly requested outcome is itself a managed state
+write; it authorizes only that owner's exact operation and listed destination.
+`conditional` means the owner has both write and read-only or nonpersistent
+modes, and its row identifies the request that selects each mode. A read-only
+mode never authorizes a write. `none` means no workflow-state write or
+promotion is performed. Stateless single-session work does not create an
+active TODO; route selection never forces TODO creation. These policies do not
+enable client automatic memory: Claude automatic memory remains disabled, and
+continuity is written only through the named owner and its current-worktree
+state boundary.
+
 ## Keep ownership singular
 
 Each capability has **one canonical owner**. Do not recreate separate skills
