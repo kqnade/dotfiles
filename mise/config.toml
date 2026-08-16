@@ -122,7 +122,7 @@ stdout_path = "~/Library/Logs/yaskkserv2.log"
 stderr_path = "~/Library/Logs/yaskkserv2.err"
 
 [bootstrap.macos.launchd.agents.codex-usage-exporter]
-program = "~/repos/github.com/kqnade/dotfiles/scripts/codex_usage_exporter.py"
+program = "~/repos/github.com/kqnade/dotfiles/scripts/codex-usage-exporter.sh"
 run_at_load = true
 start_interval = 60
 stdout_path = "~/Library/Logs/codex-usage-exporter.log"
@@ -139,7 +139,7 @@ standard_error = "journal"
 
 [bootstrap.linux.systemd.units.codex-usage-exporter]
 description = "Export Codex account usage to New Relic"
-exec_start = "~/repos/github.com/kqnade/dotfiles/scripts/codex_usage_exporter.py"
+exec_start = "~/repos/github.com/kqnade/dotfiles/scripts/codex-usage-exporter.sh"
 after = ["network-online.target"]
 restart = "always"
 restart_sec = "60s"

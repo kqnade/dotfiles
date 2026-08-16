@@ -18,6 +18,19 @@ from typing import Any
 
 
 METRIC_PREFIX = "codex.usage"
+ENTITY_NAME = "codex-usage-exporter"
+CHANGE_TRACKING_MUTATION = """\
+mutation CreateCodexUsageReset(
+  $event: ChangeTrackingEventInput!
+) {
+  changeTrackingCreateEvent(
+    changeTrackingEvent: $event
+  ) {
+    changeTrackingEvent { changeTrackingId }
+    messages
+  }
+}
+"""
 
 
 def resolve_command(name: str) -> list[str]:
@@ -116,6 +129,119 @@ def _credit_balance(snapshot: dict[str, Any]) -> float | None:
         return None
 
 
+def build_change_events(
+    response: dict[str, Any], now_s: int | None = None
+) -> list[dict[str, Any]]:
+    now_s = int(time.time()) if now_s is None else now_s
+    snapshots = list((response.get("rateLimitsByLimitId") or {}).values())
+    if not snapshots:
+        snapshots = [response.get("rateLimits") or {}]
+
+    events = []
+    for snapshot in snapshots:
+        limit_id = snapshot.get("limitId")
+        for window in (snapshot.get("primary") or {}, snapshot.get("secondary") or {}):
+            if window.get("windowDurationMins") != 7 * 24 * 60:
+                continue
+            reset_at = window.get("resetsAt")
+            if reset_at is None:
+                continue
+            reset_at = int(reset_at)
+            if 0 <= reset_at - now_s <= 24 * 60 * 60:
+                events.append(
+                    {
+                        "key": (limit_id, reset_at),
+                        "timestamp": reset_at * 1000,
+                        "category": "Operational",
+                        "type": "Scheduled Maintenance Period",
+                        "description": "Codex usage reset",
+                        "limit_name": "weekly",
+                        "reset_at": reset_at,
+                        "entity": ENTITY_NAME,
+                    }
+                )
+    return events
+
+
+def build_change_event_request(event: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "query": CHANGE_TRACKING_MUTATION,
+        "variables": {
+            "event": {
+                "timestamp": event["timestamp"],
+                "categoryAndTypeData": {
+                    "kind": {
+                        "category": event["category"],
+                        "type": event["type"],
+                    }
+                },
+                "description": event["description"],
+                "customAttributes": {
+                    "limit_name": event["limit_name"],
+                    "reset_at": event["reset_at"],
+                },
+                "entitySearch": {
+                    "query": (
+                        f"name = '{event['entity']}' AND domain = 'EXT' "
+                        "AND type = 'SERVICE'"
+                    )
+                },
+            },
+        },
+    }
+
+
+def publish_pending_change_events(
+    response: dict[str, Any],
+    state_path: Path,
+    send: Any,
+    now_s: int | None = None,
+) -> None:
+    state = {"sent": []}
+    if state_path.is_file():
+        state = json.loads(state_path.read_text())
+    sent = set(state.get("sent", []))
+
+    for event in build_change_events(response, now_s=now_s):
+        key = f"{event['key'][0]}:{event['key'][1]}"
+        if key in sent:
+            continue
+        send(event)
+        sent.add(key)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary_path = state_path.with_suffix(f"{state_path.suffix}.tmp")
+        temporary_path.write_text(json.dumps({"sent": sorted(sent)}) + "\n")
+        temporary_path.replace(state_path)
+
+
+def export_change_event(
+    event: dict[str, Any], endpoint: str, user_key: str
+) -> None:
+    request = urllib.request.Request(
+        endpoint,
+        data=json.dumps(build_change_event_request(event)).encode("utf-8"),
+        headers={"Content-Type": "application/json", "Api-Key": user_key},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            if response.status < 200 or response.status >= 300:
+                raise RuntimeError(f"New Relic returned HTTP {response.status}")
+            result = json.loads(response.read())
+    except urllib.error.HTTPError as error:
+        raise RuntimeError(f"New Relic returned HTTP {error.code}") from error
+
+    if result.get("errors"):
+        messages = "; ".join(error["message"] for error in result["errors"])
+        raise RuntimeError(f"NerdGraph rejected change event: {messages}")
+    created = (result.get("data") or {}).get("changeTrackingCreateEvent") or {}
+    change_event = created.get("changeTrackingEvent") or {}
+    if not change_event.get("changeTrackingId"):
+        messages = "; ".join(created.get("messages") or [])
+        detail = f": {messages}" if messages else ""
+        raise RuntimeError(f"NerdGraph did not create a change event{detail}")
+
+
 def build_otlp_payload(response: dict[str, Any], now_ns: int | None = None) -> dict[str, Any]:
     now_ns = time.time_ns() if now_ns is None else now_ns
     metric_points: dict[str, list[dict[str, Any]]] = {}
@@ -168,12 +294,12 @@ def build_otlp_payload(response: dict[str, Any], now_ns: int | None = None) -> d
                 "resource": {
                     "attributes": _attributes(
                         **{
-                            "service.name": "codex-usage-exporter",
+                            "service.name": ENTITY_NAME,
                             "telemetry.sdk.language": "python",
                         }
                     )
                 },
-                "scopeMetrics": [{"scope": {"name": "codex-usage-exporter"}, "metrics": metrics}],
+                "scopeMetrics": [{"scope": {"name": ENTITY_NAME}, "metrics": metrics}],
             }
         ]
     }
@@ -242,10 +368,42 @@ def main() -> int:
             "CODEX_USAGE_OTLP_ENDPOINT", "https://otlp.nr-data.net/v1/metrics"
         ),
     )
+    parser.add_argument(
+        "--nerdgraph-endpoint",
+        default=os.environ.get(
+            "CODEX_USAGE_NERDGRAPH_ENDPOINT", "https://api.newrelic.com/graphql"
+        ),
+    )
+    parser.add_argument(
+        "--state-path",
+        type=Path,
+        default=Path(
+            os.environ.get(
+                "CODEX_USAGE_STATE_PATH",
+                Path.home()
+                / ".local/state/codex-usage-exporter/change-events.json",
+            )
+        ),
+    )
     args = parser.parse_args()
     license_key = resolve_license_key()
     response = read_rate_limits()
     export(build_otlp_payload(response), args.endpoint, license_key)
+    if build_change_events(response):
+        user_key = os.environ.get("NEW_RELIC_ACCOUNT_APIKey", "").strip()
+        if not user_key:
+            raise RuntimeError(
+                "NEW_RELIC_ACCOUNT_APIKey is required to publish Codex reset change events"
+            )
+        publish_pending_change_events(
+            response,
+            state_path=args.state_path,
+            send=lambda event: export_change_event(
+                event,
+                endpoint=args.nerdgraph_endpoint,
+                user_key=user_key,
+            ),
+        )
     return 0
 
 

@@ -19,6 +19,70 @@ SPEC.loader.exec_module(exporter)
 
 
 class CodexUsageExporterTests(unittest.TestCase):
+    def test_builds_change_event_only_for_resets_within_the_next_day(self) -> None:
+        now = 1_700_000_000
+        response = {
+            "rateLimitsByLimitId": {
+                "codex": {
+                    "limitId": "codex",
+                    "secondary": {
+                        "usedPercent": 20,
+                        "resetsAt": now + 24 * 60 * 60,
+                        "windowDurationMins": 10_080,
+                    },
+                },
+                "codex_future": {
+                    "limitId": "codex_future",
+                    "secondary": {
+                        "usedPercent": 10,
+                        "resetsAt": now + 24 * 60 * 60 + 1,
+                        "windowDurationMins": 10_080,
+                    },
+                },
+            }
+        }
+
+        events = exporter.build_change_events(response, now_s=now)
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["key"], ("codex", now + 24 * 60 * 60))
+        self.assertEqual(
+            events[0],
+            {
+                "key": ("codex", now + 24 * 60 * 60),
+                "timestamp": (now + 24 * 60 * 60) * 1000,
+                "category": "Operational",
+                "type": "Scheduled Maintenance Period",
+                "description": "Codex usage reset",
+                "limit_name": "weekly",
+                "reset_at": now + 24 * 60 * 60,
+                "entity": "codex-usage-exporter",
+            },
+        )
+
+        request = exporter.build_change_event_request(events[0])
+        self.assertEqual(
+            request["variables"]["event"],
+            {
+                "timestamp": (now + 24 * 60 * 60) * 1000,
+                "categoryAndTypeData": {
+                    "kind": {
+                        "category": "Operational",
+                        "type": "Scheduled Maintenance Period",
+                    }
+                },
+                "description": "Codex usage reset",
+                "customAttributes": {
+                    "limit_name": "weekly",
+                    "reset_at": now + 24 * 60 * 60,
+                },
+                "entitySearch": {
+                    "query": "name = 'codex-usage-exporter' AND domain = 'EXT' AND type = 'SERVICE'"
+                },
+            },
+        )
+        self.assertNotIn("rules", request["variables"])
+
     def test_reads_license_key_from_existing_codex_otel_config(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             config_path = pathlib.Path(temporary_directory) / "config.toml"
@@ -38,6 +102,133 @@ class CodexUsageExporterTests(unittest.TestCase):
                 )
 
         self.assertEqual(license_key, "stored-key")
+
+    def test_persists_sent_reset_keys_and_sends_a_changed_reset(self) -> None:
+        now = 1_700_000_000
+        snapshot = {
+            "rateLimits": {
+                "limitId": "codex",
+                "secondary": {
+                    "usedPercent": 20,
+                    "resetsAt": now + 60,
+                    "windowDurationMins": 10_080,
+                },
+            }
+        }
+        sent = []
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            state_path = pathlib.Path(temporary_directory) / "change-events.json"
+            exporter.publish_pending_change_events(
+                snapshot, state_path=state_path, send=sent.append, now_s=now
+            )
+            exporter.publish_pending_change_events(
+                snapshot, state_path=state_path, send=sent.append, now_s=now
+            )
+            snapshot["rateLimits"]["secondary"]["resetsAt"] = now + 120
+            exporter.publish_pending_change_events(
+                snapshot, state_path=state_path, send=sent.append, now_s=now
+            )
+
+            self.assertEqual(
+                json.loads(state_path.read_text()),
+                {"sent": [f"codex:{now + 60}", f"codex:{now + 120}"]},
+            )
+
+        self.assertEqual([event["reset_at"] for event in sent], [now + 60, now + 120])
+
+    def test_nerdgraph_graphql_errors_are_failures(self) -> None:
+        response = mock.MagicMock()
+        response.status = 200
+        response.read.return_value = json.dumps(
+            {"errors": [{"message": "timestamp is outside the allowed range"}]}
+        ).encode()
+        response.__enter__.return_value = response
+
+        with mock.patch.object(
+            exporter.urllib.request, "urlopen", return_value=response
+        ):
+            with self.assertRaisesRegex(RuntimeError, "timestamp is outside"):
+                exporter.export_change_event(
+                    {
+                        "timestamp": 1,
+                        "category": "Operational",
+                        "type": "Scheduled Maintenance Period",
+                        "description": "Codex usage reset",
+                        "limit_name": "weekly",
+                        "reset_at": 1,
+                        "entity": "codex-usage-exporter",
+                    },
+                    endpoint="https://api.newrelic.com/graphql",
+                    user_key="user-key",
+                )
+
+    def test_nerdgraph_missing_created_event_is_a_failure(self) -> None:
+        response = mock.MagicMock()
+        response.status = 200
+        response.read.return_value = json.dumps(
+            {
+                "data": {
+                    "changeTrackingCreateEvent": {
+                        "changeTrackingEvent": None,
+                        "messages": ["entity search matched no entities"],
+                    }
+                }
+            }
+        ).encode()
+        response.__enter__.return_value = response
+
+        with mock.patch.object(
+            exporter.urllib.request, "urlopen", return_value=response
+        ):
+            with self.assertRaisesRegex(RuntimeError, "matched no entities"):
+                exporter.export_change_event(
+                    {
+                        "timestamp": 1,
+                        "category": "Operational",
+                        "type": "Scheduled Maintenance Period",
+                        "description": "Codex usage reset",
+                        "limit_name": "weekly",
+                        "reset_at": 1,
+                        "entity": "codex-usage-exporter",
+                    },
+                    endpoint="https://api.newrelic.com/graphql",
+                    user_key="user-key",
+                )
+
+    def test_main_exports_metrics_and_pending_change_events(self) -> None:
+        rate_limits = {
+            "rateLimits": {
+                "limitId": "codex",
+                "secondary": {
+                    "usedPercent": 1,
+                    "resetsAt": int(exporter.time.time()) + 60,
+                    "windowDurationMins": 10_080,
+                },
+            }
+        }
+        with mock.patch.object(exporter, "resolve_license_key", return_value="license"), \
+             mock.patch.object(exporter, "read_rate_limits", return_value=rate_limits), \
+             mock.patch.object(exporter, "export") as export_metrics, \
+             mock.patch.object(exporter, "export_change_event") as export_event, \
+             mock.patch.object(exporter, "publish_pending_change_events") as publish_events, \
+             mock.patch.dict(
+                 "os.environ",
+                 {"NEW_RELIC_ACCOUNT_APIKey": "user-key"},
+                 clear=True,
+             ), \
+             mock.patch.object(exporter.sys, "argv", ["codex_usage_exporter.py"]):
+            result = exporter.main()
+            self.assertEqual(result, 0)
+            export_metrics.assert_called_once()
+            self.assertEqual(publish_events.call_args.args[0], rate_limits)
+            sent_event = {"reset_at": 1}
+            publish_events.call_args.kwargs["send"](sent_event)
+            export_event.assert_called_once_with(
+                sent_event,
+                endpoint="https://api.newrelic.com/graphql",
+                user_key="user-key",
+            )
 
     def test_builds_metrics_for_both_windows_and_account_state(self) -> None:
         snapshot = {

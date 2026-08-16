@@ -48,11 +48,27 @@ class ValidateMiseTests(unittest.TestCase):
     def test_codex_usage_exporter_runs_every_minute(self) -> None:
         config = tomllib.loads((ROOT / "mise/config.toml").read_text())
 
+        expected_program = (
+            "~/repos/github.com/kqnade/dotfiles/scripts/codex-usage-exporter.sh"
+        )
+
+        self.assertEqual(
+            config["bootstrap"]["macos"]["launchd"]["agents"][
+                "codex-usage-exporter"
+            ]["program"],
+            expected_program,
+        )
         self.assertEqual(
             config["bootstrap"]["macos"]["launchd"]["agents"][
                 "codex-usage-exporter"
             ]["start_interval"],
             60,
+        )
+        self.assertEqual(
+            config["bootstrap"]["linux"]["systemd"]["units"][
+                "codex-usage-exporter"
+            ]["exec_start"],
+            expected_program,
         )
         self.assertEqual(
             config["bootstrap"]["linux"]["systemd"]["units"][

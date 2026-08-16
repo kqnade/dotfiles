@@ -2,3 +2,5 @@ metapkgs/base/*.pkg.tar.zst
 metapkgs/**/pkg/
 
 .DS_Store
+
+.op.env
