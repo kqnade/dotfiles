@@ -1655,6 +1655,7 @@ for required_todo_phrase in (
     "AGENT_WORKFLOW_STATE_HOME",
     "git hash-object --no-filters",
     "todo-obligation register",
+    "todo-obligation close --expect",
     "state write",
     "scripts/todo-complete --expect",
 ):
@@ -2074,6 +2075,31 @@ Repair state.
     first_todo_hash = subprocess.check_output(
         ["git", "hash-object", "--no-filters", str(todo_path)], text=True
     ).strip()
+    unsafe_destination_registration = subprocess.run(
+        [
+            str(todo_obligation_script),
+            "register",
+            "--expect",
+            first_todo_hash,
+            "workflow-state-repair",
+            "--id",
+            "unsafe-destination",
+            "--owner",
+            "security-audit",
+            "--policy",
+            "required",
+            "--destination",
+            ".dev/security/unsafe).md",
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if unsafe_destination_registration.returncode == 0 or todo_path.read_text() != first_todo:
+        fail("unsafe Markdown destination registration must preserve the active TODO")
+
     register_obligation = subprocess.run(
         [
             str(todo_obligation_script),
@@ -2171,6 +2197,133 @@ Repair state.
         obligation_lock.rmdir()
     if locked_registration.returncode == 0 or todo_path.read_text() != registered_todo:
         fail("locked TODO obligation registration must preserve the active TODO")
+
+    artifact_path = resolved_state / "security/coverage.md"
+    artifact_write = subprocess.run(
+        [
+            str(workflow_state_writer),
+            "--expect",
+            "missing",
+            str(artifact_path),
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input="# Security coverage\n",
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if artifact_write.returncode != 0 or not artifact_path.is_file():
+        fail("validator could not create the required obligation artifact")
+
+    closed_registered_todo = registered_todo.replace(
+        "- State: `open`\n- Destination: `.dev/security/coverage.md`",
+        "- State: `closed`\n"
+        "- Destination: `.dev/security/coverage.md`\n"
+        "- Artifact: [.dev/security/coverage.md](../security/coverage.md)",
+    )
+    close_obligation = subprocess.run(
+        [
+            str(todo_obligation_script),
+            "close",
+            "--expect",
+            registered_todo_hash,
+            "workflow-state-repair",
+            "--id",
+            "security-coverage",
+            "--artifact",
+            ".dev/security/coverage.md",
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if close_obligation.returncode != 0 or todo_path.read_text() != closed_registered_todo:
+        fail(
+            "TODO obligation closure must close the canonical entry and link its artifact: "
+            f"{close_obligation.stderr.strip()}"
+        )
+
+    closed_todo_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    stale_close = subprocess.run(
+        [
+            str(todo_obligation_script),
+            "close",
+            "--expect",
+            registered_todo_hash,
+            "workflow-state-repair",
+            "--id",
+            "security-coverage",
+            "--artifact",
+            ".dev/security/coverage.md",
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if stale_close.returncode == 0 or todo_path.read_text() != closed_registered_todo:
+        fail("stale TODO obligation closure must preserve the active TODO")
+
+    restore_open_obligation = subprocess.run(
+        [
+            str(workflow_state_writer),
+            "--expect",
+            closed_todo_hash,
+            str(todo_path),
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=registered_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if restore_open_obligation.returncode != 0:
+        fail("validator could not restore the open obligation fixture")
+    artifact_path.unlink()
+    missing_artifact_close = subprocess.run(
+        [
+            str(todo_obligation_script),
+            "close",
+            "--expect",
+            registered_todo_hash,
+            "workflow-state-repair",
+            "--id",
+            "security-coverage",
+            "--artifact",
+            ".dev/security/coverage.md",
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if missing_artifact_close.returncode == 0 or todo_path.read_text() != registered_todo:
+        fail("missing obligation artifacts must preserve the active TODO")
+
+    artifact_write = subprocess.run(
+        [
+            str(workflow_state_writer),
+            "--expect",
+            "missing",
+            str(artifact_path),
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input="# Security coverage\n",
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if artifact_write.returncode != 0:
+        fail("validator could not restore the required obligation artifact")
 
     restore_first_todo = subprocess.run(
         [str(workflow_state_writer), "--expect", registered_todo_hash, str(todo_path)],

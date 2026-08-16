@@ -46,8 +46,27 @@ obligations use a destination and start `open`; conditional obligations use a
 destination/open entry or a concrete no-save reason/closed entry; `none`
 obligations use a concrete no-save reason and start `closed`. A destination
 must remain under the canonical `.dev/` durable areas and use the owner's
-permitted area. Duplicate IDs, mixed or missing destination/reason fields,
+permitted area. Destination and artifact paths use only portable ASCII letters,
+digits, `.`, `_`, `-`, and `/`. Duplicate IDs, mixed or missing destination/reason fields,
 unknown owners, and owner/policy mismatches are rejected.
+
+Close an obligation only after the user explicitly authorizes this exact state
+write (or explicitly authorizes the owning workflow to persist it). Re-read the
+TODO and hash that exact snapshot, create the declared artifact in the current
+worktree, then use the materialized helper with that hash:
+
+```text
+scripts/todo-obligation close --expect HASH TASK_KEY --id ID --artifact .dev/...
+```
+
+Closure accepts one existing `open` required or conditional obligation only
+when `--artifact` exactly matches its declared destination and resolves to a
+regular, non-symlink file in the current worktree and the owner's permitted
+`.dev/` area. The helper preserves the canonical Owner/Policy/Destination
+fields, changes State to `closed`, and records the artifact link. Required
+obligations cannot use a no-save reason; conditional obligations may use one at
+registration when no durable artifact is warranted. Stale hashes, target locks,
+malformed obligation blocks, and invalid artifact paths leave the TODO unchanged.
 
 ## Keep the active-item schema
 
