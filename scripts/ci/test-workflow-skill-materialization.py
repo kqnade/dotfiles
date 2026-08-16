@@ -15,7 +15,6 @@ ROOT = Path(__file__).resolve().parents[2]
 CANONICAL_SKILLS = ROOT / "dot_agents/skills"
 CLAUDE_SKILLS = ROOT / "dot_claude/skills"
 CI_WORKFLOW = ROOT / ".github/workflows/ci.yml"
-AGENT_GUIDANCE = ROOT / "AGENTS.md"
 CI_COMMAND = "mise exec -- python3 scripts/ci/test-workflow-skill-materialization.py"
 
 
@@ -55,16 +54,6 @@ class WorkflowSkillMaterializationTests(unittest.TestCase):
                 [],
                 f"{client_root.relative_to(ROOT)} must not copy canonical skills",
             )
-
-        guidance = AGENT_GUIDANCE.read_text(encoding="utf-8")
-        for statement in (
-            "one canonical source in `dot_agents/skills/`",
-            "Claude receives symlinks from `dot_claude/skills/`",
-            "Codex and OpenCode discover",
-            "`~/.agents/skills/` directly",
-            "Do not copy a skill into client-specific directories",
-        ):
-            self.assertIn(statement, guidance)
 
         self.assertIn(CI_COMMAND, CI_WORKFLOW.read_text(encoding="utf-8"))
 

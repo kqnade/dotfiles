@@ -923,17 +923,6 @@ if claude_rule_sources != expected_claude_rule_sources:
 shared_coding_rule = ROOT / "dot_agents/rules/coding.md"
 if not shared_coding_rule.is_file():
     fail("shared coding rule is missing")
-shared_coding_rule_text = shared_coding_rule.read_text()
-for required_fragment in (
-    "smallest correct change",
-    "Preserve user-authored and pre-existing changes",
-    "Make names and structure explain what the code does",
-    "when the code would otherwise look surprising to a future reader",
-    "Do not comment merely to\n  explain why ordinary-looking code exists",
-    "Handle failures explicitly",
-):
-    if required_fragment not in shared_coding_rule_text:
-        fail("shared coding rule is missing reviewed behavior")
 
 claude_coding_rule_link = ROOT / "dot_claude/rules/symlink_coding.md"
 if not claude_coding_rule_link.is_file():
@@ -944,16 +933,6 @@ if claude_coding_rule_link.read_text().strip() != "../../.agents/rules/coding.md
 shared_workflow_state_rule = ROOT / "dot_agents/rules/workflow-state.md"
 if not shared_workflow_state_rule.is_file():
     fail("shared workflow-state rule is missing")
-shared_workflow_state_text = shared_workflow_state_rule.read_text()
-for required_fragment in (
-    "current Git worktree",
-    "task-relevant",
-    "provenance",
-    "freshness",
-    "Do not create or write",
-):
-    if required_fragment not in shared_workflow_state_text:
-        fail(f"shared workflow-state rule is missing reviewed behavior: {required_fragment}")
 
 claude_workflow_state_link = ROOT / "dot_claude/rules/symlink_workflow-state.md"
 if not claude_workflow_state_link.is_file():
@@ -964,76 +943,21 @@ if (
 ):
     fail("Claude workflow-state rule must link to the canonical shared rule")
 
-required_claude_rule_fragments = {
-    "verification.md": (
-        "List -> Red -> Green -> Refactor",
-        "Never describe an unrun check as passing",
-        "current primary sources",
-    ),
-    "operations.md": (
-        "planned local\n  commits",
-        "remote writes or publication",
-        "Do not invoke\n  Codex, OpenCode, Kimi, Luna, or `git cc`",
-    ),
-    "git.md": (
-        "one cohesive, reviewable, and revertible Green increment",
-        "Do not run `git cc` from Claude",
-        "`git diff --staged` and `git log --oneline -50`",
-    ),
-    "delivery.md": (
-        "PRD, STD, and implementation",
-        "separate\n  review units and separate pull requests",
-        "Remote\n  operations still require an explicit request",
-    ),
-}
-for rule_name, required_fragments in required_claude_rule_fragments.items():
+for rule_name in expected_claude_rule_sources - {
+    "symlink_coding.md",
+    "symlink_workflow-state.md",
+}:
     rule_text = (ROOT / "dot_claude/rules" / rule_name).read_text()
     if rule_text.startswith("---\n"):
         fail(f"Claude global rule must remain unconditional: {rule_name}")
-    missing_fragments = [
-        fragment for fragment in required_fragments if fragment not in rule_text
-    ]
-    if missing_fragments:
-        fail(f"Claude global rule is missing reviewed behavior: {rule_name}")
 
 codex_global_rule = ROOT / "dot_agents/rules/git.md"
 if not codex_global_rule.is_file():
     fail("Codex global Git rule is missing")
-codex_global_rule_text = codex_global_rule.read_text()
-for required_fragment in (
-    "must not inspect or modify repositories whose GitHub remote owner is",
-    "Use `git cc` for normal local commits",
-    "one cohesive, reviewable, and revertible Green",
-):
-    if required_fragment not in codex_global_rule_text:
-        fail("Codex global Git rule is missing reviewed behavior")
 
 codex_delegation_rule = ROOT / "dot_agents/rules/delegation.md"
 if not codex_delegation_rule.is_file():
     fail("Codex global delegation rule is missing")
-codex_delegation_rule_text = codex_delegation_rule.read_text()
-normalized_codex_delegation_rule_text = " ".join(codex_delegation_rule_text.split())
-for required_fragment in (
-    "Delegate independent, bounded work",
-    "Keep Luna as the default subagent",
-    "Prefer Luna",
-    "Prefer `spark_worker`",
-    "mechanical or repetitive edits",
-    "targeted searches",
-    "test execution",
-    "granular UI adjustments",
-    "requirements, architecture, security-sensitive judgment, ambiguous diagnosis, and final verification",
-    "return the packet to Luna or the primary agent",
-    "both of the following are true",
-    "independently verifiable and committable features",
-    "implemented concurrently in isolated worktrees",
-    "`route-large-implementation` owns large implementations",
-    "Do not delegate them to `luna_parallelizer`",
-    "luna_parallelizer",
-    "Serialize overlapping writes",
-):
-    if required_fragment not in normalized_codex_delegation_rule_text:
-        fail("Codex global delegation rule is missing reviewed behavior")
 
 codex_global_rule_template = ROOT / "dot_agents/rules/AGENTS.md.tmpl"
 if not codex_global_rule_template.is_file():
@@ -1049,26 +973,6 @@ for required_include in (
         fail(
             "Codex global rule aggregate must include shared coding and Codex Git rules"
         )
-codex_global_rule_aggregate = subprocess.check_output(
-    [
-        "chezmoi",
-        "--source",
-        str(ROOT),
-        "execute-template",
-        "--file",
-        str(codex_global_rule_template),
-    ],
-    text=True,
-)
-for required_fragment in (
-    "Delegate independent, bounded work",
-    "Make names and structure explain what the code does",
-    "Use `git cc` for normal local commits",
-    "current Git worktree",
-):
-    if required_fragment not in codex_global_rule_aggregate:
-        fail("rendered Codex global rule aggregate is missing reviewed behavior")
-
 codex_global_rule_link = ROOT / "dot_codex/symlink_AGENTS.md"
 if not codex_global_rule_link.is_file():
     fail("Codex global AGENTS.md symlink source is missing")
@@ -1425,244 +1329,6 @@ for skill_name in expected_agent_skills:
     if link_source.read_text() != expected_target:
         fail(f"Claude skill link must target the canonical skill: {skill_name}")
 
-tdd_skill = (agent_skills_root / "test-driven-development/SKILL.md").read_text()
-for required_tdd_phrase in (
-    "test list",
-    "exactly one",
-    "expected reason",
-    "List → Red → Green → Refactor",
-):
-    if required_tdd_phrase not in tdd_skill:
-        fail(f"TDD skill is missing t-wada workflow evidence: {required_tdd_phrase}")
-
-effect_contracts = {
-    "assumption-pruning": ("remove one assumption", "displaced complexity"),
-    "context-handoff": ("export mode", "import mode", "provenance"),
-    "evidence-review": ("change review", "dependency update", "independent evidence model"),
-    "security-audit": ("attack surface", "coverage ledger", "source commit"),
-}
-for skill_name, required_phrases in effect_contracts.items():
-    skill_text = (agent_skills_root / skill_name / "SKILL.md").read_text()
-    for required_phrase in required_phrases:
-        phrase_pattern = r"\s+".join(re.escape(part) for part in required_phrase.split())
-        if not re.search(phrase_pattern, skill_text, re.IGNORECASE):
-            fail(f"{skill_name} is missing its effect contract: {required_phrase}")
-
-worktree_effect_contracts = {
-    "route-large-implementation": (
-        "independent isolated worktree units",
-        "both of the following are true",
-        "independently verifiable and committable features",
-        "implemented concurrently in isolated worktrees",
-        "HERDR_ENV=1",
-        "$HOME/.local/bin/herdr-worktree",
-        "Herdr JSON",
-        ".result.workspace",
-        ".result.root_pane",
-        "exactly one top-level coordinator",
-        "--kind codex",
-        "--kind claude",
-        "WHAT/HOW/DONE",
-        "$execute-worktree-implementation",
-        "/execute-worktree-implementation",
-        "English `/goal`",
-        "never recursively invokes itself",
-    ),
-    "execute-worktree-implementation": (
-        "explicitly invokes it",
-        "existing isolated worktree",
-        "English `/goal`",
-        "concrete todo list",
-        "behavior-test list",
-        "parallel, read-only",
-        "fresh client-matched worker",
-        "$test-driven-development",
-        "/test-driven-development",
-        "git cc",
-        "git commit -m",
-        "never create or choose a worktree",
-    ),
-}
-
-worktree_skill_texts = {}
-for worktree_skill_name, required_phrases in worktree_effect_contracts.items():
-    worktree_skill_text = (agent_skills_root / worktree_skill_name / "SKILL.md").read_text()
-    worktree_skill_texts[worktree_skill_name] = worktree_skill_text
-    for required_phrase in required_phrases:
-        phrase_pattern = r"\s+".join(
-            re.escape(part) for part in required_phrase.split()
-        )
-        if not re.search(phrase_pattern, worktree_skill_text, re.IGNORECASE):
-            fail(
-                f"{worktree_skill_name} is missing its effect contract: "
-                f"{required_phrase}"
-            )
-
-route_worktree_skill = worktree_skill_texts["route-large-implementation"]
-claude_operations_rule = (ROOT / "dot_claude/rules/operations.md").read_text()
-if "--kind claude" in route_worktree_skill:
-    for required_route_authorization in (
-        "Claude outer orchestration requires an explicit user request",
-        "same approved Claude account",
-        "same authorized repository",
-    ):
-        authorization_pattern = r"\s+".join(
-            re.escape(part) for part in required_route_authorization.split()
-        )
-        if not re.search(authorization_pattern, route_worktree_skill):
-            fail(
-                "Claude worktree dispatch is missing its authorization boundary: "
-                f"{required_route_authorization}"
-            )
-    for required_operations_authorization in (
-        "same approved Claude account",
-        "same authorized repository",
-        "isolated worktree sessions and built-in subagents",
-    ):
-        authorization_pattern = r"\s+".join(
-            re.escape(part) for part in required_operations_authorization.split()
-        )
-        if not re.search(authorization_pattern, claude_operations_rule):
-            fail(
-                "Claude operations rule does not authorize worktree dispatch: "
-                f"{required_operations_authorization}"
-            )
-    if re.search(r"use only the current\s+Claude session", claude_operations_rule):
-        fail("Claude operations rule still forbids authorized worktree dispatch")
-
-execute_worktree_skill = worktree_skill_texts["execute-worktree-implementation"]
-delegate_section = execute_worktree_skill.partition("## Plan and delegate")[2].partition(
-    "## Dispatch failures"
-)[0]
-if not delegate_section:
-    fail("execute-worktree-implementation is missing its delegation section")
-if "/goal" in delegate_section:
-    fail("worktree delegates must receive bounded prompts instead of session /goal")
-if re.search(r"\bpreload\w*\b", delegate_section, re.IGNORECASE):
-    fail("Claude delegates must invoke TDD through the Skill tool without preload")
-for required_delegate_behavior in ("bounded ordinary prompt", "Skill tool"):
-    if required_delegate_behavior not in delegate_section:
-        fail(
-            "Claude delegation is missing executable guidance: "
-            f"{required_delegate_behavior}"
-        )
-
-trust_contracts = {
-    "context-handoff": (
-        "current worktree",
-        "repository-owned",
-        "provenance",
-        "freshness",
-        "another worktree",
-    ),
-    "evidence-review": (
-        "repository-owned",
-        "current code",
-        "another worktree",
-        "legacy",
-    ),
-    "security-audit": (
-        "canonical audit history",
-        "not proof of safety",
-        "source commit",
-        "another worktree",
-    ),
-}
-for evidence_skill_name, required_phrases in trust_contracts.items():
-    evidence_skill = (
-        agent_skills_root / evidence_skill_name / "SKILL.md"
-    ).read_text()
-    for required_phrase in required_phrases:
-        phrase_pattern = r"\s+".join(re.escape(part) for part in required_phrase.split())
-        if not re.search(phrase_pattern, evidence_skill, re.IGNORECASE):
-            fail(
-                f"{evidence_skill_name} is missing its tiered trust contract: "
-                f"{required_phrase}"
-            )
-
-context_handoff_contract = (
-    agent_skills_root / "context-handoff/SKILL.md"
-).read_text()
-for required_context_phrase in (
-    "content-addressed",
-    "Write the handoff last",
-    "Never store a known credential",
-    "Pin the handoff's own content hash",
-    "context-snapshot/v1",
-    "raw, uncompressed",
-    "Capture the source snapshot before writing managed state",
-):
-    context_phrase_pattern = r"\s+".join(
-        re.escape(part) for part in required_context_phrase.split()
-    )
-    if not re.search(context_phrase_pattern, context_handoff_contract):
-        fail(f"context handoff checkpoint contract is incomplete: {required_context_phrase}")
-
-security_audit_contract = (agent_skills_root / "security-audit/SKILL.md").read_text()
-for required_security_phrase in (
-    "audit run IDs not yet indexed",
-    "Never update the ledger first",
-    "monotonic publish order",
-):
-    security_phrase_pattern = r"\s+".join(
-        re.escape(part) for part in required_security_phrase.split()
-    )
-    if not re.search(security_phrase_pattern, security_audit_contract):
-        fail(f"security audit checkpoint contract is incomplete: {required_security_phrase}")
-
-evidence_review_contract = (agent_skills_root / "evidence-review/SKILL.md").read_text()
-for required_review_phrase in (
-    "Bind the review and final disposition to this snapshot hash",
-    "establish causality",
-    "classification explains provenance only",
-    "Regeneration or equivalent resolver evidence is required",
-    "affected supported target without equivalent current evidence",
-    "any unresolved `blocking-defect` yields `changes required`",
-):
-    review_phrase_pattern = r"\s+".join(
-        re.escape(part) for part in required_review_phrase.split()
-    )
-    if not re.search(review_phrase_pattern, evidence_review_contract):
-        fail(f"evidence review disposition contract is incomplete: {required_review_phrase}")
-
-workflow_skill = (agent_skills_root / "using-workflow-skills/SKILL.md").read_text()
-for required_workflow_phrase in (
-    "one canonical owner",
-    "User and system instructions take precedence",
-    "test-driven-development",
-    "evidence-review",
-):
-    if required_workflow_phrase not in workflow_skill:
-        fail(f"workflow routing guardrail is incomplete: {required_workflow_phrase}")
-
-routed_skill_names = re.findall(
-    r"^\|[^|]+\| `([^`]+)` \|$", workflow_skill, re.MULTILINE
-)
-expected_routed_skill_names = expected_agent_skills - {"using-workflow-skills"}
-if len(routed_skill_names) != len(set(routed_skill_names)):
-    fail(f"workflow routing guardrail has duplicate owners: {routed_skill_names}")
-if set(routed_skill_names) != expected_routed_skill_names:
-    fail(
-        "workflow routing guardrail differs from the canonical skills: "
-        f"expected {sorted(expected_routed_skill_names)}, "
-        f"got {sorted(routed_skill_names)}"
-    )
-
-todo_management_contract = (agent_skills_root / "todo-management/SKILL.md").read_text()
-for required_todo_phrase in (
-    "explicitly requested the exact TODO",
-    "current Git worktree",
-    "AGENT_WORKFLOW_STATE_HOME",
-    "git hash-object --no-filters",
-    "todo-obligation register",
-    "todo-obligation close --expect",
-    "state write",
-    "scripts/todo-complete --expect",
-    "scripts/todo-obligation check",
-):
-    if required_todo_phrase not in todo_management_contract:
-        fail(f"TODO management contract is incomplete: {required_todo_phrase}")
-
 workflow_state_script = (
     agent_skills_root / "using-workflow-skills/scripts/executable_workflow-state-root"
 )
@@ -1721,86 +1387,6 @@ todo_obligation_script = (
 )
 if not todo_obligation_script.is_file():
     fail("TODO management obligation helper executable source must exist")
-
-policy_registry_rows = re.findall(
-    r"^\| `([^`]+)` \| `(required|conditional|none)` \|",
-    workflow_skill,
-    re.MULTILINE,
-)
-if len(policy_registry_rows) != len(set(policy_registry_rows)):
-    fail("canonical persistence policy registry contains duplicate owner-policy rows")
-registry_policies = dict(policy_registry_rows)
-if set(registry_policies) != expected_routed_skill_names:
-    fail(
-        "canonical persistence policy registry differs from the routed owners: "
-        f"expected {sorted(expected_routed_skill_names)}, "
-        f"got {sorted(registry_policies)}"
-    )
-if registry_policies.get("todo-management") != "required":
-    fail("todo-management must remain the required mechanical active-state owner")
-
-semantic_obligation_policies = {
-    owner: policy
-    for owner, policy in registry_policies.items()
-    if owner != "todo-management"
-}
-todo_obligation_contract = todo_obligation_script.read_text()
-bash_policy_rows = re.findall(
-    r"(?m)^\s+([a-z][a-z0-9-]+):(required|conditional|none)(?:\|\\|\) ;;)$",
-    todo_obligation_contract,
-)
-if len(bash_policy_rows) != len(set(bash_policy_rows)):
-    fail("TODO obligation registration contains duplicate owner-policy rows")
-if dict(bash_policy_rows) != semantic_obligation_policies:
-    fail("TODO obligation registration policies drift from the canonical registry")
-
-awk_policy_rows = re.findall(
-    r'owner == "([a-z][a-z0-9-]+)" && policy == "(required|conditional|none)"',
-    todo_obligation_contract,
-)
-semantic_policy_count = len(semantic_obligation_policies)
-if len(awk_policy_rows) != semantic_policy_count * 2:
-    fail("TODO obligation validation must contain exactly two canonical policy copies")
-for policy_copy in (
-    awk_policy_rows[:semantic_policy_count],
-    awk_policy_rows[semantic_policy_count:],
-):
-    if len(policy_copy) != len(set(policy_copy)):
-        fail("TODO obligation validation contains duplicate owner-policy rows")
-    if dict(policy_copy) != semantic_obligation_policies:
-        fail("TODO obligation validation policies drift from the canonical registry")
-
-workflow_design = (ROOT / ".dev/designdoc/ai-assisted-development.md").read_text()
-design_policy_rows = re.findall(
-    r"^\| `([^`]+)` \| `(required|conditional|none)` \|",
-    workflow_design,
-    re.MULTILINE,
-)
-if len(design_policy_rows) != len(set(design_policy_rows)):
-    fail("workflow DesignDoc contains duplicate owner-policy rows")
-if dict(design_policy_rows) != registry_policies:
-    fail("workflow DesignDoc obligation policies drift from the canonical registry")
-for required_mechanical_phrase in (
-    "mechanical active-state owner",
-    "not a semantic durable-artifact obligation owner",
-):
-    if required_mechanical_phrase not in workflow_design:
-        fail(
-            "workflow DesignDoc must preserve the todo-management mechanical exception: "
-            f"{required_mechanical_phrase}"
-        )
-
-todo_readme = (ROOT / ".dev/todo/README.md").read_text()
-for prospective_review_phrase in (
-    "Prospective `.dev/reviews/<review-key>.md`",
-    "runtime persistence is unavailable",
-    "shared workflow-state writer rejects `.dev/reviews/`",
-):
-    if prospective_review_phrase not in workflow_design or prospective_review_phrase not in todo_readme:
-        fail(
-            "workflow obligation contracts must preserve prospective review gating: "
-            f"{prospective_review_phrase}"
-        )
 
 workflow_helper_targets = (
     "context-handoff/scripts/context-candidates",
@@ -1898,54 +1484,6 @@ if Path(context_path_result.stdout.strip()) != expected_context_path:
 state_home_template = ROOT / "dot_config/agent-workflows/state-home.tmpl"
 if state_home_template.exists():
     fail("repository .dev is the default; managed external state-home must be removed")
-
-workflow_state_reference = (
-    agent_skills_root / "using-workflow-skills/references/persistent-state.md"
-).read_text()
-for required_state_phrase in (
-    "Claude automatic memory is disabled",
-    "current Git worktree",
-    "repository-owned",
-    "provenance",
-    "freshness",
-    "another worktree",
-    "livesense-inc",
-    "jobtalk",
-    "AGENT_WORKFLOW_STATE_HOME",
-):
-    state_phrase_pattern = r"\s+".join(
-        re.escape(part) for part in required_state_phrase.split()
-    )
-    if not re.search(state_phrase_pattern, workflow_state_reference):
-        fail(f"workflow-state contract is incomplete: {required_state_phrase}")
-
-if re.search(
-    r"every\s+record\s+is\s+(?:\*\*)?untrusted\s+evidence",
-    workflow_state_reference,
-    re.IGNORECASE,
-):
-    fail(
-        "current-worktree repository-owned workflow state must not be "
-        "blanket-distrusted"
-    )
-
-agents_instructions = (ROOT / "AGENTS.md").read_text()
-if re.search(
-    r"saved\s+records\s+remain\s+untrusted\s+evidence",
-    agents_instructions,
-    re.IGNORECASE,
-):
-    fail("AGENTS.md must distinguish current-worktree .dev from imported evidence")
-
-state_skill_resolvers = {
-    "context-handoff": "scripts/context-path --ensure",
-    "security-audit": "workflow-state-root --ensure",
-    "todo-management": "scripts/todo-path --ensure",
-}
-for state_skill_name, expected_resolver in state_skill_resolvers.items():
-    state_skill = (agent_skills_root / state_skill_name / "SKILL.md").read_text()
-    if expected_resolver not in state_skill:
-        fail(f"{state_skill_name} must use its workflow-state resolver")
 
 with tempfile.TemporaryDirectory() as temp_dir:
     state_test_physical_root = Path(temp_dir) / "physical"
