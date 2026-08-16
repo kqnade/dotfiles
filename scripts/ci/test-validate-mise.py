@@ -77,6 +77,45 @@ class ValidateMiseTests(unittest.TestCase):
             "60s",
         )
 
+    def test_codex_usage_exporter_resolves_op_outside_systemd_path(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            home = Path(temporary_directory)
+            op = home / ".local/bin/op"
+            op.parent.mkdir(parents=True)
+            op.write_text("#!/bin/sh\nexit 99\n")
+            op.chmod(0o755)
+            op_exe = home / "op.exe"
+            op_exe.write_text("#!/bin/sh\ntest \"$1\" = read || exit 98\nprintf resolved-key\n")
+            op_exe.chmod(0o755)
+            exporter = home / "exporter"
+            exporter.write_text(
+                "#!/bin/sh\nprintf '%s\\n' \"$NEW_RELIC_ACCOUNT_APIKey\"\n"
+            )
+            exporter.chmod(0o755)
+            op_env = home / ".op.env"
+            op_env.write_text("NEW_RELIC_ACCOUNT_APIKey=op://test/item/key\n")
+
+            result = subprocess.run(
+                [str(ROOT / "scripts/codex-usage-exporter.sh")],
+                env={
+                    "HOME": str(home),
+                    "PATH": "/usr/bin:/bin",
+                    "DOTFILES_ROOT": str(ROOT),
+                    "CODEX_USAGE_OP_ENV": str(op_env),
+                    "CODEX_USAGE_OP_EXE": str(op_exe),
+                    "CODEX_USAGE_EXPORTER": str(exporter),
+                },
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            result.stdout.strip(),
+            "resolved-key",
+        )
+
     def test_repository_loads_split_manifest(self) -> None:
         mise = shutil.which("mise")
         self.assertIsNotNone(mise, "mise must be installed to validate config discovery")
