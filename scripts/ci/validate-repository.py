@@ -2337,6 +2337,292 @@ Repair state.
     if restore_first_todo.returncode != 0 or todo_path.read_text() != first_todo:
         fail("validator could not restore the active TODO after obligation registration")
 
+    first_todo_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    conditional_register = subprocess.run(
+        [
+            str(todo_obligation_script),
+            "register",
+            "--expect",
+            first_todo_hash,
+            "workflow-state-repair",
+            "--id",
+            "stateless-session",
+            "--owner",
+            "test-driven-development",
+            "--policy",
+            "conditional",
+            "--destination",
+            ".dev/contexts/test-driven-development.md",
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    conditional_registered_todo = first_todo.replace(
+        "## Commit checklist",
+        """## Persistence obligations
+
+### `stateless-session`
+- Owner: `test-driven-development`
+- Policy: `conditional`
+- State: `open`
+- Destination: `.dev/contexts/test-driven-development.md`
+
+## Commit checklist""",
+    )
+    if (
+        conditional_register.returncode != 0
+        or todo_path.read_text() != conditional_registered_todo
+    ):
+        fail(
+            "conditional TODO obligation registration must create an open entry: "
+            f"{conditional_register.stderr.strip()}"
+        )
+
+    conditional_todo_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    no_save_reason = r"Windows path C:\tmp stays session-local."
+    conditional_close = subprocess.run(
+        [
+            str(todo_obligation_script),
+            "close",
+            "--expect",
+            conditional_todo_hash,
+            "workflow-state-repair",
+            "--id",
+            "stateless-session",
+            "--no-save-reason",
+            no_save_reason,
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    conditional_closed_todo = conditional_registered_todo.replace(
+        "- State: `open`\n- Destination: `.dev/contexts/test-driven-development.md`",
+        "- State: `closed`\n- No-save reason: " + no_save_reason,
+    )
+    if (
+        conditional_close.returncode != 0
+        or todo_path.read_text() != conditional_closed_todo
+    ):
+        fail(
+            "conditional TODO obligation closure must record a concrete no-save reason: "
+            f"{conditional_close.stderr.strip()}"
+        )
+
+    conditional_closed_todo_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    restore_first_todo = subprocess.run(
+        [str(workflow_state_writer), "--expect", conditional_closed_todo_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=first_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if restore_first_todo.returncode != 0 or todo_path.read_text() != first_todo:
+        fail("validator could not restore the active TODO after no-save closure")
+
+    first_todo_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    required_register = subprocess.run(
+        [
+            str(todo_obligation_script),
+            "register",
+            "--expect",
+            first_todo_hash,
+            "workflow-state-repair",
+            "--id",
+            "required-no-save",
+            "--owner",
+            "security-audit",
+            "--policy",
+            "required",
+            "--destination",
+            ".dev/security/coverage.md",
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    required_registered_todo = first_todo.replace(
+        "## Commit checklist",
+        """## Persistence obligations
+
+### `required-no-save`
+- Owner: `security-audit`
+- Policy: `required`
+- State: `open`
+- Destination: `.dev/security/coverage.md`
+
+## Commit checklist""",
+    )
+    if required_register.returncode != 0 or todo_path.read_text() != required_registered_todo:
+        fail(
+            "required TODO obligation registration must create an open entry: "
+            f"{required_register.stderr.strip()}"
+        )
+
+    required_todo_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    required_close = subprocess.run(
+        [
+            str(todo_obligation_script),
+            "close",
+            "--expect",
+            required_todo_hash,
+            "workflow-state-repair",
+            "--id",
+            "required-no-save",
+            "--no-save-reason",
+            "A required artifact is still warranted.",
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if required_close.returncode == 0 or todo_path.read_text() != required_registered_todo:
+        fail("required obligations must reject no-save closure without changing the TODO")
+
+    required_registered_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    restore_first_todo = subprocess.run(
+        [str(workflow_state_writer), "--expect", required_registered_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=first_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if restore_first_todo.returncode != 0 or todo_path.read_text() != first_todo:
+        fail("validator could not restore the active TODO after required no-save rejection")
+
+    first_todo_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    invalid_reason_register = subprocess.run(
+        [
+            str(todo_obligation_script),
+            "register",
+            "--expect",
+            first_todo_hash,
+            "workflow-state-repair",
+            "--id",
+            "invalid-reason",
+            "--owner",
+            "test-driven-development",
+            "--policy",
+            "conditional",
+            "--destination",
+            ".dev/contexts/test-driven-development.md",
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    invalid_reason_todo = first_todo.replace(
+        "## Commit checklist",
+        """## Persistence obligations
+
+### `invalid-reason`
+- Owner: `test-driven-development`
+- Policy: `conditional`
+- State: `open`
+- Destination: `.dev/contexts/test-driven-development.md`
+
+## Commit checklist""",
+    )
+    if invalid_reason_register.returncode != 0 or todo_path.read_text() != invalid_reason_todo:
+        fail(
+            "invalid-reason TODO obligation registration must create an open entry: "
+            f"{invalid_reason_register.stderr.strip()}"
+        )
+
+    invalid_reason_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    for invalid_reason in ("   ", "TBD"):
+        invalid_reason_close = subprocess.run(
+            [
+                str(todo_obligation_script),
+                "close",
+                "--expect",
+                invalid_reason_hash,
+                "workflow-state-repair",
+                "--id",
+                "invalid-reason",
+                "--no-save-reason",
+                invalid_reason,
+            ],
+            cwd=state_test_repo,
+            env=state_test_env,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if invalid_reason_close.returncode == 0 or todo_path.read_text() != invalid_reason_todo:
+            fail(
+                "blank and placeholder no-save reasons must preserve the open conditional TODO"
+            )
+
+    mixed_close = subprocess.run(
+        [
+            str(todo_obligation_script),
+            "close",
+            "--expect",
+            invalid_reason_hash,
+            "workflow-state-repair",
+            "--id",
+            "invalid-reason",
+            "--artifact",
+            ".dev/contexts/test-driven-development.md",
+            "--no-save-reason",
+            "A mixed closure is invalid.",
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if mixed_close.returncode == 0 or todo_path.read_text() != invalid_reason_todo:
+        fail("artifact and no-save closure inputs must be mutually exclusive")
+
+    invalid_reason_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    restore_first_todo = subprocess.run(
+        [str(workflow_state_writer), "--expect", invalid_reason_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=first_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if restore_first_todo.returncode != 0 or todo_path.read_text() != first_todo:
+        fail("validator could not restore the active TODO after invalid no-save inputs")
+
     unprotected_todo_write = subprocess.run(
         [str(workflow_state_writer), str(todo_path)],
         cwd=state_test_repo,

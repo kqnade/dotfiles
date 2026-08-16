@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   echo "usage: todo-obligation register --expect HASH TASK_KEY --id ID --owner OWNER --policy POLICY (--destination .dev/PATH | --no-save-reason REASON)" >&2
-  echo "       todo-obligation close --expect HASH TASK_KEY --id ID --artifact .dev/PATH" >&2
+  echo "       todo-obligation close --expect HASH TASK_KEY --id ID (--artifact .dev/PATH | --no-save-reason REASON)" >&2
   exit 2
 }
 
@@ -95,10 +95,14 @@ if [[ "$operation" == "register" ]]; then
   [[ "$has_artifact" -eq 0 ]] || usage
 else
   [[ "$has_expected" -eq 1 && "$expected" != "missing" ]] || usage
-  [[ "$has_id" -eq 1 && "$has_artifact" -eq 1 ]] || usage
+  [[ "$has_id" -eq 1 ]] || usage
   [[ -n "$task_key" ]] || usage
   [[ "$has_owner" -eq 0 && "$has_policy" -eq 0 ]] || usage
-  [[ "$has_destination" -eq 0 && "$has_no_save_reason" -eq 0 ]] || usage
+  [[ "$has_destination" -eq 0 ]] || usage
+  if [[ "$has_artifact" -eq 0 && "$has_no_save_reason" -eq 0 ]] || \
+    [[ "$has_artifact" -eq 1 && "$has_no_save_reason" -eq 1 ]]; then
+    usage
+  fi
 fi
 
 if [[ ! "$obligation_id" =~ ^[a-z0-9][a-z0-9._-]*$ ]]; then
@@ -209,7 +213,7 @@ if [[ "$policy" == none && "$has_no_save_reason" -ne 1 ]]; then
   exit 1
 fi
 
-if [[ "$operation" == "close" ]]; then
+if [[ "$operation" == "close" && "$has_artifact" -eq 1 ]]; then
   if [[ "$artifact" == *$'\n'* || "$artifact" == *$'\r'* || "$artifact" == *"\\"* ]]; then
     echo "todo-obligation: artifact must be a normalized repository-relative path" >&2
     exit 1
@@ -387,10 +391,15 @@ END {
 fi
 else
   artifact_link="../${artifact#.dev/}"
-  if ! awk \
+  close_mode=artifact
+  if [[ "$has_no_save_reason" -eq 1 ]]; then
+    close_mode=no-save
+  fi
+  if ! TODO_OBLIGATION_CLOSE_REASON="$trimmed_reason" awk \
     -v close_id="$obligation_id" \
     -v artifact="$artifact" \
-    -v artifact_link="$artifact_link" '
+    -v artifact_link="$artifact_link" \
+    -v close_mode="$close_mode" '
 function fail(message) {
   print "todo-obligation: " message > "/dev/stderr"
   exit 1
@@ -421,7 +430,7 @@ function validate_target_block(start, end,    count, body, owner, policy, state,
     if (line == "- State: `open`") {
       target_state_line = i
     }
-    if (line == "- Destination: `" artifact "`") {
+    if (line ~ /^- Destination: `[^`]+`$/) {
       target_destination_line = i
     }
   }
@@ -434,7 +443,7 @@ function validate_target_block(start, end,    count, body, owner, policy, state,
   state = body[3]
   destination_line = body[4]
   if (owner !~ /^- Owner: `[^`]+`$/ || policy !~ /^- Policy: `[^`]+`$/ ||
-      state != "- State: `open`" || destination_line != "- Destination: `" artifact "`") {
+      state != "- State: `open`") {
     fail("obligation block must use canonical open Owner/Policy/State/Destination fields")
   }
   sub(/^- Owner: `/, "", owner)
@@ -443,6 +452,12 @@ function validate_target_block(start, end,    count, body, owner, policy, state,
   sub(/`$/, "", policy)
   if (!canonical_pair(owner, policy) || (policy != "required" && policy != "conditional")) {
     fail("obligation block has a non-canonical owner-policy pair")
+  }
+  if (close_mode == "no-save" && policy != "conditional") {
+    fail("no-save closure requires a conditional obligation")
+  }
+  if (close_mode == "artifact" && destination_line != "- Destination: `" artifact "`") {
+    fail("obligation block destination must match the artifact")
   }
   if (owner == "security-audit" && destination_line !~ /^- Destination: `\.dev\/security\/[^`]+`$/) {
     fail("security-audit obligation destination is outside .dev/security/")
@@ -463,6 +478,7 @@ BEGIN {
   section_open = 0
   checklist_seen = 0
   target_count = 0
+  close_reason = ENVIRON["TODO_OBLIGATION_CLOSE_REASON"]
 }
 
 {
@@ -534,11 +550,15 @@ END {
   for (i = 1; i <= NR; i++) {
     if (i == target_state_line) {
       print "- State: `closed`"
+    } else if (i == target_destination_line) {
+      if (close_mode == "artifact") {
+        print lines[i]
+        print "- Artifact: [" artifact "](" artifact_link ")"
+      } else {
+        print "- No-save reason: " close_reason
+      }
     } else {
       print lines[i]
-      if (i == target_destination_line) {
-        print "- Artifact: [" artifact "](" artifact_link ")"
-      }
     }
   }
 }' \
