@@ -1722,6 +1722,86 @@ todo_obligation_script = (
 if not todo_obligation_script.is_file():
     fail("TODO management obligation helper executable source must exist")
 
+policy_registry_rows = re.findall(
+    r"^\| `([^`]+)` \| `(required|conditional|none)` \|",
+    workflow_skill,
+    re.MULTILINE,
+)
+if len(policy_registry_rows) != len(set(policy_registry_rows)):
+    fail("canonical persistence policy registry contains duplicate owner-policy rows")
+registry_policies = dict(policy_registry_rows)
+if set(registry_policies) != expected_routed_skill_names:
+    fail(
+        "canonical persistence policy registry differs from the routed owners: "
+        f"expected {sorted(expected_routed_skill_names)}, "
+        f"got {sorted(registry_policies)}"
+    )
+if registry_policies.get("todo-management") != "required":
+    fail("todo-management must remain the required mechanical active-state owner")
+
+semantic_obligation_policies = {
+    owner: policy
+    for owner, policy in registry_policies.items()
+    if owner != "todo-management"
+}
+todo_obligation_contract = todo_obligation_script.read_text()
+bash_policy_rows = re.findall(
+    r"(?m)^\s+([a-z][a-z0-9-]+):(required|conditional|none)(?:\|\\|\) ;;)$",
+    todo_obligation_contract,
+)
+if len(bash_policy_rows) != len(set(bash_policy_rows)):
+    fail("TODO obligation registration contains duplicate owner-policy rows")
+if dict(bash_policy_rows) != semantic_obligation_policies:
+    fail("TODO obligation registration policies drift from the canonical registry")
+
+awk_policy_rows = re.findall(
+    r'owner == "([a-z][a-z0-9-]+)" && policy == "(required|conditional|none)"',
+    todo_obligation_contract,
+)
+semantic_policy_count = len(semantic_obligation_policies)
+if len(awk_policy_rows) != semantic_policy_count * 2:
+    fail("TODO obligation validation must contain exactly two canonical policy copies")
+for policy_copy in (
+    awk_policy_rows[:semantic_policy_count],
+    awk_policy_rows[semantic_policy_count:],
+):
+    if len(policy_copy) != len(set(policy_copy)):
+        fail("TODO obligation validation contains duplicate owner-policy rows")
+    if dict(policy_copy) != semantic_obligation_policies:
+        fail("TODO obligation validation policies drift from the canonical registry")
+
+workflow_design = (ROOT / ".dev/designdoc/ai-assisted-development.md").read_text()
+design_policy_rows = re.findall(
+    r"^\| `([^`]+)` \| `(required|conditional|none)` \|",
+    workflow_design,
+    re.MULTILINE,
+)
+if len(design_policy_rows) != len(set(design_policy_rows)):
+    fail("workflow DesignDoc contains duplicate owner-policy rows")
+if dict(design_policy_rows) != registry_policies:
+    fail("workflow DesignDoc obligation policies drift from the canonical registry")
+for required_mechanical_phrase in (
+    "mechanical active-state owner",
+    "not a semantic durable-artifact obligation owner",
+):
+    if required_mechanical_phrase not in workflow_design:
+        fail(
+            "workflow DesignDoc must preserve the todo-management mechanical exception: "
+            f"{required_mechanical_phrase}"
+        )
+
+todo_readme = (ROOT / ".dev/todo/README.md").read_text()
+for prospective_review_phrase in (
+    "Prospective `.dev/reviews/<review-key>.md`",
+    "runtime persistence is unavailable",
+    "shared workflow-state writer rejects `.dev/reviews/`",
+):
+    if prospective_review_phrase not in workflow_design or prospective_review_phrase not in todo_readme:
+        fail(
+            "workflow obligation contracts must preserve prospective review gating: "
+            f"{prospective_review_phrase}"
+        )
+
 workflow_helper_targets = (
     "context-handoff/scripts/context-candidates",
     "context-handoff/scripts/context-path",
@@ -1920,6 +2000,20 @@ with tempfile.TemporaryDirectory() as temp_dir:
         fail("workflow-state repository directory must not grant group/other access")
     if ordinary_exclude.read_bytes() != ordinary_exclude_before:
         fail("ordinary repositories must not receive a local .dev ignore rule")
+
+    prospective_review = resolved_state / "reviews/unavailable.md"
+    prospective_review.parent.mkdir()
+    prospective_review_write = subprocess.run(
+        [str(workflow_state_writer), "--expect", "missing", str(prospective_review)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input="# Review\n",
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if prospective_review_write.returncode == 0 or prospective_review.exists():
+        fail("workflow-state writer must reject prospective .dev/reviews targets")
 
     state_test_subdir = state_test_repo / "nested" / "directory"
     state_test_subdir.mkdir(parents=True)
@@ -2351,11 +2445,11 @@ Repair state.
             "--id",
             "stateless-session",
             "--owner",
-            "test-driven-development",
+            "context-handoff",
             "--policy",
             "conditional",
             "--destination",
-            ".dev/contexts/test-driven-development.md",
+            ".dev/contexts/context-handoff.md",
         ],
         cwd=state_test_repo,
         env=state_test_env,
@@ -2368,10 +2462,10 @@ Repair state.
         """## Persistence obligations
 
 ### `stateless-session`
-- Owner: `test-driven-development`
+- Owner: `context-handoff`
 - Policy: `conditional`
 - State: `open`
-- Destination: `.dev/contexts/test-driven-development.md`
+- Destination: `.dev/contexts/context-handoff.md`
 
 ## Commit checklist""",
     )
@@ -2407,7 +2501,7 @@ Repair state.
         check=False,
     )
     conditional_closed_todo = conditional_registered_todo.replace(
-        "- State: `open`\n- Destination: `.dev/contexts/test-driven-development.md`",
+        "- State: `open`\n- Destination: `.dev/contexts/context-handoff.md`",
         "- State: `closed`\n- No-save reason: " + no_save_reason,
     )
     if (
@@ -2529,11 +2623,11 @@ Repair state.
             "--id",
             "invalid-reason",
             "--owner",
-            "test-driven-development",
+            "context-handoff",
             "--policy",
             "conditional",
             "--destination",
-            ".dev/contexts/test-driven-development.md",
+            ".dev/contexts/context-handoff.md",
         ],
         cwd=state_test_repo,
         env=state_test_env,
@@ -2546,10 +2640,10 @@ Repair state.
         """## Persistence obligations
 
 ### `invalid-reason`
-- Owner: `test-driven-development`
+- Owner: `context-handoff`
 - Policy: `conditional`
 - State: `open`
-- Destination: `.dev/contexts/test-driven-development.md`
+- Destination: `.dev/contexts/context-handoff.md`
 
 ## Commit checklist""",
     )
@@ -2596,7 +2690,7 @@ Repair state.
             "--id",
             "invalid-reason",
             "--artifact",
-            ".dev/contexts/test-driven-development.md",
+            ".dev/contexts/context-handoff.md",
             "--no-save-reason",
             "A mixed closure is invalid.",
         ],

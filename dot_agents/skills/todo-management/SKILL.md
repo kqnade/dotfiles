@@ -50,6 +50,14 @@ permitted area. Destination and artifact paths use only portable ASCII letters,
 digits, `.`, `_`, `-`, and `/`. Duplicate IDs, mixed or missing destination/reason fields,
 unknown owners, and owner/policy mismatches are rejected.
 
+Derive owner policies from the canonical persistence policy registry in
+`using-workflow-skills`; do not maintain an independent semantic mapping.
+`todo-management` is the registry's required mechanical active-state owner,
+not a semantic durable-artifact obligation owner, so it is never accepted as
+an obligation entry owner. Prospective `.dev/reviews/<review-key>.md` remains
+unavailable until the shared writer's availability gate changes; the shared
+workflow-state writer rejects `.dev/reviews/` today.
+
 Close an obligation only after the user explicitly authorizes this exact state
 write (or explicitly authorizes the owning workflow to persist it). Re-read the
 TODO and hash that exact snapshot. For artifact closure, create the declared

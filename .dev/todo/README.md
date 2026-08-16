@@ -10,8 +10,10 @@ workflowだけがcurrent worktree内で作成、更新、完了する。
 
 `.dev/todo/`はtransientなactive stateであり、durable destinationではない。durable artifactの
 canonical areaは`.dev/designdoc/`、`.dev/adr/`、`.dev/research/`、`.dev/contexts/`、
-`.dev/memory/`、`.dev/security/`（`coverage.md`と`reports/`）だけである。review専用の
-`reviews/` areaはまだ定義しない。
+`.dev/memory/`、`.dev/security/`（`coverage.md`と`reports/`）だけである。Prospective `.dev/reviews/<review-key>.md`
+は将来のdestinationだが、runtime persistence is unavailableで、既存writer availability gateが
+変わるまではshared workflow-state writer rejects `.dev/reviews/`。したがって現時点のcanonical
+areaには含めない。
 
 ## Persistence obligations
 

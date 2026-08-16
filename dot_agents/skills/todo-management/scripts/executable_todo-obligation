@@ -55,15 +55,9 @@ validate_artifact_evidence() {
         return 1
       }
       ;;
-    execute-worktree-implementation|test-driven-development|context-handoff)
+    context-handoff)
       [[ "$destination" == .dev/contexts/* ]] || {
         echo "todo-obligation: $owner destinations must be under .dev/contexts/" >&2
-        return 1
-      }
-      ;;
-    assumption-pruning)
-      [[ "$destination" == .dev/adr/* ]] || {
-        echo "todo-obligation: assumption-pruning destinations must be under .dev/adr/" >&2
         return 1
       }
       ;;
@@ -130,10 +124,10 @@ function fail(message) {
 
 function canonical_pair(owner, policy) {
   return (owner == "security-audit" && policy == "required") ||
-    (owner == "execute-worktree-implementation" && policy == "conditional") ||
-    (owner == "test-driven-development" && policy == "conditional") ||
+    (owner == "execute-worktree-implementation" && policy == "none") ||
+    (owner == "test-driven-development" && policy == "none") ||
     (owner == "context-handoff" && policy == "conditional") ||
-    (owner == "assumption-pruning" && policy == "conditional") ||
+    (owner == "assumption-pruning" && policy == "none") ||
     (owner == "route-large-implementation" && policy == "none") ||
     (owner == "evidence-review" && policy == "none") ||
     (owner == "prose-proofreading" && policy == "none") ||
@@ -448,10 +442,10 @@ fi
 if [[ "$operation" == "register" ]]; then
   case "$owner:$policy" in
     security-audit:required|\
-    execute-worktree-implementation:conditional|\
-    test-driven-development:conditional|\
+    execute-worktree-implementation:none|\
+    test-driven-development:none|\
     context-handoff:conditional|\
-    assumption-pruning:conditional|\
+    assumption-pruning:none|\
     route-large-implementation:none|\
     evidence-review:none|\
     prose-proofreading:none|\
@@ -524,15 +518,9 @@ if [[ "$has_destination" -eq 1 ]]; then
         exit 1
       }
       ;;
-    execute-worktree-implementation|test-driven-development|context-handoff)
+    context-handoff)
       [[ "$destination" == .dev/contexts/* ]] || {
         echo "todo-obligation: $owner destinations must be under .dev/contexts/" >&2
-        exit 1
-      }
-      ;;
-    assumption-pruning)
-      [[ "$destination" == .dev/adr/* ]] || {
-        echo "todo-obligation: assumption-pruning destinations must be under .dev/adr/" >&2
         exit 1
       }
       ;;
@@ -614,6 +602,7 @@ if [[ -L "$target" || ! -f "$target" ]]; then
 fi
 
 transformed=""
+# shellcheck disable=SC2329  # Invoked by the trap below.
 cleanup() {
   if [[ -n "$transformed" && -e "$transformed" ]]; then
     rm -f -- "$transformed"
@@ -742,10 +731,10 @@ function fail(message) {
 
 function canonical_pair(owner, policy) {
   return (owner == "security-audit" && policy == "required") ||
-    (owner == "execute-worktree-implementation" && policy == "conditional") ||
-    (owner == "test-driven-development" && policy == "conditional") ||
+    (owner == "execute-worktree-implementation" && policy == "none") ||
+    (owner == "test-driven-development" && policy == "none") ||
     (owner == "context-handoff" && policy == "conditional") ||
-    (owner == "assumption-pruning" && policy == "conditional") ||
+    (owner == "assumption-pruning" && policy == "none") ||
     (owner == "route-large-implementation" && policy == "none") ||
     (owner == "evidence-review" && policy == "none") ||
     (owner == "prose-proofreading" && policy == "none") ||
@@ -797,12 +786,8 @@ function validate_target_block(start, end,    count, body, owner, policy, state,
   if (owner == "security-audit" && destination_line !~ /^- Destination: `\.dev\/security\/[^`]+`$/) {
     fail("security-audit obligation destination is outside .dev/security/")
   }
-  if ((owner == "execute-worktree-implementation" || owner == "test-driven-development" ||
-       owner == "context-handoff") && destination_line !~ /^- Destination: `\.dev\/contexts\/[^`]+`$/) {
+  if (owner == "context-handoff" && destination_line !~ /^- Destination: `\.dev\/contexts\/[^`]+`$/) {
     fail(owner " obligation destination is outside .dev/contexts/")
-  }
-  if (owner == "assumption-pruning" && destination_line !~ /^- Destination: `\.dev\/adr\/[^`]+`$/) {
-    fail("assumption-pruning obligation destination is outside .dev/adr/")
   }
 }
 

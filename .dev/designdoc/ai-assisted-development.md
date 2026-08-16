@@ -25,8 +25,10 @@ AIの速度を使いながら、判断過程、実装、テスト、レビュー
 上記の6領域（`designdoc`、`adr`、`research`、`contexts`、`memory`、`security`）だけを
 durable artifactのcanonical taxonomyとする。`security`のcoverage ledgerとreportsは同じ
 領域の別artifactであり、必要なら別々のobligationとして登録する。`.dev/todo/`、Gitの
-active TODO、会話の出力自体はdurable artifactではない。review専用の`reviews/`領域は
-現時点のcontractへ追加しない。
+active TODO、会話の出力自体はdurable artifactではない。Prospective
+`.dev/reviews/<review-key>.md` はregistry上の将来のdestinationだが、runtime persistence is
+unavailableであり、既存writer availability gateが変わるまではshared workflow-state writer
+rejects `.dev/reviews/`。したがって現時点のcanonical taxonomyへは追加しない。
 
 obligationの`Destination`は、current Git worktreeのrepository rootから見た
 `.dev/`配下のrelative pathでなければならない。絶対path、URL、`..`で外へ出るpath、
@@ -56,8 +58,8 @@ canonical schemaは次のとおりである（例のpathとIDは説明用）。`
 - State: `open`
 - Destination: `.dev/security/coverage.md`
 
-### `tdd-context`
-- Owner: `test-driven-development`
+### `handoff-context`
+- Owner: `context-handoff`
 - Policy: `conditional`
 - State: `closed`
 - Destination: `.dev/contexts/example.md`
@@ -72,9 +74,10 @@ canonical schemaは次のとおりである（例のpathとIDは説明用）。`
 
 各fieldの意味とvalidationは次のとおり。
 
-- `Owner`は義務を意味的に発生させたcanonical workflow skill名であり、機械的にTODOを
-  保存・更新・削除する`todo-management`ではない。未登録の任意名は使わず、policy matrixの
-  canonical ownerと一致させる。
+- `Owner`は義務を意味的に発生させたcanonical workflow skill名である。未登録の任意名は
+  使わず、policy matrixのcanonical ownerと一致させる。`todo-management`はregistry上
+  `required`のmechanical active-state ownerだが、not a semantic durable-artifact obligation
+  ownerという明示的な例外であり、obligation entryの`Owner`には使わない。
 - `Policy`は`required`、`conditional`、`none`のいずれかである。`required`は常に
   `Destination`付きでopenに登録する。`conditional`は条件が真なら同じくopenに登録し、
   条件が偽ならその判定を具体的に書いた理由でclosedにできる。`none`はdurable artifactを
@@ -121,22 +124,23 @@ hashや残ったlockを見た場合は最新recordを再読してreconcileする
 
 ### Skill policy matrix
 
-policyは「そのskillがこのwork itemで意味的に発生させる保存義務」の既定値であり、上記の
-state-write authorizationとは別である。複数artifactが必要なskillはartifactごとに一つの
-obligationを登録する。
+policyは`using-workflow-skills`のcanonical persistence policy registryを正本として、ここへ
+同じ内容を反映する。「そのskillがこのwork itemで発生させるworkflow-state persistence」の
+既定値であり、上記のstate-write authorizationとは別である。複数artifactが必要なskillは
+artifactごとに一つのobligationを登録する。`todo-management`だけはactive TODOを機械的に
+保存するため`required`だが、semantic durable-artifact obligationの対象から除外する。
 
 | Canonical skill | Policy | Default destination, condition, or concrete rationale |
 | --- | --- | --- |
-| `using-workflow-skills` | `none` | Routingだけを行い、独自のdurable outputを作らない。 |
 | `route-large-implementation` | `none` | dispatch/topologyの制御であり、意味的な成果物は実行側ownerが持つ。 |
-| `execute-worktree-implementation` | `conditional` | multi-session、delegated unit、または継続に必要な判断・証跡がある場合は `.dev/contexts/<task>.md`。boundedなstateless executionなら、その条件をno-save reasonにする。 |
-| `test-driven-development` | `conditional` | cycleの判断・失敗・検証を後続sessionへ渡す必要がある場合は `.dev/contexts/<task>.md`。一回のstatelessなcycleで完結する場合は、そう判定した理由を記録する。 |
-| `evidence-review` | `none` | 現行contractはreportをchatへ返すchat-only契約で、durable review artifactを定義しない。`reviews/`は追加しない。別workflowが保存を担当する場合はそのownerのobligationにする。 |
+| `execute-worktree-implementation` | `none` | worktree execution自体は独自のworkflow-state writeを要求しない。必要なartifactは適用された別のsemantic ownerが持つ。 |
+| `test-driven-development` | `none` | Red/Green evidenceは実装と検証へ反映し、TDD自体は独自のworkflow-state writeを要求しない。 |
+| `evidence-review` | `none` | Prospective `.dev/reviews/<review-key>.md` は将来のdestinationだが、runtime persistence is unavailableで、shared workflow-state writer rejects `.dev/reviews/`。現行contractはreportをchatへ返す。 |
 | `context-handoff` | `conditional` | `export`は `.dev/contexts/<task>.md` へ保存する。read/importだけならwrite obligationを作らず、書かなかった具体的な理由を使える。 |
 | `security-audit` | `required` | 毎回 `.dev/security/coverage.md` と `.dev/security/reports/<area-key>.md` を更新する。各fileを別obligationとして登録する。 |
-| `todo-management` | `none` | active TODOの機械的な保存・lifecycle・completion gateだけを所有し、semantic obligationのownerにはならない。 |
+| `todo-management` | `required` | active TODOのmechanical active-state owner。not a semantic durable-artifact obligation ownerであるため、obligation entryのownerにはしない。 |
 | `prose-proofreading` | `none` | 指定された文書やdiffへの修正が成果であり、別のdurable artifactを作らない。 |
-| `assumption-pruning` | `conditional` | 複数work itemで再利用する判断・却下案なら `.dev/adr/<slug>.md`。局所的なchat判断なら、その再利用不要の理由を記録する。 |
+| `assumption-pruning` | `none` | 比較結果は呼び出し元へ返し、別のworkflow-state writeを要求しない。 |
 | `peer-consultation` | `none` | 独立したchallengeの結果は呼び出し元へ返し、決定の保存は呼び出し元workflowが担当する。 |
 | `herdr` | `none` | session/pane orchestrationだけを行い、各実行のsemantic artifactを所有しない。 |
 
