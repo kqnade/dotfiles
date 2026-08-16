@@ -27,6 +27,28 @@ Read an existing exact-task TODO before changing it. Check its provenance and
 freshness against the current request, files, Git state, tests, and runtime.
 Do not load unrelated TODOs as context.
 
+## Register a persistence obligation
+
+Register an obligation only after the user explicitly authorizes this exact
+state write (or explicitly authorizes the owning workflow to persist it). Read
+the TODO and hash that snapshot, then use the materialized helper with that
+hash:
+
+```text
+scripts/todo-obligation register --expect HASH TASK_KEY --id ID --owner OWNER --policy POLICY (--destination .dev/... | --no-save-reason REASON)
+```
+
+The helper resolves the target through `scripts/todo-path`, accepts only a
+regular non-symlink TODO in the current worktree, and delegates the complete
+replacement to the shared `workflow-state-write` compare-and-swap writer. Do
+not bypass that resolver or implement a second lock or writer. Required
+obligations use a destination and start `open`; conditional obligations use a
+destination/open entry or a concrete no-save reason/closed entry; `none`
+obligations use a concrete no-save reason and start `closed`. A destination
+must remain under the canonical `.dev/` durable areas and use the owner's
+permitted area. Duplicate IDs, mixed or missing destination/reason fields,
+unknown owners, and owner/policy mismatches are rejected.
+
 ## Keep the active-item schema
 
 Every managed TODO contains these sections:

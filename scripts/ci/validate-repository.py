@@ -1654,6 +1654,8 @@ for required_todo_phrase in (
     "current Git worktree",
     "AGENT_WORKFLOW_STATE_HOME",
     "git hash-object --no-filters",
+    "todo-obligation register",
+    "state write",
     "scripts/todo-complete --expect",
 ):
     if required_todo_phrase not in todo_management_contract:
@@ -1712,11 +1714,17 @@ todo_complete_script = (
 )
 if not todo_complete_script.is_file():
     fail("TODO management completion helper executable source must exist")
+todo_obligation_script = (
+    agent_skills_root / "todo-management/scripts/executable_todo-obligation"
+)
+if not todo_obligation_script.is_file():
+    fail("TODO management obligation helper executable source must exist")
 
 workflow_helper_targets = (
     "context-handoff/scripts/context-candidates",
     "context-handoff/scripts/context-path",
     "todo-management/scripts/todo-complete",
+    "todo-management/scripts/todo-obligation",
     "todo-management/scripts/todo-path",
     "using-workflow-skills/scripts/ensure-local-dev-ignore",
     "using-workflow-skills/scripts/workflow-state-candidates",
@@ -1781,6 +1789,7 @@ context_candidates_script = (
 )
 todo_path_script = deployed_skills_root / "todo-management/scripts/todo-path"
 todo_complete_script = deployed_skills_root / "todo-management/scripts/todo-complete"
+todo_obligation_script = deployed_skills_root / "todo-management/scripts/todo-obligation"
 
 context_path_result = subprocess.run(
     [str(context_path_script), "--task", "workflow-skill-script-permissions"],
@@ -2056,6 +2065,124 @@ Repair state.
     )
     if first_todo_write.returncode != 0 or todo_path.read_text() != first_todo:
         fail("workflow-state writer must create an expected missing active TODO")
+
+    if not todo_obligation_script.is_file() or not os.access(
+        todo_obligation_script, os.X_OK
+    ):
+        fail("deployed TODO obligation registration helper is missing")
+
+    first_todo_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    register_obligation = subprocess.run(
+        [
+            str(todo_obligation_script),
+            "register",
+            "--expect",
+            first_todo_hash,
+            "workflow-state-repair",
+            "--id",
+            "security-coverage",
+            "--owner",
+            "security-audit",
+            "--policy",
+            "required",
+            "--destination",
+            ".dev/security/coverage.md",
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    registered_todo = first_todo.replace(
+        "## Commit checklist",
+        """## Persistence obligations
+
+### `security-coverage`
+- Owner: `security-audit`
+- Policy: `required`
+- State: `open`
+- Destination: `.dev/security/coverage.md`
+
+## Commit checklist""",
+    )
+    if register_obligation.returncode != 0 or todo_path.read_text() != registered_todo:
+        fail(
+            "TODO obligation registration must create a required/open entry: "
+            f"{register_obligation.stderr.strip()}"
+        )
+
+    stale_registration = subprocess.run(
+        [
+            str(todo_obligation_script),
+            "register",
+            "--expect",
+            first_todo_hash,
+            "workflow-state-repair",
+            "--id",
+            "stale-obligation",
+            "--owner",
+            "security-audit",
+            "--policy",
+            "required",
+            "--destination",
+            ".dev/security/reports/stale.md",
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if stale_registration.returncode == 0 or todo_path.read_text() != registered_todo:
+        fail("stale TODO obligation registration must preserve the active TODO")
+
+    registered_todo_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    obligation_lock = Path(f"{todo_path}.lock")
+    obligation_lock.mkdir()
+    try:
+        locked_registration = subprocess.run(
+            [
+                str(todo_obligation_script),
+                "register",
+                "--expect",
+                registered_todo_hash,
+                "workflow-state-repair",
+                "--id",
+                "locked-obligation",
+                "--owner",
+                "security-audit",
+                "--policy",
+                "required",
+                "--destination",
+                ".dev/security/reports/locked.md",
+            ],
+            cwd=state_test_repo,
+            env=state_test_env,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    finally:
+        obligation_lock.rmdir()
+    if locked_registration.returncode == 0 or todo_path.read_text() != registered_todo:
+        fail("locked TODO obligation registration must preserve the active TODO")
+
+    restore_first_todo = subprocess.run(
+        [str(workflow_state_writer), "--expect", registered_todo_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=first_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if restore_first_todo.returncode != 0 or todo_path.read_text() != first_todo:
+        fail("validator could not restore the active TODO after obligation registration")
 
     unprotected_todo_write = subprocess.run(
         [str(workflow_state_writer), str(todo_path)],

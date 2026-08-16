@@ -1,0 +1,307 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  echo "usage: todo-obligation register --expect HASH TASK_KEY --id ID --owner OWNER --policy POLICY (--destination .dev/PATH | --no-save-reason REASON)" >&2
+  exit 2
+}
+
+[[ "${1:-}" == "register" ]] || usage
+shift
+
+expected=""
+task_key=""
+obligation_id=""
+owner=""
+policy=""
+destination=""
+no_save_reason=""
+has_expected=0
+has_id=0
+has_owner=0
+has_policy=0
+has_destination=0
+has_no_save_reason=0
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --expect)
+      [[ "$has_expected" -eq 0 && $# -ge 2 && -n "$2" ]] || usage
+      expected=$2
+      has_expected=1
+      shift 2
+      ;;
+    --id)
+      [[ "$has_id" -eq 0 && $# -ge 2 && -n "$2" ]] || usage
+      obligation_id=$2
+      has_id=1
+      shift 2
+      ;;
+    --owner)
+      [[ "$has_owner" -eq 0 && $# -ge 2 && -n "$2" ]] || usage
+      owner=$2
+      has_owner=1
+      shift 2
+      ;;
+    --policy)
+      [[ "$has_policy" -eq 0 && $# -ge 2 && -n "$2" ]] || usage
+      policy=$2
+      has_policy=1
+      shift 2
+      ;;
+    --destination)
+      [[ "$has_destination" -eq 0 && $# -ge 2 && -n "$2" ]] || usage
+      destination=$2
+      has_destination=1
+      shift 2
+      ;;
+    --no-save-reason)
+      [[ "$has_no_save_reason" -eq 0 && $# -ge 2 ]] || usage
+      no_save_reason=$2
+      has_no_save_reason=1
+      shift 2
+      ;;
+    --*)
+      usage
+      ;;
+    *)
+      [[ -z "$task_key" ]] || usage
+      task_key=$1
+      shift
+      ;;
+  esac
+done
+
+[[ "$has_expected" -eq 1 && "$expected" != "missing" ]] || usage
+[[ "$has_id" -eq 1 && "$has_owner" -eq 1 && "$has_policy" -eq 1 ]] || usage
+[[ -n "$task_key" ]] || usage
+[[ "$has_destination" -eq 1 || "$has_no_save_reason" -eq 1 ]] || usage
+[[ "$has_destination" -eq 0 || "$has_no_save_reason" -eq 0 ]] || usage
+
+if [[ ! "$obligation_id" =~ ^[a-z0-9][a-z0-9._-]*$ ]]; then
+  echo "todo-obligation: invalid obligation ID: $obligation_id" >&2
+  exit 1
+fi
+
+case "$owner:$policy" in
+  security-audit:required|\
+  execute-worktree-implementation:conditional|\
+  test-driven-development:conditional|\
+  context-handoff:conditional|\
+  assumption-pruning:conditional|\
+  route-large-implementation:none|\
+  evidence-review:none|\
+  prose-proofreading:none|\
+  peer-consultation:none|\
+  herdr:none) ;;
+  *)
+    echo "todo-obligation: owner and policy are not a canonical pair: $owner/$policy" >&2
+    exit 1
+    ;;
+esac
+
+trimmed_reason=""
+if [[ "$has_no_save_reason" -eq 1 ]]; then
+  trimmed_reason=$no_save_reason
+  trimmed_reason="${trimmed_reason#"${trimmed_reason%%[![:space:]]*}"}"
+  trimmed_reason="${trimmed_reason%"${trimmed_reason##*[![:space:]]}"}"
+  if [[ ! "$trimmed_reason" =~ [^[:space:]] ]]; then
+    echo "todo-obligation: no-save reason must contain non-whitespace text" >&2
+    exit 1
+  fi
+  if [[ "$trimmed_reason" == *$'\n'* || "$trimmed_reason" == *$'\r'* ]]; then
+    echo "todo-obligation: no-save reason must be a single line" >&2
+    exit 1
+  fi
+  reason_lower=$(printf '%s' "$trimmed_reason" | tr '[:upper:]' '[:lower:]')
+  case "$reason_lower" in
+    n/a|na|none|null|nil|tbd|todo|"no reason"|"not applicable"|なし|"特になし")
+      echo "todo-obligation: no-save reason must be concrete" >&2
+      exit 1
+      ;;
+  esac
+fi
+
+if [[ "$has_destination" -eq 1 ]]; then
+  if [[ "$destination" == *$'\n'* || "$destination" == *$'\r'* || "$destination" == *"\\"* ]]; then
+    echo "todo-obligation: destination must be a normalized repository-relative path" >&2
+    exit 1
+  fi
+  case "$destination" in
+    .dev/adr/*|.dev/contexts/*|.dev/designdoc/*|.dev/research/*|.dev/memory/*|.dev/security/*) ;;
+    *)
+      echo "todo-obligation: destination must be under a canonical .dev area: $destination" >&2
+      exit 1
+      ;;
+  esac
+
+  remaining=$destination
+  while [[ "$remaining" == */* ]]; do
+    segment=${remaining%%/*}
+    remaining=${remaining#*/}
+    [[ -n "$segment" && "$segment" != "." && "$segment" != ".." ]] || {
+      echo "todo-obligation: destination contains an invalid path segment: $destination" >&2
+      exit 1
+    }
+  done
+  [[ -n "$remaining" && "$remaining" != "." && "$remaining" != ".." ]] || {
+    echo "todo-obligation: destination contains an invalid path segment: $destination" >&2
+    exit 1
+  }
+
+  case "$owner" in
+    security-audit)
+      [[ "$destination" == .dev/security/* ]] || {
+        echo "todo-obligation: security-audit destinations must be under .dev/security/" >&2
+        exit 1
+      }
+      ;;
+    execute-worktree-implementation|test-driven-development|context-handoff)
+      [[ "$destination" == .dev/contexts/* ]] || {
+        echo "todo-obligation: $owner destinations must be under .dev/contexts/" >&2
+        exit 1
+      }
+      ;;
+    assumption-pruning)
+      [[ "$destination" == .dev/adr/* ]] || {
+        echo "todo-obligation: assumption-pruning destinations must be under .dev/adr/" >&2
+        exit 1
+      }
+      ;;
+  esac
+fi
+
+if [[ "$policy" == required && "$has_destination" -ne 1 ]]; then
+  echo "todo-obligation: required obligations need a destination" >&2
+  exit 1
+fi
+if [[ "$policy" == none && "$has_no_save_reason" -ne 1 ]]; then
+  echo "todo-obligation: none obligations need a concrete no-save reason" >&2
+  exit 1
+fi
+
+script_dir=$(cd "$(dirname "$0")" && pwd -P)
+target=$("$script_dir/todo-path" "$task_key")
+if [[ -L "$target" || ! -f "$target" ]]; then
+  echo "todo-obligation: active TODO must be a regular file: $target" >&2
+  exit 1
+fi
+
+transformed=""
+cleanup() {
+  if [[ -n "$transformed" && -e "$transformed" ]]; then
+    rm -f -- "$transformed"
+  fi
+}
+trap cleanup EXIT HUP INT TERM
+
+transformed=$(mktemp "$target.obligation.XXXXXX")
+new_state=open
+if [[ "$has_no_save_reason" -eq 1 ]]; then
+  new_state=closed
+fi
+
+if ! awk \
+  -v new_id="$obligation_id" \
+  -v new_owner="$owner" \
+  -v new_policy="$policy" \
+  -v new_state="$new_state" \
+  -v new_destination="$destination" \
+  -v new_reason="$trimmed_reason" '
+function emit_entry() {
+  if (last_line != "") {
+    print ""
+  }
+  printf "### `%s`\n", new_id
+  printf "- Owner: `%s`\n", new_owner
+  printf "- Policy: `%s`\n", new_policy
+  printf "- State: `%s`\n", new_state
+  if (new_destination != "") {
+    printf "- Destination: `%s`\n", new_destination
+  } else {
+    printf "- No-save reason: %s\n", new_reason
+  }
+  print ""
+}
+
+function emit_new_section() {
+  if (last_line != "") {
+    print ""
+  }
+  print "## Persistence obligations"
+  print ""
+  last_line = ""
+  emit_entry()
+}
+
+BEGIN {
+  in_obligations = 0
+  section_count = 0
+  checklist_seen = 0
+  entry_inserted = 0
+  last_line = ""
+}
+
+{
+  line = $0
+  if (line == "## Commit checklist") {
+    checklist_seen = 1
+  }
+  if (line == "## Persistence obligations") {
+    if (checklist_seen) {
+      exit 1
+    }
+    section_count++
+    if (section_count > 1) {
+      exit 1
+    }
+    in_obligations = 1
+  } else if (in_obligations && line ~ /^## /) {
+    if (!entry_inserted) {
+      emit_entry()
+      entry_inserted = 1
+    }
+    in_obligations = 0
+  }
+
+  if (in_obligations && line ~ /^### /) {
+    if (line !~ /^### `[a-z0-9][a-z0-9._-]*`$/) {
+      exit 1
+    }
+    existing_id = line
+    sub(/^### `/, "", existing_id)
+    sub(/`$/, "", existing_id)
+    if (existing_id == new_id || (existing_id in seen_ids)) {
+      exit 1
+    }
+    seen_ids[existing_id] = 1
+  }
+
+  if (!in_obligations && section_count == 0 && line == "## Commit checklist") {
+    emit_new_section()
+    entry_inserted = 1
+  }
+  print line
+  last_line = line
+}
+
+END {
+  if (section_count == 0 && !checklist_seen) {
+    exit 1
+  }
+  if (section_count > 0 && !entry_inserted) {
+    emit_entry()
+  }
+}' \
+  "$target" >"$transformed"; then
+  echo "todo-obligation: active TODO has no valid persistence-obligation insertion point" >&2
+  exit 5
+fi
+
+writer="$script_dir/../../using-workflow-skills/scripts/workflow-state-write"
+if cat "$transformed" | "$writer" --expect "$expected" "$target"; then
+  exit 0
+else
+  status=$?
+  exit "$status"
+fi
