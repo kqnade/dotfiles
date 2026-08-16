@@ -18,7 +18,7 @@ EXPECTED_POLICIES = {
     "context-handoff": "conditional",
     "security-audit": "required",
     "todo-management": "required",
-    "evidence-review": "conditional",
+    "evidence-review": "none",
     "route-large-implementation": "none",
     "execute-worktree-implementation": "none",
     "test-driven-development": "none",
@@ -114,6 +114,17 @@ class WorkflowSkillPersistenceTests(unittest.TestCase):
                 "Promotion": "Only a separate explicit owner action may promote confirmed reusable facts",
             },
         )
+        self.assertEqual(
+            policy_rows["evidence-review"],
+            {
+                "Canonical owner": "`evidence-review`",
+                "Persistence": "`none`",
+                "Destination": "Prospective `.dev/reviews/<review-key>.md`; runtime persistence is unavailable until `.dev/todo/skill-driven-workflow-persistence.md` completes writer integration",
+                "Checkpoint": "No durable review checkpoint while runtime support is unavailable; keep the prospective snapshot contract for that integration",
+                "Completion": "Return the full report in chat and state that no review artifact was persisted",
+                "Promotion": "No promotion; a later explicit request must route to the canonical owner after support exists",
+            },
+        )
 
         for row in rows:
             owner = row["Canonical owner"]
@@ -145,7 +156,7 @@ class WorkflowSkillPersistenceTests(unittest.TestCase):
             "stateless single-session work must not be forced into an active TODO",
         )
 
-    def test_evidence_review_is_conversation_first_and_separately_persisted(self) -> None:
+    def test_evidence_review_is_conversation_first_and_runtime_persistence_is_gated(self) -> None:
         self.assertTrue(
             REVIEWS_README.is_file(),
             "evidence-review persistence contract must have a current-worktree README",
@@ -162,13 +173,33 @@ class WorkflowSkillPersistenceTests(unittest.TestCase):
         )
         self.assertRegex(
             contract,
-            r"(?is)separate\s+explicit\s+persistence\s+authorization",
-            "persistence must require separate explicit authorization",
+            r"(?is)runtime\s+persistence\s+is\s+unavailable",
+            "review persistence must be explicitly unavailable at runtime",
+        )
+        self.assertIn(
+            ".dev/todo/skill-driven-workflow-persistence.md",
+            contract,
+            "the unavailable runtime integration must name its stable active work item",
         )
         self.assertRegex(
             contract,
-            r"(?is)current\s+worktree.*?\.dev/reviews/<review-key>\.md",
-            "persisted reviews must be scoped to the current-worktree review path",
+            r"(?is)(?:even|neither).*?explicit\s+persistence\s+authorization.*?(?:cannot|does\s+not).*?(?:write|override|authorize)",
+            "explicit persistence authorization must not bypass unavailable writer support",
+        )
+        self.assertRegex(
+            contract,
+            r"(?is)shared\s+workflow-state\s+writer.*?(?:rejects|does\s+not\s+accept).*?\.dev/reviews",
+            "the contract must state that the current shared writer rejects review paths",
+        )
+        self.assertRegex(
+            contract,
+            r"(?is)full\s+report\s+in\s+chat.*?not\s+persisted|not\s+persisted.*?full\s+report\s+in\s+chat",
+            "an unavailable persistence request must fall back to chat with an explicit not-persisted result",
+        )
+        self.assertRegex(
+            contract,
+            r"(?is)prospective\s+contract.*?does\s+not\s+authorize\s+a\s+current\s+write",
+            "the artifact contract must remain prospective rather than executable",
         )
         self.assertRegex(
             contract,

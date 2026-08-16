@@ -1,16 +1,31 @@
 # Evidence-review persistence contract
 
-This directory is the current-worktree destination for an explicitly
-authorized evidence-review artifact. The normal review result remains the
-complete report in chat. A review invocation alone is not persistence
-authorization, and this repository-tracked contract does not claim that the
-shared workflow-state writer currently accepts review records.
+This directory documents the prospective current-worktree destination for an
+evidence-review artifact. The normal review result remains the complete report
+in chat.
 
-## Authorization and safe write
+## Runtime availability gate
 
-Write only after a separate explicit persistence authorization. Record the
-authorization source and its exact scope in the artifact. The scope is the
-current Git worktree and exactly
+Runtime persistence is unavailable. The shared workflow-state writer does not
+accept `.dev/reviews/` and rejects that destination. Even separate explicit
+persistence authorization cannot override the missing writer integration or
+authorize a current write. Do not create or update a review record through a
+direct write, alternate backend, or another workflow owner.
+
+The stable integration tracker is
+`.dev/todo/skill-driven-workflow-persistence.md`. Until that item records
+completed writer support and the evidence-review policy is updated, return the
+full report in chat and state that it was not persisted. Referencing the
+tracker does not authorize evidence-review to edit it.
+
+The schema and lifecycle below are a prospective contract for that tracked
+integration. This prospective contract does not authorize a current write.
+
+## Prospective authorization and safe write
+
+After runtime support exists, a future write must also have separate explicit
+persistence authorization. It must record the authorization source and exact
+scope in the artifact. The scope is the current Git worktree and exactly
 `.dev/reviews/<review-key>.md`; it does not authorize another worktree,
 external backend, client memory, TODO, promotion, or publication.
 
@@ -21,11 +36,12 @@ symlink or resolves outside that worktree, including a path reached through a
 symlinked parent. Do not follow an ambiguous path or silently select another
 destination.
 
-Preserve concurrent edits. Read and hash an existing target before writing;
-publish with an atomic create-or-compare-and-swap operation. If the target
-content, parent, or relevant source state changed after the read, stop and
-reconcile the new evidence before retrying. Never overwrite a changed record
-blindly. A failed or interrupted write must not destroy the prior readable
+A future implementation must preserve concurrent edits. It must read and hash
+an existing target before writing and publish with an atomic
+create-or-compare-and-swap operation. If the target content, parent, or
+relevant source state changed after the read, it must stop and reconcile the
+new evidence before retrying. It must never overwrite a changed record
+blindly, and a failed or interrupted write must not destroy the prior readable
 record.
 
 ## Record schema: `evidence-review/v1`
