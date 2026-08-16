@@ -45,20 +45,20 @@ class ValidateMiseTests(unittest.TestCase):
         self.assertNotIn('[url "git@github.com:"]', result.stdout)
         self.assertNotIn('[url "git@gitlab.com:"]', result.stdout)
 
-    def test_codex_usage_exporter_runs_every_five_minutes(self) -> None:
+    def test_codex_usage_exporter_runs_every_minute(self) -> None:
         config = tomllib.loads((ROOT / "mise/config.toml").read_text())
 
         self.assertEqual(
             config["bootstrap"]["macos"]["launchd"]["agents"][
                 "codex-usage-exporter"
             ]["start_interval"],
-            300,
+            60,
         )
         self.assertEqual(
             config["bootstrap"]["linux"]["systemd"]["units"][
                 "codex-usage-exporter"
             ]["restart_sec"],
-            "5m",
+            "60s",
         )
 
     def test_repository_loads_split_manifest(self) -> None:
