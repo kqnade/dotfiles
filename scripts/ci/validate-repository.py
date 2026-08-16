@@ -1015,7 +1015,15 @@ codex_delegation_rule_text = codex_delegation_rule.read_text()
 normalized_codex_delegation_rule_text = " ".join(codex_delegation_rule_text.split())
 for required_fragment in (
     "Delegate independent, bounded work",
+    "Keep Luna as the default subagent",
     "Prefer Luna",
+    "Prefer `spark_worker`",
+    "mechanical or repetitive edits",
+    "targeted searches",
+    "test execution",
+    "granular UI adjustments",
+    "requirements, architecture, security-sensitive judgment, ambiguous diagnosis, and final verification",
+    "return the packet to Luna or the primary agent",
     "both of the following are true",
     "independently verifiable and committable features",
     "implemented concurrently in isolated worktrees",
@@ -1149,11 +1157,19 @@ for key, expected_value in expected_luna_parallelizer.items():
 for required_fragment in (
     "shallow discovery",
     "disjoint packets",
+    "classify each packet by model fit",
     "independently verifiable and committable features",
     "implemented concurrently in isolated worktrees",
     "return it to the parent",
     "`route-large-implementation`",
     "spawn subagents",
+    "`spark_worker`",
+    "mechanical or repetitive edits",
+    "targeted searches",
+    "test execution",
+    "granular UI adjustments",
+    "Use gpt-5.6-luna at max",
+    "ambiguous diagnosis",
     "Wait for every worker",
     "verify",
 ):
@@ -1176,6 +1192,33 @@ if -1 in luna_parallelizer_flow_positions or luna_parallelizer_flow_positions !=
     fail(
         "Codex Luna parallelizer must discover, classify or return, then fan out"
     )
+
+codex_spark_worker = ROOT / "dot_codex/agents/spark-worker.toml"
+if not codex_spark_worker.is_file():
+    fail("Codex Spark worker agent is missing")
+codex_spark_worker_config = tomllib.loads(codex_spark_worker.read_text())
+normalized_spark_worker_instructions = " ".join(
+    codex_spark_worker_config.get("developer_instructions", "").split()
+)
+expected_spark_worker = {
+    "name": "spark_worker",
+    "model": "gpt-5.3-codex-spark",
+    "model_reasoning_effort": "high",
+}
+for key, expected_value in expected_spark_worker.items():
+    if codex_spark_worker_config.get(key) != expected_value:
+        fail(f"Codex Spark worker did not enforce {key}")
+for required_fragment in (
+    "bounded, low-ambiguity task",
+    "mechanical or repetitive edits",
+    "granular UI adjustments",
+    "requirements, architecture, or security-sensitive decisions",
+    "not alone in the codebase",
+    "Stop and return evidence",
+    "verify",
+):
+    if required_fragment not in normalized_spark_worker_instructions:
+        fail("Codex Spark worker is missing reviewed behavior")
 
 expected_codex_otel = {
     "environment": "prod",

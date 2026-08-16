@@ -105,8 +105,9 @@ Keep this mapping consistent when editing Vim or Neovim:
   `~/.agents/rules/AGENTS.md`, which combines shared coding and workflow-state conventions with the
   Codex-specific delegation, Git, and repository-authorization rules. For non-large multi-area
   work, its `luna_parallelizer` custom agent performs shallow discovery and fans disjoint packets
-  out to Luna workers. Large implementations remain owned by `route-large-implementation`. Codex
-  uses `git cc` outside the two Claude-only namespaces.
+  out to model-fit workers: Spark for bounded low-ambiguity execution and Luna for work that needs
+  broader judgment. Luna remains the default subagent. Large implementations remain owned by
+  `route-large-implementation`. Codex uses `git cc` outside the two Claude-only namespaces.
 - Cross-client workflow skills have one canonical source in `dot_agents/skills/`.
   Claude receives symlinks from `dot_claude/skills/`; Codex and OpenCode discover
   `~/.agents/skills/` directly. Do not copy a skill into client-specific directories.
