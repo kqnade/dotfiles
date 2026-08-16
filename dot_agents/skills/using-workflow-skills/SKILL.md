@@ -27,25 +27,40 @@ current-state evidence.
 4. Read its current `SKILL.md`; do not follow a remembered version.
 5. If no row matches, continue without inventing a workflow.
 
-### Canonical route and persistence registry
+| Task | Canonical owner |
+|---|---|
+| Route a large implementation into independent isolated Herdr worktree units | `route-large-implementation` |
+| Execute an explicitly invoked packet in an existing isolated worktree | `execute-worktree-implementation` |
+| Add or change executable behavior; fix a defect | `test-driven-development` |
+| Review a code change or dependency update | `evidence-review` |
+| Export, import, or reconcile a task handoff | `context-handoff` |
+| Maintain security coverage across bounded repository areas | `security-audit` |
+| Create, update, or complete an active repository `.dev/todo/` work item | `todo-management` |
+| Proofread Markdown or plain-text prose | `prose-proofreading` |
+| Remove assumptions to find a simpler design | `assumption-pruning` |
+| Obtain and verify an independent technical opinion | `peer-consultation` |
+| Control Herdr after the user explicitly asks for Herdr | `herdr` |
 
-This is the sole authoritative registry for routed canonical workflows. Each
-owner appears exactly once. The `Persistence` value is the state-write policy;
-the remaining columns describe the required behavior for that policy.
+### Canonical persistence policy registry
 
-| Task | Canonical owner | Persistence | Destination | Checkpoint | Completion | Promotion |
-|---|---|---|---|---|---|---|
-| Route a large implementation into independent isolated Herdr worktree units | `route-large-implementation` | `none` | No workflow-state destination; report the routing decision in chat | No workflow-state checkpoint; do not create state | The routing decision and any dispatch result are reported | No promotion and no workflow-state write |
-| Execute an explicitly invoked packet in an existing isolated worktree | `execute-worktree-implementation` | `none` | No workflow-state destination; report the packet result in chat | No workflow-state checkpoint; do not create state | The packet result and verification are reported | No promotion and no workflow-state write |
-| Add or change executable behavior; fix a defect | `test-driven-development` | `none` | No workflow-state destination; use the code and test diff as evidence | No workflow-state checkpoint; do not create state | The tested Green increment is reported | No promotion and no workflow-state write |
-| Review a code change or dependency update | `evidence-review` | `conditional` | `.dev/reviews/<review-key>.md` only with separate explicit persistence authorization; otherwise chat | Checkpoint the review snapshot before an authorized write | The report is returned in chat, or an authorized record is hash- and provenance-verified | Promote only explicitly authorized stable findings to a durable record |
-| Export, import, or reconcile a task handoff | `context-handoff` | `required` | `.dev/contexts/<task-key>.md` | Checkpoint identity, snapshot, and each material decision before writing | The handoff is readable with verified provenance and freshness | Promote confirmed reusable facts to `.dev/memory/` only with explicit owner action |
-| Maintain security coverage across bounded repository areas | `security-audit` | `required` | `.dev/security/coverage.md` and `.dev/security/reports/<area-key>.md` | Checkpoint the ledger and report hashes around each bounded audit run | The report is appended and indexed by the current-worktree ledger | Promote confirmed reusable security facts through the audit record's owner-controlled lifecycle |
-| Create, update, or complete an active repository `.dev/todo/` work item | `todo-management` | `required` | `.dev/todo/<task-key>.md` | Checkpoint the current TODO hash before every compare-and-swap write | The authorized TODO operation passes its schema and completion gates | Promote decisions and evidence to linked durable records before TODO completion |
-| Proofread Markdown or plain-text prose | `prose-proofreading` | `none` | No workflow-state destination; return the corrected prose in chat | No workflow-state checkpoint; do not create state | The requested prose is returned with structure and meaning preserved | No promotion and no workflow-state write |
-| Remove assumptions to find a simpler design | `assumption-pruning` | `none` | No workflow-state destination; report alternatives in chat | No workflow-state checkpoint; do not create state | The assumptions and feasible alternatives are reported | No promotion and no workflow-state write |
-| Obtain and verify an independent technical opinion | `peer-consultation` | `none` | No workflow-state destination; report the bounded opinion in chat | No workflow-state checkpoint; do not create state | The independent opinion and verification limits are reported | No promotion and no workflow-state write |
-| Control Herdr after the user explicitly asks for Herdr | `herdr` | `none` | No workflow-state destination; report the control result in chat | No workflow-state checkpoint; do not create state | The requested Herdr control result is reported | No promotion and no workflow-state write |
+The routing table is the sole Task-to-owner mapping. This registry is the sole
+owner-to-persistence-policy mapping, and it must contain the same owners
+exactly once. The remaining columns define the required behavior for that
+policy.
+
+| Canonical owner | Persistence | Destination | Checkpoint | Completion | Promotion |
+|---|---|---|---|---|---|
+| `route-large-implementation` | `none` | No workflow-state destination; report the routing decision in chat | No workflow-state checkpoint; do not create state | The routing decision and any dispatch result are reported | No promotion and no workflow-state write |
+| `execute-worktree-implementation` | `none` | No workflow-state destination; report the packet result in chat | No workflow-state checkpoint; do not create state | The packet result and verification are reported | No promotion and no workflow-state write |
+| `test-driven-development` | `none` | No workflow-state destination; use the code and test diff as evidence | No workflow-state checkpoint; do not create state | The tested Green increment is reported | No promotion and no workflow-state write |
+| `evidence-review` | `conditional` | `.dev/reviews/<review-key>.md` only with separate explicit persistence authorization; otherwise chat | Checkpoint the review snapshot before an authorized write | The report is returned in chat, or an authorized record is hash- and provenance-verified | Promote only explicitly authorized stable findings to a durable record |
+| `context-handoff` | `required` | `.dev/contexts/<task-key>.md` | Checkpoint identity, snapshot, and each material decision before writing | The handoff is readable with verified provenance and freshness | Promote confirmed reusable facts to `.dev/memory/` only with explicit owner action |
+| `security-audit` | `required` | `.dev/security/coverage.md` and `.dev/security/reports/<area-key>.md` | Checkpoint the ledger and report hashes around each bounded audit run | The report is appended and indexed by the current-worktree ledger | Promote confirmed reusable security facts through the audit record's owner-controlled lifecycle |
+| `todo-management` | `required` | `.dev/todo/<task-key>.md` | Checkpoint the current TODO hash before every compare-and-swap write | The authorized TODO operation passes its schema and completion gates | Promote decisions and evidence to linked durable records before TODO completion |
+| `prose-proofreading` | `none` | No workflow-state destination; return the corrected prose in chat | No workflow-state checkpoint; do not create state | The requested prose is returned with structure and meaning preserved | No promotion and no workflow-state write |
+| `assumption-pruning` | `none` | No workflow-state destination; report alternatives in chat | No workflow-state checkpoint; do not create state | The assumptions and feasible alternatives are reported | No promotion and no workflow-state write |
+| `peer-consultation` | `none` | No workflow-state destination; report the bounded opinion in chat | No workflow-state checkpoint; do not create state | The independent opinion and verification limits are reported | No promotion and no workflow-state write |
+| `herdr` | `none` | No workflow-state destination; report the control result in chat | No workflow-state checkpoint; do not create state | The requested Herdr control result is reported | No promotion and no workflow-state write |
 
 `required` means an explicit invocation authorizes only that owner's exact
 state write to its listed destination; it never authorizes another workflow's

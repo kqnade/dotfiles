@@ -31,7 +31,7 @@ EXPECTED_POLICIES = {
 
 def parse_registry_table(document: str) -> list[dict[str, str]]:
     heading = re.search(
-        r"^### Canonical route and persistence registry\s*$", document, re.MULTILINE
+        r"^### Canonical persistence policy registry\s*$", document, re.MULTILINE
     )
     if heading is None:
         raise AssertionError("router must declare a canonical route and persistence registry")
@@ -65,7 +65,6 @@ class WorkflowSkillPersistenceTests(unittest.TestCase):
         guardrail_text = document.replace("`", "")
         rows = parse_registry_table(document)
         required_columns = {
-            "Task",
             "Canonical owner",
             "Persistence",
             "Destination",
@@ -79,21 +78,20 @@ class WorkflowSkillPersistenceTests(unittest.TestCase):
             "canonical registry must expose route and persistence columns",
         )
 
-        route_table = {
-            row["Canonical owner"].strip("`"): row["Task"] for row in rows
-        }
+        routed_owners = re.findall(
+            r"^\|[^|]+\| `([^`]+)` \|$", document, re.MULTILINE
+        )
         policy_table = {
             row["Canonical owner"].strip("`"): row["Persistence"].strip("`")
             for row in rows
         }
         self.assertEqual(
-            len(route_table),
-            len(rows),
+            len(routed_owners),
+            len(set(routed_owners)),
             "each canonical workflow must occur exactly once in the route table",
         )
-        self.assertEqual(set(route_table), set(EXPECTED_POLICIES))
+        self.assertEqual(set(routed_owners), set(EXPECTED_POLICIES))
         self.assertEqual(policy_table, EXPECTED_POLICIES)
-        self.assertTrue(all(task.strip() for task in route_table.values()))
 
         for row in rows:
             owner = row["Canonical owner"]
