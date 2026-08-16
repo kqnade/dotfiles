@@ -18,6 +18,30 @@ primary sources.
 Return the review in chat. Comments, approvals, edits, pushes, and merges
 require a separate explicit request.
 
+## Persistence availability
+
+The normal evidence-review result is the full report in chat. Runtime
+persistence is unavailable: the shared workflow-state writer rejects
+`.dev/reviews/` targets. Even separate explicit persistence authorization
+cannot authorize a current write or override that missing integration. If the
+user asks to persist a review, return the full report in chat and state that it
+was not persisted.
+
+The stable integration tracker is
+`.dev/todo/skill-driven-workflow-persistence.md`. Until that item records
+completed writer support and this policy changes, do not create or update a
+review artifact through a direct write, alternate backend, or another owner.
+Do not modify the tracker merely because evidence-review encountered this
+gate.
+
+Review records are not automatically loaded, turned into an active TODO,
+copied to automatic memory, or promoted. Promotion requires a separate
+explicit request routed to the canonical owner of the destination workflow.
+The repository-tracked record contract, including its schema, lifecycle, and
+safe-write boundary, is in `.dev/reviews/README.md`. It is a prospective
+contract and does not authorize a current write. A future implementation must
+still preserve the complete chat report.
+
 ## 1. Bind the review to an exact snapshot
 
 Resolve the exact PR, commit range, or local diff. Do not silently substitute a
