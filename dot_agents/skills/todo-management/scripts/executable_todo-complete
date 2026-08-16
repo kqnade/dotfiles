@@ -128,5 +128,7 @@ if [[ "$none_entries" -gt 0 && "$durable_entries" -ne 1 ]]; then
   exit 5
 fi
 
+"$script_dir/todo-obligation" check "$task_key"
+
 "$script_dir/../../using-workflow-skills/scripts/workflow-state-write" \
   --delete --expect "$expected" "$target"
