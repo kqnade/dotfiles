@@ -122,6 +122,12 @@ temporary fileへ完全な内容を書いてからatomic replaceし、他のreco
 hashや残ったlockを見た場合は最新recordを再読してreconcileする。blind retryやlockのageだけ
 を根拠にしたunlockはしない。
 
+registrationとcloseは変換前に既存の`Persistence obligations` section全体を同じcanonical
+schemaでpreflightする。mutation中は正当なopen obligationを許可するが、対象外blockを含む
+malformed field、unknownまたはmismatchedなowner-policy pair、duplicate ID、不正path・closure
+shape、存在しないまたは不正なclosed evidenceが1つでもあればwrite前に拒否し、TODOのbytesを
+変更しない。その後もrecord lockとexpected hashによるCASがpreflight後の競合を防ぐ。
+
 ### Skill policy matrix
 
 policyは`using-workflow-skills`のcanonical persistence policy registryを正本として、ここへ

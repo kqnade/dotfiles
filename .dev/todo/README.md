@@ -47,6 +47,10 @@ worktreeやexternal backendを拒否する。mutationはrecord lock、read hash�
 同一directory内temporary fileからのatomic replaceを使う。stale/locked recordは再読して
 reconcileし、blind retryやlock ageだけのunlockをしない。
 
+登録とcloseは変換前にsection全体をpreflightする。正当なopen obligationはmutationを妨げない。
+一方、対象外blockを含むmalformed field、unknown/mismatched owner-policy pair、duplicate ID、
+不正path・closure shape・既存evidenceが1つでもあれば、TODOを変更せずに拒否する。
+
 `todo-complete`は既存のchecklist gateと`Durable records` gateを維持し、CAS削除の前に、
 obligationの重複ID・不正field・不正policy/state・Destination/No-save reasonの欠落や混在、
 open entry、invalidなclosed Artifactを拒否する。sectionがない/空なのは許可する。

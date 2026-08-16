@@ -2252,6 +2252,282 @@ Repair state.
             + "; ".join(literal_reason_failures)
         )
 
+    malformed_obligation_sections = {
+        "malformed-fields": """### `malformed-fields`
+- Owner: `evidence-review`
+- Policy: `none`
+- State: `closed`
+- No-save reason: The review stays in chat.
+- Extra: unexpected
+""",
+        "unknown-owner": """### `unknown-owner`
+- Owner: `unknown-workflow`
+- Policy: `none`
+- State: `closed`
+- No-save reason: An unknown owner is invalid.
+""",
+        "mismatched-policy": """### `mismatched-policy`
+- Owner: `security-audit`
+- Policy: `conditional`
+- State: `open`
+- Destination: `.dev/security/coverage.md`
+""",
+        "duplicate-ids": """### `duplicate-id`
+- Owner: `evidence-review`
+- Policy: `none`
+- State: `closed`
+- No-save reason: The first review stays in chat.
+
+### `duplicate-id`
+- Owner: `prose-proofreading`
+- Policy: `none`
+- State: `closed`
+- No-save reason: The second edit needs no workflow record.
+""",
+        "invalid-path": """### `invalid-path`
+- Owner: `context-handoff`
+- Policy: `conditional`
+- State: `open`
+- Destination: `.dev/contexts/../escape.md`
+""",
+        "invalid-closure": """### `invalid-closure`
+- Owner: `security-audit`
+- Policy: `required`
+- State: `closed`
+- Destination: `.dev/security/coverage.md`
+""",
+        "invalid-evidence": """### `invalid-evidence`
+- Owner: `security-audit`
+- Policy: `required`
+- State: `closed`
+- Destination: `.dev/security/missing.md`
+- Artifact: [missing](../security/missing.md)
+""",
+    }
+    malformed_preflight_failures = []
+    for malformed_name, malformed_section in malformed_obligation_sections.items():
+        malformed_todo = first_todo.replace(
+            "## Commit checklist",
+            "## Persistence obligations\n\n"
+            + malformed_section
+            + "\n## Commit checklist",
+        )
+        first_todo_hash = subprocess.check_output(
+            ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+        ).strip()
+        malformed_write = subprocess.run(
+            [str(workflow_state_writer), "--expect", first_todo_hash, str(todo_path)],
+            cwd=state_test_repo,
+            env=state_test_env,
+            input=malformed_todo,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if malformed_write.returncode != 0:
+            fail(f"validator could not create malformed {malformed_name} fixture")
+        malformed_hash = subprocess.check_output(
+            ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+        ).strip()
+        malformed_registration = subprocess.run(
+            [
+                str(todo_obligation_script),
+                "register",
+                "--expect",
+                malformed_hash,
+                "workflow-state-repair",
+                "--id",
+                f"preflight-{malformed_name}",
+                "--owner",
+                "evidence-review",
+                "--policy",
+                "none",
+                "--no-save-reason",
+                "The new review would remain in chat.",
+            ],
+            cwd=state_test_repo,
+            env=state_test_env,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if malformed_registration.returncode == 0 or todo_path.read_bytes() != malformed_todo.encode():
+            malformed_preflight_failures.append(malformed_name)
+
+        malformed_written_hash = subprocess.check_output(
+            ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+        ).strip()
+        malformed_restore = subprocess.run(
+            [str(workflow_state_writer), "--expect", malformed_written_hash, str(todo_path)],
+            cwd=state_test_repo,
+            env=state_test_env,
+            input=first_todo,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if malformed_restore.returncode != 0 or todo_path.read_text() != first_todo:
+            fail(f"validator could not restore the TODO after {malformed_name} preflight")
+
+    unrelated_malformed_todo = first_todo.replace(
+        "## Commit checklist",
+        """## Persistence obligations
+
+### `close-target`
+- Owner: `context-handoff`
+- Policy: `conditional`
+- State: `open`
+- Destination: `.dev/contexts/close-target.md`
+
+### `other-malformed`
+- Owner: `unknown-workflow`
+- Policy: `none`
+- State: `closed`
+- No-save reason: This owner is invalid.
+
+## Commit checklist""",
+    )
+    first_todo_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    unrelated_malformed_write = subprocess.run(
+        [str(workflow_state_writer), "--expect", first_todo_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=unrelated_malformed_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if unrelated_malformed_write.returncode != 0:
+        fail("validator could not create the unrelated malformed closure fixture")
+    unrelated_malformed_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    unrelated_malformed_close = subprocess.run(
+        [
+            str(todo_obligation_script),
+            "close",
+            "--expect",
+            unrelated_malformed_hash,
+            "workflow-state-repair",
+            "--id",
+            "close-target",
+            "--no-save-reason",
+            "No handoff is needed for this session.",
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if (
+        unrelated_malformed_close.returncode == 0
+        or todo_path.read_bytes() != unrelated_malformed_todo.encode()
+    ):
+        malformed_preflight_failures.append("close-unrelated-malformed")
+    unrelated_written_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    unrelated_restore = subprocess.run(
+        [str(workflow_state_writer), "--expect", unrelated_written_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=first_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if unrelated_restore.returncode != 0 or todo_path.read_text() != first_todo:
+        fail("validator could not restore the TODO after unrelated malformed closure")
+
+    valid_open_todo = first_todo.replace(
+        "## Commit checklist",
+        """## Persistence obligations
+
+### `existing-open`
+- Owner: `context-handoff`
+- Policy: `conditional`
+- State: `open`
+- Destination: `.dev/contexts/existing-open.md`
+
+## Commit checklist""",
+    )
+    first_todo_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    valid_open_write = subprocess.run(
+        [str(workflow_state_writer), "--expect", first_todo_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=valid_open_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if valid_open_write.returncode != 0:
+        fail("validator could not create the valid open-obligation fixture")
+    valid_open_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    valid_open_registration = subprocess.run(
+        [
+            str(todo_obligation_script),
+            "register",
+            "--expect",
+            valid_open_hash,
+            "workflow-state-repair",
+            "--id",
+            "preflight-valid-open",
+            "--owner",
+            "evidence-review",
+            "--policy",
+            "none",
+            "--no-save-reason",
+            "The review remains in chat.",
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    valid_open_registered_todo = valid_open_todo.replace(
+        "## Commit checklist",
+        """### `preflight-valid-open`
+- Owner: `evidence-review`
+- Policy: `none`
+- State: `closed`
+- No-save reason: The review remains in chat.
+
+## Commit checklist""",
+    )
+    if (
+        valid_open_registration.returncode != 0
+        or todo_path.read_text() != valid_open_registered_todo
+    ):
+        malformed_preflight_failures.append("valid-open-rejected")
+    valid_open_written_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    valid_open_restore = subprocess.run(
+        [str(workflow_state_writer), "--expect", valid_open_written_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=first_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if valid_open_restore.returncode != 0 or todo_path.read_text() != first_todo:
+        fail("validator could not restore the TODO after valid open registration")
+    if malformed_preflight_failures:
+        fail(
+            "TODO obligation mutation must reject malformed existing sections unchanged: "
+            + ", ".join(malformed_preflight_failures)
+        )
+
     first_todo_hash = subprocess.check_output(
         ["git", "hash-object", "--no-filters", str(todo_path)], text=True
     ).strip()

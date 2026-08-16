@@ -50,6 +50,14 @@ permitted area. Destination and artifact paths use only portable ASCII letters,
 digits, `.`, `_`, `-`, and `/`. Duplicate IDs, mixed or missing destination/reason fields,
 unknown owners, and owner/policy mismatches are rejected.
 
+Before registration or closure transforms the record, preflight the complete
+existing obligation section. Permit canonical open obligations during this
+mutation preflight, but reject malformed fields, unknown or mismatched
+owner-policy pairs, duplicate IDs, invalid paths or closure shapes, and invalid
+existing artifact evidence anywhere in the section. A failed preflight must
+leave the TODO byte-for-byte unchanged; the writer's lock and expected hash
+still guard the later replacement.
+
 Derive owner policies from the canonical persistence policy registry in
 `using-workflow-skills`; do not maintain an independent semantic mapping.
 `todo-management` is the registry's required mechanical active-state owner,

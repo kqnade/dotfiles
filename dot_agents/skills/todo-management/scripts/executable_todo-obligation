@@ -12,13 +12,9 @@ is_safe_path() {
   [[ "$1" =~ ^[-A-Za-z0-9._/]+$ ]]
 }
 
-validate_artifact_evidence() {
+validate_destination() {
   local owner=$1
   local destination=$2
-  local artifact_target=$3
-  local expected_target
-  local current_worktree
-  local walk_path
   local remaining
   local segment
 
@@ -62,6 +58,19 @@ validate_artifact_evidence() {
       }
       ;;
   esac
+}
+
+validate_artifact_evidence() {
+  local owner=$1
+  local destination=$2
+  local artifact_target=$3
+  local expected_target
+  local current_worktree
+  local walk_path
+  local remaining
+  local segment
+
+  validate_destination "$owner" "$destination" || return 1
 
   expected_target="../${destination#.dev/}"
   if [[ "$artifact_target" != "$expected_target" ]]; then
@@ -97,14 +106,18 @@ validate_artifact_evidence() {
 }
 
 check_obligations() {
-  [[ $# -eq 1 ]] || usage
+  [[ $# -ge 1 && $# -le 2 ]] || usage
   local task_key=$1
+  local allow_open=${2:-0}
   local script_dir
   local target
   local parsed
+  local record_type
   local owner
   local destination
   local artifact_target
+
+  [[ "$allow_open" == 0 || "$allow_open" == 1 ]] || usage
 
   script_dir=$(cd "$(dirname "$0")" && pwd -P)
   if ! target=$("$script_dir/todo-path" "$task_key"); then
@@ -115,7 +128,7 @@ check_obligations() {
     return 1
   fi
 
-  if ! parsed=$(awk '
+  if ! parsed=$(awk -v allow_open="$allow_open" '
 function fail(message) {
   print "todo-obligation: " message > "/dev/stderr"
   failed = 1
@@ -226,7 +239,14 @@ function validate_block(start, end,    heading, id, count, i, line, owner_line,
     if (count != 4 || destination_line !~ /^- Destination: `[^`]+`$/ || policy == "none") {
       fail("open obligation must use canonical Owner, Policy, State, and Destination fields")
     }
-    fail("persistence obligation is still open: " id)
+    destination = destination_line
+    sub(/^- Destination: `/, "", destination)
+    sub(/`$/, "", destination)
+    print "open\t" owner "\t" destination
+    if (!allow_open) {
+      fail("persistence obligation is still open: " id)
+    }
+    return
   }
 
   if (destination_line ~ /^- Destination: `[^`]+`$/) {
@@ -240,7 +260,7 @@ function validate_block(start, end,    heading, id, count, i, line, owner_line,
     sub(/^- Destination: `/, "", destination)
     sub(/`$/, "", destination)
     target = artifact_target(fields[5])
-    print owner "\t" destination "\t" target
+    print "artifact\t" owner "\t" destination "\t" target
     return
   }
 
@@ -329,8 +349,16 @@ END {
   fi
 
   if [[ -n "$parsed" ]]; then
-    while IFS=$'\t' read -r owner destination artifact_target; do
-      validate_artifact_evidence "$owner" "$destination" "$artifact_target" || return 1
+    while IFS=$'\t' read -r record_type owner destination artifact_target; do
+      if [[ "$record_type" == "open" ]]; then
+        validate_destination "$owner" "$destination" || return 1
+      else
+        [[ "$record_type" == "artifact" ]] || {
+          echo "todo-obligation: internal obligation validation record is invalid" >&2
+          return 1
+        }
+        validate_artifact_evidence "$owner" "$destination" "$artifact_target" || return 1
+      fi
     done <<<"$parsed"
   fi
 }
@@ -599,6 +627,10 @@ target=$("$script_dir/todo-path" "$task_key")
 if [[ -L "$target" || ! -f "$target" ]]; then
   echo "todo-obligation: active TODO must be a regular file: $target" >&2
   exit 1
+fi
+if ! check_obligations "$task_key" 1; then
+  echo "todo-obligation: active TODO persistence obligations are malformed" >&2
+  exit 5
 fi
 
 transformed=""
