@@ -18,6 +18,23 @@ primary sources.
 Return the review in chat. Comments, approvals, edits, pushes, and merges
 require a separate explicit request.
 
+## Conditional persistence boundary
+
+The normal evidence-review result is the full report in chat. Invoking this
+skill does not authorize a workflow-state write. Only a separate explicit
+persistence authorization may save the same report as a current-worktree
+`.dev/reviews/<review-key>.md` artifact, using a stable lowercase review key.
+Record the authorization source and exact scope; do not infer either from a
+request to review. A saved artifact never replaces the complete chat report.
+
+Review records are not automatically loaded, turned into an active TODO,
+copied to automatic memory, or promoted. Promotion requires a separate
+explicit request routed to the canonical owner of the destination workflow.
+The repository-tracked record contract, including its schema, lifecycle, and
+safe-write boundary, is in `.dev/reviews/README.md`. It specifies policy only;
+it does not claim that a shared workflow-state writer currently accepts review
+records or authorize changes to that writer.
+
 ## 1. Bind the review to an exact snapshot
 
 Resolve the exact PR, commit range, or local diff. Do not silently substitute a
