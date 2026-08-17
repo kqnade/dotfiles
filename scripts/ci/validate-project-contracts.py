@@ -102,6 +102,13 @@ for fragment in (
     if fragment not in skk:
         fail(f"SKK configuration changed or disappeared: {fragment}")
 
+nvim_plugins = (ROOT / "dot_config/nvim/lua/modules/plugins.lua").read_text()
+if not re.search(
+    r'\{\s*"HiPhish/rainbow-delimiters\.nvim",\s*submodules = false,\s*\}',
+    nvim_plugins,
+):
+    fail("rainbow-delimiters must not clone its development submodules")
+
 ignore = (ROOT / ".chezmoiignore").read_text()
 if "microsoft" not in ignore or ".local/bin/op" not in ignore:
     fail("WSL proxy conditional is missing from .chezmoiignore")

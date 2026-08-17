@@ -47,7 +47,10 @@ local plugins = {
     build = ":TSUpdate",
     lazy = false, -- 常に読み込む（他プラグインの依存関係のため）
     dependencies = {
-      "HiPhish/rainbow-delimiters.nvim",
+      {
+        "HiPhish/rainbow-delimiters.nvim",
+        submodules = false,
+      },
       "nvim-treesitter/nvim-treesitter-context",
     },
     config = function()
