@@ -109,6 +109,15 @@ if not re.search(
 ):
     fail("rainbow-delimiters must not clone its development submodules")
 
+nvim_lint = (ROOT / "dot_config/nvim/lua/modules/configs/editor/lint.lua").read_text()
+nvim_lsp = (ROOT / "dot_config/nvim/lua/modules/configs/lsp/init.lua").read_text()
+if 'lua = { "luacheck" }' in nvim_lint or '    "luacheck",' in nvim_lsp:
+    fail("Lua must rely on lua_ls instead of the unavailable luacheck executable")
+
+nvim_treesitter = (ROOT / "dot_config/nvim/lua/modules/configs/treesitter.lua").read_text()
+if re.search(r'^\s+"jsonc",$', nvim_treesitter, re.MULTILINE):
+    fail("Tree-sitter must install parser names, not the built-in jsonc alias")
+
 ignore = (ROOT / ".chezmoiignore").read_text()
 if "microsoft" not in ignore or ".local/bin/op" not in ignore:
     fail("WSL proxy conditional is missing from .chezmoiignore")

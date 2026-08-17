@@ -402,7 +402,6 @@ require("mason-tool-installer").setup({
 
     -- Lua
     "stylua",
-    "luacheck",
 
     -- JS/TS/Web (eslint is provided via LSP, no eslint_d here)
     "prettierd",

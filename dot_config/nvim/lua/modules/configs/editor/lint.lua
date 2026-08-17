@@ -17,9 +17,6 @@ lint.linters_by_ft = {
   -- Ruby (diagnostics also provided by ruby_lsp + solargraph)
   ruby = { "rubocop" },
 
-  -- Lua
-  lua = { "luacheck" },
-
   -- C / C++
   c = { "cpplint" },
   cpp = { "cpplint" },

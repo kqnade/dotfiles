@@ -19,7 +19,6 @@ local ensure_installed = {
   "java",
   -- Config/Data
   "json",
-  "jsonc",
   "yaml",
   "toml",
   "xml",
