@@ -54,6 +54,16 @@ if not any(
     for rule in renovate.get("packageRules", [])
 ):
     fail("Renovate must track stable 1Password CLI releases")
+if not any(
+    rule.get("matchManagers") == ["mise"]
+    and rule.get("matchDatasources") == ["github-tags"]
+    and rule.get("matchPackageNames") == ["openai/codex"]
+    and rule.get("extractVersion") == r"^rust-v(?<version>\d+\.\d+\.\d+)$"
+    and rule.get("versioning") == "semver"
+    and rule.get("enabled") is not False
+    for rule in renovate.get("packageRules", [])
+):
+    fail("Renovate must track stable Codex CLI releases from rust-v tags")
 
 if (ROOT / "scripts/update.sh").exists():
     fail("dependency updates must be owned by Renovate, not scripts/update.sh")

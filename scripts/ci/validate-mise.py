@@ -15,6 +15,7 @@ PLATFORMS = ("macos-arm64", "macos-x64", "linux-x64")
 EXPECTED_TOOLS = {
     "1password-cli",
     "aqua:babarot/gomi",
+    "aqua:openai/codex",
     "atuin",
     "bat",
     "btop",
@@ -27,7 +28,6 @@ EXPECTED_TOOLS = {
     "cargo:sheldon",
     "chezmoi",
     "claude",
-    "codex",
     "delta",
     "fd",
     "fzf",
@@ -182,6 +182,10 @@ for name, value in tools.items():
 eza = tools["cargo:eza"]
 if not isinstance(eza, dict) or eza.get("features") != ["vendored-libgit2"]:
     fail("eza must build its bundled libgit2 instead of linking a system copy")
+
+codex = tools["aqua:openai/codex"]
+if not isinstance(codex, str):
+    fail("Codex must use the pinned Aqua package without a Node dependency")
 
 mole = tools["http:mole"]
 if not isinstance(mole, dict) or mole != {

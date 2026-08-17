@@ -54,6 +54,20 @@
       "minimumReleaseAge": null
     },
     {
+      "description": "Track stable Codex CLI releases from the rust-v tags used by its Aqua package.",
+      "matchManagers": [
+        "mise"
+      ],
+      "matchDatasources": [
+        "github-tags"
+      ],
+      "matchPackageNames": [
+        "openai/codex"
+      ],
+      "extractVersion": "^rust-v(?<version>\\d+\\.\\d+\\.\\d+)$",
+      "versioning": "semver"
+    },
+    {
       "description": "Create security PRs immediately, bypassing the default 1-day release age.",
       "matchUpdateTypes": [
         "major",

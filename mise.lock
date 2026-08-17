@@ -32,6 +32,25 @@ checksum = "sha256:f6582f4603d1be4fc8f56d7c02387a9bca8edf204297ab8682a0955761c90
 url = "https://github.com/babarot/gomi/releases/download/v1.6.4/gomi_Darwin_x86_64.tar.gz"
 url_api = "https://api.github.com/repos/babarot/gomi/releases/assets/440758870"
 
+[[tools."aqua:openai/codex"]]
+version = "0.145.0"
+backend = "aqua:openai/codex"
+
+[tools."aqua:openai/codex"."platforms.linux-x64"]
+checksum = "sha256:71a28d362c96ac9829bf8203a2c71be451aeb726adb843167fdaf0eae8fe7dd9"
+url = "https://github.com/openai/codex/releases/download/rust-v0.145.0/codex-package-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/openai/codex/releases/assets/485000878"
+
+[tools."aqua:openai/codex"."platforms.macos-arm64"]
+checksum = "sha256:ece937169d4c9e910d60826a6ea4ae7848a16c089403d122e70e7da4ac41ba34"
+url = "https://github.com/openai/codex/releases/download/rust-v0.145.0/codex-package-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/openai/codex/releases/assets/485000998"
+
+[tools."aqua:openai/codex"."platforms.macos-x64"]
+checksum = "sha256:9d402c9ca814655fddc07b548d7086491c0afcebe1f746cdeba1045fd6f62646"
+url = "https://github.com/openai/codex/releases/download/rust-v0.145.0/codex-package-x86_64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/openai/codex/releases/assets/485000909"
+
 [[tools.atuin]]
 version = "18.19.0"
 backend = "aqua:atuinsh/atuin"
@@ -175,10 +194,6 @@ url_api = "https://api.github.com/repos/anthropics/claude-code/releases/assets/5
 checksum = "sha256:84a820ad17e08eaef497dfd8cd282b86b7a59dbedd18f2780aa7e82ef8b9373a"
 url = "https://github.com/anthropics/claude-code/releases/download/v2.1.233/claude-darwin-x64.tar.gz"
 url_api = "https://api.github.com/repos/anthropics/claude-code/releases/assets/514776716"
-
-[[tools.codex]]
-version = "0.145.0"
-backend = "npm:@openai/codex"
 
 [[tools.delta]]
 version = "0.19.2"
