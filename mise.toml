@@ -74,7 +74,7 @@ uv = "0.12.5"
 1password-cli = "2.38.1"
 herdr = "v0.8.0"
 claude = "2.1.233"
-"aqua:openai/codex" = "0.145.0"
+"aqua:openai/codex" = "0.147.0"
 opencode = "1.18.18"
 "npm:ccusage" = { version = "20.0.19", depends = ["node"] }
 
