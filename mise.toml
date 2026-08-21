@@ -42,7 +42,7 @@ ripgrep = "15.2.0"
 bat = "0.26.1"
 zoxide = "0.10.0"
 jq = "1.8.2"
-yq = "4.53.3"
+yq = "4.53.6"
 just = "1.58.0"
 atuin = { version = "18.19.0", os = ["linux", "macos/arm64"] }
 "cargo:atuin" = { version = "18.19.0", os = ["macos/x64"], depends = ["rust"] }
