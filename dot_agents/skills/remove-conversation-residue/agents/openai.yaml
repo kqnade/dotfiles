@@ -1,4 +1,0 @@
-interface:
-  display_name: "Remove Conversation Residue"
-  short_description: "Keep artifacts free of edit-process narration"
-  default_prompt: "Use $remove-conversation-residue to remove conversation and change-process residue from these artifacts."

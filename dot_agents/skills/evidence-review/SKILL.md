@@ -122,17 +122,20 @@ head does not demonstrate that the change introduced effective protection.
 
 ### Artifact integrity gate
 
-Apply `remove-conversation-residue` as a mandatory read-only check to changed
+Apply `sanitize-artifacts` as a mandatory read-only check to changed
 code, comments, documentation, and configuration in either review mode. Each
 artifact must describe the state at the reviewed commit without depending on
-the request, conversation, review thread, prior layout, or current edit for its
-meaning. Git-facing history is not a substitute for current-state content, and
-current-state content must not narrate history that Git already records.
+the request, conversation, diff, review thread, prior version, issue, pull
+request, or current edit for its meaning. Git-facing history is not a
+substitute for current-state content, and current-state content must not
+narrate history that Git already records.
 
-Preserve stable technical rationale and traceability required by the
-artifact's contract. Treat any unresolved conversation or change-process
+Preserve only behavior and contracts required by the current version's
+audience. Context needed solely for future agent continuity belongs to the
+authorized repository workflow-state owner, not to the reviewed artifact.
+Treat any unresolved conversation, diff, prior-version, or change-process
 residue as a `blocking-defect`; a positive disposition is forbidden until it
-is removed or rewritten from the current-state perspective.
+is removed or rewritten from the current-version perspective.
 
 ### Dependency update
 

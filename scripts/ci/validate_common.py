@@ -24,7 +24,7 @@ EXPECTED_AGENT_SKILLS = {
     "herdr",
     "peer-consultation",
     "prose-proofreading",
-    "remove-conversation-residue",
+    "sanitize-artifacts",
     "route-large-implementation",
     "security-audit",
     "test-driven-development",

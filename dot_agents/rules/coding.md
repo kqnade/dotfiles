@@ -10,10 +10,11 @@
   when the code would otherwise look surprising to a future reader. Do not comment merely to
   explain why ordinary-looking code exists.
 - Treat every edited artifact as a self-contained snapshot at its commit. Do not put conversation,
-  request, or change-process narration in code, comments, documentation, or configuration. Git
-  records change history; artifacts should contain only their subject matter, stable technical
-  rationale, and required formal traceability. Treat remaining residue as blocking: do not
-  approve, commit, or claim completion while it remains.
+  request, diff, prior-version, or change-process narration in code, comments, documentation, or
+  configuration. Git records change history. Artifacts should contain only the current version's
+  behavior and audience-facing contracts. Context needed only for future agent work belongs in
+  repository workflow state through its authorized owner, not in the artifact. Treat remaining
+  residue as blocking: do not approve, commit, or claim completion while it remains.
 - Mark intentionally incomplete work, including changes split across pull requests, so future
   readers do not mistake it for finished work. State what remains and include a stable tracking
   reference when one is available.
