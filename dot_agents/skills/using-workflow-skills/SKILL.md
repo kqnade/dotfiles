@@ -1,6 +1,6 @@
 ---
 name: using-workflow-skills
-description: Route software changes, evidence reviews, context handoffs, security audits, active TODO management, prose checks, assumption pruning, and peer challenges to the one canonical workflow skill before acting. Use at the start of those tasks or whenever the user names an installed workflow; do not use for unrelated questions.
+description: Route software changes, evidence reviews, context handoffs, security audits, active TODO management, prose checks, conversation-residue removal, assumption pruning, and peer challenges to the one canonical workflow skill before acting. Use at the start of those tasks or whenever the user names an installed workflow; do not use for unrelated questions.
 ---
 
 # Using Workflow Skills
@@ -37,6 +37,7 @@ current-state evidence.
 | Maintain security coverage across bounded repository areas | `security-audit` |
 | Create, update, or complete an active repository `.dev/todo/` work item | `todo-management` |
 | Proofread Markdown or plain-text prose | `prose-proofreading` |
+| Remove conversation or edit-process residue from artifacts | `remove-conversation-residue` |
 | Remove assumptions to find a simpler design | `assumption-pruning` |
 | Obtain and verify an independent technical opinion | `peer-consultation` |
 | Control Herdr after the user explicitly asks for Herdr | `herdr` |
@@ -58,6 +59,7 @@ policy.
 | `security-audit` | `required` | `.dev/security/coverage.md` and `.dev/security/reports/<area-key>.md` | Checkpoint the ledger and report hashes around each bounded audit run | The report is appended and indexed by the current-worktree ledger | Promote confirmed reusable security facts through the audit record's owner-controlled lifecycle |
 | `todo-management` | `required` | `.dev/todo/<task-key>.md` | Checkpoint the current TODO hash before every compare-and-swap write | The authorized TODO operation passes its schema and completion gates | Promote decisions and evidence to linked durable records before TODO completion |
 | `prose-proofreading` | `none` | No workflow-state destination; return the corrected prose in chat | No workflow-state checkpoint; do not create state | The requested prose is returned with structure and meaning preserved | No promotion and no workflow-state write |
+| `remove-conversation-residue` | `none` | No workflow-state destination; use the artifact diff as evidence | No workflow-state checkpoint; do not create state | The artifact is self-contained at its commit and the final diff contains no request or change-process narration | No promotion and no workflow-state write |
 | `assumption-pruning` | `none` | No workflow-state destination; report alternatives in chat | No workflow-state checkpoint; do not create state | The assumptions and feasible alternatives are reported | No promotion and no workflow-state write |
 | `peer-consultation` | `none` | No workflow-state destination; report the bounded opinion in chat | No workflow-state checkpoint; do not create state | The independent opinion and verification limits are reported | No promotion and no workflow-state write |
 | `herdr` | `none` | No workflow-state destination; report the control result in chat | No workflow-state checkpoint; do not create state | The requested Herdr control result is reported | No promotion and no workflow-state write |
@@ -105,6 +107,8 @@ Apply these boundaries consistently:
   between sessions or clients;
 - factual gaps found while proofreading require ordinary primary-source
   verification unless the user also requested a code or evidence review;
+- wording and style changes belong to `prose-proofreading`; removing references
+  to the conversation or edit process belongs to `remove-conversation-residue`;
 - a review, audit, or design exploration may recommend remediation, but an
   accepted executable behavior change then transitions to
   `test-driven-development`;

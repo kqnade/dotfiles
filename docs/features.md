@@ -54,7 +54,8 @@ Codexへ残します。
 workflow skillのcanonical sourceは`~/.agents/skills/`です。Claudeはsymlink、CodexとOpenCodeは
 native discoveryで同じ内容を利用します。source workflowの構造ではなく、得たい効果ごとに
 `evidence-review`、`context-handoff`、`security-audit`、`prose-proofreading`、
-`assumption-pruning`、`peer-consultation`を構成し、`using-workflow-skills`がtaskをownerへ
+`remove-conversation-residue`、`assumption-pruning`、`peer-consultation`を構成し、
+`using-workflow-skills`がtaskをownerへ
 routeします。TDDのcanonical workflowはt-wadaのList → Red → Green → Refactorです。
 `.dev/`の基本的な読込境界は`~/.agents/rules/workflow-state.md`を正本とし、Claude、Codex、
 OpenCodeがglobal ruleとして共有します。repository固有のlayoutとlifecycleは各repositoryの

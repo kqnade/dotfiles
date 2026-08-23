@@ -63,7 +63,7 @@ class WorkflowSkillMaterializationTests(unittest.TestCase):
             ["mise", "which", "chezmoi"], text=True
         ).strip()
         with tempfile.TemporaryDirectory() as temp_dir:
-            temp = Path(temp_dir)
+            temp = Path(temp_dir).resolve()
             destination = temp / "home"
             destination.mkdir()
             (destination / ".agents").mkdir()

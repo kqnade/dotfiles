@@ -66,7 +66,9 @@ Before claiming completion:
 1. Run the full verification appropriate to the changed behavior.
 2. Confirm every test-list item is complete or explicitly out of scope.
 3. Separate verified facts from inference and skipped checks.
-4. Follow the repository's documented completion checks before reporting the
+4. Apply `remove-conversation-residue` to the final diff and treat any
+   remaining request, conversation, or change-process narration as blocking.
+5. Follow the repository's documented completion checks before reporting the
    result.
 
 ## Test quality
