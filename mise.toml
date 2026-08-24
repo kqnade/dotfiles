@@ -19,7 +19,7 @@ chezmoi = "2.72.0"
 sheldon = { version = "0.8.5", os = ["linux", "macos/arm64"] }
 "cargo:sheldon" = { version = "0.8.5", os = ["macos/x64"], depends = ["rust"] }
 starship = "1.26.0"
-gh = "2.97.0"
+gh = "2.98.0"
 ghq = "1.10.1"
 git-lfs = "3.7.1"
 delta = { version = "0.19.2", os = ["linux", "macos/arm64"] }
@@ -60,7 +60,7 @@ typos = "1.49.0"
 # Language runtimes
 rust = "1.97.1"
 node = "26.7.0"
-bun = "1.3.14"
+bun = "1.4.0"
 pnpm = { version = "11.22.0", os = [
   "linux",
   "macos/arm64",
@@ -71,11 +71,11 @@ pnpm = { version = "11.22.0", os = [
 uv = "0.12.5"
 
 # Agent and application CLIs
-1password-cli = "2.38.1"
-herdr = "v0.8.0"
-claude = "2.1.235"
+1password-cli = "2.39.0"
+herdr = "v0.8.2"
+claude = "2.1.240"
 "aqua:openai/codex" = "0.149.0"
-opencode = "1.18.18"
+opencode = "1.18.21"
 "npm:ccusage" = { version = "20.0.20", depends = ["node"] }
 
 # SKK server and dictionary builder. Keep this on the Cargo git backend on
