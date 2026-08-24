@@ -72,7 +72,7 @@ uv = "0.12.5"
 
 # Agent and application CLIs
 1password-cli = "2.38.1"
-herdr = "v0.8.0"
+herdr = "v0.8.2"
 claude = "2.1.235"
 "aqua:openai/codex" = "0.149.0"
 opencode = "1.18.18"
