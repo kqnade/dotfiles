@@ -207,7 +207,7 @@ if codex_modified_result.returncode != 0:
 codex_modified_config = tomllib.loads(codex_modified_result.stdout)
 
 expected_codex_defaults = {
-    "approvals_reviewer": "user",
+    "approvals_reviewer": "auto_review",
     "model": "gpt-5.6-sol",
     "model_reasoning_effort": "high",
 }
