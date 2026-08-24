@@ -60,7 +60,7 @@ typos = "1.49.0"
 # Language runtimes
 rust = "1.97.1"
 node = "26.7.0"
-bun = "1.3.14"
+bun = "1.4.0"
 pnpm = { version = "11.22.0", os = [
   "linux",
   "macos/arm64",
