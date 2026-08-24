@@ -71,7 +71,7 @@ pnpm = { version = "11.22.0", os = [
 uv = "0.12.5"
 
 # Agent and application CLIs
-1password-cli = "2.38.1"
+1password-cli = "2.39.0"
 herdr = "v0.8.0"
 claude = "2.1.235"
 "aqua:openai/codex" = "0.149.0"
