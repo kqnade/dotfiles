@@ -61,7 +61,10 @@ failure handling, not a fixed concurrency cap.
 
 For every Green increment, the coordinator verifies the worker's command and
 relevant tests, stages only that increment's paths, and inspects `git status`,
-the staged diff, and test results before committing. Commit every Green with
+the staged diff, and test results before committing. Apply
+`sanitize-artifacts` to the staged diff as a blocking gate; do not
+commit while any artifact narrates the request, conversation, diff, prior
+version, or change process. Commit every Green with
 the current client and repository's required commit path: Codex uses `git cc`
 where authorized; Claude generates the same reviewed message style in the
 current session and uses `git commit -m` without invoking `git cc`. Never begin

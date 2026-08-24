@@ -79,6 +79,7 @@ adopting the author's explanation or loading a handoff. Describe:
 - error, security, concurrency, compatibility, and silent-failure risks;
 - tests that would fail if intended behavior regressed;
 - changed scope omitted from the explanation;
+- conversation, request, or change-process narration left in changed artifacts;
 - assumptions the implementation requires.
 
 Check analogous code for naming, lifecycle, cleanup, error, and compatibility
@@ -118,6 +119,23 @@ head does not demonstrate that the change introduced effective protection.
 4. Verify that tests demonstrate observable behavior rather than only internal
    call patterns.
 5. Identify scope creep, invalid premises, and unsupported “unchanged” claims.
+
+### Artifact integrity gate
+
+Apply `sanitize-artifacts` as a mandatory read-only check to changed
+code, comments, documentation, and configuration in either review mode. Each
+artifact must describe the state at the reviewed commit without depending on
+the request, conversation, diff, review thread, prior version, issue, pull
+request, or current edit for its meaning. Git-facing history is not a
+substitute for current-state content, and current-state content must not
+narrate history that Git already records.
+
+Preserve only behavior and contracts required by the current version's
+audience. Context needed solely for future agent continuity belongs to the
+authorized repository workflow-state owner, not to the reviewed artifact.
+Treat any unresolved conversation, diff, prior-version, or change-process
+residue as a `blocking-defect`; a positive disposition is forbidden until it
+is removed or rewritten from the current-version perspective.
 
 ### Dependency update
 
@@ -222,7 +240,8 @@ modified files.
 
 Lead with findings ordered by user impact. Give every finding a label:
 
-- `blocking-defect` — demonstrated correctness or security failure;
+- `blocking-defect` — demonstrated correctness, security, or mandatory
+  artifact-integrity failure;
 - `blocking-evidence-gap` — evidence required for a positive decision is
   missing;
 - `non-blocking` — supported improvement that does not prevent shipping;
