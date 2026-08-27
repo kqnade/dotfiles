@@ -50,7 +50,7 @@ atuin = { version = "18.19.0", os = ["linux", "macos/arm64"] }
 btop = { version = "1.4.7", os = ["linux"] }
 
 # Editor and source validation
-neovim = "0.12.4"
+neovim = "0.12.5"
 tree-sitter = "0.26.12"
 shellcheck = "0.11.0"
 shfmt = "3.13.1"
