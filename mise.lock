@@ -139,7 +139,7 @@ backend = "cargo:eza"
 features = "vendored-libgit2"
 
 [[tools."cargo:fd-find"]]
-version = "10.4.2"
+version = "10.5.0"
 backend = "cargo:fd-find"
 
 [[tools."cargo:git-delta"]]
