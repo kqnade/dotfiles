@@ -34,7 +34,7 @@ bash install.sh
 curl -fsSL https://raw.githubusercontent.com/kqnade/dotfiles/trunk/install.sh | bash
 ```
 
-`install.sh` は対応プラットフォームを確認し、mise（最低 `2026.7.12`）を
+`install.sh` は対応プラットフォームを確認し、mise（最低 `2026.8.9`）を
 `~/.local/bin/mise` に配置します。その後リポジトリを
 `~/repos/github.com/kqnade/dotfiles` に clone（既存 checkout は再利用）し、
 設定を trust して `mise bootstrap --yes` を実行します。

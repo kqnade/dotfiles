@@ -147,6 +147,10 @@ for fragment in (
         fail(f"Linux bootstrap elevation check is missing: {fragment}")
 
 workflow = (ROOT / ".github/workflows/ci.yml").read_text()
+with (ROOT / "mise.toml").open("rb") as stream:
+    mise_min_version = tomllib.load(stream).get("min_version")
+if f"  MISE_VERSION: v{mise_min_version}\n" not in workflow:
+    fail("CI mise version must match min_version")
 if "--dry-" + "run" in workflow:
     fail("CI must execute bootstrap interfaces instead of previewing them")
 for formatted_manifest in ("mise.toml", "mise/config.toml"):

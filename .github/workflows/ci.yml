@@ -14,7 +14,7 @@ concurrency:
 
 env:
   GITHUB_TOKEN: ${{ github.token }}
-  MISE_VERSION: v2026.7.12
+  MISE_VERSION: v2026.8.9
 
 jobs:
   static:
@@ -128,7 +128,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     container:
-      image: fedora:44@sha256:6c75d5bf57cb0fa5aa4b92c6a83c86c791644496d9ac230de7711f5b8ec3b898
+      image: fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80
     env:
       DOTFILES_BOOTSTRAP_SKIP: linux-systemd-units,user
       DOTFILES_REPO_DIR: ${{ github.workspace }}

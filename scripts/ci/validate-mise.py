@@ -138,8 +138,8 @@ if overlapping_sections:
 config.update(bootstrap_config)
 lock = load_toml(ROOT / "mise.lock")
 
-if config.get("min_version") != "2026.7.12":
-    fail("min_version must remain 2026.7.12")
+if config.get("min_version") != "2026.8.9":
+    fail("min_version must remain 2026.8.9")
 
 settings = config.get("settings", {})
 if tuple(settings.get("lockfile_platforms", ())) != PLATFORMS:

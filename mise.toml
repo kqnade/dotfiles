@@ -1,6 +1,6 @@
 #:schema https://mise.jdx.dev/schema/mise.json
 
-min_version = "2026.7.12"
+min_version = "2026.8.9"
 
 [settings]
 activate_aggressive = true
@@ -37,15 +37,15 @@ delta = { version = "0.19.2", os = ["linux", "macos/arm64"] }
 ] }
 fzf = "0.74.3"
 fd = { version = "10.4.2", os = ["linux", "macos/arm64"] }
-"cargo:fd-find" = { version = "10.4.2", os = ["macos/x64"], depends = ["rust"] }
+"cargo:fd-find" = { version = "10.5.0", os = ["macos/x64"], depends = ["rust"] }
 ripgrep = "15.2.0"
 bat = "0.26.1"
 zoxide = "0.10.0"
 jq = "1.8.2"
 yq = "4.53.6"
 just = "1.58.0"
-atuin = { version = "18.19.0", os = ["linux", "macos/arm64"] }
-"cargo:atuin" = { version = "18.19.0", os = ["macos/x64"], depends = ["rust"] }
+atuin = { version = "18.20.1", os = ["linux", "macos/arm64"] }
+"cargo:atuin" = { version = "18.20.1", os = ["macos/x64"], depends = ["rust"] }
 "aqua:babarot/gomi" = "1.6.4"
 btop = { version = "1.4.7", os = ["linux"] }
 
@@ -55,7 +55,7 @@ tree-sitter = "0.27.0"
 shellcheck = "0.11.0"
 shfmt = "3.13.1"
 taplo = "0.10.0"
-typos = "1.49.0"
+typos = "1.50.0"
 
 # Language runtimes
 rust = "1.97.1"
@@ -68,14 +68,14 @@ pnpm = { version = "11.22.0", os = [
   "node",
 ] }
 "npm:pnpm" = { version = "11.22.0", os = ["macos/x64"], depends = ["node"] }
-uv = "0.12.5"
+uv = "0.12.7"
 
 # Agent and application CLIs
 1password-cli = "2.39.0"
 herdr = "v0.8.2"
-claude = "2.1.246"
-"aqua:openai/codex" = "0.149.1"
-opencode = "1.18.21"
+claude = "2.1.251"
+"aqua:openai/codex" = "0.151.0"
+opencode = "1.18.25"
 "npm:ccusage" = { version = "20.0.20", depends = ["node"] }
 
 # SKK server and dictionary builder. Keep this on the Cargo git backend on
