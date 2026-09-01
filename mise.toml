@@ -68,7 +68,7 @@ pnpm = { version = "11.22.0", os = [
   "node",
 ] }
 "npm:pnpm" = { version = "11.22.0", os = ["macos/x64"], depends = ["node"] }
-uv = "0.12.7"
+uv = "0.12.8"
 
 # Agent and application CLIs
 1password-cli = "2.39.0"
