@@ -36,7 +36,7 @@ delta = { version = "0.19.2", os = ["linux", "macos/arm64"] }
   "vendored-libgit2",
 ] }
 fzf = "0.74.3"
-fd = { version = "10.4.2", os = ["linux", "macos/arm64"] }
+fd = { version = "10.5.0", os = ["linux", "macos/arm64"] }
 "cargo:fd-find" = { version = "10.5.0", os = ["macos/x64"], depends = ["rust"] }
 ripgrep = "15.2.0"
 bat = "0.26.1"
