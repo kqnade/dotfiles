@@ -128,7 +128,7 @@ checksum = "sha256:da9b9f1b4ba766c6f299711f38dfaa98623e1ed9c40896aa53db803c52ec1
 url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.0/bun-darwin-x64-baseline.zip"
 
 [[tools."cargo:atuin"]]
-version = "18.20.1"
+version = "18.21.0"
 backend = "cargo:atuin"
 
 [[tools."cargo:eza"]]
