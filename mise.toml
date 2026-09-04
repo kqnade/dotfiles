@@ -55,7 +55,7 @@ tree-sitter = "0.27.0"
 shellcheck = "0.11.0"
 shfmt = "3.13.1"
 taplo = "0.10.0"
-typos = "1.50.0"
+typos = "1.50.1"
 
 # Language runtimes
 rust = "1.97.1"
