@@ -75,7 +75,7 @@ uv = "0.12.8"
 herdr = "v0.8.2"
 claude = "2.1.252"
 "aqua:openai/codex" = "0.152.1"
-opencode = "1.18.25"
+opencode = "1.18.27"
 "npm:ccusage" = { version = "20.0.20", depends = ["node"] }
 
 # SKK server and dictionary builder. Keep this on the Cargo git backend on
