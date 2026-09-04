@@ -25,8 +25,8 @@ if renovate.get("minimumReleaseAge") != "1 day":
     fail("Renovate minimumReleaseAge must remain 1 day")
 if renovate.get("timezone") != "Asia/Tokyo":
     fail("Renovate timezone must remain Asia/Tokyo")
-if renovate.get("schedule") != ["* 0-5 * * *"]:
-    fail("Renovate schedule must remain between midnight and 6am")
+if renovate.get("schedule") != ["at any time"]:
+    fail("Renovate must allow dependency PRs at any time")
 if renovate.get("automerge") is not True:
     fail("Renovate automerge must remain enabled")
 if renovate.get("automergeType") != "pr":
@@ -66,13 +66,13 @@ if not any(
     fail("Renovate must track stable Codex CLI releases from rust-v tags")
 if not any(
     rule.get("matchManagers") == ["mise"]
-    and rule.get("matchPackageNames") == ["claude", "openai/codex"]
+    and rule.get("matchDepNames")
+    == ["claude", "aqua:openai/codex", "herdr", "opencode"]
     and rule.get("minimumReleaseAge") is None
-    and rule.get("schedule") == ["at any time"]
     and rule.get("enabled") is not False
     for rule in renovate.get("packageRules", [])
 ):
-    fail("Renovate must offer Claude and Codex updates immediately at any time")
+    fail("Renovate must track AI tools without the default release cooldown")
 
 if (ROOT / "scripts/update.sh").exists():
     fail("dependency updates must be owned by Renovate, not scripts/update.sh")

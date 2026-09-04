@@ -8,10 +8,10 @@
   // 通常の機能追加・修正更新は、リリースから1日経過後にPR化する。
   "minimumReleaseAge": "1 day",
 
-  // 毎日、起床前の深夜から早朝に通常更新のPRを作成する。
+  // Renovateの各巡回時に、時刻を制限せず更新PRを作成する。
   "timezone": "Asia/Tokyo",
   "schedule": [
-    "* 0-5 * * *"
+    "at any time"
   ],
 
   // 脆弱性更新は待たずにPR化する。
@@ -68,18 +68,17 @@
       "versioning": "semver"
     },
     {
-      "description": "Offer Claude and Codex CLI updates immediately whenever Renovate runs.",
+      "description": "Track AI coding tool releases without the default release cooldown.",
       "matchManagers": [
         "mise"
       ],
-      "matchPackageNames": [
+      "matchDepNames": [
         "claude",
-        "openai/codex"
+        "aqua:openai/codex",
+        "herdr",
+        "opencode"
       ],
-      "minimumReleaseAge": null,
-      "schedule": [
-        "at any time"
-      ]
+      "minimumReleaseAge": null
     },
     {
       "description": "Create security PRs immediately, bypassing the default 1-day release age.",
