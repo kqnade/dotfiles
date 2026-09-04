@@ -68,6 +68,20 @@
       "versioning": "semver"
     },
     {
+      "description": "Offer Claude and Codex CLI updates immediately whenever Renovate runs.",
+      "matchManagers": [
+        "mise"
+      ],
+      "matchPackageNames": [
+        "claude",
+        "openai/codex"
+      ],
+      "minimumReleaseAge": null,
+      "schedule": [
+        "at any time"
+      ]
+    },
+    {
       "description": "Create security PRs immediately, bypassing the default 1-day release age.",
       "matchUpdateTypes": [
         "major",

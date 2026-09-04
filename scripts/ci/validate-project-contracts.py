@@ -64,6 +64,15 @@ if not any(
     for rule in renovate.get("packageRules", [])
 ):
     fail("Renovate must track stable Codex CLI releases from rust-v tags")
+if not any(
+    rule.get("matchManagers") == ["mise"]
+    and rule.get("matchPackageNames") == ["claude", "openai/codex"]
+    and rule.get("minimumReleaseAge") is None
+    and rule.get("schedule") == ["at any time"]
+    and rule.get("enabled") is not False
+    for rule in renovate.get("packageRules", [])
+):
+    fail("Renovate must offer Claude and Codex updates immediately at any time")
 
 if (ROOT / "scripts/update.sh").exists():
     fail("dependency updates must be owned by Renovate, not scripts/update.sh")
