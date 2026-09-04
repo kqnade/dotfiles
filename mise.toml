@@ -73,7 +73,7 @@ uv = "0.12.9"
 # Agent and application CLIs
 1password-cli = "2.39.0"
 herdr = "v0.8.2"
-claude = "2.1.252"
+claude = "2.1.260"
 "aqua:openai/codex" = "0.153.2"
 opencode = "1.18.27"
 "npm:ccusage" = { version = "20.0.20", depends = ["node"] }
