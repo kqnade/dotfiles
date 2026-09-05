@@ -21,7 +21,7 @@ sheldon = { version = "0.8.5", os = ["linux", "macos/arm64"] }
 starship = "1.26.0"
 gh = "2.98.0"
 ghq = "1.10.1"
-git-lfs = "3.7.1"
+git-lfs = "3.8.0"
 delta = { version = "0.19.2", os = ["linux", "macos/arm64"] }
 "cargo:git-delta" = { version = "0.19.2", os = [
   "macos/x64",
