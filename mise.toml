@@ -61,7 +61,7 @@ typos = "1.50.1"
 rust = "1.98.1"
 node = "26.7.0"
 bun = "1.4.0"
-pnpm = { version = "11.22.0", os = [
+pnpm = { version = "11.25.0", os = [
   "linux",
   "macos/arm64",
 ], depends = [
