@@ -3,7 +3,8 @@ import { startBroker } from './broker.mjs';
 import { modelFor } from './models.mjs';
 import { stopProcessGroup } from './ownership.mjs';
 
-export async function launch({ cwd, directory, piEntry, extensionPath, env = process.env, capture = false }) {
+export async function launch({ cwd, directory, piEntry, extensionPath, env = process.env, capture = false, prompt }) {
+  if (prompt !== undefined && typeof prompt !== 'string') throw new TypeError('prompt must be a string');
   const model = modelFor('root');
   const common = [piEntry, '--no-extensions', '--no-builtin-tools', '--no-skills',
     '--no-prompt-templates', '--no-approve', '--offline', '-e', extensionPath];
@@ -17,7 +18,8 @@ export async function launch({ cwd, directory, piEntry, extensionPath, env = pro
   try {
     const { socketPath, agentId, token } = broker.connection;
     const child = spawn(process.execPath, [...common, '--provider', model.provider,
-      '--model', model.id, '--thinking', model.effort], {
+      '--model', model.id, '--thinking', model.effort,
+      ...(prompt === undefined ? [] : ['--print', '--', prompt])], {
       cwd, detached: true, stdio: capture ? ['ignore', 'pipe', 'pipe'] : 'inherit',
       env: { ...env, PI_BROKER_SOCKET: socketPath, PI_AGENT_ID: agentId,
         PI_AGENT_TOKEN: token, PI_AGENT_ROLE: 'root' },

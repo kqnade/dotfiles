@@ -6,6 +6,13 @@ const args = process.argv.slice(2);
 if (args[args.indexOf('--model') + 1] !== 'gpt-5.6-sol') throw new Error('wrong root model');
 if (args[args.indexOf('--thinking') + 1] !== 'medium') throw new Error('wrong root effort');
 if (!args.includes('--no-builtin-tools') || !args.includes('--no-extensions')) throw new Error('unmanaged tools enabled');
+if (process.env.PI_TEST_PROMPT) {
+  if (!args.includes('--print') || args.at(-2) !== '--' || args.at(-1) !== process.env.PI_TEST_PROMPT) {
+    throw new Error('print prompt was not passed literally');
+  }
+  process.stdout.write('PROMPT_READY\n');
+  process.exit(0);
+}
 const client = await connect({
   socketPath: process.env.PI_BROKER_SOCKET,
   agentId: process.env.PI_AGENT_ID,

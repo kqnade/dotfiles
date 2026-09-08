@@ -23,3 +23,19 @@ test('the launcher journals a managed root and closes the broker after root exit
     await rm(cwd, { recursive: true, force: true });
   }
 });
+
+test('print prompts are passed literally without overriding the root policy', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'pi-launch-print-'));
+  const fixture = fileURLToPath(new URL('./fixtures/interactive-root.mjs', import.meta.url));
+  try {
+    const result = await launch({
+      cwd, directory: join(cwd, 'journal'), piEntry: fixture, extensionPath: fixture,
+      env: { ...process.env, PI_TEST_PROMPT: '--model untrusted' },
+      prompt: '--model untrusted', capture: true,
+    });
+    assert.equal(result.code, 0, result.stderr);
+    assert.equal(result.stdout, 'PROMPT_READY\n');
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
