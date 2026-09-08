@@ -1,6 +1,7 @@
 import { createInterface } from 'node:readline';
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { connect } from '../../../../dot_pi/agent/runtime/ipc.mjs';
 
 let model = { provider: 'openai-codex', id: 'gpt-5.6-sol' };
 let thinkingLevel = 'medium';
@@ -57,6 +58,30 @@ for await (const line of createInterface({ input: process.stdin })) {
       if (job?.state !== 'running') process.exit(12);
     }
     if (process.env.RPC_SUBSTITUTE) process.exit(9);
+
+    if (['Delegate a broker write to Luna.', 'Write through broker.'].includes(request.message)) {
+      const client = await connect({
+        socketPath: process.env.PI_BROKER_SOCKET,
+        agentId: process.env.PI_AGENT_ID,
+        token: process.env.PI_AGENT_TOKEN,
+      });
+      try {
+        const identity = await client.call('permit');
+        if (identity.role !== process.env.PI_AGENT_ROLE) throw new Error('broker identity mismatch');
+        if (request.message === 'Delegate a broker write to Luna.') {
+          const [child] = await client.call('delegate', { tasks: [{ role: 'luna', task: 'Write through broker.', paths: ['code.txt'] }] });
+          emitAssistant({ text: child.result.text, stopReason: 'stop' });
+        } else {
+          const original = await client.call('read', { path: 'code.txt' });
+          await client.call('write', { path: 'code.txt', text: 'written by Luna', expectedHash: original.hash });
+          emitAssistant({ text: 'Luna wrote through the broker', stopReason: 'stop' });
+        }
+      } finally {
+        await client.close();
+      }
+      emit({ type: 'response', id: request.id, command: request.type, success: true });
+      continue;
+    }
 
     const delay = Number(process.env.RPC_PROMPT_DELAY ?? (request.message === 'Reply slowly' ? 250 : 25));
     clearPrompt();

@@ -32,3 +32,24 @@ test('the authenticated root reads and updates a file through the broker', async
     await rm(cwd, { recursive: true, force: true });
   }
 });
+
+test('broker workers authenticate individually and delegate through the same supervisor', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'pi-broker-delegate-'));
+  let broker;
+  let client;
+  try {
+    await writeFile(join(cwd, 'code.txt'), 'source');
+    broker = await startBroker({ cwd, directory: join(cwd, 'journal'), command: process.execPath, args: [fixture] });
+    client = await connect(broker.connection);
+    const [astra] = await client.call('delegate', { tasks: [{
+      role: 'astra', task: 'Delegate a broker write to Luna.', paths: ['code.txt'],
+    }] });
+    assert.equal(astra.result.text, 'Luna wrote through the broker');
+    assert.equal(await readFile(join(cwd, 'code.txt'), 'utf8'), 'written by Luna');
+    assert.equal((await client.call('permit')).role, 'root');
+  } finally {
+    await client?.close();
+    await broker?.close();
+    await rm(cwd, { recursive: true, force: true });
+  }
+});

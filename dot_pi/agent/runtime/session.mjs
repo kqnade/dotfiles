@@ -11,6 +11,7 @@ class Session {
   #supervisor;
   #rootId;
   #launch;
+  #workerEnvironment;
   #operations = new Set();
   #clients = new Set();
   #closing;
@@ -18,11 +19,12 @@ class Session {
   #closed = false;
   #failure;
 
-  constructor({ journal, scopes, rootId, launch }) {
+  constructor({ journal, scopes, rootId, launch, workerEnvironment }) {
     this.#journal = journal;
     this.#scopes = scopes;
     this.#rootId = rootId;
     this.#launch = launch;
+    this.#workerEnvironment = workerEnvironment;
     this.#supervisor = new Supervisor({ rootId, scopes, execute: agent => this.#execute(agent) });
   }
 
@@ -33,6 +35,7 @@ class Session {
     if (this.#closed) throw new Error('Session is closed');
     const agent = this.#supervisor.permit(agentId);
     if (method === 'permit') return agent;
+    if (method === 'delegate') return this.delegate(params.tasks, agentId);
     if (method === 'read') return this.#track(this.#scopes.read(agentId, params.path));
     if (method === 'write') {
       if (!Object.hasOwn(params, 'expectedHash') || params.expectedHash === undefined) {
@@ -48,10 +51,10 @@ class Session {
     try { return await operation; } finally { this.#operations.delete(operation); }
   }
 
-  async delegate(tasks) {
+  async delegate(tasks, callerId = this.#rootId) {
     if (this.#failure) throw this.#failure;
     if (this.#closed) throw new Error('Session is closed');
-    const operation = this.#supervisor.delegate(this.#rootId, tasks, { signal: this.#cancellation.signal });
+    const operation = this.#supervisor.delegate(callerId, tasks, { signal: this.#cancellation.signal });
     return this.#track(operation);
   }
 
@@ -67,7 +70,8 @@ class Session {
   async #execute(agent) {
     if (this.#closed) return { stopped: true, error: new Error('Session is closed') };
     const paths = this.#scopes.paths(agent.id);
-    const client = new RpcClient(this.#launch);
+    const env = { ...this.#launch.env, ...this.#workerEnvironment?.(agent) };
+    const client = new RpcClient({ ...this.#launch, env });
     const job = { id: agent.id, pid: client.process.pid, role: agent.role, paths };
     const worker = { client, job, stopping: null };
     this.#clients.add(worker);
@@ -129,14 +133,15 @@ class Session {
   }
 }
 
-export async function startSession({ cwd, directory, rootId = randomUUID(), command, args = [], env = process.env }) {
+export async function startSession({ cwd, directory, rootId = randomUUID(), command, args = [], env = process.env, workerEnvironment }) {
   if (typeof command !== 'string' || !command) throw new TypeError('RPC command is required');
   if (!Array.isArray(args) || args.some(arg => typeof arg !== 'string')) throw new TypeError('RPC args must be strings');
+  if (workerEnvironment !== undefined && typeof workerEnvironment !== 'function') throw new TypeError('workerEnvironment must be a function');
   const canonicalCwd = await realpath(cwd);
   const scopes = new Scopes({ cwd: canonicalCwd, rootId });
   const journal = await begin({ cwd: canonicalCwd, directory, rootId });
   return new Session({
-    journal, scopes, rootId,
+    journal, scopes, rootId, workerEnvironment,
     launch: { cwd: canonicalCwd, command, args: [...args], env: { ...env } },
   });
 }

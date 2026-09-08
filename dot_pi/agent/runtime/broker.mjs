@@ -24,7 +24,15 @@ export async function startBroker(options) {
     return closing;
   };
   try {
-    session = await startSession({ ...options, rootId });
+    session = await startSession({
+      ...options, rootId,
+      workerEnvironment: agent => ({
+        PI_BROKER_SOCKET: socketPath,
+        PI_AGENT_ID: agent.id,
+        PI_AGENT_TOKEN: credential(token, agent.id),
+        PI_AGENT_ROLE: agent.role,
+      }),
+    });
     server = await listen({
       socketPath, token,
       handle: (method, params, identity) => session.invoke(identity.agentId, method, params),
