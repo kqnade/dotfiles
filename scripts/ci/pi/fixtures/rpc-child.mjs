@@ -58,7 +58,7 @@ for await (const line of createInterface({ input: process.stdin })) {
     }
     if (process.env.RPC_SUBSTITUTE) process.exit(9);
 
-    const delay = request.message === 'Reply slowly' ? 250 : 25;
+    const delay = Number(process.env.RPC_PROMPT_DELAY ?? (request.message === 'Reply slowly' ? 250 : 25));
     clearPrompt();
     emit({ type: 'agent_start' });
     const messageText = request.message === 'Reply slowly' ? 'slow\u2028verified' : 'OK\u2028verified';

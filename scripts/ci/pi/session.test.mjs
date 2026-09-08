@@ -1,15 +1,16 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { startSession } from '../../../dot_pi/agent/runtime/session.mjs';
 
 const fixture = fileURLToPath(new URL('./fixtures/rpc-child.mjs', import.meta.url));
 
 test('a session journals its scoped RPC worker before prompting and confirms its stop', async () => {
-  const cwd = await mkdtemp(join(tmpdir(), 'pi-session-'));
+  const cwd = await realpath(await mkdtemp(join(tmpdir(), 'pi-session-')));
   const directory = join(cwd, 'journal');
   let session;
   try {
@@ -32,6 +33,53 @@ test('a session journals its scoped RPC worker before prompting and confirms its
     await session.close();
     assert.deepEqual(await readdir(directory), []);
   } finally {
+    await session?.close();
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test('closing an active session stops its worker before removing the marker', async t => {
+  const cwd = await realpath(await mkdtemp(join(tmpdir(), 'pi-session-close-')));
+  const directory = join(cwd, 'journal');
+  let session;
+  let delegated;
+  try {
+    await writeFile(join(cwd, 'code.txt'), 'source');
+    session = await startSession({
+      cwd, directory, command: process.execPath, args: [fixture],
+      env: { ...process.env, RPC_PROMPT_DELAY: '10000' },
+    });
+    const operation = session.delegate([{ role: 'astra', task: 'Reply slowly', paths: ['code.txt'] }]);
+    delegated = assert.rejects(operation, /Delegated tasks failed/);
+    const [name] = await readdir(directory);
+    let job;
+    const deadline = Date.now() + 3000;
+    while (Date.now() < deadline) {
+      const marker = JSON.parse(await readFile(join(directory, name), 'utf8'));
+      job = Object.values(marker.jobs).find(job => job.state === 'running');
+      if (job) break;
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    assert.ok(job, 'worker must be running before shutdown');
+    const kill = process.kill;
+    const observedStates = [];
+    t.mock.method(process, 'kill', (pid, signal) => {
+      if (pid === -job.pid && signal === 'SIGTERM') {
+        const marker = JSON.parse(readFileSync(join(directory, name), 'utf8'));
+        observedStates.push(marker.jobs[job.id].state);
+      }
+      return kill.call(process, pid, signal);
+    });
+    const closing = session.close();
+    await assert.rejects(session.delegate([{ role: 'astra', task: 'late', paths: ['code.txt'] }]), /Session is closed/);
+    await closing;
+    await delegated;
+    assert.deepEqual(observedStates, ['stopping']);
+    assert.throws(() => process.kill(-job.pid, 0), { code: 'ESRCH' });
+    assert.deepEqual(await readdir(directory), []);
+    assert.equal(session.snapshot().available, 4);
+  } finally {
+    await delegated;
     await session?.close();
     await rm(cwd, { recursive: true, force: true });
   }
