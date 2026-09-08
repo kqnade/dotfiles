@@ -103,3 +103,49 @@ test('an unconfirmed scoped worker preserves its failure and quarantines its wri
     await rm(cwd, { recursive: true, force: true });
   }
 });
+
+test('root cancellation removes queued descendants and returns their borrowed scopes', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'pi-supervisor-cancel-'));
+  const controller = new AbortController();
+  const ready = Promise.withResolvers();
+  const release = Promise.withResolvers();
+  try {
+    const files = Array.from({ length: 5 }, (_, index) => `file-${index}.txt`);
+    for (const file of files) await writeFile(join(cwd, file), 'source');
+    const scopes = new Scopes({ cwd, rootId: 'root' });
+    let leaves = 0;
+    const supervisor = new Supervisor({ rootId: 'root', scopes, execute: async agent => {
+      if (agent.role === 'astra') {
+        try {
+          return { stopped: true, result: await supervisor.delegate(agent.id, files.map(file => ({
+            role: 'luna', task: 'inspect', paths: [file],
+          }))) };
+        } catch (error) {
+          return { stopped: true, error };
+        }
+      }
+      leaves += 1;
+      if (leaves === 4) ready.resolve();
+      await release.promise;
+      return { stopped: true, result: 'done' };
+    }});
+    const outcome = supervisor.delegate('root', [{ role: 'astra', task: 'coordinate', paths: ['.'] }], {
+      signal: controller.signal,
+    }).then(value => ({ value }), error => ({ error }));
+    await ready.promise;
+    assert.equal(supervisor.snapshot().queued.length, 1);
+    controller.abort();
+    release.resolve();
+    const result = await outcome;
+    assert.ok(result.error instanceof AggregateError, 'cancellation must fail the delegation');
+    assert.equal(leaves, 4);
+    assert.equal(supervisor.snapshot().queued.length, 0);
+    assert.equal(supervisor.snapshot().available, 4);
+    assert.equal(supervisor.snapshot().quarantined.length, 0);
+    await scopes.write('root', files[4], 'resumed');
+    assert.equal(await readFile(join(cwd, files[4]), 'utf8'), 'resumed');
+  } finally {
+    release.resolve();
+    await rm(cwd, { recursive: true, force: true });
+  }
+});

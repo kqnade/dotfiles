@@ -14,6 +14,7 @@ class Session {
   #operations = new Set();
   #clients = new Set();
   #closing;
+  #cancellation = new AbortController();
   #closed = false;
   #failure;
 
@@ -30,7 +31,7 @@ class Session {
   async delegate(tasks) {
     if (this.#failure) throw this.#failure;
     if (this.#closed) throw new Error('Session is closed');
-    const operation = this.#supervisor.delegate(this.#rootId, tasks);
+    const operation = this.#supervisor.delegate(this.#rootId, tasks, { signal: this.#cancellation.signal });
     this.#operations.add(operation);
     try {
       return await operation;
@@ -50,8 +51,9 @@ class Session {
 
   async #execute(agent) {
     if (this.#closed) return { stopped: true, error: new Error('Session is closed') };
+    const paths = this.#scopes.paths(agent.id);
     const client = new RpcClient(this.#launch);
-    const job = { id: agent.id, pid: client.process.pid, role: agent.role, paths: this.#scopes.paths(agent.id) };
+    const job = { id: agent.id, pid: client.process.pid, role: agent.role, paths };
     const worker = { client, job, stopping: null };
     this.#clients.add(worker);
     const errors = [];
@@ -94,6 +96,7 @@ class Session {
 
   async close() {
     this.#closed = true;
+    this.#cancellation.abort();
     this.#closing ??= (async () => {
       const stops = await Promise.allSettled([...this.#clients].map(worker => this.#stop(worker)));
       await Promise.allSettled([...this.#operations]);
