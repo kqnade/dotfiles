@@ -63,6 +63,77 @@ test('delegation drains the parent scope and returns child edits before resuming
   } finally { await rm(cwd, {recursive:true,force:true}); }
 });
 
+test('a parent scope renewal failure leaves the parent parked', async () => {
+  const scopes = {
+    async pause() {},
+    async borrow() {},
+    async finish() {},
+    async resume(id) {
+      if (id === astraId) throw new Error('scope renewal failed');
+    },
+  };
+  let astraId;
+  let nestedFailure;
+  let stateAfterFailure;
+  let supervisor;
+  supervisor = new Supervisor({ rootId: 'root', scopes, execute: async agent => {
+    if (agent.role === 'astra') {
+      astraId = agent.id;
+      try {
+        await supervisor.delegate(agent.id, [{ role: 'luna', task: 'inspect' }]);
+      } catch (error) {
+        nestedFailure = error;
+        stateAfterFailure = supervisor.snapshot();
+        assert.throws(() => supervisor.permit(agent.id), /not runnable/);
+      }
+    }
+    return { stopped: true };
+  }});
+
+  await supervisor.delegate('root', [{ role: 'astra', task: 'coordinate' }]);
+
+  assert.match(nestedFailure.message, /scope renewal failed/);
+  assert.deepEqual(stateAfterFailure.active, []);
+  assert.deepEqual(stateAfterFailure.parked, [astraId]);
+});
+
+test('a scheduler resume cancellation leaves the parent parked and waiting', async () => {
+  const controller = new AbortController();
+  let astraId;
+  let nestedFailure;
+  let stateAfterFailure;
+  const scopes = {
+    async pause() {},
+    async borrow() {},
+    async finish() {},
+    async resume(id) {
+      if (id === astraId) controller.abort();
+    },
+  };
+  let supervisor;
+  supervisor = new Supervisor({ rootId: 'root', scopes, execute: async agent => {
+    if (agent.role === 'astra') {
+      astraId = agent.id;
+      try {
+        await supervisor.delegate(agent.id, [{ role: 'luna', task: 'inspect' }]);
+      } catch (error) {
+        nestedFailure = error;
+        stateAfterFailure = supervisor.snapshot();
+        assert.throws(() => supervisor.permit(agent.id), /not runnable/);
+      }
+    }
+    return { stopped: true };
+  }});
+
+  await supervisor.delegate('root', [{ role: 'astra', task: 'coordinate' }], {
+    signal: controller.signal,
+  });
+
+  assert.equal(nestedFailure.name, 'AbortError');
+  assert.deepEqual(stateAfterFailure.active, []);
+  assert.deepEqual(stateAfterFailure.parked, [astraId]);
+});
+
 test('a result without terminal proof is quarantined', async () => {
   const supervisor = new Supervisor({ rootId: 'session', execute: async () => ({ result: 'done' }) });
   await assert.rejects(supervisor.delegate('session', [{ role: 'astra', task: 'coordinate' }]), /Delegated tasks failed/);

@@ -130,8 +130,8 @@ export class Scopes {
   async resume(id) {
     this.#assertReturned(id);
     const entry = this.#get(id);
-    entry.paused = false;
-    const { lease } = await entry.ownership.transfer(entry.lease, id);
+    const lease = entry.ownership.renew(entry.lease);
     entry.lease = lease;
+    entry.paused = false;
   }
 }

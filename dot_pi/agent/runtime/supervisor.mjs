@@ -103,8 +103,8 @@ export class Supervisor {
       return results.map(result => result.value);
     } finally {
       if (recoverable && !lifetimeSignal?.aborted) {
-        await this.#scheduler.resume(callerId, { signal: lifetimeSignal });
         await this.#scopes?.resume(callerId);
+        await this.#scheduler.resume(callerId, { signal: lifetimeSignal });
         parent.waiting = false;
       }
     }

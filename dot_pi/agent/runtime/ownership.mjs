@@ -263,6 +263,21 @@ export class Ownership {
     return { lease: nextLease, snapshots };
   }
 
+  renew(lease) {
+    const state = this.#assertLease(lease);
+    if (!state.draining || !state.drained || state.active.size !== 0) {
+      throw errorWithCode('ownership has not been confirmed drained', 'NOT_DRAINED');
+    }
+
+    state.generation += 1;
+    const nextLease = makeLease(state, lease.owner, state.generation);
+    state.currentLease = nextLease;
+    state.draining = false;
+    state.drainPromise = null;
+    state.drained = false;
+    return nextLease;
+  }
+
   async runProcess(lease, options = {}) {
     const state = this.#assertLease(lease);
     return this.run(lease, () => superviseProcess(this, lease, state, options));

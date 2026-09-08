@@ -97,6 +97,40 @@ test('a failed child snapshot releases its reservation before execution', async 
   }
 });
 
+test('resuming a returned parent does not resnapshot the whole repository', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'pi-scopes-resume-'));
+  const canonicalCwd = await realpath(cwd);
+  const target = join(cwd, 'a.txt');
+  const originalReaddir = fs.promises.readdir;
+  let rootScanAttempted = false;
+  try {
+    await writeFile(target, 'old');
+    const scopes = new Scopes({ cwd, rootId: 'root' });
+    await scopes.pause('root');
+    await scopes.borrow('root', 'child', ['a.txt']);
+    await scopes.finish('child');
+
+    fs.promises.readdir = async (path, ...args) => {
+      if (path === canonicalCwd) {
+        rootScanAttempted = true;
+        const error = new Error('unexpected whole-repository scan');
+        error.code = 'EIO';
+        throw error;
+      }
+      return originalReaddir(path, ...args);
+    };
+    syncBuiltinESMExports();
+
+    await scopes.resume('root');
+    assert.equal(rootScanAttempted, false);
+    await scopes.write('root', 'a.txt', 'resumed');
+  } finally {
+    fs.promises.readdir = originalReaddir;
+    syncBuiltinESMExports();
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
 test('a scoped edit replaces a unique preimage and preserves the rest of the file', async () => {
   const cwd = await mkdtemp(join(tmpdir(), 'pi-scoped-edit-'));
   try {

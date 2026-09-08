@@ -281,6 +281,39 @@ test('transfer snapshots the drained scope and makes the previous lease stale', 
   }
 });
 
+test('renew rotates a drained lease without taking a snapshot', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pi-ownership-renew-'));
+  try {
+    const project = join(root, 'project');
+    const target = join(project, 'note.js');
+    await mkdir(project);
+    await writeFile(target, 'before\n');
+
+    const ownership = new Ownership({ cwd: root });
+    const lease = ownership.claim('writer', ['project']);
+    assert.throws(() => ownership.renew(lease), { code: 'NOT_DRAINED' });
+    await ownership.drain(lease);
+
+    const renewed = ownership.renew(lease);
+    assert.equal(renewed.owner, 'writer');
+    assert.equal(renewed.generation, 2);
+    assert.deepEqual(renewed.paths, lease.paths);
+    assert.equal(Object.hasOwn(renewed, 'snapshots'), false);
+    await assert.rejects(
+      async () => ownership.run(lease, async () => {}),
+      { code: 'STALE_LEASE' },
+    );
+    await ownership.run(renewed, async () => {
+      await ownership.write(renewed, 'project/note.js', 'after\n', {
+        expectedHash: hash('before\n'),
+      });
+    });
+    assert.equal(await readFile(target, 'utf8'), 'after\n');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('quarantine makes a lease terminal and prevents transfer', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pi-ownership-quarantine-'));
   try {
