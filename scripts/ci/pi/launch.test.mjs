@@ -4,9 +4,28 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { setTimeout } from 'node:timers/promises';
 import { launch } from '../../../dot_pi/agent/runtime/launch.mjs';
 import { createManagedSkills, RETAINED_SKILL_NAMES } from './fixtures/managed-skills.mjs';
+
+const git = promisify(execFile);
+
+test('the launcher rejects a work namespace before loading skills or starting Pi', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'pi-launch-namespace-'));
+  try {
+    await git('git', ['init', cwd]);
+    await git('git', ['-C', cwd, 'config', 'remote.origin.url', 'https://github.com/jobtalk/synthetic-fixture.git']);
+    await assert.rejects(launch({
+      cwd, directory: join(cwd, 'journal'), piEntry: '/missing/pi',
+      extensionPath: '/missing/extension', skillsRoot: join(cwd, 'missing-skills'),
+    }), /requires the approved Claude account/u);
+    await assert.rejects(readFile(join(cwd, 'journal')), { code: 'ENOENT' });
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
 
 const createLaunchSkills = async (cwd) => {
   const skillsRoot = join(cwd, '.agents', 'skills');

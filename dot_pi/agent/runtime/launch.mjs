@@ -3,6 +3,7 @@ import { startBroker } from './broker.mjs';
 import { modelFor } from './models.mjs';
 import { stopProcessGroup } from './ownership.mjs';
 import { defaultSkillsRoot, resolveSkillResources } from './skills.mjs';
+import { authorizeRepository } from './repository.mjs';
 
 export async function launch({
   cwd, directory, piEntry, extensionPath, env = process.env, capture = false,
@@ -14,6 +15,7 @@ export async function launch({
   if (!Array.isArray(additionalExtensions) || additionalExtensions.some(path => typeof path !== 'string')) {
     throw new TypeError('additionalExtensions must be paths');
   }
+  await authorizeRepository({ cwd, env, signal });
   const skills = await resolveSkillResources({ skillsRoot: skillsRoot ?? defaultSkillsRoot(env) });
   const model = modelFor('root');
   const common = [piEntry, '--no-extensions', '--no-builtin-tools', '--no-skills',
