@@ -86,7 +86,7 @@ const failClosed = (error) => {
 };
 
 const readParameters = Type.Object({
-  path: Type.String({ description: 'Repository-relative file path to read' }),
+  path: Type.String({ description: 'Repository-relative file path or allowlisted absolute skill resource path to read' }),
 });
 
 const writeParameters = Type.Object({

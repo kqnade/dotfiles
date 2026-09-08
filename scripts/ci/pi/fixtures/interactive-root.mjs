@@ -6,6 +6,12 @@ const args = process.argv.slice(2);
 if (args[args.indexOf('--model') + 1] !== 'gpt-5.6-sol') throw new Error('wrong root model');
 if (args[args.indexOf('--thinking') + 1] !== 'medium') throw new Error('wrong root effort');
 if (!args.includes('--no-builtin-tools') || !args.includes('--no-extensions')) throw new Error('unmanaged tools enabled');
+if (process.env.PI_TEST_SKILL_PATHS) {
+  if (!args.includes('--no-skills')) throw new Error('skill discovery is enabled');
+  const actual = args.flatMap((arg, index) => arg === '--skill' ? [args[index + 1]] : []);
+  const expected = JSON.parse(process.env.PI_TEST_SKILL_PATHS);
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error('managed skill paths are incorrect');
+}
 if (process.env.PI_TEST_EXTRA_EXTENSION) {
   const extensions = args.flatMap((arg, index) => arg === '-e' ? [args[index + 1]] : []);
   if (!extensions.includes(process.env.PI_TEST_EXTRA_EXTENSION)) throw new Error('managed extra extension is missing');

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,6 +7,8 @@ import { test } from 'node:test';
 import { startBroker } from '../../../dot_pi/agent/runtime/broker.mjs';
 import { connect } from '../../../dot_pi/agent/runtime/ipc.mjs';
 import { sha256 } from '../../../dot_pi/agent/runtime/ownership.mjs';
+import { resolveSkillResources } from '../../../dot_pi/agent/runtime/skills.mjs';
+import { createManagedSkills } from './fixtures/managed-skills.mjs';
 
 const fixture = fileURLToPath(new URL('./fixtures/rpc-child.mjs', import.meta.url));
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -45,6 +47,42 @@ test('the authenticated root reads and updates a file through the broker', async
     await client?.close();
     await broker?.close();
     await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test('the managed broker reads retained skill resources without granting external writes', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pi-broker-skills-'));
+  const cwd = join(root, 'repo');
+  const skillsRoot = join(root, '.agents', 'skills');
+  let broker;
+  let client;
+  try {
+    await mkdir(cwd);
+    await createManagedSkills(skillsRoot);
+    const resources = await resolveSkillResources({ skillsRoot });
+    broker = await startBroker({
+      cwd,
+      directory: join(cwd, 'journal'),
+      command: process.execPath,
+      args: [fixture],
+      skillResources: resources.resourcePaths,
+    });
+    client = await connect(broker.connection);
+
+    const skill = await client.call('read', { path: resources.skillPaths[0] });
+    assert.match(skill.text, /fixture skill/u);
+    const retired = join(skillsRoot, 'retired.md');
+    await writeFile(retired, 'retired\n');
+    await assert.rejects(client.call('read', { path: retired }), /outside the repository or managed skill resources/u);
+    await assert.rejects(
+      client.call('write', { path: resources.skillPaths[0], text: 'modified', expectedHash: null }),
+      /outside ownership cwd/u,
+    );
+    assert.match(await readFile(resources.skillPaths[0], 'utf8'), /fixture skill/u);
+  } finally {
+    await client?.close();
+    await broker?.close();
+    await rm(root, { recursive: true, force: true });
   }
 });
 

@@ -16,6 +16,7 @@ import {
   resolveJournalDirectory,
   resolvePiEntry,
 } from '../../../dot_pi/agent/runtime/main.mjs';
+import { createManagedSkills, RETAINED_SKILL_NAMES } from './fixtures/managed-skills.mjs';
 
 const spawnCaptured = (command, args, options = {}) => {
   const child = spawn(command, args, { ...options, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -57,6 +58,7 @@ const createPiInstall = async (root) => {
   await mkdir(dirname(entry), { recursive: true });
   await copyFile(piFixturePath, entry);
   await writeFile(join(packageDirectory, 'package.json'), '{"type":"module","version":"0.85.1"}\n');
+  await createManagedSkills(join(root, 'home', '.agents', 'skills'));
   return packageTarget;
 };
 
@@ -248,11 +250,12 @@ test('managed CLI starts an interactive root from the external package target', 
   try {
     const packageTarget = await createPiInstall(root);
     const logPath = join(root, 'root.log');
+    const home = join(root, 'home');
     const result = await run(process.execPath, [mainPath], {
       cwd: root,
       env: {
         ...process.env,
-        HOME: join(root, 'home'),
+        HOME: home,
         XDG_STATE_HOME: join(root, 'state'),
         PI_PACKAGE_TARGET: packageTarget,
         PI_TEST_LOG: logPath,
@@ -265,6 +268,11 @@ test('managed CLI starts an interactive root from the external package target', 
     assert.equal(invocation.packageRoot, packageTarget);
     assert.ok(invocation.args.includes('--no-builtin-tools'));
     assert.ok(invocation.args.includes('--no-extensions'));
+    assert.ok(invocation.args.includes('--no-skills'));
+    assert.deepEqual(
+      invocation.args.flatMap((arg, index) => arg === '--skill' ? [invocation.args[index + 1]] : []),
+      RETAINED_SKILL_NAMES.map(name => join(home, '.agents', 'skills', name, 'SKILL.md')),
+    );
     assert.ok(invocation.args.includes('-e'));
     assert.ok(!invocation.args.includes('--print'));
   } finally {

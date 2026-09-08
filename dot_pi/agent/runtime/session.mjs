@@ -263,12 +263,12 @@ class Session {
   }
 }
 
-export async function startSession({ cwd, directory, rootId = randomUUID(), command, args = [], env = process.env, workerEnvironment, externalRoot = false }) {
+export async function startSession({ cwd, directory, rootId = randomUUID(), command, args = [], env = process.env, workerEnvironment, externalRoot = false, skillResources = [] }) {
   if (typeof command !== 'string' || !command) throw new TypeError('RPC command is required');
   if (!Array.isArray(args) || args.some(arg => typeof arg !== 'string')) throw new TypeError('RPC args must be strings');
   if (workerEnvironment !== undefined && typeof workerEnvironment !== 'function') throw new TypeError('workerEnvironment must be a function');
   const canonicalCwd = await realpath(cwd);
-  const scopes = new Scopes({ cwd: canonicalCwd, rootId });
+  const scopes = new Scopes({ cwd: canonicalCwd, rootId, skillResources });
   const journal = await begin({ cwd: canonicalCwd, directory, rootId });
   return new Session({
     journal, scopes, rootId, workerEnvironment, externalRoot,

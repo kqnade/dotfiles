@@ -1,4 +1,5 @@
 import { relative, isAbsolute, resolve, sep } from 'node:path';
+import { realpathSync } from 'node:fs';
 import { readFile, realpath } from 'node:fs/promises';
 import { Ownership, sha256 } from './ownership.mjs';
 
@@ -9,10 +10,20 @@ const within = (parent, child) => {
 
 export class Scopes {
   #cwd;
+  #skillResources;
   #entries = new Map();
 
-  constructor({ cwd, rootId }) {
+  constructor({ cwd, rootId, skillResources = [] }) {
     this.#cwd = cwd;
+    if (!Array.isArray(skillResources) && !(skillResources instanceof Set)) {
+      throw new TypeError('skillResources must be an array or set');
+    }
+    this.#skillResources = new Set([...skillResources].map(path => {
+      if (typeof path !== 'string' || !isAbsolute(path)) throw new TypeError('skill resource paths must be absolute');
+      const canonical = realpathSync(path);
+      if (canonical !== path) throw new Error(`skill resource path is not canonical: ${path}`);
+      return canonical;
+    }));
     this.#entries.set(rootId, this.#create(rootId, null, ['.']));
   }
 
@@ -75,7 +86,9 @@ export class Scopes {
     return ownership.run(lease, async () => {
       const cwd = await realpath(this.#cwd);
       const target = await realpath(resolve(cwd, path));
-      if (!within(cwd, target)) throw new Error('Read path is outside the repository');
+      if (!within(cwd, target) && !this.#skillResources.has(target)) {
+        throw new Error('Read path is outside the repository or managed skill resources');
+      }
       const bytes = await readFile(target);
       if (bytes.length > 128 * 1024) throw new Error('File exceeds broker read limit (128 KiB)');
       return { path: target, text: bytes.toString('utf8'), hash: sha256(bytes) };
