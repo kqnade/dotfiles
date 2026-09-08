@@ -39,6 +39,11 @@ tools_ok() {
   [[ -z "$missing" ]]
 }
 
+pi_ok() {
+  "$MISE_BIN" -C "$DOTFILES_ROOT" exec -- \
+    node "$DOTFILES_ROOT/scripts/pi/doctor.mjs" --source "$DOTFILES_ROOT"
+}
+
 dotfiles_ok() {
   local diff
   diff="$(chezmoi --source "$DOTFILES_ROOT" diff --exclude=externals)" || return 1
@@ -83,6 +88,7 @@ wsl_proxies_ok() {
 run_check "supported platform" dotfiles_supported_platform
 run_check "mise installation" "$MISE_BIN" doctor
 run_check "tool pins installed" tools_ok
+run_check "Pi package" pi_ok
 run_check "system packages" "$MISE_BIN" -C "$DOTFILES_ROOT" \
   bootstrap packages status --missing
 run_check "chezmoi state" dotfiles_ok
