@@ -109,3 +109,31 @@ test('transfer snapshots the drained scope and makes the previous lease stale', 
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('quarantine makes a lease terminal and prevents transfer', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pi-ownership-quarantine-'));
+  try {
+    const project = join(root, 'project');
+    await mkdir(project);
+    await writeFile(join(project, 'note.js'), 'before\n');
+
+    const ownership = new Ownership({ cwd: root });
+    const lease = ownership.claim('writer', ['project']);
+    const status = ownership.quarantine(lease, 'descendant state is unknown');
+
+    assert.equal(status.owner, 'writer');
+    assert.equal(status.generation, 1);
+    assert.equal(status.reason, 'descendant state is unknown');
+    await assert.rejects(
+      async () => ownership.run(lease, async () => {}),
+      { code: 'QUARANTINED' },
+    );
+    await assert.rejects(async () => ownership.drain(lease), { code: 'QUARANTINED' });
+    await assert.rejects(
+      async () => ownership.transfer(lease, 'delegate'),
+      { code: 'QUARANTINED' },
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

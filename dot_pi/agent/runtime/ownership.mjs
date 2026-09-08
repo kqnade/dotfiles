@@ -233,6 +233,22 @@ export class Ownership {
     return { lease: nextLease, snapshots };
   }
 
+  quarantine(lease, reason) {
+    const state = this.#assertLease(lease);
+    const detail = reason instanceof Error ? reason.message : String(reason ?? '');
+    if (detail.length === 0) {
+      throw new TypeError('quarantine reason is required');
+    }
+    state.quarantined = detail;
+    state.draining = true;
+    state.drained = false;
+    return Object.freeze({
+      owner: lease.owner,
+      generation: lease.generation,
+      reason: detail,
+    });
+  }
+
   async write(lease, path, text, { expectedHash } = {}) {
     const state = this.#assertWritable(lease);
     if (typeof text !== 'string' && !Buffer.isBuffer(text)) {
