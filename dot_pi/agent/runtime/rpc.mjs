@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { modelFor, verifyState } from './models.mjs';
+import { stopProcessGroup } from './ownership.mjs';
 
 export class RpcClient extends EventEmitter {
   #pending = new Map();
@@ -12,12 +13,13 @@ export class RpcClient extends EventEmitter {
   #aborting = false;
   #generation = 0;
   #closed;
+  #closing;
   #timeout;
 
   constructor({ command, args = [], cwd, env = process.env, timeoutMs = 15000 }) {
     super();
     this.#timeout = timeoutMs;
-    this.process = spawn(command, args, { cwd, env, stdio: ['pipe', 'pipe', 'pipe'] });
+    this.process = spawn(command, args, { cwd, env, detached: true, stdio: ['pipe', 'pipe', 'pipe'] });
     this.stderr = '';
     this.process.stdout.setEncoding('utf8');
     this.process.stdout.on('data', chunk => this.#receive(chunk));
@@ -168,8 +170,11 @@ export class RpcClient extends EventEmitter {
   }
 
   async close() {
-    this.process.stdin.end();
-    const timer = setTimeout(() => this.process.kill('SIGKILL'), 1000);
-    try { return await this.#closed; } finally { clearTimeout(timer); }
+    this.#closing ??= (async () => {
+      this.process.stdin.end();
+      if (this.process.pid !== undefined) await stopProcessGroup(this.process.pid, 1000);
+      return this.#closed;
+    })();
+    return this.#closing;
   }
 }

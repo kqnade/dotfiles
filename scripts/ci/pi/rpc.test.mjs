@@ -1,9 +1,31 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { once } from 'node:events';
 import { RpcClient } from '../../../dot_pi/agent/runtime/rpc.mjs';
 
 const fixture = fileURLToPath(new URL('./fixtures/rpc-child.mjs', import.meta.url));
+
+test('close confirms termination of the RPC process and its auxiliary process', async () => {
+  const groupFixture = fileURLToPath(new URL('./fixtures/rpc-process-group.mjs', import.meta.url));
+  const client = new RpcClient({ command: process.execPath, args: [groupFixture] });
+  let auxiliaryPid;
+  try {
+    const [event] = await once(client, 'event');
+    auxiliaryPid = event.pid;
+    assert.equal(event.type, 'auxiliary_ready');
+    await client.close();
+    assert.throws(() => process.kill(auxiliaryPid, 0), { code: 'ESRCH' });
+    assert.throws(() => process.kill(-client.process.pid, 0), { code: 'ESRCH' });
+  } finally {
+    if (auxiliaryPid) {
+      try { process.kill(auxiliaryPid, 'SIGKILL'); } catch (error) {
+        if (error.code !== 'ESRCH') throw error;
+      }
+    }
+    await client.close();
+  }
+});
 
 test('a substituted model prevents prompting', async () => {
   const client = new RpcClient({
