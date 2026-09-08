@@ -28,3 +28,15 @@ test('run waits for the completed assistant response and preserves Unicode separ
     await client.close();
   }
 });
+
+test('run rejects concurrent runs', async () => {
+  const client = new RpcClient({ command: process.execPath, args: [fixture] });
+  try {
+    await client.initialize('luna');
+    const running = client.run('Reply OK.');
+    await assert.rejects(client.run('Second call.'), /already running/);
+    assert.deepEqual(await running, { text: 'OK\u2028verified', model: 'gpt-5.6-luna' });
+  } finally {
+    await client.close();
+  }
+});

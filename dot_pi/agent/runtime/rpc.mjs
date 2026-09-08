@@ -101,8 +101,16 @@ export class RpcClient extends EventEmitter {
   async run(message) {
     if (!this.#verified) throw new Error('RPC model is not verified');
     if (this.#running) throw new Error('RPC session is already running');
-    verifyState(this.#role, await this.request('get_state'));
+
     this.#running = true;
+    try {
+      verifyState(this.#role, await this.request('get_state'));
+    } catch (error) {
+      this.#verified = false;
+      this.#running = false;
+      throw error;
+    }
+
     return new Promise((resolve, reject) => {
       let assistant;
       const cleanup = () => {
