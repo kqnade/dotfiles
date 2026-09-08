@@ -208,8 +208,8 @@ codex_modified_config = tomllib.loads(codex_modified_result.stdout)
 
 expected_codex_defaults = {
     "approvals_reviewer": "auto_review",
-    "model": "gpt-5.6-sol",
-    "model_reasoning_effort": "high",
+    "model": "gpt-6-astra",
+    "model_reasoning_effort": "medium",
 }
 for key, expected_value in expected_codex_defaults.items():
     if codex_modified_config.get(key) != expected_value:
