@@ -26,6 +26,26 @@ test('only Sol escalation can create Astra and leaf roles cannot delegate', asyn
   assert.equal(supervisor.snapshot().available, 4);
 });
 
+test('Sol escalates to its waiting Astra without starting another Astra execution', async () => {
+  let astraRuns = 0;
+  const supervisor = new Supervisor({ rootId:'root', execute: async agent => {
+    if (agent.role === 'astra') {
+      astraRuns += 1;
+      const [child] = await supervisor.delegate(agent.id, [{role:'sol', task:'implement'}]);
+      assert.equal(child.result.status, 'escalated');
+      assert.equal(child.result.to, agent.id);
+      assert.equal(child.result.reason, 'algorithm needs Astra');
+      return { stopped:true, result:'Astra completed algorithm' };
+    }
+    await supervisor.escalate(agent.id, 'algorithm needs Astra');
+    return { stopped:true };
+  }});
+  const [result] = await supervisor.delegate('root', [{role:'astra',task:'coordinate'}]);
+  assert.equal(result.result, 'Astra completed algorithm');
+  assert.equal(astraRuns, 1);
+  assert.equal(supervisor.snapshot().available, 4);
+});
+
 test('delegation drains the parent scope and returns child edits before resuming', async () => {
   const cwd = await mkdtemp(join(tmpdir(), 'pi-supervisor-scope-'));
   try {

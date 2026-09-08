@@ -22,6 +22,18 @@ export class Supervisor {
 
   snapshot() { return this.#scheduler.snapshot(this.#rootId); }
 
+  async escalate(id, reason) {
+    const agent = this.#agents.get(id);
+    const parent = this.#agents.get(agent?.parentId);
+    if (agent?.role !== 'sol' || parent?.role !== 'astra' || !parent.waiting) {
+      throw new Error('Only delegated Sol can escalate to its waiting Astra');
+    }
+    if (typeof reason !== 'string' || !reason.trim()) throw new Error('Escalation reason is required');
+    await this.#scopes?.pause(id);
+    agent.escalation = Object.freeze({ status:'escalated', to:parent.id, reason });
+    return agent.escalation;
+  }
+
   async delegate(callerId, tasks) {
     const parent = this.#agents.get(callerId);
     if (!parent) throw new Error('Unknown delegation caller');
@@ -49,7 +61,7 @@ export class Supervisor {
           const snapshots = await this.#scopes?.finish(agent.id);
           completed = true;
           if (receipt.error) throw receipt.error;
-          return { id: agent.id, role: agent.role, result: receipt.result, ...(snapshots ? { snapshots } : {}) };
+          return { id: agent.id, role: agent.role, result: agent.escalation ?? receipt.result, ...(snapshots ? { snapshots } : {}) };
         } finally {
           this.#scheduler.release(agent.id, { confirmed: completed });
           if (completed) this.#agents.delete(agent.id);
