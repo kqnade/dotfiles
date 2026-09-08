@@ -5,6 +5,7 @@ import {
   lstat,
   open,
   readFile,
+  readlink,
   realpath,
   readdir,
   rename,
@@ -32,12 +33,35 @@ const isWithin = (root, candidate) => {
     (!distance.startsWith(`..${sep}`) && distance !== '..' && !isAbsolute(distance));
 };
 
+const canonicalForScope = (cwd, candidate) => {
+  try {
+    return realpathSync(candidate);
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      throw error;
+    }
+    const missing = [];
+    let parent = candidate;
+    while (true) {
+      try {
+        return join(realpathSync(parent), ...missing.reverse());
+      } catch (parentError) {
+        if (parentError.code !== 'ENOENT' || parent === cwd) {
+          throw parentError;
+        }
+        missing.push(parent.split(sep).pop());
+        parent = dirname(parent);
+      }
+    }
+  }
+};
+
 const pathFromCwd = (cwd, value) => {
   if (typeof value !== 'string' || value.length === 0) {
     throw new TypeError('path must be a non-empty string');
   }
   const candidate = isAbsolute(value) ? resolve(value) : resolve(cwd, value);
-  if (!isWithin(cwd, candidate)) {
+  if (!isWithin(cwd, candidate) && !isWithin(cwd, canonicalForScope(cwd, candidate))) {
     throw new Error(`path is outside ownership cwd: ${value}`);
   }
   return candidate;
@@ -379,13 +403,31 @@ const readPreimage = async (target) => {
 const snapshotScope = async (state) => {
   const snapshots = {};
   const visit = async (path) => {
-    const stats = await lstat(path);
+    let stats;
+    try {
+      stats = await lstat(path);
+    } catch (error) {
+      if (error.code !== 'ENOENT') {
+        throw error;
+      }
+      snapshots[path] = null;
+      return;
+    }
+    if (stats.isSymbolicLink()) {
+      if (!isWithinAny(state.paths, path)) {
+        throw errorWithCode(`scope changed outside ownership: ${path}`, 'OUT_OF_SCOPE');
+      }
+      const target = await readlink(path);
+      snapshots[path] = Object.freeze({
+        type: 'symlink',
+        target,
+        hash: digest(target),
+      });
+      return;
+    }
     const canonical = await realpath(path);
     if (!isWithinAny(state.paths, canonical)) {
       throw errorWithCode(`scope changed outside ownership: ${path}`, 'OUT_OF_SCOPE');
-    }
-    if (stats.isSymbolicLink()) {
-      throw errorWithCode(`scope contains a symlink: ${path}`, 'SYMLINK_SCOPE');
     }
     if (stats.isDirectory()) {
       const names = await readdir(path);
@@ -451,7 +493,7 @@ const waitForEmptyProcessGroup = async (pid, timeoutMs) => {
   }
 };
 
-const stopProcessGroup = async (pid, timeoutMs) => {
+export const stopProcessGroup = async (pid, timeoutMs) => {
   const initial = processGroupStatus(pid);
   if (initial === 'empty') {
     return;

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -217,6 +217,36 @@ test('runProcess abort escalates a SIGTERM-ignoring child and settles', async ()
     if (failure.code === 'PROCESS_GROUP_UNKNOWN') {
       await assert.rejects(ownership.transfer(lease, 'delegate'), { code: 'QUARANTINED' });
     }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('transfer records deleted claims and symlinks without following links', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pi-ownership-snapshot-'));
+  try {
+    const project = join(root, 'project');
+    const target = join(project, 'note.js');
+    const link = join(project, 'outside-link');
+    await mkdir(project);
+    await writeFile(target, 'before\n');
+    await symlink('../outside.txt', link);
+    const canonicalProject = await realpath(project);
+    const canonicalTarget = join(canonicalProject, 'note.js');
+    const canonicalLink = join(canonicalProject, 'outside-link');
+
+    const ownership = new Ownership({ cwd: root });
+    const lease = ownership.claim('writer', [target, project]);
+    await ownership.drain(lease);
+    await rm(target);
+
+    const transferred = await ownership.transfer(lease, 'delegate');
+    assert.equal(transferred.snapshots[canonicalTarget], null);
+    assert.deepEqual(transferred.snapshots[canonicalLink], {
+      type: 'symlink',
+      target: '../outside.txt',
+      hash: hash('../outside.txt'),
+    });
   } finally {
     await rm(root, { recursive: true, force: true });
   }
