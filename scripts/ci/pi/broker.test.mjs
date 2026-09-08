@@ -48,6 +48,52 @@ test('the authenticated root reads and updates a file through the broker', async
   }
 });
 
+test('the authenticated root edits one unique literal with a compare-and-swap hash', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'pi-broker-edit-'));
+  let broker;
+  let client;
+  try {
+    const target = join(cwd, 'code.txt');
+    const originalText = 'prefix\nneedle\nsuffix\n';
+    await writeFile(target, originalText);
+    broker = await startBroker({ cwd, directory: join(cwd, 'journal'), command: process.execPath, args: [fixture] });
+    client = await connect(broker.connection);
+
+    const original = await client.call('read', { path: 'code.txt' });
+    const edited = await client.call('edit', {
+      path: 'code.txt', oldText: 'needle', newText: 'replacement', expectedHash: original.hash,
+    });
+    const editedText = 'prefix\nreplacement\nsuffix\n';
+    assert.equal(edited.hash, sha256(editedText));
+    assert.equal(await readFile(target, 'utf8'), editedText);
+
+    await assert.rejects(client.call('edit', {
+      path: 'code.txt', oldText: 'replacement', newText: 'stale', expectedHash: original.hash,
+    }), /preimage hash mismatch/);
+    assert.equal(await readFile(target, 'utf8'), editedText);
+
+    const ambiguous = 'same\nsame\n';
+    await writeFile(join(cwd, 'ambiguous.txt'), ambiguous);
+    const ambiguousRead = await client.call('read', { path: 'ambiguous.txt' });
+    await assert.rejects(client.call('edit', {
+      path: 'ambiguous.txt', oldText: 'same', newText: 'changed', expectedHash: ambiguousRead.hash,
+    }), /unique oldText match/);
+    assert.equal(await readFile(join(cwd, 'ambiguous.txt'), 'utf8'), ambiguous);
+
+    await assert.rejects(client.call('edit', {
+      path: 'code.txt', oldText: 'replacement', newText: 'missing hash',
+    }), /edit requires expectedHash/);
+    await assert.rejects(client.call('edit', {
+      path: 'code.txt', oldText: 'replacement', newText: 'null hash', expectedHash: null,
+    }), /edit requires expectedHash/);
+    assert.equal(await readFile(target, 'utf8'), editedText);
+  } finally {
+    await client?.close();
+    await broker?.close();
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
 test('broker workers authenticate individually and delegate through the same supervisor', async () => {
   const cwd = await mkdtemp(join(tmpdir(), 'pi-broker-delegate-'));
   let broker;

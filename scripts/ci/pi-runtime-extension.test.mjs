@@ -73,7 +73,7 @@ const requirePackageRoot = (t) => {
   }
 };
 
-test('loads only broker-backed read, write, and delegate tools', async (t) => {
+test('loads only broker-backed read, edit, write, and delegate tools', async (t) => {
   requirePackageRoot(t);
   if (!loadExtension) return;
 
@@ -87,7 +87,9 @@ test('loads only broker-backed read, write, and delegate tools', async (t) => {
     }, async () => {
       const pi = createPi();
       loaded.factory(pi);
-      assert.deepEqual([...pi.tools.keys()].sort(), ['delegate', 'read', 'write']);
+      assert.deepEqual([...pi.tools.keys()].sort(), ['delegate', 'edit', 'read', 'write']);
+      assert.deepEqual(pi.tools.get('edit').parameters.required, ['path', 'oldText', 'newText', 'expectedHash']);
+      assert.equal(pi.tools.get('edit').parameters.properties.expectedHash.type, 'string');
       assert.equal(pi.handlers.get('session_start').length, 1);
       assert.equal(pi.handlers.get('session_shutdown').length, 1);
       assert.equal(pi.handlers.get('before_provider_request').length, 2);
@@ -188,6 +190,73 @@ test('checks broker permission before provider requests and injects the role pro
       const prompt = await pi.emit('before_agent_start', { systemPrompt: 'base' });
       assert.match(prompt.systemPrompt, /Sol/);
       assert.match(prompt.systemPrompt, /exactly one task to Astra/);
+      assert.match(prompt.systemPrompt, /edit/);
+      await pi.emit('session_shutdown', { type: 'session_shutdown', reason: 'quit' });
+    });
+  } finally {
+    await loaded.cleanup();
+    await broker?.close();
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test('uses the loaded edit tool for unique compare-and-swap replacements', async (t) => {
+  requirePackageRoot(t);
+  if (!loadExtension) return;
+
+  const cwd = await mkdtemp(join(tmpdir(), 'pi-extension-edit-'));
+  let broker;
+  const loaded = await loadExtension();
+  try {
+    const target = join(cwd, 'code.txt');
+    const originalText = 'prefix\nneedle\nsuffix\n';
+    await writeFile(target, originalText);
+    broker = await startBroker({
+      cwd,
+      directory: join(cwd, 'journal'),
+      command: process.execPath,
+      args: [fileURLToPath(new URL('./pi/fixtures/rpc-child.mjs', import.meta.url))],
+    });
+    await withEnvironment({
+      PI_BROKER_SOCKET: broker.connection.socketPath,
+      PI_AGENT_ID: broker.connection.agentId,
+      PI_AGENT_TOKEN: broker.connection.token,
+      PI_AGENT_ROLE: 'root',
+    }, async () => {
+      const pi = createPi();
+      loaded.factory(pi);
+      await pi.emit('session_start', { type: 'session_start', reason: 'startup' });
+
+      const original = await pi.tools.get('read').execute('read-edit', { path: 'code.txt' });
+      const edit = await pi.tools.get('edit').execute('edit-1', {
+        path: 'code.txt', oldText: 'needle', newText: 'replacement', expectedHash: JSON.parse(original.content[0].text).hash,
+      });
+      assert.deepEqual(JSON.parse(edit.content[0].text), edit.details);
+      const editedText = 'prefix\nreplacement\nsuffix\n';
+      assert.equal(await readFile(target, 'utf8'), editedText);
+      assert.equal(typeof edit.details.hash, 'string');
+
+      await assert.rejects(pi.tools.get('edit').execute('edit-stale', {
+        path: 'code.txt', oldText: 'replacement', newText: 'stale', expectedHash: JSON.parse(original.content[0].text).hash,
+      }), /preimage hash mismatch/);
+      assert.equal(await readFile(target, 'utf8'), editedText);
+
+      const ambiguousText = 'same\nsame\n';
+      await writeFile(join(cwd, 'ambiguous.txt'), ambiguousText);
+      const ambiguous = await pi.tools.get('read').execute('read-ambiguous', { path: 'ambiguous.txt' });
+      await assert.rejects(pi.tools.get('edit').execute('edit-ambiguous', {
+        path: 'ambiguous.txt', oldText: 'same', newText: 'changed', expectedHash: JSON.parse(ambiguous.content[0].text).hash,
+      }), /unique oldText match/);
+      assert.equal(await readFile(join(cwd, 'ambiguous.txt'), 'utf8'), ambiguousText);
+
+      await assert.rejects(pi.tools.get('edit').execute('edit-missing-hash', {
+        path: 'code.txt', oldText: 'replacement', newText: 'missing hash',
+      }), /edit requires expectedHash/);
+      await assert.rejects(pi.tools.get('edit').execute('edit-null-hash', {
+        path: 'code.txt', oldText: 'replacement', newText: 'null hash', expectedHash: null,
+      }), /edit requires expectedHash/);
+      assert.equal(await readFile(target, 'utf8'), editedText);
+
       await pi.emit('session_shutdown', { type: 'session_shutdown', reason: 'quit' });
     });
   } finally {

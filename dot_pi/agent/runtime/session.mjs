@@ -117,6 +117,20 @@ class Session {
       throwIfAborted(signal);
       return result;
     }
+    if (method === 'edit') {
+      if (typeof params.expectedHash !== 'string') {
+        throw new Error('edit requires expectedHash string');
+      }
+      const result = await this.#track(this.#scopes.edit(
+        agentId,
+        params.path,
+        params.oldText,
+        params.newText,
+        { expectedHash: params.expectedHash },
+      ));
+      throwIfAborted(signal);
+      return result;
+    }
     throw new Error(`Unknown broker method: ${method}`);
   }
 

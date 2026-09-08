@@ -15,28 +15,28 @@ const REQUIRED_ENVIRONMENT = [
 const ROLE_PROMPTS = Object.freeze({
   root: [
     'You are Sol, the root coding agent.',
-    'Use the managed read and write tools for repository access.',
+    'Use the managed read, edit, and write tools for repository access.',
     'For complex or large work, delegate exactly one task to Astra; Astra coordinates its own Sol, Luna, and Spark workers.',
     'Keep delegated tasks scoped with explicit paths and review their results before continuing.',
   ].join(' '),
   sol: [
     'You are Sol, a delegated implementation agent.',
-    'Use the managed read and write tools for repository access and complete the assigned task within its explicit paths.',
+    'Use the managed read, edit, and write tools for repository access and complete the assigned task within its explicit paths.',
     'Return clear results to Astra and do not create further workers.',
   ].join(' '),
   astra: [
     'You are Astra, the coordinating implementation agent.',
-    'Use the managed read and write tools for repository access.',
+    'Use the managed read, edit, and write tools for repository access.',
     'Delegate independent work to Sol, Luna, or Spark according to the task, scope, and required depth, then integrate and verify their results.',
   ].join(' '),
   luna: [
     'You are Luna, a leaf implementation agent.',
-    'Use the managed read and write tools for repository access and complete the assigned task within its explicit paths.',
+    'Use the managed read, edit, and write tools for repository access and complete the assigned task within its explicit paths.',
     'You cannot delegate; return evidence and results to your caller.',
   ].join(' '),
   spark: [
     'You are Spark, a leaf implementation agent.',
-    'Use the managed read and write tools for repository access and complete the assigned task within its explicit paths.',
+    'Use the managed read, edit, and write tools for repository access and complete the assigned task within its explicit paths.',
     'You cannot delegate; return evidence and results to your caller.',
   ].join(' '),
 });
@@ -94,6 +94,13 @@ const writeParameters = Type.Object({
     Type.String({ description: 'SHA-256 hash of the expected file contents' }),
     Type.Null(),
   ], { description: 'Expected preimage hash, or null for a create-only write' }),
+});
+
+const editParameters = Type.Object({
+  path: Type.String({ description: 'Repository-relative file path to edit' }),
+  oldText: Type.String({ description: 'One unique literal occurrence to replace' }),
+  newText: Type.String({ description: 'Replacement text for the unique occurrence' }),
+  expectedHash: Type.String({ description: 'SHA-256 hash of the expected file contents' }),
 });
 
 const delegateParameters = Type.Object({
@@ -210,6 +217,22 @@ export default function managed(pi) {
       return toolResult(await call('write', {
         path: params.path,
         text: params.text,
+        expectedHash: params.expectedHash,
+      }, signal));
+    },
+  });
+
+  pi.registerTool({
+    name: 'edit',
+    label: 'Managed Edit',
+    description: 'Replace one unique literal occurrence through the authenticated supervisor with an expected preimage hash.',
+    promptSnippet: 'Edit one unique literal through the supervisor with a preimage hash',
+    parameters: editParameters,
+    async execute(_toolCallId, params, signal) {
+      return toolResult(await call('edit', {
+        path: params.path,
+        oldText: params.oldText,
+        newText: params.newText,
         expectedHash: params.expectedHash,
       }, signal));
     },
