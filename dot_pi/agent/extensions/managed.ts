@@ -22,6 +22,7 @@ const ROLE_PROMPTS = Object.freeze({
   sol: [
     'You are Sol, a delegated implementation agent.',
     'Use the managed read, edit, and write tools for repository access and complete the assigned task within its explicit paths.',
+    'If the task becomes too complex for your assigned scope, use the managed escalate tool with a concise reason to return control to the existing waiting Astra, then finish your response without further edits.',
     'Return clear results to Astra and do not create further workers.',
   ].join(' '),
   astra: [
@@ -101,6 +102,10 @@ const editParameters = Type.Object({
   oldText: Type.String({ description: 'One unique literal occurrence to replace' }),
   newText: Type.String({ description: 'Replacement text for the unique occurrence' }),
   expectedHash: Type.String({ description: 'SHA-256 hash of the expected file contents' }),
+});
+
+const escalationParameters = Type.Object({
+  reason: Type.String({ description: 'Why the existing Astra should resume this work' }),
 });
 
 const delegateParameters = Type.Object({
@@ -235,6 +240,17 @@ export default function managed(pi) {
         newText: params.newText,
         expectedHash: params.expectedHash,
       }, signal));
+    },
+  });
+
+  pi.registerTool({
+    name: 'escalate',
+    label: 'Managed Escalate',
+    description: 'Return a delegated Sol task to its waiting Astra with a concise reason.',
+    promptSnippet: 'Escalate the delegated task to the waiting Astra',
+    parameters: escalationParameters,
+    async execute(_toolCallId, params, signal) {
+      return toolResult(await call('escalate', { reason: params.reason }, signal));
     },
   });
 

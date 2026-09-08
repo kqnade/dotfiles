@@ -59,6 +59,80 @@ for await (const line of createInterface({ input: process.stdin })) {
     }
     if (process.env.RPC_SUBSTITUTE) process.exit(9);
 
+    if (request.message === 'Astra delegates an escalation.') {
+      const client = await connect({
+        socketPath: process.env.PI_BROKER_SOCKET,
+        agentId: process.env.PI_AGENT_ID,
+        token: process.env.PI_AGENT_TOKEN,
+      });
+      try {
+        const identity = await client.call('permit');
+        if (identity.role !== 'astra' || process.env.PI_AGENT_ROLE !== 'astra') {
+          throw new Error('broker identity mismatch');
+        }
+        let denied = false;
+        try {
+          await client.call('escalate', { reason: 'Astra cannot escalate' });
+        } catch (error) {
+          denied = /Only delegated Sol can escalate/.test(error.message);
+        }
+        if (!denied) throw new Error('Astra escalation was not denied');
+        const [child] = await client.call('delegate', {
+          tasks: [{ role: 'sol', task: 'Escalate and test paused write.', paths: ['code.txt'] }],
+        });
+        if (child.result?.status !== 'escalated' || child.result.to !== identity.id ||
+          child.result.reason !== 'Sol needs Astra coordination') {
+          throw new Error('Sol escalation metadata was not returned to Astra');
+        }
+        emitAssistant({
+          text: JSON.stringify({ astraId: identity.id, child: child.result }),
+          stopReason: 'stop',
+        });
+      } finally {
+        await client.close();
+      }
+      emit({ type: 'response', id: request.id, command: request.type, success: true });
+      continue;
+    }
+
+    if (request.message === 'Escalate and test paused write.') {
+      const client = await connect({
+        socketPath: process.env.PI_BROKER_SOCKET,
+        agentId: process.env.PI_AGENT_ID,
+        token: process.env.PI_AGENT_TOKEN,
+      });
+      try {
+        const identity = await client.call('permit');
+        if (identity.role !== 'sol' || process.env.PI_AGENT_ROLE !== 'sol') {
+          throw new Error('broker identity mismatch');
+        }
+        const original = await client.call('read', { path: 'code.txt' });
+        let invalidReasonRejected = false;
+        try {
+          await client.call('escalate', { reason: '' });
+        } catch (error) {
+          invalidReasonRejected = /Escalation reason is required/.test(error.message);
+        }
+        if (!invalidReasonRejected) throw new Error('an empty escalation reason was accepted');
+        const escalation = await client.call('escalate', { reason: 'Sol needs Astra coordination' });
+        if (escalation.status !== 'escalated' || escalation.to === undefined) {
+          throw new Error('Sol did not receive escalation metadata');
+        }
+        let draining = false;
+        try {
+          await client.call('write', { path: 'code.txt', text: 'forbidden', expectedHash: original.hash });
+        } catch (error) {
+          draining = /draining/i.test(error.message);
+        }
+        if (!draining) throw new Error('a paused Sol write was not rejected');
+        emitAssistant({ text: 'Sol escalation completed', stopReason: 'stop' });
+      } finally {
+        await client.close();
+      }
+      emit({ type: 'response', id: request.id, command: request.type, success: true });
+      continue;
+    }
+
     if (['Delegate a broker write to Luna.', 'Write through broker.'].includes(request.message)) {
       const client = await connect({
         socketPath: process.env.PI_BROKER_SOCKET,

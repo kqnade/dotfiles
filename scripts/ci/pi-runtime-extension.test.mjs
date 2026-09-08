@@ -73,7 +73,7 @@ const requirePackageRoot = (t) => {
   }
 };
 
-test('loads only broker-backed read, edit, write, and delegate tools', async (t) => {
+test('loads only broker-backed read, edit, write, delegate, and escalation tools', async (t) => {
   requirePackageRoot(t);
   if (!loadExtension) return;
 
@@ -87,13 +87,39 @@ test('loads only broker-backed read, edit, write, and delegate tools', async (t)
     }, async () => {
       const pi = createPi();
       loaded.factory(pi);
-      assert.deepEqual([...pi.tools.keys()].sort(), ['delegate', 'edit', 'read', 'write']);
+      assert.deepEqual([...pi.tools.keys()].sort(), ['delegate', 'edit', 'escalate', 'read', 'write']);
       assert.deepEqual(pi.tools.get('edit').parameters.required, ['path', 'oldText', 'newText', 'expectedHash']);
       assert.equal(pi.tools.get('edit').parameters.properties.expectedHash.type, 'string');
+      assert.deepEqual(pi.tools.get('escalate').parameters.required, ['reason']);
+      assert.equal(pi.tools.get('escalate').parameters.properties.reason.type, 'string');
       assert.equal(pi.handlers.get('session_start').length, 1);
       assert.equal(pi.handlers.get('session_shutdown').length, 1);
       assert.equal(pi.handlers.get('before_provider_request').length, 2);
       assert.equal(pi.handlers.get('user_bash').length, 1);
+    });
+  } finally {
+    await loaded.cleanup();
+  }
+});
+
+test('gives delegated Sol an escalation handoff prompt', async (t) => {
+  requirePackageRoot(t);
+  if (!loadExtension) return;
+
+  const loaded = await loadExtension();
+  try {
+    await withEnvironment({
+      PI_BROKER_SOCKET: '/tmp/unopened.sock',
+      PI_AGENT_ID: 'sol-id',
+      PI_AGENT_TOKEN: 'token',
+      PI_AGENT_ROLE: 'sol',
+    }, async () => {
+      const pi = createPi();
+      loaded.factory(pi);
+      const prompt = await pi.emit('before_agent_start', { systemPrompt: 'base' });
+      assert.match(prompt.systemPrompt, /managed escalate tool/);
+      assert.match(prompt.systemPrompt, /existing waiting Astra/);
+      assert.match(prompt.systemPrompt, /without further edits/);
     });
   } finally {
     await loaded.cleanup();
@@ -191,6 +217,10 @@ test('checks broker permission before provider requests and injects the role pro
       assert.match(prompt.systemPrompt, /Sol/);
       assert.match(prompt.systemPrompt, /exactly one task to Astra/);
       assert.match(prompt.systemPrompt, /edit/);
+      await assert.rejects(
+        pi.tools.get('escalate').execute('root-escalate', { reason: 'root cannot escalate' }),
+        /Only delegated Sol can escalate/,
+      );
       await pi.emit('session_shutdown', { type: 'session_shutdown', reason: 'quit' });
     });
   } finally {

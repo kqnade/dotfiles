@@ -131,6 +131,11 @@ class Session {
       throwIfAborted(signal);
       return result;
     }
+    if (method === 'escalate') {
+      const result = await this.#track(this.#supervisor.escalate(agentId, params.reason));
+      throwIfAborted(signal);
+      return result;
+    }
     throw new Error(`Unknown broker method: ${method}`);
   }
 

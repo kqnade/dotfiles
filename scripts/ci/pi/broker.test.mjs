@@ -115,6 +115,40 @@ test('broker workers authenticate individually and delegate through the same sup
   }
 });
 
+test('a delegated Sol escalates through its existing Astra and cannot write after pausing', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'pi-broker-escalate-'));
+  let broker;
+  let client;
+  try {
+    await writeFile(join(cwd, 'code.txt'), 'source');
+    const directory = join(cwd, 'journal');
+    broker = await startBroker({ cwd, directory, command: process.execPath, args: [fixture] });
+    client = await connect(broker.connection);
+
+    const [astra] = await client.call('delegate', { tasks: [{
+      role: 'astra', task: 'Astra delegates an escalation.', paths: ['code.txt'],
+    }] });
+    const summary = JSON.parse(astra.result.text);
+    assert.equal(summary.astraId, astra.id);
+    assert.deepEqual(summary.child, {
+      status: 'escalated',
+      to: astra.id,
+      reason: 'Sol needs Astra coordination',
+    });
+    assert.equal(await readFile(join(cwd, 'code.txt'), 'utf8'), 'source');
+
+    const markerName = (await readdir(directory)).find(name => name.endsWith('.json'));
+    assert.ok(markerName, 'the broker journal must contain a session marker');
+    const marker = JSON.parse(await readFile(join(directory, markerName), 'utf8'));
+    const roles = Object.values(marker.jobs).map(job => job.role).sort();
+    assert.deepEqual(roles, ['astra', 'sol']);
+  } finally {
+    await client?.close();
+    await broker?.close();
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
 test('cancelling an active delegation stops the worker before a delayed broker write', async () => {
   const cwd = await mkdtemp(join(tmpdir(), 'pi-broker-cancel-'));
   let broker;
