@@ -3,13 +3,20 @@ import { startBroker } from './broker.mjs';
 import { modelFor } from './models.mjs';
 import { stopProcessGroup } from './ownership.mjs';
 
-export async function launch({ cwd, directory, piEntry, extensionPath, env = process.env, capture = false, prompt, signal, rootArgs = [] }) {
+export async function launch({
+  cwd, directory, piEntry, extensionPath, env = process.env, capture = false,
+  prompt, signal, rootArgs = [], additionalExtensions = [],
+}) {
   signal?.throwIfAborted();
   if (prompt !== undefined && typeof prompt !== 'string') throw new TypeError('prompt must be a string');
   if (!Array.isArray(rootArgs) || rootArgs.some(arg => typeof arg !== 'string')) throw new TypeError('rootArgs must be strings');
+  if (!Array.isArray(additionalExtensions) || additionalExtensions.some(path => typeof path !== 'string')) {
+    throw new TypeError('additionalExtensions must be paths');
+  }
   const model = modelFor('root');
   const common = [piEntry, '--no-extensions', '--no-builtin-tools', '--no-skills',
-    '--no-prompt-templates', '--no-approve', '--offline', '-e', extensionPath];
+    '--no-prompt-templates', '--no-approve', '--offline', '-e', extensionPath,
+    ...additionalExtensions.flatMap(path => ['-e', path])];
   const broker = await startBroker({
     cwd, directory, command: process.execPath,
     args: [...common, '--mode', 'rpc', '--no-session'], env, externalRoot: true,

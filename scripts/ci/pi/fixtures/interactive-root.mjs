@@ -6,6 +6,10 @@ const args = process.argv.slice(2);
 if (args[args.indexOf('--model') + 1] !== 'gpt-5.6-sol') throw new Error('wrong root model');
 if (args[args.indexOf('--thinking') + 1] !== 'medium') throw new Error('wrong root effort');
 if (!args.includes('--no-builtin-tools') || !args.includes('--no-extensions')) throw new Error('unmanaged tools enabled');
+if (process.env.PI_TEST_EXTRA_EXTENSION) {
+  const extensions = args.flatMap((arg, index) => arg === '-e' ? [args[index + 1]] : []);
+  if (!extensions.includes(process.env.PI_TEST_EXTRA_EXTENSION)) throw new Error('managed extra extension is missing');
+}
 if (process.env.PI_TEST_ROOT_ARGS) {
   const expected = JSON.parse(process.env.PI_TEST_ROOT_ARGS);
   const tail = args.slice(-expected.length);

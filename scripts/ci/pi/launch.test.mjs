@@ -83,3 +83,19 @@ test('the root receives session options while keeping its pinned model', async (
     assert.equal(result.stdout, 'ROOT_READY\n');
   } finally { await rm(cwd, { recursive: true, force: true }); }
 });
+
+test('the launcher forwards managed companion extension paths', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'pi-launch-extensions-'));
+  const directory = join(cwd, 'journal');
+  const fixture = fileURLToPath(new URL('./fixtures/interactive-root.mjs', import.meta.url));
+  const extra = join(cwd, 'lsp.ts');
+  try {
+    const result = await launch({
+      cwd, directory, piEntry: fixture, extensionPath: fixture, capture: true,
+      additionalExtensions: [extra],
+      env: { ...process.env, PI_TEST_JOURNAL: directory, PI_TEST_EXTRA_EXTENSION: extra },
+    });
+    assert.equal(result.code, 0, result.stderr);
+    assert.equal(result.stdout, 'ROOT_READY\n');
+  } finally { await rm(cwd, { recursive: true, force: true }); }
+});
