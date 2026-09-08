@@ -47,6 +47,7 @@ export class Supervisor {
     parent.waiting = true;
     await this.#scopes?.pause(callerId);
     await this.#scheduler.park(callerId);
+    let recoverable = true;
     try {
       const results = await Promise.allSettled(tasks.map(async task => {
         const agent = { ...task, id: randomUUID(), rootId: this.#rootId, parentId: callerId, waiting: false };
@@ -63,6 +64,10 @@ export class Supervisor {
           if (receipt.error) throw receipt.error;
           return { id: agent.id, role: agent.role, result: agent.escalation ?? receipt.result, ...(snapshots ? { snapshots } : {}) };
         } finally {
+          if (!completed) {
+            recoverable = false;
+            this.#scopes?.quarantine(agent.id, 'Worker execution or scope return is unconfirmed');
+          }
           this.#scheduler.release(agent.id, { confirmed: completed });
           if (completed) this.#agents.delete(agent.id);
         }
@@ -71,9 +76,11 @@ export class Supervisor {
       if (failures.length) throw new AggregateError(failures.map(result => result.reason), 'Delegated tasks failed');
       return results.map(result => result.value);
     } finally {
-      await this.#scheduler.resume(callerId);
-      await this.#scopes?.resume(callerId);
-      parent.waiting = false;
+      if (recoverable) {
+        await this.#scheduler.resume(callerId);
+        await this.#scopes?.resume(callerId);
+        parent.waiting = false;
+      }
     }
   }
 }

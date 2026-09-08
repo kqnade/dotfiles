@@ -56,6 +56,11 @@ export class Scopes {
     return this.#get(id).lease.paths;
   }
 
+  quarantine(id, reason) {
+    const entry = this.#get(id);
+    return entry.ownership.quarantine(entry.lease, reason);
+  }
+
   #assertReturned(id) {
     if ([...this.#entries.values()].some(entry => entry.parentId === id)) throw new Error('Scope has outstanding children');
   }

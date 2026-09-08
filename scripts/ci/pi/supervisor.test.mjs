@@ -78,3 +78,28 @@ test('an unconfirmed execution failure cannot free its occupied slot', async () 
   await assert.rejects(supervisor.delegate('session', [{ role: 'astra', task: 'coordinate' }]), /Delegated tasks failed/);
   assert.equal(supervisor.snapshot().available, 3);
 });
+
+test('an unconfirmed scoped worker preserves its failure and quarantines its writes', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'pi-supervisor-quarantine-'));
+  try {
+    await writeFile(join(cwd, 'code.txt'), 'source');
+    const scopes = new Scopes({ cwd, rootId: 'root' });
+    const failure = new Error('worker process group could not be inspected');
+    let childId;
+    const supervisor = new Supervisor({ rootId: 'root', scopes, execute: async agent => {
+      childId = agent.id;
+      throw failure;
+    }});
+    await assert.rejects(
+      supervisor.delegate('root', [{ role: 'astra', task: 'work', paths: ['code.txt'] }]),
+      error => error instanceof AggregateError && error.errors.includes(failure),
+    );
+    await assert.rejects(scopes.write(childId, 'code.txt', 'late child write'), /quarantined/);
+    await assert.rejects(scopes.write('root', 'code.txt', 'early parent write'), /draining/);
+    assert.equal(await readFile(join(cwd, 'code.txt'), 'utf8'), 'source');
+    assert.equal(supervisor.snapshot().available, 3);
+    assert.deepEqual(supervisor.snapshot().quarantined, [childId]);
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
