@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, readdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -81,6 +81,34 @@ test('closing an active session stops its worker before removing the marker', as
   } finally {
     await delegated;
     await session?.close();
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test('a journal write failure stops the worker and retains the unresolved session marker', async t => {
+  const cwd = await realpath(await mkdtemp(join(tmpdir(), 'pi-session-journal-failure-')));
+  const directory = join(cwd, 'journal');
+  try {
+    await writeFile(join(cwd, 'code.txt'), 'source');
+    const session = await startSession({ cwd, directory, command: process.execPath, args: [fixture] });
+    const [name] = await readdir(directory);
+    const before = await readFile(join(directory, name), 'utf8');
+    const kill = process.kill;
+    const groups = new Set();
+    t.mock.method(process, 'kill', (pid, signal) => {
+      if (pid < 0) groups.add(pid);
+      return kill.call(process, pid, signal);
+    });
+    await chmod(directory, 0o500);
+    await assert.rejects(session.delegate([{ role: 'astra', task: 'Reply OK.', paths: ['code.txt'] }]), /Delegated tasks failed/);
+    await assert.rejects(session.close(), { code: 'EACCES' });
+    await assert.rejects(session.delegate([{ role: 'astra', task: 'retry', paths: ['code.txt'] }]), { code: 'EACCES' });
+    assert.equal(groups.size, 1);
+    for (const pid of groups) assert.throws(() => kill.call(process, pid, 0), { code: 'ESRCH' });
+    assert.equal(await readFile(join(directory, name), 'utf8'), before);
+    assert.equal(session.snapshot().available, 4);
+  } finally {
+    await chmod(directory, 0o700);
     await rm(cwd, { recursive: true, force: true });
   }
 });
