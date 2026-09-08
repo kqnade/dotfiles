@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
 import { EXPECTED_VERSION, formatError, packageTarget, resolvePiEntry } from '../../dot_pi/agent/runtime/main.mjs';
-import { dispatchCommitMessage } from './commit-message.mjs';
+import { dispatchCommitMessage, parseGitHubRemote } from './commit-message.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -31,8 +31,18 @@ export async function commitStagedChanges({
   signal?.throwIfAborted();
   const git = args => runGit(args, { cwd, env, signal });
   const readRemote = () => git(['config', '--get', 'remote.origin.url']);
+  const readResolvedRemote = () => git(['remote', 'get-url', '--all', 'origin']);
   const readDiff = () => git(['diff', '--cached', '--no-ext-diff', '--no-textconv']);
   const remote = await readRemote();
+  const configuredRepository = parseGitHubRemote(remote.replace(/\r?\n$/u, ''));
+  const resolvedRemote = await readResolvedRemote();
+  for (const url of resolvedRemote.replace(/\r?\n$/u, '').split(/\r?\n/u)) {
+    const repository = parseGitHubRemote(url);
+    if (repository.owner !== configuredRepository.owner
+      || repository.repository.toLowerCase() !== configuredRepository.repository.toLowerCase()) {
+      throw new Error('Git URL rewriting changes the repository identity');
+    }
+  }
   let stagedDiff;
   const message = await dispatchCommitMessage({
     remoteUrl: remote.replace(/\r?\n$/u, ''),
@@ -45,7 +55,9 @@ export async function commitStagedChanges({
     generate: data => generate({ ...data, cwd, env, signal }),
   });
   signal?.throwIfAborted();
-  if (await readRemote() !== remote) throw new Error('Repository remote changed during message generation');
+  if (await readRemote() !== remote || await readResolvedRemote() !== resolvedRemote) {
+    throw new Error('Repository remote changed during message generation');
+  }
   if (await readDiff() !== stagedDiff) throw new Error('Staged changes changed during message generation');
   const output = await git(['commit', '-m', message]);
   return { message, output };

@@ -7,13 +7,14 @@ import { promisify } from 'node:util';
 import { test } from 'node:test';
 import { commitStagedChanges } from '../../pi/git-cc.mjs';
 
-const fixture = ({ remote = 'git@github.com:kqnade/example.git', diff = 'staged changes' } = {}) => {
+const fixture = ({ remote = 'git@github.com:kqnade/example.git', resolvedRemote = remote, diff = 'staged changes' } = {}) => {
   const calls = [];
   return {
     calls,
     runGit: async args => {
       calls.push(args);
       if (args[0] === 'config') return `${remote}\n`;
+      if (args[0] === 'remote') return `${resolvedRemote}\n`;
       if (args[0] === 'diff') return diff;
       if (args[0] === 'log') return 'previous commit';
       if (args[0] === 'commit') return 'committed\n';
@@ -26,6 +27,15 @@ test('git cc rejects an unsupported remote before reading staged files or histor
   const git = fixture({ remote: 'https://unsupported.example/owner/repo' });
   await assert.rejects(commitStagedChanges({ ...git, generate: () => assert.fail('must not generate') }), /invalid or unsupported GitHub remote/);
   assert.deepEqual(git.calls, [['config', '--get', 'remote.origin.url']]);
+});
+
+test('git cc rejects rewritten repository identities before reading staged files or history', async () => {
+  const git = fixture({ resolvedRemote: 'git@github.com:livesense-inc/example.git' });
+  await assert.rejects(commitStagedChanges({
+    ...git,
+    generate: async () => '✨ feat: add managed startup',
+  }), /Git URL rewriting changes the repository identity/u);
+  assert.equal(git.calls.some(args => ['diff', 'log', 'commit'].includes(args[0])), false);
 });
 
 test('git cc routes validated namespaces and commits only validated output', async () => {
@@ -59,7 +69,7 @@ test('git cc rejects empty staged changes without invoking a backend', async () 
 });
 
 test('git cc refuses to commit staging or remote changes made during generation', async () => {
-  for (const changed of ['diff', 'config']) {
+  for (const changed of ['diff', 'config', 'remote']) {
     const git = fixture();
     let generated = false;
     const runGit = args => generated && args[0] === changed ? 'changed' : git.runGit(args);
