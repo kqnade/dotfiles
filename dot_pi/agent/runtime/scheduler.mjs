@@ -14,8 +14,8 @@ export class Scheduler {
   #roots = new Map();
 
   constructor({ limit = 4 } = {}) {
-    if (!Number.isInteger(limit) || limit < 0) {
-      throw new TypeError('scheduler limit must be a non-negative integer');
+    if (!Number.isInteger(limit) || limit < 1) {
+      throw new TypeError('scheduler limit must be a positive integer');
     }
     this.#limit = limit;
   }
@@ -61,49 +61,49 @@ export class Scheduler {
       request: null,
     });
     if (role === 'root') {
-      this.#roots.set(rootId, { active: new Set(), queue: [] });
+      this.#roots.set(rootId, { active: new Set(), resumeQueue: [], queue: [] });
     }
   }
 
   async acquire(id, { signal } = {}) {
+    return this.#acquire(id, { signal, previousState: 'idle', kind: 'runnable' });
+  }
+
+  async park(id) {
     const agent = this.#agent(id);
     if (agent.role === 'root') {
       return;
     }
-    if (agent.state !== 'idle') {
-      throw stateError(`agent ${id} cannot acquire while ${agent.state}`);
+    if (agent.state !== 'active') {
+      throw stateError(`agent ${id} cannot park while ${agent.state}`);
     }
-    if (signal?.aborted) {
-      throw abortError();
-    }
-
     const root = this.#roots.get(agent.rootId);
-    if (root.active.size < this.#limit) {
-      root.active.add(id);
-      agent.state = 'active';
-      return;
-    }
+    root.active.delete(id);
+    agent.state = 'parked';
+    this.#drain(agent.rootId);
+  }
 
-    return new Promise((resolve, reject) => {
-      const request = { agent, resolve, reject, signal, onAbort: null };
-      request.onAbort = () => {
-        const index = root.queue.indexOf(request);
-        if (index !== -1) {
-          root.queue.splice(index, 1);
-        }
-        if (agent.request === request && agent.state === 'queued') {
-          agent.state = 'idle';
-          agent.request = null;
-          reject(abortError());
-        }
-      };
-      agent.state = 'queued';
-      agent.request = request;
-      if (signal) {
-        signal.addEventListener('abort', request.onAbort, { once: true });
-      }
-      root.queue.push(request);
-    });
+  async resume(id, { signal } = {}) {
+    return this.#acquire(id, { signal, previousState: 'parked', kind: 'resume' });
+  }
+
+  snapshot(rootId) {
+    const root = this.#root(rootId);
+    const agents = [...this.#agents.values()].filter((agent) => agent.rootId === rootId);
+    const active = [...root.active];
+    const parked = agents.filter((agent) => agent.state === 'parked').map(({ id }) => id);
+    const resumeQueue = root.resumeQueue.map(({ agent }) => agent.id);
+    const runnableQueue = root.queue.map(({ agent }) => agent.id);
+    return {
+      rootId,
+      limit: this.#limit,
+      available: this.#limit - active.length,
+      active,
+      parked,
+      queued: [...resumeQueue, ...runnableQueue],
+      resumeQueue,
+      runnableQueue,
+    };
   }
 
   release(id, { confirmed = true } = {}) {
@@ -124,15 +124,18 @@ export class Scheduler {
   }
 
   #drain(rootId) {
-    const root = this.#roots.get(rootId);
-    while (root.active.size < this.#limit && root.queue.length > 0) {
-      const request = root.queue.shift();
+    const root = this.#root(rootId);
+    while (root.active.size < this.#limit) {
+      const request = root.resumeQueue.shift() ?? root.queue.shift();
+      if (!request) {
+        return;
+      }
       if (request.signal?.aborted) {
         request.onAbort();
         continue;
       }
       const { agent } = request;
-      if (agent.request !== request || agent.state !== 'queued') {
+      if (agent.request !== request || agent.state !== request.queuedState) {
         continue;
       }
       if (request.signal) {
@@ -143,6 +146,66 @@ export class Scheduler {
       root.active.add(agent.id);
       request.resolve();
     }
+  }
+
+  #acquire(id, { signal, previousState, kind }) {
+    const agent = this.#agent(id);
+    if (agent.role === 'root') {
+      return Promise.resolve();
+    }
+    if (agent.state !== previousState) {
+      throw stateError(`agent ${id} cannot ${kind} while ${agent.state}`);
+    }
+    if (signal?.aborted) {
+      return Promise.reject(abortError());
+    }
+
+    const root = this.#roots.get(agent.rootId);
+    if (root.active.size < this.#limit) {
+      root.active.add(id);
+      agent.state = 'active';
+      return Promise.resolve();
+    }
+
+    const queuedState = kind === 'resume' ? 'resuming' : 'queued';
+    const queue = kind === 'resume' ? root.resumeQueue : root.queue;
+    return new Promise((resolve, reject) => {
+      const request = {
+        agent,
+        kind,
+        previousState,
+        queuedState,
+        resolve,
+        reject,
+        signal,
+        onAbort: null,
+      };
+      request.onAbort = () => {
+        const index = queue.indexOf(request);
+        if (index !== -1) {
+          queue.splice(index, 1);
+        }
+        if (agent.request === request && agent.state === queuedState) {
+          agent.state = previousState;
+          agent.request = null;
+          reject(abortError());
+        }
+      };
+      agent.state = queuedState;
+      agent.request = request;
+      if (signal) {
+        signal.addEventListener('abort', request.onAbort, { once: true });
+      }
+      queue.push(request);
+    });
+  }
+
+  #root(rootId) {
+    const root = this.#roots.get(rootId);
+    if (!root) {
+      throw stateError(`root ${rootId} is not registered`);
+    }
+    return root;
   }
 
   #agent(id) {

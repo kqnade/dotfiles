@@ -3,10 +3,11 @@ import test from 'node:test';
 
 import { Scheduler } from '../../../dot_pi/agent/runtime/scheduler.mjs';
 
-const registration = (id, rootId = 'root') => ({
+const registration = (id, rootId = 'root', options = {}) => ({
   id,
   rootId,
   role: id === rootId ? 'root' : 'astra',
+  ...options,
 });
 
 const tick = () => new Promise((resolve) => setImmediate(resolve));
@@ -54,4 +55,42 @@ test('an already-aborted queued acquisition is rejected without leaking its slot
 
   await assert.rejects(waiting, { name: 'AbortError' });
   await scheduler.acquire('waiting');
+});
+
+test('park frees the parent slot and resume requests precede runnable requests', async () => {
+  const scheduler = new Scheduler({ limit: 1 });
+  scheduler.register(registration('root'));
+  scheduler.register(registration('parent', 'root', { role: 'astra' }));
+  scheduler.register(registration('child', 'root', { parentId: 'parent', role: 'sol' }));
+  scheduler.register(registration('newcomer', 'root', { role: 'spark' }));
+
+  await scheduler.acquire('parent');
+  const childReady = scheduler.acquire('child');
+  await tick();
+  assert.equal(scheduler.snapshot('root').available, 0);
+  assert.deepEqual(scheduler.snapshot('root').active, ['parent']);
+  assert.deepEqual(scheduler.snapshot('root').queued, ['child']);
+
+  await scheduler.park('parent');
+  await childReady;
+  assert.deepEqual(scheduler.snapshot('root').active, ['child']);
+  assert.deepEqual(scheduler.snapshot('root').parked, ['parent']);
+
+  const order = [];
+  const parentReady = scheduler.resume('parent').then(() => order.push('parent'));
+  const newcomerReady = scheduler.acquire('newcomer').then(() => order.push('newcomer'));
+  await tick();
+  assert.deepEqual(scheduler.snapshot('root').queued, ['parent', 'newcomer']);
+  assert.deepEqual(scheduler.snapshot('root').resumeQueue, ['parent']);
+  assert.deepEqual(scheduler.snapshot('root').runnableQueue, ['newcomer']);
+
+  scheduler.release('child');
+  await parentReady;
+  assert.deepEqual(order, ['parent']);
+  assert.deepEqual(scheduler.snapshot('root').active, ['parent']);
+  assert.deepEqual(scheduler.snapshot('root').queued, ['newcomer']);
+
+  scheduler.release('parent');
+  await newcomerReady;
+  assert.deepEqual(order, ['parent', 'newcomer']);
 });
