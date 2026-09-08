@@ -38,11 +38,14 @@ export class Supervisor {
         this.#agents.set(agent.id, agent);
         this.#scheduler.register(agent);
         await this.#scheduler.acquire(agent.id);
+        let completed = false;
         try {
-          return { id: agent.id, role: agent.role, result: await this.#execute(Object.freeze({ ...agent })) };
+          const result = await this.#execute(Object.freeze({ ...agent }));
+          completed = true;
+          return { id: agent.id, role: agent.role, result };
         } finally {
-          this.#scheduler.release(agent.id);
-          this.#agents.delete(agent.id);
+          this.#scheduler.release(agent.id, { confirmed: completed });
+          if (completed) this.#agents.delete(agent.id);
         }
       }));
       const failures = results.filter(result => result.status === 'rejected');

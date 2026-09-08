@@ -21,3 +21,12 @@ test('only Sol escalation can create Astra and leaf roles cannot delegate', asyn
   assert.equal(results[0].result[0].result, 'done');
   assert.equal(supervisor.snapshot().available, 4);
 });
+
+test('an unconfirmed execution failure cannot free its occupied slot', async () => {
+  const supervisor = new Supervisor({
+    rootId: 'session',
+    execute: async () => { throw new Error('process stop is unknown'); },
+  });
+  await assert.rejects(supervisor.delegate('session', [{ role: 'astra', task: 'coordinate' }]), /Delegated tasks failed/);
+  assert.equal(supervisor.snapshot().available, 3);
+});
