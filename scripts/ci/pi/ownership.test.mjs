@@ -35,3 +35,39 @@ test('a canonical scoped claim can perform an expected-hash atomic write', async
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('drain waits for a delayed writer and prevents its late write', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pi-ownership-drain-'));
+  try {
+    const project = join(root, 'project');
+    const target = join(project, 'note.js');
+    await mkdir(project);
+    await writeFile(target, 'before\n');
+
+    const ownership = new Ownership({ cwd: root });
+    const lease = ownership.claim('writer', ['project']);
+    let startedResolve;
+    const started = new Promise((resolve) => {
+      startedResolve = resolve;
+    });
+    const running = ownership.run(lease, async () => {
+      startedResolve();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      await ownership.write(lease, 'project/note.js', 'late\n', {
+        expectedHash: hash('before\n'),
+      });
+    });
+
+    await started;
+    const draining = ownership.drain(lease);
+    await assert.rejects(
+      async () => ownership.run(lease, async () => {}),
+      { code: 'DRAINING' },
+    );
+    await draining;
+    await assert.rejects(running, { code: 'DRAINING' });
+    assert.equal(await readFile(target, 'utf8'), 'before\n');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

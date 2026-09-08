@@ -119,6 +119,8 @@ export class Ownership {
       paths: [],
       active: new Set(),
       draining: false,
+      drainPromise: null,
+      drained: false,
       quarantined: null,
     };
   }
@@ -190,6 +192,20 @@ export class Ownership {
       });
     state.active.add(tracked);
     return tracked;
+  }
+
+  async drain(lease) {
+    const state = this.#assertLease(lease);
+    if (state.drainPromise !== null) {
+      return state.drainPromise;
+    }
+    state.draining = true;
+    const pending = [...state.active];
+    state.drainPromise = Promise.allSettled(pending).then(() => {
+      state.drained = state.active.size === 0;
+      return state.drained;
+    });
+    return state.drainPromise;
   }
 
   async write(lease, path, text, { expectedHash } = {}) {
