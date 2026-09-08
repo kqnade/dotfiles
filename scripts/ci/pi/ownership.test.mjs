@@ -38,6 +38,87 @@ test('a canonical scoped claim can perform an expected-hash atomic write', async
   }
 });
 
+test('concurrent writes on one ownership serialize compare-and-swap publication', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pi-ownership-write-serialization-'));
+  try {
+    const project = join(root, 'project');
+    const target = join(project, 'note.js');
+    await mkdir(project);
+    await writeFile(target, 'before\n');
+
+    const ownership = new Ownership({ cwd: root });
+    const lease = ownership.claim('writer', ['project']);
+    const originalRename = fs.promises.rename;
+    let renameCalls = 0;
+    let firstRenameStartedResolve;
+    const firstRenameStarted = new Promise((resolve) => {
+      firstRenameStartedResolve = resolve;
+    });
+    let releaseFirstResolve;
+    const firstPublication = new Promise((resolve) => {
+      releaseFirstResolve = resolve;
+    });
+    let attemptsStarted = 0;
+    let bothAttemptsStartedResolve;
+    const bothAttemptsStarted = new Promise((resolve) => {
+      bothAttemptsStartedResolve = resolve;
+    });
+    const markAttemptStarted = () => {
+      attemptsStarted += 1;
+      if (attemptsStarted === 2) {
+        bothAttemptsStartedResolve();
+      }
+    };
+
+    let results;
+    try {
+      fs.promises.rename = async (source, destination) => {
+        if (destination === target) {
+          renameCalls += 1;
+          if (renameCalls === 1) {
+            firstRenameStartedResolve();
+            await firstPublication;
+          }
+        }
+        return originalRename(source, destination);
+      };
+      syncBuiltinESMExports();
+      const expectedHash = hash('before\n');
+      const first = ownership.run(lease, async () => {
+        markAttemptStarted();
+        return ownership.write(lease, 'project/note.js', 'first\n', { expectedHash });
+      }).then(
+        (value) => ({ status: 'fulfilled', value }),
+        (reason) => ({ status: 'rejected', reason }),
+      );
+      const second = ownership.run(lease, async () => {
+        markAttemptStarted();
+        return ownership.write(lease, 'project/note.js', 'second\n', { expectedHash });
+      }).then(
+        (value) => ({ status: 'fulfilled', value }),
+        (reason) => ({ status: 'rejected', reason }),
+      );
+
+      await bothAttemptsStarted;
+      await firstRenameStarted;
+      releaseFirstResolve();
+      results = await Promise.all([first, second]);
+    } finally {
+      releaseFirstResolve();
+      fs.promises.rename = originalRename;
+      syncBuiltinESMExports();
+    }
+
+    assert.equal(renameCalls, 1);
+    assert.equal(results.filter((result) => result.status === 'fulfilled').length, 1);
+    const rejected = results.find((result) => result.status === 'rejected');
+    assert.equal(rejected.reason.code, 'PREIMAGE_MISMATCH');
+    assert.equal(await readFile(target, 'utf8'), 'first\n');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('a create-only write publishes an absent target', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pi-ownership-create-only-'));
   try {

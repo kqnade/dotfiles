@@ -148,6 +148,7 @@ export class Ownership {
       generation: 0,
       paths: [],
       active: new Set(),
+      writeQueue: Promise.resolve(),
       draining: false,
       drainPromise: null,
       drained: false,
@@ -284,6 +285,13 @@ export class Ownership {
   }
 
   async write(lease, path, text, { expectedHash } = {}) {
+    const state = this.#assertWritable(lease);
+    const queued = state.writeQueue.then(() => this.#writeNow(lease, path, text, { expectedHash }));
+    state.writeQueue = queued.catch(() => {});
+    return queued;
+  }
+
+  async #writeNow(lease, path, text, { expectedHash } = {}) {
     const state = this.#assertWritable(lease);
     if (typeof text !== 'string' && !Buffer.isBuffer(text)) {
       throw new TypeError('text must be a string or Buffer');
