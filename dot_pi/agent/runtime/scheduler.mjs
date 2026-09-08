@@ -127,6 +127,14 @@ export class Scheduler {
       this.#reclaim(agent);
       return;
     }
+    if (agent.state === 'queued' || agent.state === 'resuming') {
+      this.#cancelRequest(agent, confirmed);
+      return;
+    }
+    if (agent.state === 'parked') {
+      agent.state = confirmed ? 'idle' : 'quarantined';
+      return;
+    }
     if (agent.state !== 'active') {
       throw stateError(`agent ${id} cannot release while ${agent.state}`);
     }
@@ -219,6 +227,25 @@ export class Scheduler {
     root.active.delete(agent.id);
     agent.state = 'idle';
     this.#drain(agent.rootId);
+  }
+
+  #cancelRequest(agent, confirmed) {
+    const request = agent.request;
+    if (!request) {
+      agent.state = confirmed ? 'idle' : 'quarantined';
+      return;
+    }
+    const root = this.#root(agent.rootId);
+    const index = root.queue.indexOf(request);
+    if (index !== -1) {
+      root.queue.splice(index, 1);
+    }
+    if (request.signal) {
+      request.signal.removeEventListener('abort', request.onAbort);
+    }
+    agent.request = null;
+    agent.state = confirmed ? 'idle' : 'quarantined';
+    request.reject(stateError(`agent ${agent.id} was released before acquiring a slot`));
   }
 
   #root(rootId) {

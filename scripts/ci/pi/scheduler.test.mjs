@@ -134,3 +134,48 @@ test('a non-root agent must reference a registered root agent', () => {
     /root parent is not registered/,
   );
 });
+
+test('confirmed release cancels queued acquisition without leaving an orphan request', async () => {
+  const scheduler = new Scheduler({ limit: 1 });
+  scheduler.register(registration('root'));
+  scheduler.register(registration('active'));
+  scheduler.register(registration('waiting'));
+
+  await scheduler.acquire('active');
+  const waiting = scheduler.acquire('waiting');
+  scheduler.release('waiting');
+
+  await assert.rejects(waiting, /released before acquiring/);
+  assert.deepEqual(scheduler.snapshot('root').queued, []);
+
+  scheduler.release('active');
+  await scheduler.acquire('waiting');
+  scheduler.release('waiting');
+});
+
+test('terminal release handles pending resume and parked unknown stop without charging a new slot', async () => {
+  const scheduler = new Scheduler({ limit: 1 });
+  scheduler.register(registration('root'));
+  scheduler.register(registration('holder'));
+  scheduler.register(registration('caller'));
+
+  await scheduler.acquire('caller');
+  await scheduler.park('caller');
+  await scheduler.acquire('holder');
+
+  const resuming = scheduler.resume('caller');
+  scheduler.release('caller');
+  await assert.rejects(resuming, /released before acquiring/);
+  assert.deepEqual(scheduler.snapshot('root').queued, []);
+
+  scheduler.release('holder');
+  await scheduler.acquire('caller');
+  await scheduler.park('caller');
+  scheduler.release('caller', { confirmed: false });
+  assert.deepEqual(scheduler.snapshot('root').quarantined, ['caller']);
+  assert.equal(scheduler.snapshot('root').available, 1);
+
+  scheduler.release('caller');
+  assert.deepEqual(scheduler.snapshot('root').quarantined, []);
+  assert.equal(scheduler.snapshot('root').available, 1);
+});
