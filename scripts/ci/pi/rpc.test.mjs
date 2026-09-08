@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { once } from 'node:events';
 import { RpcClient } from '../../../dot_pi/agent/runtime/rpc.mjs';
+import { stopProcessGroup } from '../../../dot_pi/agent/runtime/ownership.mjs';
 
 const fixture = fileURLToPath(new URL('./fixtures/rpc-child.mjs', import.meta.url));
 
@@ -52,6 +53,28 @@ test('close rejects new RPC requests before writing to the closing stream', asyn
     assert.deepEqual(await client.close(), await closing);
   } finally {
     await client.close();
+  }
+});
+
+test('close preserves failure when process-group termination cannot be inspected', async t => {
+  const client = new RpcClient({ command: process.execPath, args: [fixture] });
+  const kill = process.kill;
+  let inspection;
+  try {
+    await client.initialize('luna');
+    inspection = t.mock.method(process, 'kill', (pid, signal) => {
+      if (pid === -client.process.pid && signal === 0) {
+        throw Object.assign(new Error('process inspection denied'), { code: 'EPERM' });
+      }
+      return kill.call(process, pid, signal);
+    });
+    await assert.rejects(client.close(), { code: 'PROCESS_GROUP_UNKNOWN' });
+    inspection.mock.restore();
+    await stopProcessGroup(client.process.pid, 1000);
+    await assert.rejects(client.close(), { code: 'PROCESS_GROUP_UNKNOWN' });
+  } finally {
+    inspection?.mock.restore();
+    await stopProcessGroup(client.process.pid, 1000);
   }
 });
 
