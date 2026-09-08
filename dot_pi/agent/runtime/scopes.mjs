@@ -54,9 +54,16 @@ export class Scopes {
   }
 
   async edit(id, path, oldText, newText, options) {
+    if (typeof oldText !== 'string' || oldText.length === 0 || typeof newText !== 'string') {
+      throw new TypeError('edit requires nonempty oldText and string newText');
+    }
     const { ownership, lease } = this.#get(id);
     return ownership.run(lease, async () => {
       const original = await this.read(id, path);
+      const first = original.text.indexOf(oldText);
+      if (first === -1 || original.text.indexOf(oldText, first + 1) !== -1) {
+        throw new Error('edit requires a unique oldText match');
+      }
       const text = original.text.replace(oldText, () => newText);
       return ownership.write(lease, path, text, options);
     });

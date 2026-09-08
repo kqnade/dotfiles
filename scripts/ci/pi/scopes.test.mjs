@@ -35,3 +35,14 @@ test('a scoped edit replaces a unique preimage and preserves the rest of the fil
     assert.notEqual(result.hash, original.hash);
   } finally { await rm(cwd, { recursive: true, force: true }); }
 });
+
+test('a scoped edit refuses an ambiguous match without changing the file', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'pi-scoped-edit-ambiguous-'));
+  try {
+    await writeFile(join(cwd, 'a.txt'), 'value\nvalue\n');
+    const scopes = new Scopes({ cwd, rootId: 'root' });
+    const original = await scopes.read('root', 'a.txt');
+    await assert.rejects(scopes.edit('root', 'a.txt', 'value', 'replacement', { expectedHash: original.hash }), /unique/);
+    assert.equal(await readFile(join(cwd, 'a.txt'), 'utf8'), original.text);
+  } finally { await rm(cwd, { recursive: true, force: true }); }
+});
