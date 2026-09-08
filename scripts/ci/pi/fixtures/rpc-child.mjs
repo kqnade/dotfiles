@@ -1,4 +1,6 @@
 import { createInterface } from 'node:readline';
+import { readdir, readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 let model = { provider: 'openai-codex', id: 'gpt-5.6-sol' };
 let thinkingLevel = 'medium';
@@ -46,6 +48,14 @@ for await (const line of createInterface({ input: process.stdin })) {
       continue;
     }
   } else if (request.type === 'prompt') {
+    if (process.env.RPC_REQUIRE_JOURNAL) {
+      const directory = process.env.RPC_REQUIRE_JOURNAL;
+      const markers = await Promise.all((await readdir(directory))
+        .filter(name => name.endsWith('.json'))
+        .map(async name => JSON.parse(await readFile(join(directory, name), 'utf8'))));
+      const job = markers.flatMap(marker => Object.values(marker.jobs)).find(job => job.pid === process.pid);
+      if (job?.state !== 'running') process.exit(12);
+    }
     if (process.env.RPC_SUBSTITUTE) process.exit(9);
 
     const delay = request.message === 'Reply slowly' ? 250 : 25;

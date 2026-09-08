@@ -52,6 +52,10 @@ export class Scopes {
     return ownership.run(lease, () => ownership.write(lease, path, text, options));
   }
 
+  paths(id) {
+    return this.#get(id).lease.paths;
+  }
+
   #assertReturned(id) {
     if ([...this.#entries.values()].some(entry => entry.parentId === id)) throw new Error('Scope has outstanding children');
   }
