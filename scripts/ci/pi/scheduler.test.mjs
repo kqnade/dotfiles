@@ -57,7 +57,7 @@ test('an already-aborted queued acquisition is rejected without leaking its slot
   await scheduler.acquire('waiting');
 });
 
-test('park frees the parent slot and resume requests precede runnable requests', async () => {
+test('park frees the parent slot and resume requests retain FIFO order', async () => {
   const scheduler = new Scheduler({ limit: 1 });
   scheduler.register(registration('root'));
   scheduler.register(registration('parent', 'root', { role: 'astra' }));
@@ -93,4 +93,44 @@ test('park frees the parent slot and resume requests precede runnable requests',
   scheduler.release('parent');
   await newcomerReady;
   assert.deepEqual(order, ['parent', 'newcomer']);
+});
+
+test('an unconfirmed release quarantines its charged slot until terminal confirmation', async () => {
+  const scheduler = new Scheduler({ limit: 1 });
+  scheduler.register(registration('root'));
+  scheduler.register(registration('active'));
+  scheduler.register(registration('waiting'));
+
+  await scheduler.acquire('active');
+  let waitingAcquired = false;
+  const waiting = scheduler.acquire('waiting').then(() => {
+    waitingAcquired = true;
+  });
+
+  scheduler.release('active', { confirmed: false });
+  assert.deepEqual(scheduler.snapshot('root').quarantined, ['active']);
+  assert.equal(scheduler.snapshot('root').available, 0);
+  await tick();
+  assert.equal(waitingAcquired, false);
+
+  scheduler.release('active');
+  await waiting;
+  assert.equal(waitingAcquired, true);
+  assert.deepEqual(scheduler.snapshot('root').quarantined, []);
+  assert.deepEqual(scheduler.snapshot('root').active, ['waiting']);
+
+  scheduler.release('active');
+  assert.deepEqual(scheduler.snapshot('root').active, ['waiting']);
+  scheduler.release('waiting');
+});
+
+test('a non-root agent must reference a registered root agent', () => {
+  const scheduler = new Scheduler({ limit: 1 });
+  scheduler.register(registration('root'));
+  scheduler.register(registration('parent'));
+
+  assert.throws(
+    () => scheduler.register(registration('orphan', 'parent', { role: 'sol' })),
+    /root parent is not registered/,
+  );
 });

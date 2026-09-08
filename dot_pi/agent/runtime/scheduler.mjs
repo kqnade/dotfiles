@@ -39,7 +39,7 @@ export class Scheduler {
     if (role === 'root' && (parentId !== null || id !== rootId)) {
       throw stateError('root agents must use their id as rootId and have no parent');
     }
-    if (role !== 'root' && !this.#agents.has(rootId)) {
+    if (role !== 'root' && !this.#roots.has(rootId)) {
       throw stateError(`root ${rootId} is not registered`);
     }
     if (parentId !== null) {
@@ -61,7 +61,7 @@ export class Scheduler {
       request: null,
     });
     if (role === 'root') {
-      this.#roots.set(rootId, { active: new Set(), resumeQueue: [], queue: [] });
+      this.#roots.set(rootId, { active: new Set(), queue: [] });
     }
   }
 
@@ -92,15 +92,24 @@ export class Scheduler {
     const agents = [...this.#agents.values()].filter((agent) => agent.rootId === rootId);
     const active = [...root.active];
     const parked = agents.filter((agent) => agent.state === 'parked').map(({ id }) => id);
-    const resumeQueue = root.resumeQueue.map(({ agent }) => agent.id);
-    const runnableQueue = root.queue.map(({ agent }) => agent.id);
+    const quarantined = agents
+      .filter((agent) => agent.state === 'quarantined')
+      .map(({ id }) => id);
+    const queued = root.queue.map(({ agent }) => agent.id);
+    const resumeQueue = root.queue
+      .filter(({ kind }) => kind === 'resume')
+      .map(({ agent }) => agent.id);
+    const runnableQueue = root.queue
+      .filter(({ kind }) => kind === 'runnable')
+      .map(({ agent }) => agent.id);
     return {
       rootId,
       limit: this.#limit,
       available: this.#limit - active.length,
       active,
       parked,
-      queued: [...resumeQueue, ...runnableQueue],
+      quarantined,
+      queued,
       resumeQueue,
       runnableQueue,
     };
@@ -111,22 +120,27 @@ export class Scheduler {
     if (agent.role === 'root' || agent.state === 'idle') {
       return;
     }
+    if (agent.state === 'quarantined') {
+      if (!confirmed) {
+        return;
+      }
+      this.#reclaim(agent);
+      return;
+    }
     if (agent.state !== 'active') {
       throw stateError(`agent ${id} cannot release while ${agent.state}`);
     }
     if (!confirmed) {
-      throw stateError('terminal proof is required to release a slot');
+      agent.state = 'quarantined';
+      return;
     }
-    const root = this.#roots.get(agent.rootId);
-    root.active.delete(id);
-    agent.state = 'idle';
-    this.#drain(agent.rootId);
+    this.#reclaim(agent);
   }
 
   #drain(rootId) {
     const root = this.#root(rootId);
     while (root.active.size < this.#limit) {
-      const request = root.resumeQueue.shift() ?? root.queue.shift();
+      const request = root.queue.shift();
       if (!request) {
         return;
       }
@@ -168,7 +182,7 @@ export class Scheduler {
     }
 
     const queuedState = kind === 'resume' ? 'resuming' : 'queued';
-    const queue = kind === 'resume' ? root.resumeQueue : root.queue;
+    const queue = root.queue;
     return new Promise((resolve, reject) => {
       const request = {
         agent,
@@ -198,6 +212,13 @@ export class Scheduler {
       }
       queue.push(request);
     });
+  }
+
+  #reclaim(agent) {
+    const root = this.#root(agent.rootId);
+    root.active.delete(agent.id);
+    agent.state = 'idle';
+    this.#drain(agent.rootId);
   }
 
   #root(rootId) {
