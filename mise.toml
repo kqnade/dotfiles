@@ -13,6 +13,9 @@ npm.package_manager = "auto"
 system_packages.managers = ["dnf", "pacman", "brew-cask"]
 task.run_auto_install = false
 
+[env]
+_.path = { path = ["{{env.HOME}}/.pi/bin"], tools = true }
+
 [tools]
 # Bootstrap and shell
 chezmoi = "2.72.1"
