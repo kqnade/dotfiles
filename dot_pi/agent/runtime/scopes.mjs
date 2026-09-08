@@ -44,7 +44,7 @@ export class Scopes {
     entry.paused = true;
   }
 
-  borrow(parentId, id, paths) {
+  async borrow(parentId, id, paths) {
     const parent = this.#get(parentId);
     if (!parent.paused) throw new Error('Parent scope must be paused');
     if (this.#entries.has(id)) throw new Error('Scope owner already exists');
@@ -57,6 +57,15 @@ export class Scopes {
       }
     }
     this.#entries.set(id, entry);
+    try {
+      await entry.ownership.drain(entry.lease);
+      const handoff = await entry.ownership.transfer(entry.lease, id);
+      entry.lease = handoff.lease;
+      return handoff;
+    } catch (error) {
+      if (this.#entries.get(id) === entry) this.#entries.delete(id);
+      throw error;
+    }
   }
 
   async write(id, path, text, options) {

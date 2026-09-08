@@ -133,6 +133,9 @@ test('root cancellation removes queued descendants and returns their borrowed sc
       signal: controller.signal,
     }).then(value => ({ value }), error => ({ error }));
     await ready.promise;
+    for (let attempt = 0; attempt < 100 && supervisor.snapshot().queued.length !== 1; attempt += 1) {
+      await new Promise(resolve => setTimeout(resolve, 1));
+    }
     assert.equal(supervisor.snapshot().queued.length, 1);
     controller.abort();
     release.resolve();

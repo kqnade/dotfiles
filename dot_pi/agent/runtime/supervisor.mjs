@@ -69,7 +69,7 @@ export class Supervisor {
         let started = false;
         let completed = false;
         try {
-          this.#scopes?.borrow(callerId, agent.id, task.paths);
+          await this.#scopes?.borrow(callerId, agent.id, task.paths);
           borrowed = Boolean(this.#scopes);
           await this.#scheduler.acquire(agent.id, { signal });
           started = true;
