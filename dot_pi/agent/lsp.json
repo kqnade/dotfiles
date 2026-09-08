@@ -1,0 +1,22 @@
+{
+  "installMode": "off",
+  "warmup": true,
+  "servers": {
+    "vtsls": {
+      "command": ["vtsls", "--stdio"],
+      "install": {"type": "system", "command": ["vtsls", "--stdio"]}
+    },
+    "pyright": {
+      "command": ["pyright-langserver", "--stdio"],
+      "install": {"type": "system", "command": ["pyright-langserver", "--stdio"]}
+    },
+    "gopls": {
+      "command": ["gopls"],
+      "install": {"type": "system", "command": ["gopls"]}
+    },
+    "rust-analyzer": {
+      "command": ["rust-analyzer"],
+      "install": {"type": "system", "command": ["rust-analyzer"]}
+    }
+  }
+}

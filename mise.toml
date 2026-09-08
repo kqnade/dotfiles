@@ -56,10 +56,15 @@ shellcheck = "0.11.0"
 shfmt = "3.13.1"
 taplo = "0.10.0"
 typos = "1.50.1"
+"npm:@vtsls/language-server" = { version = "0.3.0", depends = ["node"] }
+"npm:pyright" = { version = "1.1.413", depends = ["node"] }
+"go:golang.org/x/tools/gopls" = { version = "0.23.0", depends = ["go"] }
+rust-analyzer = "2026-08-31"
 
 # Language runtimes
 rust = "1.98.1"
 node = "26.7.0"
+go = "1.27.1"
 bun = "1.4.2"
 pnpm = { version = "11.25.0", os = [
   "linux",
@@ -74,6 +79,9 @@ uv = "0.12.9"
 1password-cli = "2.39.0"
 herdr = "v0.8.2"
 claude = "2.1.263"
+"npm:@earendil-works/pi-coding-agent" = { version = "0.85.1", depends = [
+  "node",
+] }
 "aqua:openai/codex" = "0.153.4"
 opencode = "1.18.27"
 "npm:ccusage" = { version = "20.0.20", depends = ["node"] }

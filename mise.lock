@@ -302,6 +302,26 @@ checksum = "sha256:f1c17aeca0b4eaab9ea606226477dbed3b84b56fe0811a9f967d2ea2b2393
 url = "https://github.com/git-lfs/git-lfs/releases/download/v3.8.0/git-lfs-darwin-amd64-v3.8.0.zip"
 url_api = "https://api.github.com/repos/git-lfs/git-lfs/releases/assets/532993568"
 
+[[tools.go]]
+version = "1.27.1"
+backend = "core:go"
+
+[tools.go."platforms.linux-x64"]
+checksum = "sha256:63d339f0da5ab53635a56f2490a7984dfe12dfcff22ad749f63edaf590168445"
+url = "https://dl.google.com/go/go1.27.1.linux-amd64.tar.gz"
+
+[tools.go."platforms.macos-arm64"]
+checksum = "sha256:ee215d57e0ec269c60cc9ceca68e6bda321ba9ee5afe24f4b0988703c2d87d12"
+url = "https://dl.google.com/go/go1.27.1.darwin-arm64.tar.gz"
+
+[tools.go."platforms.macos-x64"]
+checksum = "sha256:8f8f52c6649542cf027bbc9b9c68d1ec042f9f34808a40413f0b8b3f66f3caa4"
+url = "https://dl.google.com/go/go1.27.1.darwin-amd64.tar.gz"
+
+[[tools."go:golang.org/x/tools/gopls"]]
+version = "0.23.0"
+backend = "go:golang.org/x/tools/gopls"
+
 [[tools.herdr]]
 version = "v0.8.2"
 backend = "aqua:ogulcancelik/herdr"
@@ -410,6 +430,14 @@ url = "https://nodejs.org/dist/v26.7.0/node-v26.7.0-darwin-arm64.tar.gz"
 checksum = "sha256:f279d1ed28ce57f7788bf23435d2ad7fdd7438904ad5c4d8a1081a7cde3d4b96"
 url = "https://nodejs.org/dist/v26.7.0/node-v26.7.0-darwin-x64.tar.gz"
 
+[[tools."npm:@earendil-works/pi-coding-agent"]]
+version = "0.85.1"
+backend = "npm:@earendil-works/pi-coding-agent"
+
+[[tools."npm:@vtsls/language-server"]]
+version = "0.3.0"
+backend = "npm:@vtsls/language-server"
+
 [[tools."npm:ccusage"]]
 version = "20.0.20"
 backend = "npm:ccusage"
@@ -417,6 +445,10 @@ backend = "npm:ccusage"
 [[tools."npm:pnpm"]]
 version = "11.25.0"
 backend = "npm:pnpm"
+
+[[tools."npm:pyright"]]
+version = "1.1.413"
+backend = "npm:pyright"
 
 [[tools.opencode]]
 version = "1.18.27"
@@ -475,6 +507,25 @@ url_api = "https://api.github.com/repos/BurntSushi/ripgrep/releases/assets/47811
 [[tools.rust]]
 version = "1.98.1"
 backend = "core:rust"
+
+[[tools.rust-analyzer]]
+version = "2026-08-31"
+backend = "aqua:rust-lang/rust-analyzer"
+
+[tools.rust-analyzer."platforms.linux-x64"]
+checksum = "sha256:a775f9edb543bb0c077da339b783e89446092986cde921c9d8e1733b091080c6"
+url = "https://github.com/rust-lang/rust-analyzer/releases/download/2026-08-31/rust-analyzer-x86_64-unknown-linux-gnu.gz"
+url_api = "https://api.github.com/repos/rust-lang/rust-analyzer/releases/assets/537513235"
+
+[tools.rust-analyzer."platforms.macos-arm64"]
+checksum = "sha256:5de5c20b8b49bdc9339ef537b4029af7f97214fb88d6fc86af57ab9344467625"
+url = "https://github.com/rust-lang/rust-analyzer/releases/download/2026-08-31/rust-analyzer-aarch64-apple-darwin.gz"
+url_api = "https://api.github.com/repos/rust-lang/rust-analyzer/releases/assets/537512875"
+
+[tools.rust-analyzer."platforms.macos-x64"]
+checksum = "sha256:a3b3e06da42b4df781891359ccbb57d6a84f311f0506de5f98dd0553460b1f8d"
+url = "https://github.com/rust-lang/rust-analyzer/releases/download/2026-08-31/rust-analyzer-x86_64-apple-darwin.gz"
+url_api = "https://api.github.com/repos/rust-lang/rust-analyzer/releases/assets/537513186"
 
 [[tools.sheldon]]
 version = "0.8.5"

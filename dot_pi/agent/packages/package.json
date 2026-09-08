@@ -1,0 +1,10 @@
+{
+  "name": "pi-agent-packages",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@earendil-works/pi-coding-agent": "0.85.1",
+    "pi-lsp-adapter": "0.1.3"
+  }
+}
