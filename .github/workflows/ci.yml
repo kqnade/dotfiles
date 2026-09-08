@@ -56,6 +56,11 @@ jobs:
           mise exec -- python3 scripts/ci/validate-project-contracts.py
           mise tasks validate
 
+      - name: run Pi runtime unit tests
+        run: |
+          mise install --locked node
+          mise exec -- node --test scripts/ci/pi/*.test.mjs
+
       - name: install pinned linters
         run: mise install --locked shellcheck shfmt taplo
 
@@ -173,6 +178,22 @@ jobs:
             exit 1
           fi
 
+      - name: verify managed Pi and run extension tests
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          package_root="${XDG_CACHE_HOME:-$HOME/.cache}/pi/agent/packages"
+          test -x "$HOME/.local/bin/pi"
+          test "$("$HOME/.local/bin/pi" --version)" = "0.85.1"
+          test -L "$HOME/.pi/bin/pi"
+          test "$(readlink "$HOME/.pi/bin/pi")" = "../../.local/bin/pi"
+          test -d "$package_root/node_modules/@earendil-works/pi-coding-agent"
+          test -d "$package_root/node_modules/pi-lsp-adapter"
+          export PI_PACKAGE_ROOT="$package_root"
+          mise exec -- node --test \
+            scripts/ci/pi-runtime-extension.test.mjs \
+            scripts/ci/pi-runtime-lsp.test.mjs \
+            scripts/ci/pi-lsp-diagnostics.test.mjs
+
   macos-bootstrap:
     name: macOS arm64 public interfaces
     runs-on: macos-15
@@ -213,6 +234,22 @@ jobs:
 
           cd "$HOME"
           mise run doctor
+
+      - name: verify managed Pi and run extension tests
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          package_root="${XDG_CACHE_HOME:-$HOME/.cache}/pi/agent/packages"
+          test -x "$HOME/.local/bin/pi"
+          test "$("$HOME/.local/bin/pi" --version)" = "0.85.1"
+          test -L "$HOME/.pi/bin/pi"
+          test "$(readlink "$HOME/.pi/bin/pi")" = "../../.local/bin/pi"
+          test -d "$package_root/node_modules/@earendil-works/pi-coding-agent"
+          test -d "$package_root/node_modules/pi-lsp-adapter"
+          export PI_PACKAGE_ROOT="$package_root"
+          mise exec -- node --test \
+            scripts/ci/pi-runtime-extension.test.mjs \
+            scripts/ci/pi-runtime-lsp.test.mjs \
+            scripts/ci/pi-lsp-diagnostics.test.mjs
 
   intel-fallback:
     name: Intel Mac public interfaces and source fallbacks
@@ -278,3 +315,19 @@ jobs:
           done
           expected_pnpm="$(mise config get tools.npm:pnpm.version)"
           test "$(mise exec -- pnpm --version)" = "$expected_pnpm"
+
+      - name: verify managed Pi and run extension tests
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          package_root="${XDG_CACHE_HOME:-$HOME/.cache}/pi/agent/packages"
+          test -x "$HOME/.local/bin/pi"
+          test "$("$HOME/.local/bin/pi" --version)" = "0.85.1"
+          test -L "$HOME/.pi/bin/pi"
+          test "$(readlink "$HOME/.pi/bin/pi")" = "../../.local/bin/pi"
+          test -d "$package_root/node_modules/@earendil-works/pi-coding-agent"
+          test -d "$package_root/node_modules/pi-lsp-adapter"
+          export PI_PACKAGE_ROOT="$package_root"
+          mise exec -- node --test \
+            scripts/ci/pi-runtime-extension.test.mjs \
+            scripts/ci/pi-runtime-lsp.test.mjs \
+            scripts/ci/pi-lsp-diagnostics.test.mjs

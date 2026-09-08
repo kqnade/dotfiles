@@ -207,6 +207,13 @@ mise_scoped_mise_tests = "mise exec -- python3 scripts/ci/test-validate-mise.py"
 if mise_scoped_mise_tests not in static_job:
     fail("CI mise tests must run with installed tools on PATH")
 
+pi_unit_install = "mise install --locked node"
+pi_unit_tests = "mise exec -- node --test scripts/ci/pi/*.test.mjs"
+if pi_unit_install not in static_job or pi_unit_tests not in static_job:
+    fail("CI static validation must install pinned Node and run Pi runtime unit tests")
+if static_job.index(pi_unit_install) > static_job.index(pi_unit_tests):
+    fail("CI Pi runtime unit tests must run after pinned Node installation")
+
 for fragment in (
     "bash install.sh",
     "mise run apply",
@@ -228,6 +235,43 @@ for fragment in (
 ):
     if fragment not in workflow:
         fail(f"CI no longer executes required integration path: {fragment}")
+
+pi_runtime_fragments = (
+    'test -x "$HOME/.local/bin/pi"',
+    'test "$("$HOME/.local/bin/pi" --version)" = "0.85.1"',
+    'test -L "$HOME/.pi/bin/pi"',
+    'test "$(readlink "$HOME/.pi/bin/pi")" = "../../.local/bin/pi"',
+    'package_root="${XDG_CACHE_HOME:-$HOME/.cache}/pi/agent/packages"',
+    'test -d "$package_root/node_modules/@earendil-works/pi-coding-agent"',
+    'test -d "$package_root/node_modules/pi-lsp-adapter"',
+    'export PI_PACKAGE_ROOT="$package_root"',
+    "scripts/ci/pi-runtime-extension.test.mjs",
+    "scripts/ci/pi-runtime-lsp.test.mjs",
+    "scripts/ci/pi-lsp-diagnostics.test.mjs",
+)
+for fragment in pi_runtime_fragments:
+    if fragment not in workflow:
+        fail(f"CI Pi runtime coverage is missing: {fragment}")
+
+job_matches = list(re.finditer(r"(?m)^  (?P<name>[A-Za-z0-9_-]+):\n", workflow))
+job_sections = {
+    match.group("name"): workflow[match.start() : job_matches[index + 1].start()]
+    if index + 1 < len(job_matches)
+    else workflow[match.start() :]
+    for index, match in enumerate(job_matches)
+}
+for job_name in ("linux-bootstrap", "macos-bootstrap", "intel-fallback"):
+    section = job_sections.get(job_name)
+    if section is None:
+        fail(f"CI full toolchain job is missing: {job_name}")
+    apply_match = re.search(r"\brun apply\b", section)
+    pi_test_index = section.find("scripts/ci/pi-runtime-extension.test.mjs")
+    if apply_match is None or pi_test_index < apply_match.start():
+        fail(f"CI Pi runtime tests must run after apply in {job_name}")
+
+package_job = job_sections.get("package-bootstrap", "")
+if "PI_PACKAGE_ROOT" in package_job or "scripts/ci/pi-" in package_job:
+    fail("CI Pi runtime tests must not run in the package-only bootstrap job")
 
 if not re.search(
     r"(?m)^\s+uses: actions/cache@[0-9a-f]{40} # v[0-9]+\.[0-9]+\.[0-9]+$",
