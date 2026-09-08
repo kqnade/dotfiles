@@ -32,3 +32,4 @@ try {
 } finally {
   await client.close();
 }
+if (process.env.PI_TEST_KEEP_RUNNING) await new Promise(resolve => setTimeout(resolve, 600));

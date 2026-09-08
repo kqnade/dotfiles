@@ -3,7 +3,8 @@ import { startBroker } from './broker.mjs';
 import { modelFor } from './models.mjs';
 import { stopProcessGroup } from './ownership.mjs';
 
-export async function launch({ cwd, directory, piEntry, extensionPath, env = process.env, capture = false, prompt }) {
+export async function launch({ cwd, directory, piEntry, extensionPath, env = process.env, capture = false, prompt, signal }) {
+  signal?.throwIfAborted();
   if (prompt !== undefined && typeof prompt !== 'string') throw new TypeError('prompt must be a string');
   const model = modelFor('root');
   const common = [piEntry, '--no-extensions', '--no-builtin-tools', '--no-skills',
@@ -15,6 +16,7 @@ export async function launch({ cwd, directory, piEntry, extensionPath, env = pro
   let root;
   let result;
   const errors = [];
+  const abort = () => { void root.close().catch(error => { errors.push(error); }); };
   try {
     const { socketPath, agentId, token } = broker.connection;
     const child = spawn(process.execPath, [...common, '--provider', model.provider,
@@ -42,6 +44,8 @@ export async function launch({ cwd, directory, piEntry, extensionPath, env = pro
         return closing;
       },
     };
+    signal?.addEventListener('abort', abort, { once: true });
+    if (signal?.aborted) abort();
     if (child.pid === undefined) {
       await exited;
       throw spawnError ?? new Error('Pi root did not start');
@@ -52,6 +56,7 @@ export async function launch({ cwd, directory, piEntry, extensionPath, env = pro
   } catch (error) {
     errors.push(error);
   } finally {
+    signal?.removeEventListener('abort', abort);
     try { await root?.close(); } catch (error) { errors.push(error); }
     try { await broker.close(); } catch (error) { errors.push(error); }
   }
