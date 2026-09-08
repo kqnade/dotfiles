@@ -3,9 +3,10 @@ import { startBroker } from './broker.mjs';
 import { modelFor } from './models.mjs';
 import { stopProcessGroup } from './ownership.mjs';
 
-export async function launch({ cwd, directory, piEntry, extensionPath, env = process.env, capture = false, prompt, signal }) {
+export async function launch({ cwd, directory, piEntry, extensionPath, env = process.env, capture = false, prompt, signal, rootArgs = [] }) {
   signal?.throwIfAborted();
   if (prompt !== undefined && typeof prompt !== 'string') throw new TypeError('prompt must be a string');
+  if (!Array.isArray(rootArgs) || rootArgs.some(arg => typeof arg !== 'string')) throw new TypeError('rootArgs must be strings');
   const model = modelFor('root');
   const common = [piEntry, '--no-extensions', '--no-builtin-tools', '--no-skills',
     '--no-prompt-templates', '--no-approve', '--offline', '-e', extensionPath];
@@ -20,7 +21,7 @@ export async function launch({ cwd, directory, piEntry, extensionPath, env = pro
   try {
     const { socketPath, agentId, token } = broker.connection;
     const child = spawn(process.execPath, [...common, '--provider', model.provider,
-      '--model', model.id, '--thinking', model.effort,
+      '--model', model.id, '--thinking', model.effort, ...rootArgs,
       ...(prompt === undefined ? [] : ['--print', '--', prompt])], {
       cwd, detached: true, stdio: capture ? ['ignore', 'pipe', 'pipe'] : 'inherit',
       env: { ...env, PI_BROKER_SOCKET: socketPath, PI_AGENT_ID: agentId,

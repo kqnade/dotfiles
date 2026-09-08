@@ -6,6 +6,11 @@ const args = process.argv.slice(2);
 if (args[args.indexOf('--model') + 1] !== 'gpt-5.6-sol') throw new Error('wrong root model');
 if (args[args.indexOf('--thinking') + 1] !== 'medium') throw new Error('wrong root effort');
 if (!args.includes('--no-builtin-tools') || !args.includes('--no-extensions')) throw new Error('unmanaged tools enabled');
+if (process.env.PI_TEST_ROOT_ARGS) {
+  const expected = JSON.parse(process.env.PI_TEST_ROOT_ARGS);
+  const tail = args.slice(-expected.length);
+  if (JSON.stringify(tail) !== JSON.stringify(expected)) throw new Error('root arguments were not forwarded');
+}
 if (process.env.PI_TEST_PROMPT) {
   if (!args.includes('--print') || args.at(-2) !== '--' || args.at(-1) !== process.env.PI_TEST_PROMPT) {
     throw new Error('print prompt was not passed literally');

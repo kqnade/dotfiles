@@ -68,3 +68,18 @@ test('print prompts are passed literally without overriding the root policy', as
     await rm(cwd, { recursive: true, force: true });
   }
 });
+
+test('the root receives session options while keeping its pinned model', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'pi-launch-session-'));
+  const directory = join(cwd, 'journal');
+  const fixture = fileURLToPath(new URL('./fixtures/interactive-root.mjs', import.meta.url));
+  const rootArgs = ['--session-id', 'selected-session'];
+  try {
+    const result = await launch({
+      cwd, directory, piEntry: fixture, extensionPath: fixture, capture: true, rootArgs,
+      env: { ...process.env, PI_TEST_JOURNAL: directory, PI_TEST_ROOT_ARGS: JSON.stringify(rootArgs) },
+    });
+    assert.equal(result.code, 0, result.stderr);
+    assert.equal(result.stdout, 'ROOT_READY\n');
+  } finally { await rm(cwd, { recursive: true, force: true }); }
+});
