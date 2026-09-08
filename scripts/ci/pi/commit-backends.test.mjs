@@ -35,17 +35,16 @@ const installAuthorizationHook = async (home) => {
 
 const readJson = async (path) => JSON.parse(await readFile(path, 'utf8'));
 
-const waitForFile = async (path) => {
+const waitForJson = async (path) => {
   for (let attempt = 0; attempt < 100; attempt += 1) {
     try {
-      await readFile(path);
-      return;
+      return JSON.parse(await readFile(path, 'utf8'));
     } catch (error) {
-      if (error.code !== 'ENOENT') throw error;
+      if (error.code !== 'ENOENT' && !(error instanceof SyntaxError)) throw error;
       await setTimeout(10);
     }
   }
-  throw new Error(`timed out waiting for ${path}`);
+  throw new Error(`timed out waiting for valid JSON in ${path}`);
 };
 
 test('the Pi commit backend uses isolated no-tools Sol and validates its response', async () => {
@@ -282,7 +281,7 @@ test('Claude backend stops descendants before waiting for closed output pipes', 
         CLAUDE_TEST_DESCENDANT_PID: descendantPath,
       },
     });
-    await waitForFile(descendantPath);
+    await waitForJson(descendantPath);
     const result = await Promise.race([
       pending,
       setTimeout(2_000).then(() => { throw new Error('descendant cleanup timed out'); }),
@@ -329,7 +328,7 @@ test('cancelling Claude generation proves the process group stopped', async () =
         CLAUDE_TEST_HOLD: '1',
       },
     });
-    await waitForFile(argsPath);
+    const argsMarker = await waitForJson(argsPath);
     controller.abort(reason);
     const outcome = await pending.then(
       () => ({ ok: true }),
@@ -338,8 +337,7 @@ test('cancelling Claude generation proves the process group stopped', async () =
 
     assert.equal(outcome.ok, false);
     assert.ok(outcome.error.errors?.includes(reason));
-    const { pid } = await readJson(argsPath);
-    assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' });
+    assert.throws(() => process.kill(argsMarker.pid, 0), { code: 'ESRCH' });
   } finally {
     controller.abort(reason);
     await rm(cwd, { recursive: true, force: true });
