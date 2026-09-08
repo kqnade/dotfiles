@@ -8,11 +8,13 @@ export class Supervisor {
   #agents = new Map();
   #rootId;
   #execute;
+  #scopes;
 
-  constructor({ rootId = randomUUID(), execute }) {
+  constructor({ rootId = randomUUID(), execute, scopes }) {
     if (typeof execute !== 'function') throw new TypeError('execute is required');
     this.#rootId = rootId;
     this.#execute = execute;
+    this.#scopes = scopes;
     const root = { id: rootId, rootId, parentId: null, role: 'root', waiting: false };
     this.#agents.set(rootId, root);
     this.#scheduler.register(root);
@@ -31,20 +33,23 @@ export class Supervisor {
     if (parent.waiting) throw new Error('Caller already has an active delegation');
     if (parent.role === 'root' && tasks.length !== 1) throw new Error('Sol must escalate to one Astra');
     parent.waiting = true;
+    await this.#scopes?.pause(callerId);
     await this.#scheduler.park(callerId);
     try {
       const results = await Promise.allSettled(tasks.map(async task => {
         const agent = { ...task, id: randomUUID(), rootId: this.#rootId, parentId: callerId, waiting: false };
         this.#agents.set(agent.id, agent);
         this.#scheduler.register(agent);
+        this.#scopes?.borrow(callerId, agent.id, task.paths);
         await this.#scheduler.acquire(agent.id);
         let completed = false;
         try {
           const receipt = await this.#execute(Object.freeze({ ...agent }));
           if (receipt?.stopped !== true) throw new Error('Execution has no terminal proof');
+          const snapshots = await this.#scopes?.finish(agent.id);
           completed = true;
           if (receipt.error) throw receipt.error;
-          return { id: agent.id, role: agent.role, result: receipt.result };
+          return { id: agent.id, role: agent.role, result: receipt.result, ...(snapshots ? { snapshots } : {}) };
         } finally {
           this.#scheduler.release(agent.id, { confirmed: completed });
           if (completed) this.#agents.delete(agent.id);
@@ -55,6 +60,7 @@ export class Supervisor {
       return results.map(result => result.value);
     } finally {
       await this.#scheduler.resume(callerId);
+      await this.#scopes?.resume(callerId);
       parent.waiting = false;
     }
   }

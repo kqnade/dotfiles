@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Supervisor } from '../../../dot_pi/agent/runtime/supervisor.mjs';
+import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { Scopes } from '../../../dot_pi/agent/runtime/scopes.mjs';
 
 test('only Sol escalation can create Astra and leaf roles cannot delegate', async () => {
   const executed = [];
@@ -20,6 +24,23 @@ test('only Sol escalation can create Astra and leaf roles cannot delegate', asyn
   assert.deepEqual(executed, ['astra', 'luna']);
   assert.equal(results[0].result[0].result, 'done');
   assert.equal(supervisor.snapshot().available, 4);
+});
+
+test('delegation drains the parent scope and returns child edits before resuming', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'pi-supervisor-scope-'));
+  try {
+    await writeFile(join(cwd, 'code.txt'), 'old');
+    const scopes = new Scopes({ cwd, rootId: 'root' });
+    const supervisor = new Supervisor({ rootId:'root', scopes, execute: async agent => {
+      await assert.rejects(scopes.write('root','code.txt','overlap'), /draining/);
+      await scopes.write(agent.id, 'code.txt', 'child');
+      return { stopped:true, result:'done' };
+    }});
+    await supervisor.delegate('root', [{role:'astra', task:'fix', paths:['code.txt']}]);
+    assert.equal(await readFile(join(cwd,'code.txt'),'utf8'), 'child');
+    await scopes.write('root','code.txt','resumed');
+    assert.equal(await readFile(join(cwd,'code.txt'),'utf8'), 'resumed');
+  } finally { await rm(cwd, {recursive:true,force:true}); }
 });
 
 test('a result without terminal proof is quarantined', async () => {
