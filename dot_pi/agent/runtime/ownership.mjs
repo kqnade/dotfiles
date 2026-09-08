@@ -1,3 +1,4 @@
+import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import {
@@ -233,6 +234,11 @@ export class Ownership {
     return { lease: nextLease, snapshots };
   }
 
+  async runProcess(lease, options = {}) {
+    const state = this.#assertLease(lease);
+    return this.run(lease, () => superviseProcess(this, lease, state, options));
+  }
+
   quarantine(lease, reason) {
     const state = this.#assertLease(lease);
     const detail = reason instanceof Error ? reason.message : String(reason ?? '');
@@ -398,4 +404,350 @@ const snapshotScope = async (state) => {
     await visit(path);
   }
   return Object.freeze(snapshots);
+};
+
+const processGroupStatus = (pid) => {
+  if (process.platform === 'win32') {
+    return 'unknown';
+  }
+  try {
+    process.kill(-pid, 0);
+    return 'alive';
+  } catch (error) {
+    if (error.code === 'ESRCH') {
+      return 'empty';
+    }
+    if (error.code === 'EPERM') {
+      return 'unknown';
+    }
+    throw error;
+  }
+};
+
+const signalProcessGroup = (pid, signal) => {
+  if (process.platform === 'win32') {
+    throw errorWithCode('process groups are unverified on this platform', 'PROCESS_GROUP_UNKNOWN');
+  }
+  try {
+    process.kill(-pid, signal);
+  } catch (error) {
+    if (error.code !== 'ESRCH') {
+      throw error;
+    }
+  }
+};
+
+const waitForEmptyProcessGroup = async (pid, timeoutMs) => {
+  const deadline = Date.now() + timeoutMs;
+  while (true) {
+    const status = processGroupStatus(pid);
+    if (status === 'empty') {
+      return;
+    }
+    if (status === 'unknown' || Date.now() >= deadline) {
+      throw errorWithCode('could not prove process group is empty', 'PROCESS_GROUP_UNKNOWN');
+    }
+    await new Promise((resolvePromise) => setTimeout(resolvePromise, 10));
+  }
+};
+
+const stopProcessGroup = async (pid, timeoutMs) => {
+  const initial = processGroupStatus(pid);
+  if (initial === 'empty') {
+    return;
+  }
+  if (initial === 'unknown') {
+    throw errorWithCode('could not inspect process group', 'PROCESS_GROUP_UNKNOWN');
+  }
+  signalProcessGroup(pid, 'SIGTERM');
+  try {
+    await waitForEmptyProcessGroup(pid, timeoutMs);
+  } catch (error) {
+    if (error.code !== 'PROCESS_GROUP_UNKNOWN') {
+      throw error;
+    }
+    signalProcessGroup(pid, 'SIGKILL');
+    await waitForEmptyProcessGroup(pid, timeoutMs);
+  }
+};
+
+const superviseProcess = (ownership, lease, state, options) => {
+  const {
+    command,
+    args = [],
+    cwd = state.cwd,
+    env,
+    stdin = '',
+    signal,
+    timeoutMs = 30_000,
+    maxOutputBytes = 1_048_576,
+  } = options ?? {};
+  if (typeof command !== 'string' || command.length === 0) {
+    throw new TypeError('command must be a non-empty string');
+  }
+  if (!Array.isArray(args) || args.some((arg) => typeof arg !== 'string')) {
+    throw new TypeError('args must be an array of strings');
+  }
+  if (typeof timeoutMs !== 'number' || timeoutMs <= 0 || !Number.isFinite(timeoutMs)) {
+    throw new TypeError('timeoutMs must be a positive number');
+  }
+  if (!Number.isInteger(maxOutputBytes) || maxOutputBytes <= 0) {
+    throw new TypeError('maxOutputBytes must be a positive integer');
+  }
+  if (stdin !== null && typeof stdin !== 'string' && !Buffer.isBuffer(stdin)) {
+    throw new TypeError('stdin must be a string, Buffer, or null');
+  }
+  if (signal !== undefined && !(signal instanceof AbortSignal)) {
+    throw new TypeError('signal must be an AbortSignal');
+  }
+  if (signal?.aborted) {
+    return Promise.reject(errorWithCode('process was aborted', 'ABORT_ERR'));
+  }
+  if (process.platform === 'win32') {
+    ownership.quarantine(lease, 'process group cannot be proven on this platform');
+    return Promise.reject(errorWithCode('process group cannot be proven on this platform', 'PROCESS_GROUP_UNKNOWN'));
+  }
+
+  const processCwd = realpathSync(pathFromCwd(state.cwd, cwd));
+  if (!isWithin(state.cwd, processCwd)) {
+    throw errorWithCode('process cwd is outside ownership cwd', 'OUT_OF_SCOPE');
+  }
+  if (!lstatSync(processCwd).isDirectory()) {
+    throw errorWithCode('process cwd must be a directory', 'INVALID_CWD');
+  }
+
+  return new Promise((resolvePromise, rejectPromise) => {
+    let child;
+    let pid;
+    let closed = false;
+    let closeCode = null;
+    let closeSignal = null;
+    let spawnError = null;
+    let stopReason = null;
+    let finalized = false;
+    let finalizing = false;
+    let timeoutHandle;
+    let forceKillHandle;
+    let abortListener;
+    let stdinError = null;
+    let termSent = false;
+    const stdout = [];
+    const stderr = [];
+    let stdoutBytes = 0;
+    let stderrBytes = 0;
+
+    const result = () => ({
+      stdout: Buffer.concat(stdout).toString(),
+      stderr: Buffer.concat(stderr).toString(),
+      code: closeCode,
+      signal: closeSignal,
+    });
+
+    const clearTimers = () => {
+      if (timeoutHandle !== undefined) {
+        clearTimeout(timeoutHandle);
+        timeoutHandle = undefined;
+      }
+      if (forceKillHandle !== undefined) {
+        clearTimeout(forceKillHandle);
+        forceKillHandle = undefined;
+      }
+    };
+
+    const closeStreams = () => {
+      child?.stdin?.destroy();
+      child?.stdout?.destroy();
+      child?.stderr?.destroy();
+    };
+
+    const rejectWith = (error) => {
+      const output = result();
+      error.stdout ??= output.stdout;
+      error.stderr ??= output.stderr;
+      finalized = true;
+      clearTimers();
+      if (signal !== undefined && abortListener !== undefined) {
+        signal.removeEventListener('abort', abortListener);
+      }
+      rejectPromise(error);
+    };
+
+    const resolveWith = () => {
+      finalized = true;
+      clearTimers();
+      if (signal !== undefined && abortListener !== undefined) {
+        signal.removeEventListener('abort', abortListener);
+      }
+      resolvePromise(result());
+    };
+
+    const rememberOutput = (chunks, chunk, currentBytes, streamName) => {
+      const bytes = Buffer.byteLength(chunk);
+      if (currentBytes + bytes > maxOutputBytes) {
+        stop(errorWithCode(`${streamName} exceeded output limit`, 'OUTPUT_LIMIT'));
+        return currentBytes;
+      }
+      chunks.push(chunk);
+      return currentBytes + bytes;
+    };
+
+    let stop;
+
+    const quarantineAndReject = (error) => {
+      try {
+        ownership.quarantine(lease, error.message);
+      } catch (quarantineError) {
+        error = new AggregateError([error, quarantineError], 'process group could not be supervised');
+      }
+      rejectWith(error);
+      closeStreams();
+    };
+
+    const forceStop = async () => {
+      if (finalized || finalizing || pid === undefined) {
+        return;
+      }
+      finalizing = true;
+      try {
+        const status = processGroupStatus(pid);
+        if (status === 'unknown') {
+          quarantineAndReject(errorWithCode('could not prove process group is empty', 'PROCESS_GROUP_UNKNOWN'));
+          return;
+        }
+        if (status === 'alive') {
+          signalProcessGroup(pid, 'SIGKILL');
+          await waitForEmptyProcessGroup(pid, Math.min(timeoutMs, 2_000));
+        }
+        closeSignal ??= 'SIGKILL';
+        rejectWith(stopReason ?? errorWithCode('process was stopped', 'PROCESS_STOPPED'));
+        closeStreams();
+      } catch (error) {
+        quarantineAndReject(error);
+      } finally {
+        finalizing = false;
+      }
+    };
+
+    stop = (reason) => {
+      stopReason ??= reason;
+      if (pid === undefined || closed) {
+        return;
+      }
+      try {
+        if (!termSent) {
+          termSent = true;
+          try {
+            signalProcessGroup(pid, 'SIGTERM');
+          } catch (error) {
+            stopReason ??= error;
+          }
+          forceKillHandle = setTimeout(() => {
+            forceKillHandle = undefined;
+            void forceStop();
+          }, 100);
+        }
+      } catch (error) {
+        stopReason ??= error;
+      }
+    };
+    const finish = async () => {
+      if (!closed || finalized || finalizing) {
+        return;
+      }
+      finalizing = true;
+      clearTimers();
+
+      if (spawnError !== null && pid === undefined) {
+        rejectWith(spawnError);
+        finalizing = false;
+        return;
+      }
+
+      let groupError = null;
+      try {
+        const status = processGroupStatus(pid);
+        if (status === 'unknown') {
+          groupError = errorWithCode('could not prove process group is empty', 'PROCESS_GROUP_UNKNOWN');
+        } else if (status === 'alive') {
+          groupError = errorWithCode('child exited with descendants still in its process group', 'UNKNOWN_DESCENDANTS');
+          await stopProcessGroup(pid, Math.min(timeoutMs, 2_000));
+        }
+      } catch (error) {
+        groupError = error;
+      }
+
+      if (groupError !== null) {
+        quarantineAndReject(groupError);
+      } else if (stopReason !== null) {
+        stopReason.code = stopReason.code ?? 'PROCESS_STOPPED';
+        rejectWith(stopReason);
+      } else if (spawnError !== null) {
+        rejectWith(spawnError);
+      } else if (stdinError !== null) {
+        rejectWith(stdinError);
+      } else if (closeCode !== 0 || closeSignal !== null) {
+        const error = errorWithCode(`process exited unsuccessfully: ${command}`, 'PROCESS_FAILED');
+        error.exitCode = closeCode;
+        error.signal = closeSignal;
+        rejectWith(error);
+      } else {
+        resolveWith();
+      }
+      finalizing = false;
+    };
+
+    try {
+      child = spawn(command, args, {
+        cwd: processCwd,
+        env: { ...process.env, ...env },
+        detached: true,
+        shell: false,
+        stdio: ['pipe', 'pipe', 'pipe'],
+        windowsHide: true,
+      });
+      pid = child.pid;
+      child.stdout.on('data', (chunk) => {
+        stdoutBytes = rememberOutput(stdout, chunk, stdoutBytes, 'stdout');
+      });
+      child.stderr.on('data', (chunk) => {
+        stderrBytes = rememberOutput(stderr, chunk, stderrBytes, 'stderr');
+      });
+      child.once('error', (error) => {
+        spawnError = error;
+        if (!closed) {
+          closed = true;
+          void finish();
+        }
+      });
+      child.once('close', (code, childSignal) => {
+        closed = true;
+        closeCode = code;
+        closeSignal = childSignal;
+        void finish();
+      });
+      child.stdin.once('error', (error) => {
+        stdinError = error;
+      });
+      if (stdin === null) {
+        child.stdin.end();
+      } else {
+        child.stdin.end(stdin);
+      }
+      if (signal !== undefined) {
+        abortListener = () => stop(errorWithCode('process was aborted', 'ABORT_ERR'));
+        signal.addEventListener('abort', abortListener, { once: true });
+        if (signal.aborted) {
+          abortListener();
+        }
+      }
+      timeoutHandle = setTimeout(() => {
+        stop(errorWithCode('process timed out', 'TIMEOUT'));
+      }, timeoutMs);
+    } catch (error) {
+      stop(error);
+      if (pid === undefined) {
+        rejectPromise(error);
+      }
+    }
+  });
 };

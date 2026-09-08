@@ -137,3 +137,87 @@ test('quarantine makes a lease terminal and prevents transfer', async () => {
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test('runProcess waits for a delayed direct child and returns its stdio', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pi-ownership-process-'));
+  try {
+    const project = join(root, 'project');
+    await mkdir(project);
+    await writeFile(join(project, 'note.js'), 'before\n');
+
+    const ownership = new Ownership({ cwd: root });
+    const lease = ownership.claim('formatter', ['project']);
+    const script = [
+      "let input = '';",
+      "process.stdin.setEncoding('utf8');",
+      "process.stdin.on('data', (chunk) => { input += chunk; });",
+      "process.stdin.on('end', () => setTimeout(() => process.stdout.write(input.toUpperCase()), 20));",
+    ].join('');
+
+    const result = await ownership.runProcess(lease, {
+      command: process.execPath,
+      args: ['-e', script],
+      stdin: 'format me\n',
+    });
+
+    assert.deepEqual(result, {
+      stdout: 'FORMAT ME\n',
+      stderr: '',
+      code: 0,
+      signal: null,
+    });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('runProcess abort escalates a SIGTERM-ignoring child and settles', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pi-ownership-abort-'));
+  try {
+    const project = join(root, 'project');
+    await mkdir(project);
+    await writeFile(join(project, 'note.js'), 'before\n');
+
+    const ownership = new Ownership({ cwd: root });
+    const lease = ownership.claim('formatter', ['project']);
+    const controller = new AbortController();
+    const ready = join(project, 'ready');
+    const script = "process.on('SIGTERM', () => {}); require('node:fs').writeFileSync(process.env.READY_FILE, 'ready'); setInterval(() => {}, 1000);";
+    const running = ownership.runProcess(lease, {
+      command: process.execPath,
+      args: ['-e', script],
+      env: { READY_FILE: ready },
+      stdin: null,
+      signal: controller.signal,
+      timeoutMs: 1_000,
+    });
+
+    let readySeen = false;
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      try {
+        readySeen = (await readFile(ready, 'utf8')) === 'ready';
+        break;
+      } catch (error) {
+        if (error.code !== 'ENOENT') {
+          throw error;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+    }
+    assert.equal(readySeen, true);
+    controller.abort();
+    let failure;
+    try {
+      await running;
+      assert.fail('aborted process unexpectedly succeeded');
+    } catch (error) {
+      failure = error;
+    }
+    assert.ok(['ABORT_ERR', 'PROCESS_GROUP_UNKNOWN'].includes(failure.code));
+    if (failure.code === 'PROCESS_GROUP_UNKNOWN') {
+      await assert.rejects(ownership.transfer(lease, 'delegate'), { code: 'QUARANTINED' });
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
