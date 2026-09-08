@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { chmod, mkdir, mkdtemp, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { createConnection } from 'node:net';
 import test from 'node:test';
 
@@ -9,7 +10,7 @@ import { connect, credential, listen } from '../../../dot_pi/agent/runtime/ipc.m
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 test('returns concurrent request results in-order by correlation id', async () => {
-  const root = await mkdtemp(join('/private/tmp', 'pi-ipc-'));
+  const root = await mkdtemp(join(tmpdir(), 'pi-ipc-'));
   const socketDir = join(root, 'socket');
   await mkdir(socketDir);
   await chmod(socketDir, 0o700);
@@ -60,7 +61,7 @@ test('returns concurrent request results in-order by correlation id', async () =
 });
 
 test('rejects invalid credentials and does not call handle', async () => {
-  const root = await mkdtemp(join('/private/tmp', 'pi-ipc-'));
+  const root = await mkdtemp(join(tmpdir(), 'pi-ipc-'));
   const socketDir = join(root, 'socket');
   await mkdir(socketDir);
   await chmod(socketDir, 0o700);
@@ -95,7 +96,7 @@ test('rejects invalid credentials and does not call handle', async () => {
 });
 
 test('rejects malformed request frames', async () => {
-  const root = await mkdtemp(join('/private/tmp', 'pi-ipc-'));
+  const root = await mkdtemp(join(tmpdir(), 'pi-ipc-'));
   const socketDir = join(root, 'socket');
   await mkdir(socketDir);
   await chmod(socketDir, 0o700);
@@ -135,7 +136,7 @@ test('rejects malformed request frames', async () => {
 });
 
 test('refuses a pre-existing socket path', async () => {
-  const root = await mkdtemp(join('/private/tmp', 'pi-ipc-'));
+  const root = await mkdtemp(join(tmpdir(), 'pi-ipc-'));
   const socketPath = join(root, 'stale.sock');
   await writeFile(socketPath, 'stale');
 
@@ -157,7 +158,7 @@ test('refuses a pre-existing socket path', async () => {
 });
 
 test('disconnect rejects pending requests', async () => {
-  const root = await mkdtemp(join('/private/tmp', 'pi-ipc-'));
+  const root = await mkdtemp(join(tmpdir(), 'pi-ipc-'));
   const socketDir = join(root, 'socket');
   await mkdir(socketDir);
   await chmod(socketDir, 0o700);
@@ -194,7 +195,7 @@ test('disconnect rejects pending requests', async () => {
 });
 
 test('server responds with error on handle failure without disconnecting', async () => {
-  const root = await mkdtemp(join('/private/tmp', 'pi-ipc-'));
+  const root = await mkdtemp(join(tmpdir(), 'pi-ipc-'));
   const socketDir = join(root, 'socket');
   await mkdir(socketDir);
   await chmod(socketDir, 0o700);
