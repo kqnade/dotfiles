@@ -9,6 +9,8 @@ export class RpcClient extends EventEmitter {
   #verified = false;
   #role;
   #running = false;
+  #aborting = false;
+  #generation = 0;
   #closed;
   #timeout;
 
@@ -82,6 +84,18 @@ export class RpcClient extends EventEmitter {
     });
   }
 
+  async abort() {
+    if (this.#aborting) throw new Error('RPC abort is already running');
+    this.#aborting = true;
+    this.#generation += 1;
+    try {
+      await this.request('clear_queue');
+      await this.request('abort');
+    } finally {
+      this.#aborting = false;
+    }
+  }
+
   async initialize(role) {
     this.#verified = false;
     const model = modelFor(role);
@@ -100,9 +114,11 @@ export class RpcClient extends EventEmitter {
 
   async run(message) {
     if (!this.#verified) throw new Error('RPC model is not verified');
+    if (this.#aborting) throw new Error('RPC abort is in progress');
     if (this.#running) throw new Error('RPC session is already running');
 
     this.#running = true;
+    const generation = this.#generation;
     try {
       verifyState(this.#role, await this.request('get_state'));
     } catch (error) {
@@ -111,6 +127,10 @@ export class RpcClient extends EventEmitter {
       throw error;
     }
 
+    if (generation !== this.#generation) {
+      this.#running = false;
+      throw new Error('RPC task aborted before prompt');
+    }
     return new Promise((resolve, reject) => {
       let assistant;
       const cleanup = () => {
