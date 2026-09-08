@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { mkdtemp, mkdir, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -31,6 +33,94 @@ test('a canonical scoped claim can perform an expected-hash atomic write', async
     });
 
     assert.equal(await readFile(target, 'utf8'), 'after\n');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('a create-only write publishes an absent target', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pi-ownership-create-only-'));
+  try {
+    const project = join(root, 'project');
+    const target = join(project, 'new.js');
+    await mkdir(project);
+
+    const ownership = new Ownership({ cwd: root });
+    const lease = ownership.claim('writer', ['project']);
+
+    await ownership.run(lease, async () => {
+      await ownership.write(lease, 'project/new.js', 'created\n', {
+        expectedHash: null,
+      });
+    });
+
+    assert.equal(await readFile(target, 'utf8'), 'created\n');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('a create-only write rejects an existing target', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pi-ownership-create-only-existing-'));
+  try {
+    const project = join(root, 'project');
+    const target = join(project, 'existing.js');
+    await mkdir(project);
+    await writeFile(target, 'before\n');
+
+    const ownership = new Ownership({ cwd: root });
+    const lease = ownership.claim('writer', ['project']);
+
+    await assert.rejects(
+      ownership.run(lease, async () => ownership.write(lease, 'project/existing.js', 'after\n', {
+        expectedHash: null,
+      })),
+      { code: 'PREIMAGE_MISMATCH' },
+    );
+    assert.equal(await readFile(target, 'utf8'), 'before\n');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('a create-only write rejects a target created before publication', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pi-ownership-create-only-collision-'));
+  try {
+    const project = join(root, 'project');
+    const target = join(project, 'race.js');
+    await mkdir(project);
+
+    const ownership = new Ownership({ cwd: root });
+    const lease = ownership.claim('writer', ['project']);
+    const originalLink = fs.promises.link;
+    let collisionCreated = false;
+    let result;
+    try {
+      fs.promises.link = async (source, destination) => {
+        assert.equal(destination, target);
+        await writeFile(target, 'external\n', { flag: 'wx' });
+        collisionCreated = true;
+        return originalLink(source, destination);
+      };
+      syncBuiltinESMExports();
+      const running = ownership.run(lease, async () => ownership.write(
+        lease,
+        'project/race.js',
+        'writer\n',
+        { expectedHash: null },
+      )).then(
+        (value) => ({ status: 'fulfilled', value }),
+        (reason) => ({ status: 'rejected', reason }),
+      );
+      result = await running;
+    } finally {
+      fs.promises.link = originalLink;
+      syncBuiltinESMExports();
+    }
+    assert.equal(collisionCreated, true);
+    assert.equal(result.status, 'rejected');
+    assert.equal(result.reason.code, 'PREIMAGE_MISMATCH');
+    assert.equal(await readFile(target, 'utf8'), 'external\n');
   } finally {
     await rm(root, { recursive: true, force: true });
   }

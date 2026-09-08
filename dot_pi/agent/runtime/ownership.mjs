@@ -3,6 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import {
   lstat,
+  link,
   open,
   readFile,
   readlink,
@@ -114,6 +115,9 @@ const digest = (text) => createHash('sha256').update(text).digest('hex');
 const normalizedHash = (value) => {
   if (value === undefined) {
     return undefined;
+  }
+  if (value === null) {
+    return null;
   }
   if (typeof value !== 'string') {
     throw new TypeError('expectedHash must be a SHA-256 string');
@@ -314,7 +318,7 @@ export class Ownership {
       handle = null;
       await this.#assertWritable(lease);
       const current = await inspectTarget(state, lexicalTarget, path);
-      if (expected !== undefined) {
+      if (expected !== undefined && expected !== null) {
         const currentBytes = await readPreimage(lexicalTarget);
         const currentHash = currentBytes === null ? null : digest(currentBytes);
         if (currentHash !== expected) {
@@ -325,7 +329,18 @@ export class Ownership {
         throw errorWithCode('target must be a regular file', 'INVALID_TARGET');
       }
       await this.#assertWritable(lease);
-      await rename(temporary, lexicalTarget);
+      try {
+        if (expected === null) {
+          await link(temporary, lexicalTarget);
+        } else {
+          await rename(temporary, lexicalTarget);
+        }
+      } catch (error) {
+        if (expected === null && error.code === 'EEXIST') {
+          throw errorWithCode(`preimage hash mismatch for ${path}`, 'PREIMAGE_MISMATCH');
+        }
+        throw error;
+      }
     } catch (error) {
       operationError = error;
     } finally {
