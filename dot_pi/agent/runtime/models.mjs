@@ -19,3 +19,10 @@ export function verifyState(role, state) {
   }
   if (state.thinkingLevel !== expected.effort) throw new Error(`effort mismatch for ${role}`);
 }
+
+export function verifyPayload(role, payload) {
+  const expected = modelFor(role);
+  if (payload?.model !== expected.id) throw new Error(`model mismatch in ${role} payload`);
+  if (payload.reasoning?.effort !== expected.effort) throw new Error(`effort mismatch in ${role} payload`);
+  return { provider: expected.provider, model: expected.id, effort: expected.effort };
+}
