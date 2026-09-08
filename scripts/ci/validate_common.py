@@ -17,19 +17,21 @@ EXPECTED_CLAUDE_RULE_TARGETS = {
     "workflow-state.md",
 }
 EXPECTED_AGENT_SKILLS = {
-    "assumption-pruning",
     "context-handoff",
-    "execute-worktree-implementation",
     "evidence-review",
-    "herdr",
-    "peer-consultation",
-    "prose-proofreading",
     "sanitize-artifacts",
-    "route-large-implementation",
-    "security-audit",
     "test-driven-development",
     "todo-management",
     "using-workflow-skills",
+}
+LEGACY_AGENT_SKILLS = {
+    "assumption-pruning",
+    "execute-worktree-implementation",
+    "herdr",
+    "peer-consultation",
+    "prose-proofreading",
+    "route-large-implementation",
+    "security-audit",
 }
 
 

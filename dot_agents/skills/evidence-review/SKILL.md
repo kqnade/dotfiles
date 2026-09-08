@@ -86,9 +86,10 @@ Check analogous code for naming, lifecycle, cleanup, error, and compatibility
 contracts. Distinguish demonstrated defects, required missing evidence,
 non-blocking improvements, open questions, and preferences.
 
-If the requested outcome is systematic simplification rather than review, use
-`assumption-pruning`. During review, mention a simpler alternative only when it
-removes a risky assumption or materially affects the shipping decision.
+If the requested outcome is systematic simplification rather than review,
+it is outside this review workflow. During review, mention a simpler
+alternative only when it removes a risky assumption or materially affects the
+shipping decision.
 
 ## 3. Run controlled checks
 
@@ -221,13 +222,12 @@ and state that no handoff was reconciled. Do not depend on Claude memory.
 Missing provenance or a missing source commit makes affected claims unverified;
 divergence or later path changes make them stale.
 
-## 6. Use an independent challenge only when needed
+## 6. Resolve unresolved questions
 
-Invoke `peer-consultation` only for a material, decision-changing unresolved
-hypothesis. Require an isolated/no-history peer context and send the bounded
-evidence package, not the conversation or desired answer. A material peer claim
-may influence disposition only after independent confirmation; otherwise keep
-it unresolved.
+When a material, decision-changing hypothesis remains unresolved, verify it
+against current code, runtime evidence, or a primary source. If it cannot be
+verified within the review scope, report it as a question with the smallest
+verification needed and keep the disposition at `insufficient evidence`.
 
 ## 7. Revalidate freshness and report
 

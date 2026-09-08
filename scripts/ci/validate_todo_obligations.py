@@ -129,7 +129,7 @@ Repair state.
     literal_reason_failures = []
     for obligation_id, owner, reason in (
         ("literal-backslash-t", "test-driven-development", r"Windows path C:\tmp is literal."),
-        ("literal-backslash-n", "assumption-pruning", r"Windows path C:\new is literal."),
+        ("literal-backslash-n", "sanitize-artifacts", r"Windows path C:\new is literal."),
     ):
         literal_reason_hash = subprocess.check_output(
             ["git", "hash-object", "--no-filters", str(todo_path)], text=True
@@ -210,6 +210,101 @@ Repair state.
             "TODO obligation registration must preserve literal backslashes and valid schema: "
             + "; ".join(literal_reason_failures)
         )
+
+    historical_todo = first_todo.replace(
+        "## Commit checklist",
+        """## Persistence obligations
+
+### `historical-security`
+- Owner: `security-audit`
+- Policy: `required`
+- State: `closed`
+- Destination: `.dev/security/reports/historical-coverage.md`
+- Artifact: [historical coverage](../security/reports/historical-coverage.md)
+
+## Commit checklist""",
+    )
+    historical_artifact = resolved_state / "security/reports/historical-coverage.md"
+    historical_artifact_write = subprocess.run(
+        [str(workflow_state_writer), "--expect", "missing", str(historical_artifact)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input="# Historical coverage\n",
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if historical_artifact_write.returncode != 0:
+        fail("validator could not create the historical security artifact")
+    first_todo_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    historical_todo_write = subprocess.run(
+        [str(workflow_state_writer), "--expect", first_todo_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=historical_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    historical_check = subprocess.run(
+        [str(todo_obligation_script), "check", "workflow-state-repair"],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if (
+        historical_todo_write.returncode != 0
+        or historical_check.returncode != 0
+        or todo_path.read_text() != historical_todo
+    ):
+        fail(
+            "historical TODO obligations must remain readable: "
+            + historical_check.stderr.strip()
+        )
+
+    historical_todo_hash = subprocess.check_output(
+        ["git", "hash-object", "--no-filters", str(todo_path)], text=True
+    ).strip()
+    retired_registration = subprocess.run(
+        [
+            str(todo_obligation_script),
+            "register",
+            "--expect",
+            historical_todo_hash,
+            "workflow-state-repair",
+            "--id",
+            "retired-registration",
+            "--owner",
+            "security-audit",
+            "--policy",
+            "required",
+            "--destination",
+            ".dev/security/new-coverage.md",
+        ],
+        cwd=state_test_repo,
+        env=state_test_env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if retired_registration.returncode == 0 or todo_path.read_text() != historical_todo:
+        fail("new TODO obligations must reject retired owners without changing the record")
+
+    historical_restore = subprocess.run(
+        [str(workflow_state_writer), "--expect", historical_todo_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=first_todo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if historical_restore.returncode != 0 or todo_path.read_text() != first_todo:
+        fail("validator could not restore the TODO after historical compatibility checks")
 
     malformed_obligation_sections = {
         "malformed-fields": """### `malformed-fields`
@@ -500,11 +595,11 @@ Repair state.
             "--id",
             "unsafe-destination",
             "--owner",
-            "security-audit",
+            "context-handoff",
             "--policy",
-            "required",
+            "conditional",
             "--destination",
-            ".dev/security/unsafe).md",
+            ".dev/contexts/unsafe).md",
         ],
         cwd=state_test_repo,
         env=state_test_env,
@@ -523,13 +618,13 @@ Repair state.
             first_todo_hash,
             "workflow-state-repair",
             "--id",
-            "security-coverage",
+            "context-coverage",
             "--owner",
-            "security-audit",
+            "context-handoff",
             "--policy",
-            "required",
+            "conditional",
             "--destination",
-            ".dev/security/coverage.md",
+            ".dev/contexts/coverage.md",
         ],
         cwd=state_test_repo,
         env=state_test_env,
@@ -541,11 +636,11 @@ Repair state.
         "## Commit checklist",
         """## Persistence obligations
 
-### `security-coverage`
-- Owner: `security-audit`
-- Policy: `required`
+### `context-coverage`
+- Owner: `context-handoff`
+- Policy: `conditional`
 - State: `open`
-- Destination: `.dev/security/coverage.md`
+- Destination: `.dev/contexts/coverage.md`
 
 ## Commit checklist""",
     )
@@ -565,11 +660,11 @@ Repair state.
             "--id",
             "stale-obligation",
             "--owner",
-            "security-audit",
+            "context-handoff",
             "--policy",
-            "required",
+            "conditional",
             "--destination",
-            ".dev/security/reports/stale.md",
+            ".dev/contexts/stale.md",
         ],
         cwd=state_test_repo,
         env=state_test_env,
@@ -596,11 +691,11 @@ Repair state.
                 "--id",
                 "locked-obligation",
                 "--owner",
-                "security-audit",
+                "context-handoff",
                 "--policy",
-                "required",
+                "conditional",
                 "--destination",
-                ".dev/security/reports/locked.md",
+                ".dev/contexts/locked.md",
             ],
             cwd=state_test_repo,
             env=state_test_env,
@@ -613,7 +708,7 @@ Repair state.
     if locked_registration.returncode == 0 or todo_path.read_text() != registered_todo:
         fail("locked TODO obligation registration must preserve the active TODO")
 
-    artifact_path = resolved_state / "security/coverage.md"
+    artifact_path = resolved_state / "contexts/coverage.md"
     artifact_write = subprocess.run(
         [
             str(workflow_state_writer),
@@ -623,7 +718,7 @@ Repair state.
         ],
         cwd=state_test_repo,
         env=state_test_env,
-        input="# Security coverage\n",
+        input="# Context coverage\n",
         text=True,
         capture_output=True,
         check=False,
@@ -632,10 +727,10 @@ Repair state.
         fail("validator could not create the required obligation artifact")
 
     closed_registered_todo = registered_todo.replace(
-        "- State: `open`\n- Destination: `.dev/security/coverage.md`",
+        "- State: `open`\n- Destination: `.dev/contexts/coverage.md`",
         "- State: `closed`\n"
-        "- Destination: `.dev/security/coverage.md`\n"
-        "- Artifact: [.dev/security/coverage.md](../security/coverage.md)",
+        "- Destination: `.dev/contexts/coverage.md`\n"
+        "- Artifact: [.dev/contexts/coverage.md](../contexts/coverage.md)",
     )
     close_obligation = subprocess.run(
         [
@@ -645,9 +740,9 @@ Repair state.
             registered_todo_hash,
             "workflow-state-repair",
             "--id",
-            "security-coverage",
+            "context-coverage",
             "--artifact",
-            ".dev/security/coverage.md",
+            ".dev/contexts/coverage.md",
         ],
         cwd=state_test_repo,
         env=state_test_env,
@@ -672,9 +767,9 @@ Repair state.
             registered_todo_hash,
             "workflow-state-repair",
             "--id",
-            "security-coverage",
+            "context-coverage",
             "--artifact",
-            ".dev/security/coverage.md",
+            ".dev/contexts/coverage.md",
         ],
         cwd=state_test_repo,
         env=state_test_env,
@@ -710,9 +805,9 @@ Repair state.
             registered_todo_hash,
             "workflow-state-repair",
             "--id",
-            "security-coverage",
+            "context-coverage",
             "--artifact",
-            ".dev/security/coverage.md",
+            ".dev/contexts/coverage.md",
         ],
         cwd=state_test_repo,
         env=state_test_env,
@@ -732,7 +827,7 @@ Repair state.
         ],
         cwd=state_test_repo,
         env=state_test_env,
-        input="# Security coverage\n",
+        input="# Context coverage\n",
         text=True,
         capture_output=True,
         check=False,
@@ -851,28 +946,6 @@ Repair state.
     first_todo_hash = subprocess.check_output(
         ["git", "hash-object", "--no-filters", str(todo_path)], text=True
     ).strip()
-    required_register = subprocess.run(
-        [
-            str(todo_obligation_script),
-            "register",
-            "--expect",
-            first_todo_hash,
-            "workflow-state-repair",
-            "--id",
-            "required-no-save",
-            "--owner",
-            "security-audit",
-            "--policy",
-            "required",
-            "--destination",
-            ".dev/security/coverage.md",
-        ],
-        cwd=state_test_repo,
-        env=state_test_env,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
     required_registered_todo = first_todo.replace(
         "## Commit checklist",
         """## Persistence obligations
@@ -884,6 +957,15 @@ Repair state.
 - Destination: `.dev/security/coverage.md`
 
 ## Commit checklist""",
+    )
+    required_register = subprocess.run(
+        [str(workflow_state_writer), "--expect", first_todo_hash, str(todo_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input=required_registered_todo,
+        text=True,
+        capture_output=True,
+        check=False,
     )
     if required_register.returncode != 0 or todo_path.read_text() != required_registered_todo:
         fail(
@@ -1047,4 +1129,16 @@ Repair state.
     context.resolved_state = resolved_state
     context.worktree_state = worktree_state
     context.worktree_todo_path = worktree_todo_path
-    context.artifact_path = artifact_path
+    completion_artifact_path = resolved_state / "security/coverage.md"
+    completion_artifact_write = subprocess.run(
+        [str(workflow_state_writer), "--expect", "missing", str(completion_artifact_path)],
+        cwd=state_test_repo,
+        env=state_test_env,
+        input="# Historical security coverage\n",
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if completion_artifact_write.returncode != 0:
+        fail("validator could not prepare the completion artifact")
+    context.artifact_path = completion_artifact_path

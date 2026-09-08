@@ -17,6 +17,7 @@ from pathlib import Path
 from validate_common import (
     EXPECTED_AGENT_SKILLS as expected_agent_skills,
     EXPECTED_CLAUDE_RULE_TARGETS as expected_claude_rule_targets,
+    LEGACY_AGENT_SKILLS as legacy_agent_skills,
     ROOT,
     fail,
     strip_json_comments,
@@ -423,10 +424,11 @@ if claude_agents:
 
 agent_skills_root = ROOT / "dot_agents/skills"
 agent_skills = {path.name for path in agent_skills_root.iterdir() if path.is_dir()}
-if agent_skills != expected_agent_skills:
+managed_agent_skills = expected_agent_skills | legacy_agent_skills
+if agent_skills != managed_agent_skills:
     fail(
-        "canonical agent skill set differs from the reviewed set: "
-        f"expected {sorted(expected_agent_skills)}, got {sorted(agent_skills)}"
+        "agent skill set differs from the managed set: "
+        f"expected {sorted(managed_agent_skills)}, got {sorted(agent_skills)}"
     )
 
 combined_skill_description_size = 0
@@ -466,24 +468,9 @@ if combined_skill_description_size > 8000:
         f"{combined_skill_description_size} characters"
     )
 
-worktree_openai_prompts = {
-    "route-large-implementation": "$route-large-implementation",
-    "execute-worktree-implementation": "$execute-worktree-implementation",
-}
-for worktree_skill_name, prompt_token in worktree_openai_prompts.items():
-    worktree_metadata = (
-        agent_skills_root / worktree_skill_name / "agents/openai.yaml"
-    )
-    if not worktree_metadata.is_file():
-        fail(f"{worktree_skill_name} must provide agents/openai.yaml")
-    if prompt_token not in worktree_metadata.read_text():
-        fail(
-            f"{worktree_skill_name} default prompt must mention {prompt_token}"
-        )
-
 claude_skill_links = {path.name for path in (ROOT / "dot_claude/skills").iterdir()}
 expected_claude_skill_links = {
-    f"symlink_{skill_name}" for skill_name in expected_agent_skills
+    f"symlink_{skill_name}" for skill_name in managed_agent_skills
 }
 if claude_skill_links != expected_claude_skill_links:
     fail(

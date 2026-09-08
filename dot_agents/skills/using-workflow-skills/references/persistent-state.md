@@ -2,9 +2,9 @@
 
 ## Purpose and trust boundary
 
-Claude automatic memory is disabled. Persist explicit handoffs and long-running
-security coverage in repository-scoped files so Claude, Codex, and OpenCode can
-resume the same work without relying on client memory.
+Claude automatic memory is disabled. Persist explicit handoffs and repository
+workflow-state records so Pi and other supported coding clients can resume the
+same work without relying on client memory.
 
 The current Git worktree's `.dev` is repository-owned workflow state. A record
 whose repository identity, worktree, and provenance match the current task is
@@ -59,8 +59,8 @@ The external repository directory includes private `repository.meta` with
 identity hashes and method, never the raw remote URL.
 
 An environment override is an intentional alternate state universe. Report
-the resolved backend and path in every handoff or audit. Never switch to it
-silently because `.dev` is unwritable.
+the resolved backend and path in every handoff or workflow-state report. Never
+switch to it silently because `.dev` is unwritable.
 
 ## Shared layout
 
@@ -82,6 +82,10 @@ The external backend has the same `contexts/` and `security/` children below
 its repository-key directory, plus `repository.meta`. Active TODOs are an
 exception: `todo-management` keeps them only in the current worktree's
 `.dev/todo/` and rejects external backend redirection.
+
+The `security/` paths document existing record formats for read compatibility;
+current supported routing sends security-sensitive change review to
+`evidence-review`.
 
 Use a sanitized full branch ref plus a hash for attached-branch context files.
 Require a user-provided task name for detached HEAD. Never use a short branch
@@ -128,9 +132,9 @@ then ask before removing that exact lock. Never break locks by age alone.
 
 The writer guarantees one record, not a multi-file transaction. Publish
 content-addressed immutable artifacts before the record that references them.
-For security state, append the area report before updating the coverage ledger,
-then reconcile any report run that is not yet indexed. These publish-last,
-monotonic protocols keep an older checkpoint readable after interruption.
+Existing security records use a publish-last, monotonic protocol: an area
+report precedes the coverage ledger, and an unindexed report is reconciled
+after interruption. This keeps an older checkpoint readable after interruption.
 
 ## Reconciliation and portability
 
@@ -153,6 +157,6 @@ handoff must cross machines; preserve provenance and never publish it merely
 because a local export was authorized.
 
 If the selected state backend is unavailable or not writable, return the
-handoff or audit update in chat and report that it was not persisted. Do not
-enable memory, change ignore policy for another repository, or choose an
-alternate backend without explicit direction.
+handoff or workflow-state update in chat and report that it was not persisted.
+Do not enable memory, change ignore policy for another repository, or choose
+an alternate backend without explicit direction.

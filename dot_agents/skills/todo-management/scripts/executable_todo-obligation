@@ -136,13 +136,17 @@ function fail(message) {
 }
 
 function canonical_pair(owner, policy) {
+  return (owner == "test-driven-development" && policy == "none") ||
+    (owner == "context-handoff" && policy == "conditional") ||
+    (owner == "evidence-review" && policy == "none") ||
+    (owner == "sanitize-artifacts" && policy == "none")
+}
+
+function historical_pair(owner, policy) {
   return (owner == "security-audit" && policy == "required") ||
     (owner == "execute-worktree-implementation" && policy == "none") ||
-    (owner == "test-driven-development" && policy == "none") ||
-    (owner == "context-handoff" && policy == "conditional") ||
     (owner == "assumption-pruning" && policy == "none") ||
     (owner == "route-large-implementation" && policy == "none") ||
-    (owner == "evidence-review" && policy == "none") ||
     (owner == "prose-proofreading" && policy == "none") ||
     (owner == "peer-consultation" && policy == "none") ||
     (owner == "herdr" && policy == "none")
@@ -228,8 +232,8 @@ function validate_block(start, end,    heading, id, count, i, line, owner_line,
   state = state_line
   sub(/^- State: `/, "", state)
   sub(/`$/, "", state)
-  if (!canonical_pair(owner, policy)) {
-    fail("obligation block has a non-canonical owner-policy pair")
+  if (!canonical_pair(owner, policy) && !historical_pair(owner, policy)) {
+    fail("obligation block has an unknown owner-policy pair")
   }
   if (state != "open" && state != "closed") {
     fail("obligation block has an invalid State")
@@ -469,16 +473,10 @@ fi
 
 if [[ "$operation" == "register" ]]; then
   case "$owner:$policy" in
-    security-audit:required|\
-    execute-worktree-implementation:none|\
     test-driven-development:none|\
     context-handoff:conditional|\
-    assumption-pruning:none|\
-    route-large-implementation:none|\
-    evidence-review:none|\
-    prose-proofreading:none|\
-    peer-consultation:none|\
-    herdr:none) ;;
+    sanitize-artifacts:none|\
+    evidence-review:none) ;;
     *)
       echo "todo-obligation: owner and policy are not a canonical pair: $owner/$policy" >&2
       exit 1
@@ -762,13 +760,17 @@ function fail(message) {
 }
 
 function canonical_pair(owner, policy) {
+  return (owner == "test-driven-development" && policy == "none") ||
+    (owner == "context-handoff" && policy == "conditional") ||
+    (owner == "evidence-review" && policy == "none") ||
+    (owner == "sanitize-artifacts" && policy == "none")
+}
+
+function historical_pair(owner, policy) {
   return (owner == "security-audit" && policy == "required") ||
     (owner == "execute-worktree-implementation" && policy == "none") ||
-    (owner == "test-driven-development" && policy == "none") ||
-    (owner == "context-handoff" && policy == "conditional") ||
     (owner == "assumption-pruning" && policy == "none") ||
     (owner == "route-large-implementation" && policy == "none") ||
-    (owner == "evidence-review" && policy == "none") ||
     (owner == "prose-proofreading" && policy == "none") ||
     (owner == "peer-consultation" && policy == "none") ||
     (owner == "herdr" && policy == "none")
@@ -806,8 +808,9 @@ function validate_target_block(start, end,    count, body, owner, policy, state,
   sub(/`$/, "", owner)
   sub(/^- Policy: `/, "", policy)
   sub(/`$/, "", policy)
-  if (!canonical_pair(owner, policy) || (policy != "required" && policy != "conditional")) {
-    fail("obligation block has a non-canonical owner-policy pair")
+  if ((!canonical_pair(owner, policy) && !historical_pair(owner, policy)) ||
+      (policy != "required" && policy != "conditional")) {
+    fail("obligation block has an unknown owner-policy pair")
   }
   if (close_mode == "no-save" && policy != "conditional") {
     fail("no-save closure requires a conditional obligation")

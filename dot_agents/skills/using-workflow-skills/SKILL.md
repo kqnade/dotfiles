@@ -1,6 +1,6 @@
 ---
 name: using-workflow-skills
-description: Route software changes, evidence reviews, context handoffs, security audits, active TODO management, prose checks, conversation-residue removal, assumption pruning, and peer challenges to the one canonical workflow skill before acting. Use at the start of those tasks or whenever the user names an installed workflow; do not use for unrelated questions.
+description: Route software changes, evidence reviews, context handoffs, active TODO management, and artifact sanitation to one canonical workflow skill before acting. Use at the start of those tasks or whenever the user names an installed workflow; do not use for unrelated questions.
 ---
 
 # Using Workflow Skills
@@ -29,40 +29,27 @@ current-state evidence.
 
 | Task | Canonical owner |
 |---|---|
-| Route a large implementation into independent isolated Herdr worktree units | `route-large-implementation` |
-| Execute an explicitly invoked packet in an existing isolated worktree | `execute-worktree-implementation` |
 | Add or change executable behavior; fix a defect | `test-driven-development` |
-| Review a code change or dependency update | `evidence-review` |
+| Review a code change, dependency update, or security-sensitive change | `evidence-review` |
 | Export, import, or reconcile a task handoff | `context-handoff` |
-| Maintain security coverage across bounded repository areas | `security-audit` |
 | Create, update, or complete an active repository `.dev/todo/` work item | `todo-management` |
-| Proofread Markdown or plain-text prose | `prose-proofreading` |
 | Remove conversation or edit-process residue from artifacts | `sanitize-artifacts` |
-| Remove assumptions to find a simpler design | `assumption-pruning` |
-| Obtain and verify an independent technical opinion | `peer-consultation` |
-| Control Herdr after the user explicitly asks for Herdr | `herdr` |
 
 ### Canonical persistence policy registry
 
-The routing table is the sole Task-to-owner mapping. This registry is the sole
-owner-to-persistence-policy mapping, and it must contain the same owners
-exactly once. The remaining columns define the required behavior for that
-policy.
+The routing table is the sole Task-to-owner mapping for supported outcomes.
+This registry is the sole owner-to-persistence-policy mapping for every
+outcome owner in that table; the router itself is not an outcome owner and has
+no persistence policy. Each listed owner appears exactly once. The remaining
+columns define the required behavior for that policy.
 
 | Canonical owner | Persistence | Destination | Checkpoint | Completion | Promotion |
 |---|---|---|---|---|---|
-| `route-large-implementation` | `none` | No workflow-state destination; report the routing decision in chat | No workflow-state checkpoint; do not create state | The routing decision and any dispatch result are reported | No promotion and no workflow-state write |
-| `execute-worktree-implementation` | `none` | No workflow-state destination; report the packet result in chat | No workflow-state checkpoint; do not create state | The packet result and verification are reported | No promotion and no workflow-state write |
 | `test-driven-development` | `none` | No workflow-state destination; use the code and test diff as evidence | No workflow-state checkpoint; do not create state | The tested Green increment is reported | No promotion and no workflow-state write |
 | `evidence-review` | `none` | Prospective `.dev/reviews/<review-key>.md`; runtime persistence is unavailable until `.dev/todo/skill-driven-workflow-persistence.md` completes writer integration | No durable review checkpoint while runtime support is unavailable; keep the prospective snapshot contract for that integration | Return the full report in chat and state that no review artifact was persisted | No promotion; a later explicit request must route to the canonical owner after support exists |
 | `context-handoff` | `conditional` | `.dev/contexts/<task-key>.md` only for an explicit export or save request; import and inspect are read-only | Export checkpoints identity, snapshot, and each material decision; import resolves without `--ensure` and creates no state | Export verifies a readable handoff; import reports reconciled provenance and freshness without writing | Only a separate explicit owner action may promote confirmed reusable facts |
-| `security-audit` | `required` | `.dev/security/coverage.md` and `.dev/security/reports/<area-key>.md` | Checkpoint the ledger and report hashes around each bounded audit run | The report is appended and indexed by the current-worktree ledger | Promote confirmed reusable security facts through the audit record's owner-controlled lifecycle |
 | `todo-management` | `required` | `.dev/todo/<task-key>.md` | Checkpoint the current TODO hash before every compare-and-swap write | The authorized TODO operation passes its schema and completion gates | Promote decisions and evidence to linked durable records before TODO completion |
-| `prose-proofreading` | `none` | No workflow-state destination; return the corrected prose in chat | No workflow-state checkpoint; do not create state | The requested prose is returned with structure and meaning preserved | No promotion and no workflow-state write |
 | `sanitize-artifacts` | `none` | No workflow-state destination; use the artifact diff as evidence | No workflow-state checkpoint; do not create state | The artifact is closed over its committed version and contains no conversation, diff, prior-version, or change-process residue | No promotion and no workflow-state write |
-| `assumption-pruning` | `none` | No workflow-state destination; report alternatives in chat | No workflow-state checkpoint; do not create state | The assumptions and feasible alternatives are reported | No promotion and no workflow-state write |
-| `peer-consultation` | `none` | No workflow-state destination; report the bounded opinion in chat | No workflow-state checkpoint; do not create state | The independent opinion and verification limits are reported | No promotion and no workflow-state write |
-| `herdr` | `none` | No workflow-state destination; report the control result in chat | No workflow-state checkpoint; do not create state | The requested Herdr control result is reported | No promotion and no workflow-state write |
 
 `required` means the explicitly requested outcome is itself a managed state
 write; it authorizes only that owner's exact operation and listed destination.
@@ -77,21 +64,10 @@ state boundary.
 
 ## Keep ownership singular
 
-Each capability has **one canonical owner**. Do not recreate separate skills
-for review transports, context directions, dependency review, or a second TDD
-workflow. A capability may call a supporting owner—for example,
-`evidence-review` may call `peer-consultation`—without taking over its contract.
-`route-large-implementation` owns only outer topology and dispatch for large
-changes; `execute-worktree-implementation` owns execution in an existing
-worktree; `test-driven-development` still owns the List → Red → Green →
-Refactor contract applied to each executable increment. These two worktree
-owners have non-overlapping triggers: route the outer topology, or explicitly
-execute a packet in the already selected worktree. Do not infer outer routing
-from an ordinary implementation request unless orchestration is explicit or
-the work is clearly large enough to require independent worktree units.
-Likewise, “use Herdr to ask another agent” is led by `peer-consultation`, with
-`herdr` as the explicitly requested transport; direct pane, tab, and workspace
-control remains owned by `herdr`.
+Each supported capability has **one canonical owner**. Do not recreate separate
+skills for review transports, context directions, dependency review, or a
+second TDD workflow. The router chooses an owner by the requested outcome and
+does not take over that owner's contract or persist workflow state.
 
 Read only the selected owner and resources it explicitly needs. If two rows
 seem applicable, select by requested output: reviewing a dependency change is
@@ -100,20 +76,15 @@ seem applicable, select by requested output: reviewing a dependency change is
 
 Apply these boundaries consistently:
 
-- reviewing security-sensitive code in a PR is `evidence-review`; maintaining
-  repository-wide security coverage over time is `security-audit`;
-- resuming an existing security coverage ledger is `security-audit`, not
-  `context-handoff`; add a handoff only when the broader task itself must move
-  between sessions or clients;
-- factual gaps found while proofreading require ordinary primary-source
-  verification unless the user also requested a code or evidence review;
-- wording and style changes belong to `prose-proofreading`; removing references
-  to the conversation or edit process belongs to `sanitize-artifacts`;
+- reviewing security-sensitive code in a PR is `evidence-review`; existing
+  `.dev/security` records remain readable as historical evidence;
+- removing references to the conversation or edit process belongs to
+  `sanitize-artifacts`;
 - a review, audit, or design exploration may recommend remediation, but an
   accepted executable behavior change then transitions to
   `test-driven-development`;
-- `assumption-pruning` owns an explicit simplification exploration, while a
-  review may still report a simpler alternative that changes its disposition.
+- a review may report a simpler alternative when it removes a risky assumption
+  or changes the shipping decision.
 
 ## Preserve evidence boundaries
 
@@ -129,9 +100,9 @@ uncertainty instead of converting workflow completion into proof.
 
 ## Persist continuity explicitly
 
-Claude automatic memory is disabled. For context handoffs and multi-session
-security coverage, read [persistent-state.md](references/persistent-state.md)
-and use `scripts/workflow-state-root`. It uses the current worktree's `.dev` by
+Claude automatic memory is disabled. For context handoffs and workflow-state
+records, read [persistent-state.md](references/persistent-state.md) and use
+`scripts/workflow-state-root`. It uses the current worktree's `.dev` by
 default. Only repositories in the `livesense-inc` or `jobtalk` namespace
 receive the documented local `.git/info/exclude` rule; an explicit environment
 override selects the repository-external fallback.
@@ -144,8 +115,8 @@ mention that persistence is available but do not write persistent workflow state
 without the user's request. This is explicit filesystem-backed continuity, not
 automatic memory.
 
-A request to export a handoff or maintain a multi-session security audit
-authorizes the corresponding managed `.dev` or explicit external-backend
-update and the documented namespace-specific local ignore, subject to the
-harness's filesystem permission boundary. It does not authorize product-code
-changes, remote publication, or writes to unrelated local state.
+A request to export a handoff authorizes the corresponding managed `.dev` or
+explicit external-backend update and the documented namespace-specific local
+ignore, subject to the harness's filesystem permission boundary. It does not
+authorize product-code changes, remote publication, or writes to unrelated
+local state.

@@ -66,6 +66,11 @@ an obligation entry owner. Prospective `.dev/reviews/<review-key>.md` remains
 unavailable until the shared writer's availability gate changes; the shared
 workflow-state writer rejects `.dev/reviews/` today.
 
+New obligations use only the current owner-policy pairs in that registry.
+Existing TODOs may contain historical pairs; checks preserve their bytes and
+validate their declared destinations so those records remain readable. Do not
+use a historical pair for a new obligation.
+
 Close an obligation only after the user explicitly authorizes this exact state
 write (or explicitly authorizes the owning workflow to persist it). Re-read the
 TODO and hash that exact snapshot. For artifact closure, create the declared

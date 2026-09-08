@@ -10,12 +10,31 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from validate_common import EXPECTED_AGENT_SKILLS, LEGACY_AGENT_SKILLS
+
 
 ROOT = Path(__file__).resolve().parents[2]
 CANONICAL_SKILLS = ROOT / "dot_agents/skills"
 CLAUDE_SKILLS = ROOT / "dot_claude/skills"
 CI_WORKFLOW = ROOT / ".github/workflows/ci.yml"
 CI_COMMAND = "mise exec -- python3 scripts/ci/test-workflow-skill-materialization.py"
+RETAINED_SKILL_NAMES = {
+    "test-driven-development",
+    "evidence-review",
+    "sanitize-artifacts",
+    "using-workflow-skills",
+    "context-handoff",
+    "todo-management",
+}
+RETIRED_ROUTER_OWNERS = {
+    "assumption-pruning",
+    "execute-worktree-implementation",
+    "herdr",
+    "peer-consultation",
+    "prose-proofreading",
+    "route-large-implementation",
+    "security-audit",
+}
 
 
 def canonical_names() -> set[str]:
@@ -27,9 +46,32 @@ def canonical_names() -> set[str]:
 
 
 class WorkflowSkillMaterializationTests(unittest.TestCase):
+    def test_retained_router_has_no_retired_active_routes(self) -> None:
+        router = (CANONICAL_SKILLS / "using-workflow-skills/SKILL.md").read_text(
+            encoding="utf-8"
+        )
+        review = (CANONICAL_SKILLS / "evidence-review/SKILL.md").read_text(
+            encoding="utf-8"
+        )
+        for owner in RETIRED_ROUTER_OWNERS:
+            self.assertNotIn(
+                f"`{owner}`",
+                router,
+                f"router must not invoke retired owner {owner}",
+            )
+            self.assertNotIn(
+                f"`{owner}`",
+                review,
+                f"review skill must not invoke retired owner {owner}",
+            )
+        for name in RETAINED_SKILL_NAMES - {"using-workflow-skills"}:
+            self.assertIn(f"`{name}`", router)
+
     def test_clients_share_one_canonical_source_and_ci_runs_this_test(self) -> None:
         names = canonical_names()
         self.assertTrue(names, "canonical workflow skill set must not be empty")
+        self.assertEqual(names, EXPECTED_AGENT_SKILLS | LEGACY_AGENT_SKILLS)
+        self.assertTrue(RETAINED_SKILL_NAMES <= EXPECTED_AGENT_SKILLS)
 
         pointer_names = {
             path.name.removeprefix("symlink_")
