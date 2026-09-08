@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { copyFile, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -257,5 +257,64 @@ test('rejects an environment role that has no pinned model', async (t) => {
     });
   } finally {
     await loaded.cleanup();
+  }
+});
+
+test('cancels a running delegated tool before returning its writable scope', async (t) => {
+  requirePackageRoot(t);
+  if (!loadExtension) return;
+
+  const cwd = await mkdtemp(join(tmpdir(), 'pi-extension-running-cancel-'));
+  const loaded = await loadExtension();
+  let broker;
+  try {
+    await writeFile(join(cwd, 'code.txt'), 'source');
+    const directory = join(cwd, 'journal');
+    broker = await startBroker({
+      cwd, directory, command: process.execPath,
+      args: [fileURLToPath(new URL('./pi/fixtures/rpc-child.mjs', import.meta.url))],
+      env: { ...process.env, RPC_PROMPT_DELAY: '500', RPC_WRITE_AFTER_DELAY: 'code.txt' },
+    });
+    await withEnvironment({
+      PI_BROKER_SOCKET: broker.connection.socketPath,
+      PI_AGENT_ID: broker.connection.agentId,
+      PI_AGENT_TOKEN: broker.connection.token,
+      PI_AGENT_ROLE: 'root',
+    }, async () => {
+      const pi = createPi();
+      loaded.factory(pi);
+      await pi.emit('session_start', { type: 'session_start', reason: 'startup' });
+      try {
+        const controller = new AbortController();
+        const outcome = pi.tools.get('delegate').execute('cancel-running', {
+          tasks: [{ role: 'astra', task: 'Reply slowly', paths: ['code.txt'] }],
+        }, controller.signal).then(result => ({ result }), error => ({ error }));
+        const markerName = (await readdir(directory)).find(name => name.endsWith('.json'));
+        let job;
+        for (let attempt = 0; attempt < 200; attempt += 1) {
+          const marker = JSON.parse(await readFile(join(directory, markerName), 'utf8'));
+          job = Object.values(marker.jobs).find(item => item.role === 'astra' && item.state === 'running');
+          if (job) break;
+          await new Promise(resolve => setTimeout(resolve, 10));
+        }
+        assert.ok(job, 'delegated worker must be running before cancellation');
+        controller.abort();
+        const settled = await outcome;
+        assert.match(settled.error?.message ?? '', /abort|cancel/i);
+        assert.throws(() => process.kill(-job.pid, 0), { code: 'ESRCH' });
+        const read = await pi.tools.get('read').execute('after-cancel', { path: 'code.txt' });
+        assert.equal(read.details.text, 'source');
+        await pi.tools.get('write').execute('resume-write', {
+          path: 'code.txt', text: 'resumed', expectedHash: read.details.hash,
+        });
+        assert.equal(await readFile(join(cwd, 'code.txt'), 'utf8'), 'resumed');
+      } finally {
+        await pi.emit('session_shutdown', { type: 'session_shutdown', reason: 'quit' });
+      }
+    });
+  } finally {
+    await broker?.close();
+    await loaded.cleanup();
+    await rm(cwd, { recursive: true, force: true });
   }
 });

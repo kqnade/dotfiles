@@ -135,7 +135,10 @@ export default function managed(pi) {
     rejectAborted(signal);
     const connected = client;
     if (!connected) throw new Error('Managed broker is not connected');
-    return connected.call(method, params);
+    return connected.call(method, params, {
+      signal,
+      timeoutMs: method === 'delegate' ? null : undefined,
+    });
   };
 
   const permit = async () => {
