@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { startSession } from '../../../dot_pi/agent/runtime/session.mjs';
+import { stopProcessGroup } from '../../../dot_pi/agent/runtime/ownership.mjs';
 
 const fixture = fileURLToPath(new URL('./fixtures/rpc-child.mjs', import.meta.url));
 
@@ -109,6 +110,41 @@ test('a journal write failure stops the worker and retains the unresolved sessio
     assert.equal(session.snapshot().available, 4);
   } finally {
     await chmod(directory, 0o700);
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test('unconfirmed termination keeps the worker quarantined and reports its stop failure', async t => {
+  const cwd = await realpath(await mkdtemp(join(tmpdir(), 'pi-session-stop-failure-')));
+  const directory = join(cwd, 'journal');
+  const groups = new Set();
+  let inspection;
+  try {
+    await writeFile(join(cwd, 'code.txt'), 'source');
+    const session = await startSession({ cwd, directory, command: process.execPath, args: [fixture] });
+    const kill = process.kill;
+    inspection = t.mock.method(process, 'kill', (pid, signal) => {
+      if (pid < 0 && signal === 0) {
+        groups.add(pid);
+        throw Object.assign(new Error('process inspection denied'), { code: 'EPERM' });
+      }
+      return kill.call(process, pid, signal);
+    });
+    await assert.rejects(
+      session.delegate([{ role: 'astra', task: 'Reply OK.', paths: ['code.txt'] }]),
+      error => error.errors?.[0].cause?.code === 'PROCESS_GROUP_UNKNOWN',
+    );
+    await assert.rejects(session.close(), { code: 'PROCESS_GROUP_UNKNOWN' });
+    await assert.rejects(session.delegate([{ role: 'astra', task: 'retry', paths: ['code.txt'] }]), { code: 'PROCESS_GROUP_UNKNOWN' });
+    const [name] = await readdir(directory);
+    const marker = JSON.parse(await readFile(join(directory, name), 'utf8'));
+    const [job] = Object.values(marker.jobs);
+    assert.equal(job.state, 'quarantined');
+    assert.deepEqual(session.snapshot().quarantined, [job.id]);
+    assert.equal(session.snapshot().available, 3);
+  } finally {
+    inspection?.mock.restore();
+    for (const pid of groups) await stopProcessGroup(-pid, 1000);
     await rm(cwd, { recursive: true, force: true });
   }
 });

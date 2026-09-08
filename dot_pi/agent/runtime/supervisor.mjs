@@ -58,7 +58,7 @@ export class Supervisor {
         let completed = false;
         try {
           const receipt = await this.#execute(Object.freeze({ ...agent }));
-          if (receipt?.stopped !== true) throw new Error('Execution has no terminal proof');
+          if (receipt?.stopped !== true) throw new Error('Execution has no terminal proof', { cause: receipt?.error });
           const snapshots = await this.#scopes?.finish(agent.id);
           completed = true;
           if (receipt.error) throw receipt.error;
