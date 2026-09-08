@@ -4,6 +4,26 @@ const GITHUB_HOST = 'github.com';
 const APPROVED_CLAUDE_OWNERS = new Set(['livesense-inc', 'jobtalk']);
 const OWNER_PATTERN = /^(?:[A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9-]{0,37}[A-Za-z0-9])$/;
 const REPOSITORY_PATTERN = /^[A-Za-z0-9._-]+$/;
+const GITMOJI_TYPES = Object.freeze([
+  ['✨', 'feat'],
+  ['🐛', 'fix'],
+  ['♻️', 'refactor'],
+  ['📝', 'docs'],
+  ['✅', 'test'],
+  ['🔧', 'chore'],
+  ['⚡️', 'perf'],
+  ['👷', 'ci'],
+  ['🎨', 'style'],
+  ['⏪️', 'revert'],
+  ['📦', 'build'],
+]);
+
+const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const COMMIT_MESSAGE_PATTERN = new RegExp(
+  `^(?:${GITMOJI_TYPES.map(([emoji, type]) => `${escapeRegExp(emoji)} ${type}`).join('|')})` +
+  String.raw`(?:\([A-Za-z0-9._/-]+\))?: [^\s].*$`,
+  'u',
+);
 
 function invalidRemote(reason) {
   throw new Error(`invalid or unsupported GitHub remote: ${reason}`);
@@ -115,6 +135,22 @@ export function routeGitHubRemote(remoteUrl) {
   });
 }
 
+export function validateCommitMessage(value) {
+  if (typeof value !== 'string') throw new TypeError('generated commit message must be text');
+  const message = value.trim();
+  if (!message) throw new Error('generated commit message is empty');
+  if (/[\u0000-\u001f\u007f]/.test(message) || message.includes('\n')) {
+    throw new Error('generated commit message must be one line');
+  }
+  if (Array.from(message).length > 72) {
+    throw new Error('generated commit message exceeds 72 characters');
+  }
+  if (!COMMIT_MESSAGE_PATTERN.test(message)) {
+    throw new Error('generated commit message is not a valid gitmoji conventional message');
+  }
+  return message;
+}
+
 export async function dispatchCommitMessage({
   remoteUrl,
   readStagedDiff,
@@ -132,5 +168,5 @@ export async function dispatchCommitMessage({
 
   const stagedDiff = await readStagedDiff();
   const recentLog = await readRecentLog();
-  return generate({ route, stagedDiff, recentLog });
+  return validateCommitMessage(await generate({ route, stagedDiff, recentLog }));
 }

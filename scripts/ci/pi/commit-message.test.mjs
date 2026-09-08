@@ -18,10 +18,10 @@ test('dispatch routes GitHub remotes and validates before staged diff transmissi
       readRecentLog: async () => 'recent history',
       generate: async (request) => {
         routed.push(request);
-        return request.route.backend;
+        return '✨ feat: update commit backend';
       },
     });
-    assert.equal(result, backend);
+    assert.equal(result, '✨ feat: update commit backend');
   }
 
   assert.deepEqual(routed.map(({ route }) => route.backend), ['pi', 'claude', 'claude']);
@@ -75,5 +75,19 @@ test('dispatch routes GitHub remotes and validates before staged diff transmissi
       /unsupported|malformed|invalid/i,
     );
     assert.deepEqual(events, []);
+  }
+});
+
+test('dispatch rejects empty and error backend results', async () => {
+  for (const generated of ['', '   ', 'Error: provider unavailable']) {
+    await assert.rejects(
+      dispatchCommitMessage({
+        remoteUrl: 'https://github.com/kqnade/dotfiles.git',
+        readStagedDiff: async () => 'staged diff',
+        readRecentLog: async () => 'recent history',
+        generate: async () => generated,
+      }),
+      /invalid|empty|error/i,
+    );
   }
 });
