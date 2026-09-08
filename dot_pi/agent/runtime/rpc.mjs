@@ -8,6 +8,7 @@ export class RpcClient extends EventEmitter {
   #buffer = '';
   #verified = false;
   #role;
+  #running = false;
   #closed;
   #timeout;
 
@@ -99,8 +100,43 @@ export class RpcClient extends EventEmitter {
 
   async run(message) {
     if (!this.#verified) throw new Error('RPC model is not verified');
+    if (this.#running) throw new Error('RPC session is already running');
     verifyState(this.#role, await this.request('get_state'));
-    return this.request('prompt', { message });
+    this.#running = true;
+    return new Promise((resolve, reject) => {
+      let assistant;
+      const cleanup = () => {
+        this.#running = false;
+        this.off('event', onEvent);
+        this.off('closed', onClose);
+      };
+      const fail = error => { cleanup(); reject(error); };
+      const onClose = () => fail(new Error('RPC closed before task completion'));
+      const onEvent = event => {
+        if (event.type === 'message_end' && event.message?.role === 'assistant') assistant = event.message;
+        if (event.type !== 'agent_end') return;
+        assistant ??= event.messages?.filter(item => item.role === 'assistant').at(-1);
+        if (!assistant || ['error', 'aborted'].includes(assistant.stopReason)) {
+          fail(new Error(`RPC task failed: ${assistant?.stopReason ?? 'missing assistant response'}`));
+          return;
+        }
+        if (assistant.model !== modelFor(this.#role).id) {
+          this.#verified = false;
+          fail(new Error(`model mismatch in ${this.#role} response`));
+          return;
+        }
+        const text = assistant.content?.filter(item => item.type === 'text').map(item => item.text).join('');
+        if (!text?.trim()) {
+          fail(new Error('RPC task returned no text'));
+          return;
+        }
+        cleanup();
+        resolve({ text, model: assistant.model });
+      };
+      this.on('event', onEvent);
+      this.once('closed', onClose);
+      this.request('prompt', { message }).catch(fail);
+    });
   }
 
   async close() {

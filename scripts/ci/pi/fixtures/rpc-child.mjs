@@ -18,8 +18,12 @@ for await (const line of createInterface({ input: process.stdin })) {
   } else if (request.type === 'get_state') {
     data = { model: process.env.RPC_SUBSTITUTE ? { ...model, id: 'gpt-5.6-sol' } : model, thinkingLevel };
   } else if (request.type === 'prompt') {
-    process.stderr.write('unexpected prompt\n');
-    process.exit(9);
+    if (process.env.RPC_SUBSTITUTE) process.exit(9);
+    const message = { role: 'assistant', content: [{ type: 'text', text: 'OK\u2028verified' }], stopReason: 'stop', model: model.id };
+    setTimeout(() => {
+      emit({ type: 'message_end', message });
+      emit({ type: 'agent_end', messages: [message] });
+    }, 25);
   }
   emit({ type: 'response', id: request.id, command: request.type, success: true, data });
 }

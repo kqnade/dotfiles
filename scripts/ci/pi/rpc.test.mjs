@@ -18,3 +18,13 @@ test('a substituted model prevents prompting', async () => {
     await client.close();
   }
 });
+
+test('run waits for the completed assistant response and preserves Unicode separators', async () => {
+  const client = new RpcClient({ command: process.execPath, args: [fixture] });
+  try {
+    await client.initialize('luna');
+    assert.deepEqual(await client.run('Reply OK.'), { text: 'OK\u2028verified', model: 'gpt-5.6-luna' });
+  } finally {
+    await client.close();
+  }
+});
