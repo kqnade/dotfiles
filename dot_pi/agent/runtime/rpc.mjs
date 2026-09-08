@@ -71,6 +71,7 @@ export class RpcClient extends EventEmitter {
   }
 
   request(type, fields = {}) {
+    if (this.#closing) return Promise.reject(new Error('RPC process is closing'));
     if (this.process.exitCode !== null || this.process.signalCode !== null) {
       return Promise.reject(new Error('RPC process is closed'));
     }

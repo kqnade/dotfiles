@@ -41,6 +41,20 @@ test('a substituted model prevents prompting', async () => {
   }
 });
 
+test('close rejects new RPC requests before writing to the closing stream', async () => {
+  const client = new RpcClient({ command: process.execPath, args: [fixture] });
+  try {
+    await client.initialize('luna');
+    const closing = client.close();
+    const bytesWritten = client.process.stdin.bytesWritten;
+    await assert.rejects(client.request('get_state'), /RPC process is closing/);
+    assert.equal(client.process.stdin.bytesWritten, bytesWritten);
+    assert.deepEqual(await client.close(), await closing);
+  } finally {
+    await client.close();
+  }
+});
+
 test('run waits for the completed assistant response and preserves Unicode separators', async () => {
   const client = new RpcClient({ command: process.execPath, args: [fixture] });
   try {
