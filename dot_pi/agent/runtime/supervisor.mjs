@@ -47,7 +47,8 @@ export class Supervisor {
   async delegate(callerId, tasks, options = {}) {
     const parent = this.#agents.get(callerId);
     if (!parent) throw new Error('Unknown delegation caller');
-    const signal = options.signal ?? parent.signal;
+    const lifetimeSignal = parent.signal;
+    const signal = options.signal ?? lifetimeSignal;
     if (!Array.isArray(tasks) || tasks.length === 0) throw new Error('Delegation requires tasks');
     for (const task of tasks) {
       if (!children[parent.role].includes(task.role)) throw new Error(`${parent.role} cannot delegate to ${task.role}`);
@@ -101,8 +102,8 @@ export class Supervisor {
       if (failures.length) throw new AggregateError(failures.map(result => result.reason), 'Delegated tasks failed');
       return results.map(result => result.value);
     } finally {
-      if (recoverable) {
-        await this.#scheduler.resume(callerId, { signal });
+      if (recoverable && !lifetimeSignal?.aborted) {
+        await this.#scheduler.resume(callerId, { signal: lifetimeSignal });
         await this.#scopes?.resume(callerId);
         parent.waiting = false;
       }

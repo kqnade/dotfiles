@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,6 +9,21 @@ import { connect } from '../../../dot_pi/agent/runtime/ipc.mjs';
 import { sha256 } from '../../../dot_pi/agent/runtime/ownership.mjs';
 
 const fixture = fileURLToPath(new URL('./fixtures/rpc-child.mjs', import.meta.url));
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const waitFor = async (read, predicate, timeoutMs = 3000) => {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const value = await read();
+      if (predicate(value)) return value;
+    } catch (error) {
+      if (error.message !== 'Agent is not runnable') throw error;
+    }
+    await wait(10);
+  }
+  throw new Error('condition was not reached before timeout');
+};
 
 test('the authenticated root reads and updates a file through the broker', async () => {
   const cwd = await mkdtemp(join(tmpdir(), 'pi-broker-test-'));
@@ -48,6 +63,161 @@ test('broker workers authenticate individually and delegate through the same sup
     assert.equal(await readFile(join(cwd, 'code.txt'), 'utf8'), 'written by Luna');
     assert.equal((await client.call('permit')).role, 'root');
   } finally {
+    await client?.close();
+    await broker?.close();
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test('cancelling an active delegation stops the worker before a delayed broker write', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'pi-broker-cancel-'));
+  let broker;
+  let client;
+  let pending;
+  try {
+    await writeFile(join(cwd, 'code.txt'), 'source');
+    const directory = join(cwd, 'journal');
+    broker = await startBroker({
+      cwd,
+      directory,
+      command: process.execPath,
+      args: [fixture],
+      env: { ...process.env, RPC_PROMPT_DELAY: '300', RPC_WRITE_AFTER_DELAY: 'code.txt' },
+    });
+    client = await connect(broker.connection);
+    const controller = new AbortController();
+    pending = client.call('delegate', {
+      tasks: [{ role: 'astra', task: 'Reply slowly', paths: ['code.txt'] }],
+    }, { signal: controller.signal });
+    const pendingOutcome = pending.then(() => undefined, error => error);
+    const markerName = (await readdir(directory)).find(name => name.endsWith('.json'));
+    const markerPath = join(directory, markerName);
+    const running = await waitFor(
+      async () => JSON.parse(await readFile(markerPath, 'utf8')),
+      marker => Object.values(marker.jobs).find(job => job.role === 'astra' && job.state === 'running'),
+    );
+    const job = Object.values(running.jobs).find(item => item.role === 'astra' && item.state === 'running');
+    controller.abort();
+    const outcome = await pendingOutcome;
+    assert.equal(outcome?.name, 'AbortError');
+    assert.equal((await client.call('permit')).role, 'root');
+    const stopped = await waitFor(
+      async () => JSON.parse(await readFile(markerPath, 'utf8')),
+      marker => marker.jobs[job.id]?.state === 'stopped',
+    );
+    assert.equal(stopped.jobs[job.id].state, 'stopped');
+    assert.equal(await readFile(join(cwd, 'code.txt'), 'utf8'), 'source');
+    assert.throws(() => process.kill(-job.pid, 0), { code: 'ESRCH' });
+    const [next] = await client.call('delegate', {
+      tasks: [{ role: 'astra', task: 'Reply OK.', paths: ['code.txt'] }],
+    });
+    assert.equal(next.result.text, 'OK\u2028verified');
+  } finally {
+    await pending?.catch(() => {});
+    await client?.close();
+    await broker?.close();
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test('disconnecting an active delegation stops only that connection worker', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'pi-broker-disconnect-'));
+  let broker;
+  let client;
+  let replacement;
+  let pending;
+  try {
+    await writeFile(join(cwd, 'code.txt'), 'source');
+    const directory = join(cwd, 'journal');
+    broker = await startBroker({
+      cwd,
+      directory,
+      command: process.execPath,
+      args: [fixture],
+      env: { ...process.env, RPC_PROMPT_DELAY: '300', RPC_WRITE_AFTER_DELAY: 'code.txt' },
+    });
+    client = await connect(broker.connection);
+    pending = client.call('delegate', {
+      tasks: [{ role: 'astra', task: 'Reply slowly', paths: ['code.txt'] }],
+    });
+    const pendingOutcome = pending.then(() => undefined, error => error);
+    const markerName = (await readdir(directory)).find(name => name.endsWith('.json'));
+    const markerPath = join(directory, markerName);
+    const running = await waitFor(
+      async () => JSON.parse(await readFile(markerPath, 'utf8')),
+      marker => Object.values(marker.jobs).find(job => job.role === 'astra' && job.state === 'running'),
+    );
+    const job = Object.values(running.jobs).find(item => item.role === 'astra' && item.state === 'running');
+    await client.close();
+    assert.match((await pendingOutcome).message, /connection closed/i);
+    const stopped = await waitFor(
+      async () => JSON.parse(await readFile(markerPath, 'utf8')),
+      marker => marker.jobs[job.id]?.state === 'stopped',
+    );
+    assert.equal(stopped.jobs[job.id].state, 'stopped');
+    assert.equal(await readFile(join(cwd, 'code.txt'), 'utf8'), 'source');
+    assert.throws(() => process.kill(-job.pid, 0), { code: 'ESRCH' });
+    replacement = await connect(broker.connection);
+    await waitFor(
+      () => replacement.call('permit'),
+      identity => identity.role === 'root',
+    );
+    const [next] = await replacement.call('delegate', {
+      tasks: [{ role: 'astra', task: 'Reply OK.', paths: ['code.txt'] }],
+    });
+    assert.equal(next.result.text, 'OK\u2028verified');
+  } finally {
+    await pending?.catch(() => {});
+    await replacement?.close();
+    await client?.close();
+    await broker?.close();
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test('timing out an active delegation stops the worker before a delayed broker write', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'pi-broker-timeout-'));
+  let broker;
+  let client;
+  let pending;
+  try {
+    await writeFile(join(cwd, 'code.txt'), 'source');
+    const directory = join(cwd, 'journal');
+    broker = await startBroker({
+      cwd,
+      directory,
+      command: process.execPath,
+      args: [fixture],
+      env: { ...process.env, RPC_PROMPT_DELAY: '3000', RPC_WRITE_AFTER_DELAY: 'code.txt' },
+    });
+    client = await connect({ ...broker.connection, timeoutMs: 1000 });
+    pending = client.call('delegate', {
+      tasks: [{ role: 'astra', task: 'Reply slowly', paths: ['code.txt'] }],
+    }, { timeoutMs: 500 });
+    const pendingOutcome = pending.then(() => undefined, error => error);
+    const markerName = (await readdir(directory)).find(name => name.endsWith('.json'));
+    const markerPath = join(directory, markerName);
+    const running = await waitFor(
+      async () => JSON.parse(await readFile(markerPath, 'utf8')),
+      marker => Object.values(marker.jobs).find(job => job.role === 'astra' && job.state === 'running'),
+    );
+    const job = Object.values(running.jobs).find(item => item.role === 'astra' && item.state === 'running');
+    const outcome = await pendingOutcome;
+    assert.equal(outcome?.code, 'ETIMEDOUT');
+    assert.match(outcome?.message ?? '', /timed out/i);
+    const stopped = await waitFor(
+      async () => JSON.parse(await readFile(markerPath, 'utf8')),
+      marker => marker.jobs[job.id]?.state === 'stopped',
+    );
+    assert.equal(stopped.jobs[job.id].state, 'stopped');
+    assert.equal(await readFile(join(cwd, 'code.txt'), 'utf8'), 'source');
+    assert.throws(() => process.kill(-job.pid, 0), { code: 'ESRCH' });
+    await waitFor(
+      () => client.call('permit'),
+      identity => identity.role === 'root',
+    );
+  } finally {
+    await pending?.catch(() => {});
     await client?.close();
     await broker?.close();
     await rm(cwd, { recursive: true, force: true });

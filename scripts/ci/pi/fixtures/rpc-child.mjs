@@ -84,12 +84,33 @@ for await (const line of createInterface({ input: process.stdin })) {
     }
 
     const delay = Number(process.env.RPC_PROMPT_DELAY ?? (request.message === 'Reply slowly' ? 250 : 25));
+    const delayedWrite = request.message === 'Reply slowly' ? process.env.RPC_WRITE_AFTER_DELAY : undefined;
     clearPrompt();
     emit({ type: 'agent_start' });
     const messageText = request.message === 'Reply slowly' ? 'slow\u2028verified' : 'OK\u2028verified';
 
-    promptTimer = setTimeout(() => {
+    promptTimer = setTimeout(async () => {
       promptTimer = undefined;
+      if (delayedWrite) {
+        const client = await connect({
+          socketPath: process.env.PI_BROKER_SOCKET,
+          agentId: process.env.PI_AGENT_ID,
+          token: process.env.PI_AGENT_TOKEN,
+        });
+        let failed = false;
+        try {
+          const original = await client.call('read', { path: delayedWrite });
+          await client.call('write', { path: delayedWrite, text: 'late write', expectedHash: original.hash });
+        } catch {
+          failed = true;
+        } finally {
+          await client.close();
+        }
+        if (failed) {
+          emitAssistant({ text: '', stopReason: 'error' });
+          return;
+        }
+      }
       emitAssistant({ text: messageText, stopReason: 'stop' });
     }, delay);
 

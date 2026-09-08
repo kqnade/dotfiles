@@ -5,6 +5,67 @@ import { RpcClient } from './rpc.mjs';
 import { Scopes } from './scopes.mjs';
 import { Supervisor } from './supervisor.mjs';
 
+const abortError = (reason) => {
+  const error = new Error(reason instanceof Error ? reason.message : 'Session operation aborted');
+  error.name = 'AbortError';
+  error.code = 'ABORT_ERR';
+  if (reason !== undefined && reason !== error) error.cause = reason;
+  return error;
+};
+
+const throwIfAborted = (signal) => {
+  if (signal?.aborted) throw abortError(signal.reason);
+};
+
+const waitForSignal = (promise, signal) => {
+  if (!promise || !signal) return promise;
+  if (signal.aborted) return Promise.reject(abortError(signal.reason));
+  return new Promise((resolve, reject) => {
+    const onAbort = () => {
+      cleanup();
+      reject(abortError(signal.reason));
+    };
+    const onResolve = (value) => {
+      cleanup();
+      resolve(value);
+    };
+    const onReject = (error) => {
+      cleanup();
+      reject(error);
+    };
+    const cleanup = () => signal.removeEventListener('abort', onAbort);
+    signal.addEventListener('abort', onAbort, { once: true });
+    promise.then(onResolve, onReject);
+  });
+};
+
+const combinedSignal = (...signals) => {
+  const active = signals.filter(Boolean);
+  if (active.length === 0) return { signal: undefined, dispose: () => {} };
+  if (active.length === 1) return { signal: active[0], dispose: () => {} };
+
+  const controller = new AbortController();
+  const listeners = [];
+  const abort = (signal) => {
+    if (!controller.signal.aborted) controller.abort(signal.reason);
+  };
+  for (const signal of active) {
+    if (signal.aborted) {
+      abort(signal);
+      break;
+    }
+    const listener = () => abort(signal);
+    listeners.push([signal, listener]);
+    signal.addEventListener('abort', listener, { once: true });
+  }
+  return {
+    signal: controller.signal,
+    dispose: () => {
+      for (const [signal, listener] of listeners) signal.removeEventListener('abort', listener);
+    },
+  };
+};
+
 class Session {
   #journal;
   #scopes;
@@ -14,6 +75,7 @@ class Session {
   #workerEnvironment;
   #operations = new Set();
   #clients = new Set();
+  #agentSignals = new Map();
   #closing;
   #cancellation = new AbortController();
   #closed = false;
@@ -34,19 +96,26 @@ class Session {
 
   snapshot() { return this.#supervisor.snapshot(); }
 
-  async invoke(agentId, method, params = {}) {
-    if (agentId === this.#rootId) await this.#rootReady;
+  async invoke(agentId, method, params = {}, { signal } = {}) {
+    if (agentId === this.#rootId) await waitForSignal(this.#rootReady, signal);
+    throwIfAborted(signal);
     if (this.#failure) throw this.#failure;
     if (this.#closed) throw new Error('Session is closed');
     const agent = this.#supervisor.permit(agentId);
     if (method === 'permit') return agent;
-    if (method === 'delegate') return this.delegate(params.tasks, agentId);
-    if (method === 'read') return this.#track(this.#scopes.read(agentId, params.path));
+    if (method === 'delegate') return this.delegate(params.tasks, agentId, { signal });
+    if (method === 'read') {
+      const result = await this.#track(this.#scopes.read(agentId, params.path));
+      throwIfAborted(signal);
+      return result;
+    }
     if (method === 'write') {
       if (!Object.hasOwn(params, 'expectedHash') || params.expectedHash === undefined) {
         throw new Error('write requires expectedHash');
       }
-      return this.#track(this.#scopes.write(agentId, params.path, params.text, { expectedHash: params.expectedHash }));
+      const result = await this.#track(this.#scopes.write(agentId, params.path, params.text, { expectedHash: params.expectedHash }));
+      throwIfAborted(signal);
+      return result;
     }
     throw new Error(`Unknown broker method: ${method}`);
   }
@@ -70,11 +139,16 @@ class Session {
     try { return await operation; } finally { this.#operations.delete(operation); }
   }
 
-  async delegate(tasks, callerId = this.#rootId) {
+  async delegate(tasks, callerId = this.#rootId, { signal } = {}) {
     if (this.#failure) throw this.#failure;
     if (this.#closed) throw new Error('Session is closed');
-    const operation = this.#supervisor.delegate(callerId, tasks, { signal: this.#cancellation.signal });
-    return this.#track(operation);
+    const cancellation = combinedSignal(this.#cancellation.signal, this.#agentSignals.get(callerId), signal);
+    try {
+      const operation = this.#supervisor.delegate(callerId, tasks, { signal: cancellation.signal });
+      return await this.#track(operation);
+    } finally {
+      cancellation.dispose();
+    }
   }
 
   async #update(job, state) {
@@ -88,28 +162,45 @@ class Session {
 
   async #execute(agent) {
     if (this.#closed) return { stopped: true, error: new Error('Session is closed') };
+    if (agent.signal?.aborted) return { stopped: true, error: abortError(agent.signal.reason) };
     const paths = this.#scopes.paths(agent.id);
     const env = { ...this.#launch.env, ...this.#workerEnvironment?.(agent) };
     const client = new RpcClient({ ...this.#launch, env });
     const job = { id: agent.id, pid: client.process.pid, role: agent.role, paths };
     const worker = { client, job, stopping: null };
     this.#clients.add(worker);
+    this.#agentSignals.set(agent.id, agent.signal);
     const errors = [];
+    let cancellationError;
     let result;
+    const onAbort = () => {
+      cancellationError ??= abortError(agent.signal.reason);
+      void this.#stop(worker).catch(error => { errors.push(error); });
+    };
+    agent.signal?.addEventListener('abort', onAbort, { once: true });
     try {
-      await this.#update(job, 'starting');
-      await client.initialize(agent.role);
-      if (this.#closed) throw new Error('Session is closed');
-      await this.#update(job, 'running');
-      if (this.#closed) throw new Error('Session is closed');
-      result = await client.run(agent.task);
-    } catch (error) {
-      errors.push(error);
+      try {
+        throwIfAborted(agent.signal);
+        await this.#update(job, 'starting');
+        await client.initialize(agent.role);
+        if (this.#closed) throw new Error('Session is closed');
+        throwIfAborted(agent.signal);
+        await this.#update(job, 'running');
+        if (this.#closed) throw new Error('Session is closed');
+        throwIfAborted(agent.signal);
+        result = await client.run(agent.task);
+      } catch (error) {
+        errors.push(error);
+      }
+      const stop = await this.#stop(worker);
+      errors.push(...stop.errors);
+      if (cancellationError) errors.unshift(cancellationError);
+      const error = errors.length > 1 ? new AggregateError(errors, 'RPC worker failed') : errors[0];
+      return { stopped: stop.stopped, result, error };
+    } finally {
+      agent.signal?.removeEventListener('abort', onAbort);
+      this.#agentSignals.delete(agent.id);
     }
-    const stop = await this.#stop(worker);
-    errors.push(...stop.errors);
-    const error = errors.length > 1 ? new AggregateError(errors, 'RPC worker failed') : errors[0];
-    return { stopped: stop.stopped, result, error };
   }
 
   async #stop(worker) {

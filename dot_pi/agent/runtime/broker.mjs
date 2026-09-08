@@ -35,7 +35,7 @@ export async function startBroker(options) {
     });
     server = await listen({
       socketPath, token,
-      handle: (method, params, identity) => session.invoke(identity.agentId, method, params),
+      handle: (method, params, identity) => session.invoke(identity.agentId, method, params, { signal: identity.signal }),
     });
     return {
       connection: Object.freeze({ socketPath, agentId: rootId, token: credential(token, rootId) }),

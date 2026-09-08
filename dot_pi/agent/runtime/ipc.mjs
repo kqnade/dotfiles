@@ -5,6 +5,87 @@ import { dirname } from 'node:path';
 
 const MAX_FRAME_BYTES = 1024 * 1024;
 const DEFAULT_TIMEOUT_MS = 30000;
+const CANCELLATION_ACK_TIMEOUT_MS = 2500;
+const MAX_ERROR_DETAIL_NODES = 64;
+const MAX_ERROR_DETAIL_DEPTH = 8;
+const MAX_ERROR_CHILDREN = 16;
+const MAX_ERROR_PART_LENGTH = 1024;
+const MAX_ERROR_MESSAGE_LENGTH = 8192;
+
+const abortError = (reason) => {
+  const error = new Error(reason instanceof Error ? reason.message : 'IPC request aborted');
+  error.name = 'AbortError';
+  error.code = 'ABORT_ERR';
+  if (reason !== undefined && reason !== error) error.cause = reason;
+  return error;
+};
+
+const timeoutError = (method) => {
+  const error = new Error(`IPC ${method} timed out`);
+  error.code = 'ETIMEDOUT';
+  return error;
+};
+
+const unconfirmedCancellationError = (reason) => {
+  const error = new Error('IPC cancellation was not confirmed');
+  error.code = 'IPC_CANCEL_UNCONFIRMED';
+  error.cause = reason;
+  return error;
+};
+
+const cancellationFailure = (reason, frame) => {
+  const failure = new Error(frame.error ?? 'request failed');
+  const error = new Error(`${reason.message}; server reported: ${failure.message}`);
+  error.name = reason.name;
+  if (reason.code !== undefined) error.code = reason.code;
+  error.cause = new AggregateError([reason, failure], `IPC cancellation failed: ${failure.message}`);
+  return error;
+};
+
+const serializeError = (error) => {
+  const parts = [];
+  const pending = [{ value: error, depth: 0 }];
+  const seen = new Set();
+  let nodes = 0;
+  const enqueue = (value, depth) => {
+    if (pending.length < MAX_ERROR_DETAIL_NODES) pending.push({ value, depth });
+  };
+  const append = (value) => {
+    if (typeof value !== 'string' || value.length === 0) return;
+    parts.push(value.length > MAX_ERROR_PART_LENGTH ? `${value.slice(0, MAX_ERROR_PART_LENGTH - 1)}…` : value);
+  };
+
+  while (pending.length > 0 && nodes < MAX_ERROR_DETAIL_NODES) {
+    const { value, depth } = pending.shift();
+    nodes += 1;
+    if (typeof value === 'string') {
+      append(value);
+      continue;
+    }
+    if (!value || typeof value !== 'object' || seen.has(value)) continue;
+    seen.add(value);
+
+    try { append(value.message); } catch { /* Ignore hostile error accessors. */ }
+    if (depth >= MAX_ERROR_DETAIL_DEPTH) continue;
+
+    try {
+      if (Array.isArray(value.errors)) {
+        for (let index = 0; index < value.errors.length && index < MAX_ERROR_CHILDREN; index += 1) {
+          enqueue(value.errors[index], depth + 1);
+        }
+      }
+    } catch { /* Ignore hostile error accessors. */ }
+    try {
+      if (value.cause !== undefined) enqueue(value.cause, depth + 1);
+    } catch { /* Ignore hostile error accessors. */ }
+  }
+
+  const message = parts.join(': ');
+  if (message.length === 0) return 'request failed';
+  return message.length > MAX_ERROR_MESSAGE_LENGTH
+    ? `${message.slice(0, MAX_ERROR_MESSAGE_LENGTH - 1)}…`
+    : message;
+};
 
 const safeEqual = (left, right) => {
   const leftBuffer = Buffer.from(String(left), 'utf8');
@@ -117,26 +198,35 @@ export const listen = async ({ socketPath, token, handle }) => {
     send(socket, {
       id: request?.id ?? null,
       success: false,
-      error: error?.message ?? 'request failed',
+      error: serializeError(error),
     });
     if (close) {
       socket.destroy();
     }
   };
 
-  const dispatch = async (socket, request) => {
+  const abortRequests = (connection) => {
+    for (const { controller } of connection.requests.values()) controller.abort();
+    connection.requests.clear();
+  };
+
+  const dispatch = async (connection, request) => {
+    const { socket } = connection;
     if (!request || typeof request !== 'object' || Array.isArray(request)) {
       handleDispatchFailure(socket, null, new Error('malformed request'), true);
       return;
     }
 
+    let requestId;
+    let controller;
+    let requestState;
     try {
-      const { id, method, params, token: claim, agentId } = request;
+      const { id, type, method, params, token: claim, agentId } = request;
       if (typeof id !== 'string' && typeof id !== 'number') {
         handleDispatchFailure(socket, request, new Error('malformed request'), true);
         return;
       }
-      if (typeof method !== 'string' || typeof agentId !== 'string' || typeof claim !== 'string') {
+      if (typeof agentId !== 'string' || typeof claim !== 'string') {
         handleDispatchFailure(socket, request, new Error('malformed request'), true);
         return;
       }
@@ -145,29 +235,58 @@ export const listen = async ({ socketPath, token, handle }) => {
         return;
       }
 
-      const result = await handle(method, params, { agentId });
+      requestId = String(id);
+      if (type === 'cancel') {
+        const requestState = connection.requests.get(requestId);
+        if (requestState?.agentId === agentId) requestState.controller.abort();
+        return;
+      }
+      if (typeof method !== 'string' || type !== undefined) {
+        handleDispatchFailure(socket, request, new Error('malformed request'), true);
+        return;
+      }
+      if (connection.requests.has(requestId)) {
+        handleDispatchFailure(socket, request, new Error('duplicate request id'), true);
+        return;
+      }
+
+      controller = new AbortController();
+      requestState = { agentId, controller };
+      connection.requests.set(requestId, requestState);
+      const result = await handle(method, params, { agentId, signal: controller.signal });
       send(socket, { id, success: true, result });
     } catch (error) {
       handleDispatchFailure(socket, request, error);
+    } finally {
+      if (requestId !== undefined && requestState && connection.requests.get(requestId) === requestState) {
+        connection.requests.delete(requestId);
+      }
     }
   };
 
-  const closeSocket = (socket) => {
+  const closeSocket = (connection) => {
+    connection.closed = true;
+    abortRequests(connection);
+    const { socket } = connection;
     socket.destroy();
-    connections.delete(socket);
+    connections.delete(connection);
   };
 
   server.on('connection', (socket) => {
-    connections.add(socket);
+    const connection = { socket, requests: new Map(), closed: false };
+    connections.add(connection);
     createFrameReader(
       socket,
       (request) => {
-        void dispatch(socket, request).catch((error) => {
+        if (connection.closed) return;
+        void dispatch(connection, request).catch((error) => {
           handleDispatchFailure(socket, null, error, true);
         });
       },
       () => {
-        connections.delete(socket);
+        connection.closed = true;
+        abortRequests(connection);
+        connections.delete(connection);
       },
     );
   });
@@ -205,7 +324,7 @@ export const listen = async ({ socketPath, token, handle }) => {
           resolve();
         });
       });
-      for (const socket of connections) closeSocket(socket);
+      for (const connection of connections) closeSocket(connection);
       await closed;
       await rm(socketPath, { force: true });
     },
@@ -241,17 +360,25 @@ export class Client {
     this.#closed = true;
     for (const entry of this.#pending.values()) {
       clearTimeout(entry.timeout);
+      clearTimeout(entry.ackTimeout);
+      entry.signal?.removeEventListener('abort', entry.onAbort);
       entry.reject(error);
     }
     this.#pending.clear();
   }
 
   #onFrame(frame) {
-    const request = this.#pending.get(frame.id);
+    const request = this.#pending.get(String(frame.id));
     if (!request) return;
 
-    this.#pending.delete(frame.id);
+    this.#pending.delete(String(frame.id));
     clearTimeout(request.timeout);
+    clearTimeout(request.ackTimeout);
+    request.signal?.removeEventListener('abort', request.onAbort);
+    if (request.cancelReason) {
+      request.reject(frame.success === true ? request.cancelReason : cancellationFailure(request.cancelReason, frame));
+      return;
+    }
     if (frame.success === true) {
       request.resolve(frame.result);
       return;
@@ -259,28 +386,86 @@ export class Client {
     request.reject(new Error(frame.error ?? 'request failed'));
   }
 
-  async call(method, params) {
+  #sendCancel(id) {
+    if (this.#closed || this.#socket.destroyed || !this.#socket.writable) return;
+    try {
+      this.#socket.write(encode({
+        id,
+        type: 'cancel',
+        token: this.#token,
+        agentId: this.#agentId,
+      }));
+    } catch {
+      this.#socket.destroy();
+    }
+  }
+
+  #cancelUnconfirmed(id) {
+    const entry = this.#pending.get(id);
+    if (!entry?.cancelReason) return;
+    this.#pending.delete(id);
+    clearTimeout(entry.ackTimeout);
+    entry.reject(unconfirmedCancellationError(entry.cancelReason));
+    this.#socket.destroy();
+  }
+
+  #cancel(id, error) {
+    const entry = this.#pending.get(id);
+    if (!entry || entry.cancelReason) return;
+    clearTimeout(entry.timeout);
+    entry.timeout = undefined;
+    entry.signal?.removeEventListener('abort', entry.onAbort);
+    entry.cancelReason = error;
+    entry.ackTimeout = setTimeout(() => this.#cancelUnconfirmed(id), CANCELLATION_ACK_TIMEOUT_MS);
+    this.#sendCancel(id);
+  }
+
+  async call(method, params, options = {}) {
     if (this.#closed) {
       throw new Error('IPC connection is closed');
     }
+    if (!options || typeof options !== 'object' || Array.isArray(options)) {
+      throw new TypeError('IPC call options must be an object');
+    }
+    const { signal } = options;
+    if (signal !== undefined && (
+      typeof signal !== 'object' ||
+      typeof signal.addEventListener !== 'function' ||
+      typeof signal.removeEventListener !== 'function' ||
+      typeof signal.aborted !== 'boolean'
+    )) {
+      throw new TypeError('IPC call signal must be an AbortSignal');
+    }
+    const timeoutMs = options.timeoutMs === null ? null : options.timeoutMs ?? this.#timeoutMs;
+    if (timeoutMs !== null && timeoutMs !== undefined && (!Number.isFinite(timeoutMs) || timeoutMs <= 0)) {
+      throw new TypeError('IPC call timeoutMs must be positive');
+    }
+    if (signal?.aborted) throw abortError(signal.reason);
 
     const id = String(this.#nextId++);
     return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
+      const onAbort = () => this.#cancel(id, abortError(signal.reason));
+      const timeout = timeoutMs === null || timeoutMs === undefined ? undefined : setTimeout(() => {
+        this.#cancel(id, timeoutError(method));
+      }, timeoutMs);
+      this.#pending.set(id, { resolve, reject, timeout, signal, onAbort, ackTimeout: undefined, cancelReason: undefined });
+      signal?.addEventListener('abort', onAbort, { once: true });
+      try {
+        this.#socket.write(
+          encode({
+            id,
+            method,
+            params,
+            token: this.#token,
+            agentId: this.#agentId,
+          }),
+        );
+      } catch (error) {
         this.#pending.delete(id);
-        reject(new Error(`IPC ${method} timed out`));
-      }, this.#timeoutMs);
-
-      this.#pending.set(id, { resolve, reject, timeout });
-      this.#socket.write(
-        encode({
-          id,
-          method,
-          params,
-          token: this.#token,
-          agentId: this.#agentId,
-        }),
-      );
+        clearTimeout(timeout);
+        signal?.removeEventListener('abort', onAbort);
+        reject(error);
+      }
     });
   }
 

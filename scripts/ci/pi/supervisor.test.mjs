@@ -149,3 +149,43 @@ test('root cancellation removes queued descendants and returns their borrowed sc
     await rm(cwd, { recursive: true, force: true });
   }
 });
+
+test('cancelling a nested request lets its live Astra parent reacquire and continue', async () => {
+  const controller = new AbortController();
+  const lunaStarted = Promise.withResolvers();
+  let astraPermit;
+  let nestedFailure;
+  let supervisor;
+  supervisor = new Supervisor({
+    rootId: 'root',
+    execute: async agent => {
+      if (agent.role === 'astra') {
+        try {
+          await supervisor.delegate(agent.id, [{ role: 'luna', task: 'cancel me' }], {
+            signal: controller.signal,
+          });
+        } catch (error) {
+          nestedFailure = error;
+        }
+        astraPermit = supervisor.permit(agent.id);
+        return { stopped: true, result: 'Astra continued' };
+      }
+      lunaStarted.resolve();
+      await new Promise(resolve => agent.signal.addEventListener('abort', resolve, { once: true }));
+      return { stopped: true, error: new Error('Luna cancelled') };
+    },
+  });
+
+  const [result] = await (async () => {
+    const operation = supervisor.delegate('root', [{ role: 'astra', task: 'coordinate' }]);
+    await lunaStarted.promise;
+    controller.abort();
+    return operation;
+  })();
+
+  assert.ok(nestedFailure instanceof AggregateError);
+  assert.equal(astraPermit.role, 'astra');
+  assert.equal(typeof astraPermit.id, 'string');
+  assert.equal(result.result, 'Astra continued');
+  assert.equal(supervisor.snapshot().available, 4);
+});
