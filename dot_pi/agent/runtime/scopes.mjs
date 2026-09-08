@@ -53,6 +53,15 @@ export class Scopes {
     return ownership.run(lease, () => ownership.write(lease, path, text, options));
   }
 
+  async edit(id, path, oldText, newText, options) {
+    const { ownership, lease } = this.#get(id);
+    return ownership.run(lease, async () => {
+      const original = await this.read(id, path);
+      const text = original.text.replace(oldText, () => newText);
+      return ownership.write(lease, path, text, options);
+    });
+  }
+
   async read(id, path) {
     if (typeof path !== 'string' || !path) throw new TypeError('path is required');
     const { ownership, lease } = this.#get(id);
