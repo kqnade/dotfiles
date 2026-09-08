@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 
 import { checkPiInstallation } from '../../pi/doctor.mjs';
+import { createManagedSkills } from './fixtures/managed-skills.mjs';
 
 const PI_PACKAGE = '@earendil-works/pi-coding-agent';
 const LSP_PACKAGE = 'pi-lsp-adapter';
@@ -41,6 +42,7 @@ const createFixture = async () => {
   await mkdir(lspTarget, { recursive: true });
   await mkdir(join(home, '.local', 'bin'), { recursive: true });
   await mkdir(join(home, '.pi', 'bin'), { recursive: true });
+  await createManagedSkills(join(home, '.agents', 'skills'));
 
   const dependencies = {
     [PI_PACKAGE]: PI_VERSION,
@@ -106,6 +108,19 @@ test('Pi doctor accepts a complete external install and managed wrapper', async 
     assert.equal(result.piVersion, PI_VERSION);
     assert.equal(result.adapterVersion, LSP_VERSION);
     assert.equal(result.wrapperVersion, PI_VERSION);
+  } finally {
+    await rm(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('Pi doctor reports a missing managed skill helper before launch', async () => {
+  const fixture = await createFixture();
+  try {
+    await rm(join(fixture.home, '.agents', 'skills', 'todo-management', 'scripts', 'todo-path'));
+    await assert.rejects(
+      checkPiInstallation({ sourceRoot: fixture.source, env: fixture.env }),
+      /managed skill resource is missing: .*todo-path/u,
+    );
   } finally {
     await rm(fixture.root, { recursive: true, force: true });
   }

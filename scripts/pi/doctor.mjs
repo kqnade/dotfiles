@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
 import { packageTarget } from '../../dot_pi/agent/runtime/main.mjs';
+import { defaultSkillsRoot, resolveSkillResources } from '../../dot_pi/agent/runtime/skills.mjs';
 
 const execFile = promisify(execFileCallback);
 const PI_PACKAGE = '@earendil-works/pi-coding-agent';
@@ -167,6 +168,7 @@ export async function checkPiInstallation({ sourceRoot, env = process.env } = {}
   const packages = await validateSourcePackages(sourceRoot);
   const target = packageTarget(env);
   const installed = await validateInstalledPackages({ packageTarget: target, ...packages });
+  await resolveSkillResources({ skillsRoot: defaultSkillsRoot(env) });
   const wrapperVersion = await validateWrappers({
     home: env.HOME || homedir(),
     packageTarget: target,
