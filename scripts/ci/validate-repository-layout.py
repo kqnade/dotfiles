@@ -97,6 +97,8 @@ for target in (
 for path in tracked_files():
     if path in {ROOT / ".chezmoiremove", Path(__file__).resolve()}:
         continue
+    if path.relative_to(ROOT).parts[:1] == (".dev",):
+        continue
     try:
         text = path.read_text()
     except UnicodeDecodeError:
