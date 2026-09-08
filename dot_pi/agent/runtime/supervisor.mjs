@@ -40,9 +40,11 @@ export class Supervisor {
         await this.#scheduler.acquire(agent.id);
         let completed = false;
         try {
-          const result = await this.#execute(Object.freeze({ ...agent }));
+          const receipt = await this.#execute(Object.freeze({ ...agent }));
+          if (receipt?.stopped !== true) throw new Error('Execution has no terminal proof');
           completed = true;
-          return { id: agent.id, role: agent.role, result };
+          if (receipt.error) throw receipt.error;
+          return { id: agent.id, role: agent.role, result: receipt.result };
         } finally {
           this.#scheduler.release(agent.id, { confirmed: completed });
           if (completed) this.#agents.delete(agent.id);

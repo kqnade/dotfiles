@@ -9,10 +9,10 @@ test('only Sol escalation can create Astra and leaf roles cannot delegate', asyn
     execute: async agent => {
       executed.push(agent.role);
       if (agent.role === 'astra') {
-        return supervisor.delegate(agent.id, [{ role: 'luna', task: 'inspect' }]);
+        return { stopped: true, result: await supervisor.delegate(agent.id, [{ role: 'luna', task: 'inspect' }]) };
       }
       await assert.rejects(supervisor.delegate(agent.id, [{ role: 'astra', task: 'escape' }]), /cannot delegate/);
-      return 'done';
+      return { stopped: true, result: 'done' };
     },
   });
   await assert.rejects(supervisor.delegate('session', [{ role: 'spark', task: 'skip orchestration' }]), /cannot delegate/);
@@ -20,6 +20,13 @@ test('only Sol escalation can create Astra and leaf roles cannot delegate', asyn
   assert.deepEqual(executed, ['astra', 'luna']);
   assert.equal(results[0].result[0].result, 'done');
   assert.equal(supervisor.snapshot().available, 4);
+});
+
+test('a result without terminal proof is quarantined', async () => {
+  const supervisor = new Supervisor({ rootId: 'session', execute: async () => ({ result: 'done' }) });
+  await assert.rejects(supervisor.delegate('session', [{ role: 'astra', task: 'coordinate' }]), /Delegated tasks failed/);
+  assert.equal(supervisor.snapshot().available, 3);
+  assert.equal(supervisor.snapshot().quarantined.length, 1);
 });
 
 test('an unconfirmed execution failure cannot free its occupied slot', async () => {
