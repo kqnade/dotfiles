@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { isAbsolute, join, resolve } from "node:path";
 
+import { createLspAdmission, registerLspLifecycle } from "../runtime/lsp-lifecycle.mjs";
+
 const MANAGED_SERVER_IDS = Object.freeze(["vtsls", "pyright", "gopls", "rust-analyzer"]);
 const MANAGED_SYSTEM_COMMANDS = Object.freeze({
   vtsls: Object.freeze(["vtsls", "--stdio"]),
@@ -115,6 +117,7 @@ async function createState(ctx, ownerId, modules) {
     installManager,
     processRegistry,
   });
+  const admission = createLspAdmission(runtimeManager);
 
   return {
     ownerId,
@@ -122,7 +125,8 @@ async function createState(ctx, ownerId, modules) {
     config,
     installManager,
     processRegistry,
-    runtimeManager,
+    runtimeManager: admission.manager,
+    admission,
     resultCache: new modules.LspResultCache(),
   };
 }
@@ -132,7 +136,7 @@ async function shutdownState(state, ctx, clearStatus) {
 
   state.resultCache.clear();
   try {
-    await state.runtimeManager.shutdown();
+    await state.admission.shutdown();
     const active = state.runtimeManager.activeClients();
     if (active.length > 0) {
       throw new Error(`LSP shutdown did not stop: ${active.map((client) => client.serverId).join(", ")}`);
@@ -187,6 +191,72 @@ export default async function managedLspExtension(pi): Promise<void> {
   const modules = await loadPinnedModules();
   let state = null;
   let generation = 0;
+  let sessionContext;
+  let lifecycleFailure;
+  let stoppedAfterHandoff = false;
+  let unregisterLifecycle;
+  let handoffGeneration = 0;
+
+  const lifecycle = {
+    assertReady() {
+      if (lifecycleFailure) {
+        throw new Error("Managed LSP lifecycle failed", { cause: lifecycleFailure });
+      }
+      if (stoppedAfterHandoff) return;
+      if (!state) throw new Error("Managed LSP is not initialized");
+    },
+    async beforeHandoff() {
+      const current = state;
+      if (!current) {
+        const error = new Error("Managed LSP is not initialized");
+        lifecycleFailure = error;
+        throw error;
+      }
+      handoffGeneration = generation;
+      stoppedAfterHandoff = false;
+      state = null;
+      try {
+        await shutdownState(current, sessionContext, true);
+      } catch (error) {
+        lifecycleFailure = error;
+        throw error;
+      }
+    },
+    async afterHandoff({ resume = true, operationError } = {}) {
+      if (generation !== handoffGeneration || !sessionContext) {
+        throw new Error("Managed LSP session changed during handoff");
+      }
+      if (!resume) {
+        if (operationError) {
+          lifecycleFailure = operationError;
+          return;
+        }
+        stoppedAfterHandoff = true;
+        return;
+      }
+      try {
+        const nextState = await createState(sessionContext, createOwnerId(), modules);
+        if (generation !== handoffGeneration) {
+          await shutdownState(nextState, sessionContext, false);
+          throw new Error("Managed LSP session changed during handoff");
+        }
+        state = nextState;
+        stoppedAfterHandoff = false;
+        lifecycleFailure = undefined;
+        modules.setLspStatusLine(sessionContext, nextState);
+      } catch (error) {
+        state = null;
+        lifecycleFailure = error;
+        throw error;
+      }
+    },
+  };
+
+  const ensureLifecycleRegistration = () => {
+    unregisterLifecycle ??= registerLspLifecycle(lifecycle);
+  };
+
+  ensureLifecycleRegistration();
 
   modules.registerLspCommand(readOnlyCommandApi(pi), () => state);
   modules.registerLspTools(pi, () => state);
@@ -199,25 +269,42 @@ export default async function managedLspExtension(pi): Promise<void> {
 
   pi.on("session_start", async (_event, ctx) => {
     const currentGeneration = ++generation;
+    sessionContext = ctx;
+    lifecycleFailure = undefined;
+    stoppedAfterHandoff = false;
+    ensureLifecycleRegistration();
     const previousState = state;
     state = null;
-    await shutdownState(previousState, ctx, previousState !== null);
-    if (currentGeneration !== generation) return;
+    try {
+      await shutdownState(previousState, ctx, previousState !== null);
+      if (currentGeneration !== generation) return;
 
-    const nextState = await createState(ctx, createOwnerId(), modules);
-    if (currentGeneration !== generation) {
-      await shutdownState(nextState, ctx, false);
-      return;
+      const nextState = await createState(ctx, createOwnerId(), modules);
+      if (currentGeneration !== generation) {
+        await shutdownState(nextState, ctx, false);
+        return;
+      }
+
+      state = nextState;
+      modules.setLspStatusLine(ctx, nextState);
+    } catch (error) {
+      state = null;
+      lifecycleFailure = error;
+      throw error;
     }
-
-    state = nextState;
-    modules.setLspStatusLine(ctx, nextState);
   });
 
   pi.on("session_shutdown", async (_event, ctx) => {
     ++generation;
     const currentState = state;
     state = null;
-    await shutdownState(currentState, ctx, currentState !== null);
+    stoppedAfterHandoff = false;
+    try {
+      await shutdownState(currentState, ctx, currentState !== null);
+    } finally {
+      sessionContext = undefined;
+      unregisterLifecycle?.();
+      unregisterLifecycle = undefined;
+    }
   });
 }

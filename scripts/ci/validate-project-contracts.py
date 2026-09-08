@@ -245,6 +245,7 @@ pi_runtime_fragments = (
     'test -d "$package_root/node_modules/@earendil-works/pi-coding-agent"',
     'test -d "$package_root/node_modules/pi-lsp-adapter"',
     'export PI_PACKAGE_ROOT="$package_root"',
+    "scripts/ci/pi/lsp-lifecycle.test.mjs",
     "scripts/ci/pi-runtime-extension.test.mjs",
     "scripts/ci/pi-runtime-lsp.test.mjs",
     "scripts/ci/pi-lsp-diagnostics.test.mjs",

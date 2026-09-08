@@ -190,6 +190,7 @@ jobs:
           test -d "$package_root/node_modules/pi-lsp-adapter"
           export PI_PACKAGE_ROOT="$package_root"
           mise exec -- node --test \
+            scripts/ci/pi/lsp-lifecycle.test.mjs \
             scripts/ci/pi-runtime-extension.test.mjs \
             scripts/ci/pi-runtime-lsp.test.mjs \
             scripts/ci/pi-lsp-diagnostics.test.mjs
@@ -247,6 +248,7 @@ jobs:
           test -d "$package_root/node_modules/pi-lsp-adapter"
           export PI_PACKAGE_ROOT="$package_root"
           mise exec -- node --test \
+            scripts/ci/pi/lsp-lifecycle.test.mjs \
             scripts/ci/pi-runtime-extension.test.mjs \
             scripts/ci/pi-runtime-lsp.test.mjs \
             scripts/ci/pi-lsp-diagnostics.test.mjs
@@ -328,6 +330,7 @@ jobs:
           test -d "$package_root/node_modules/pi-lsp-adapter"
           export PI_PACKAGE_ROOT="$package_root"
           mise exec -- node --test \
+            scripts/ci/pi/lsp-lifecycle.test.mjs \
             scripts/ci/pi-runtime-extension.test.mjs \
             scripts/ci/pi-runtime-lsp.test.mjs \
             scripts/ci/pi-lsp-diagnostics.test.mjs

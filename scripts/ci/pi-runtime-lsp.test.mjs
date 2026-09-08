@@ -39,6 +39,7 @@ const loadExtension = async () => {
   const root = await mkdtemp(join(tmpdir(), 'pi-lsp-extension-'));
   await mkdir(join(root, 'extensions'), { recursive: true });
   await mkdir(join(root, 'packages'), { recursive: true });
+  await symlink(join(repositoryRoot, 'dot_pi', 'agent', 'runtime'), join(root, 'runtime'), 'dir');
   await symlink(join(packageRoot, 'node_modules'), join(root, 'packages', 'node_modules'), 'dir');
   const extensionPath = join(root, 'extensions', 'lsp.ts');
   await copyFile(join(repositoryRoot, 'dot_pi', 'agent', 'extensions', 'lsp.ts'), extensionPath);

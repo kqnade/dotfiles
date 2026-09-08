@@ -3,6 +3,7 @@ import { writeSync } from 'node:fs';
 
 import { installModelGuard } from '../runtime/guard.mjs';
 import { connect } from '../runtime/ipc.mjs';
+import { assertLspReady, withLspHandoff } from '../runtime/lsp-lifecycle.mjs';
 import { modelFor } from '../runtime/models.mjs';
 
 const REQUIRED_ENVIRONMENT = [
@@ -147,10 +148,16 @@ export default function managed(pi) {
     rejectAborted(signal);
     const connected = client;
     if (!connected) throw new Error('Managed broker is not connected');
-    return connected.call(method, params, {
-      signal,
-      timeoutMs: method === 'delegate' ? null : undefined,
-    });
+    const request = () => {
+      rejectAborted(signal);
+      return connected.call(method, params, {
+        signal,
+        timeoutMs: method === 'delegate' ? null : undefined,
+      });
+    };
+    return method === 'delegate' || method === 'escalate'
+      ? withLspHandoff(request, { resume: method !== 'escalate' })
+      : request();
   };
 
   const permit = async () => {
@@ -182,6 +189,7 @@ export default function managed(pi) {
 
   pi.on('before_provider_request', async () => {
     try {
+      assertLspReady();
       await permit();
     } catch (error) {
       failClosed(error);
