@@ -5,6 +5,7 @@ import {
   open,
   readFile,
   realpath,
+  readdir,
   rename,
   rm,
 } from 'node:fs/promises';
@@ -208,6 +209,30 @@ export class Ownership {
     return state.drainPromise;
   }
 
+  async transfer(lease, newOwner) {
+    const state = this.#assertLease(lease);
+    if (typeof newOwner !== 'string' || newOwner.length === 0) {
+      throw new TypeError('newOwner must be a non-empty string');
+    }
+    if (!state.draining || !state.drained || state.active.size !== 0) {
+      throw errorWithCode('ownership has not been confirmed drained', 'NOT_DRAINED');
+    }
+
+    const snapshots = await snapshotScope(state);
+    this.#assertLease(lease);
+    if (!state.draining || !state.drained || state.active.size !== 0) {
+      throw errorWithCode('ownership changed while taking snapshots', 'NOT_DRAINED');
+    }
+
+    state.generation += 1;
+    const nextLease = makeLease(state, newOwner, state.generation);
+    state.currentLease = nextLease;
+    state.draining = false;
+    state.drainPromise = null;
+    state.drained = false;
+    return { lease: nextLease, snapshots };
+  }
+
   async write(lease, path, text, { expectedHash } = {}) {
     const state = this.#assertWritable(lease);
     if (typeof text !== 'string' && !Buffer.isBuffer(text)) {
@@ -327,4 +352,34 @@ const readPreimage = async (target) => {
     }
     throw error;
   }
+};
+
+const snapshotScope = async (state) => {
+  const snapshots = {};
+  const visit = async (path) => {
+    const stats = await lstat(path);
+    const canonical = await realpath(path);
+    if (!isWithinAny(state.paths, canonical)) {
+      throw errorWithCode(`scope changed outside ownership: ${path}`, 'OUT_OF_SCOPE');
+    }
+    if (stats.isSymbolicLink()) {
+      throw errorWithCode(`scope contains a symlink: ${path}`, 'SYMLINK_SCOPE');
+    }
+    if (stats.isDirectory()) {
+      const names = await readdir(path);
+      names.sort();
+      for (const name of names) {
+        await visit(join(path, name));
+      }
+      return;
+    }
+    if (stats.isFile()) {
+      snapshots[canonical] = digest(await readFile(path));
+    }
+  };
+
+  for (const path of state.paths) {
+    await visit(path);
+  }
+  return Object.freeze(snapshots);
 };
