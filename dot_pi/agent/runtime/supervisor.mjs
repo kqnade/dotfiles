@@ -22,6 +22,16 @@ export class Supervisor {
 
   snapshot() { return this.#scheduler.snapshot(this.#rootId); }
 
+  permit(id) {
+    const agent = this.#agents.get(id);
+    if (!agent) throw new Error('Unknown agent');
+    const { active, quarantined } = this.snapshot();
+    if (agent.waiting || quarantined.includes(id) || (agent.role !== 'root' && !active.includes(id))) {
+      throw new Error('Agent is not runnable');
+    }
+    return { id, role: agent.role };
+  }
+
   async escalate(id, reason) {
     const agent = this.#agents.get(id);
     const parent = this.#agents.get(agent?.parentId);

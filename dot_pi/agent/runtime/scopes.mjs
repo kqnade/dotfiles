@@ -1,5 +1,6 @@
-import { relative, isAbsolute, sep } from 'node:path';
-import { Ownership } from './ownership.mjs';
+import { relative, isAbsolute, resolve, sep } from 'node:path';
+import { readFile, realpath } from 'node:fs/promises';
+import { Ownership, sha256 } from './ownership.mjs';
 
 const within = (parent, child) => {
   const distance = relative(parent, child);
@@ -50,6 +51,19 @@ export class Scopes {
   async write(id, path, text, options) {
     const { ownership, lease } = this.#get(id);
     return ownership.run(lease, () => ownership.write(lease, path, text, options));
+  }
+
+  async read(id, path) {
+    if (typeof path !== 'string' || !path) throw new TypeError('path is required');
+    const { ownership, lease } = this.#get(id);
+    return ownership.run(lease, async () => {
+      const cwd = await realpath(this.#cwd);
+      const target = await realpath(resolve(cwd, path));
+      if (!within(cwd, target)) throw new Error('Read path is outside the repository');
+      const bytes = await readFile(target);
+      if (bytes.length > 128 * 1024) throw new Error('File exceeds broker read limit (128 KiB)');
+      return { path: target, text: bytes.toString('utf8'), hash: sha256(bytes) };
+    });
   }
 
   paths(id) {

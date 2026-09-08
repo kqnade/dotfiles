@@ -28,16 +28,31 @@ class Session {
 
   snapshot() { return this.#supervisor.snapshot(); }
 
+  async invoke(agentId, method, params = {}) {
+    if (this.#failure) throw this.#failure;
+    if (this.#closed) throw new Error('Session is closed');
+    const agent = this.#supervisor.permit(agentId);
+    if (method === 'permit') return agent;
+    if (method === 'read') return this.#track(this.#scopes.read(agentId, params.path));
+    if (method === 'write') {
+      if (!Object.hasOwn(params, 'expectedHash') || params.expectedHash === undefined) {
+        throw new Error('write requires expectedHash');
+      }
+      return this.#track(this.#scopes.write(agentId, params.path, params.text, { expectedHash: params.expectedHash }));
+    }
+    throw new Error(`Unknown broker method: ${method}`);
+  }
+
+  async #track(operation) {
+    this.#operations.add(operation);
+    try { return await operation; } finally { this.#operations.delete(operation); }
+  }
+
   async delegate(tasks) {
     if (this.#failure) throw this.#failure;
     if (this.#closed) throw new Error('Session is closed');
     const operation = this.#supervisor.delegate(this.#rootId, tasks, { signal: this.#cancellation.signal });
-    this.#operations.add(operation);
-    try {
-      return await operation;
-    } finally {
-      this.#operations.delete(operation);
-    }
+    return this.#track(operation);
   }
 
   async #update(job, state) {
