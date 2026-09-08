@@ -19,7 +19,8 @@ for await (const line of createInterface({ input: process.stdin })) {
   send({ type: 'response', id: request.id, command: request.type, success: true,
     data });
   if (request.type === 'prompt') {
-    writeFileSync('request.json', JSON.stringify({ model: model.id, effort, prompt: request.message }));
+    writeFileSync('request.json', JSON.stringify({ pid: process.pid, model: model.id, effort, prompt: request.message }));
+    if (process.env.PI_COMMIT_TEST_DELAY) await new Promise(resolve => setTimeout(resolve, 600));
     const message = { role: 'assistant', model: model.id, stopReason: 'stop',
       content: [{ type: 'text', text: '✨ feat: add managed startup' }] };
     send({ type: 'message_end', message });
