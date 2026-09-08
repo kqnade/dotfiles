@@ -51,6 +51,8 @@ apply_managed_services() {
 
 load_new_relic_license_key
 chezmoi init --source "$DOTFILES_ROOT"
+"$MISE_BIN" -C "$DOTFILES_ROOT" \
+  exec -- node "$DOTFILES_ROOT/scripts/pi/setup.mjs"
 chezmoi --source "$DOTFILES_ROOT" apply
 bash "$SCRIPT_DIR/build-zsh-init-cache.sh"
 apply_managed_services

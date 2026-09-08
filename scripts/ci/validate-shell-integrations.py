@@ -164,6 +164,9 @@ with tempfile.TemporaryDirectory() as temp_dir:
     mise_stub.write_text(
         "#!/bin/sh\n"
         'printf \'mise %s\\n\' "$*" >>"$COMMAND_LOG"\n'
+        'if test "${PI_SETUP_FAIL:-}" = 1 && test "${3:-}" = exec; then\n'
+        "  exit 71\n"
+        "fi\n"
     )
     mise_stub.chmod(0o755)
     uname_stub = fake_bin / "uname"
@@ -193,6 +196,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
     expected_apply_commands = [
         "op read op://Personal/j465rncuz4fcf2rc7aogcosypi/credential",
         f"chezmoi init --source {fake_checkout.resolve()}",
+        f"mise -C {fake_checkout.resolve()} exec -- node {fake_checkout.resolve()}/scripts/pi/setup.mjs",
         f"chezmoi --source {fake_checkout.resolve()} apply",
         "zsh-cache",
         f"mise -C {fake_checkout.resolve()} bootstrap macos launchd-agents apply --yes",
@@ -202,6 +206,28 @@ with tempfile.TemporaryDirectory() as temp_dir:
         fail(
             "dotfile apply must refresh the zsh cache and managed services: "
             f"{actual_apply_commands}"
+        )
+
+    command_log.write_text("")
+    failing_setup_env = dict(apply_env)
+    failing_setup_env["PI_SETUP_FAIL"] = "1"
+    failing_setup_result = subprocess.run(
+        ["bash", str(fake_scripts / "apply.sh")],
+        cwd=fake_checkout,
+        env=failing_setup_env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if failing_setup_result.returncode != 71:
+        fail(
+            "dotfile apply must propagate package setup failure: "
+            f"exit={failing_setup_result.returncode}"
+        )
+    if command_log.read_text().splitlines() != expected_apply_commands[:3]:
+        fail(
+            "dotfile apply must stop after package setup failure: "
+            f"{command_log.read_text().splitlines()}"
         )
 
     command_log.write_text("")
