@@ -18,19 +18,24 @@ class Session {
   #cancellation = new AbortController();
   #closed = false;
   #failure;
+  #rootReady;
+  #releaseRoot;
+  #rootRegistered = false;
 
-  constructor({ journal, scopes, rootId, launch, workerEnvironment }) {
+  constructor({ journal, scopes, rootId, launch, workerEnvironment, externalRoot }) {
     this.#journal = journal;
     this.#scopes = scopes;
     this.#rootId = rootId;
     this.#launch = launch;
     this.#workerEnvironment = workerEnvironment;
+    if (externalRoot) this.#rootReady = new Promise(resolve => { this.#releaseRoot = resolve; });
     this.#supervisor = new Supervisor({ rootId, scopes, execute: agent => this.#execute(agent) });
   }
 
   snapshot() { return this.#supervisor.snapshot(); }
 
   async invoke(agentId, method, params = {}) {
+    if (agentId === this.#rootId) await this.#rootReady;
     if (this.#failure) throw this.#failure;
     if (this.#closed) throw new Error('Session is closed');
     const agent = this.#supervisor.permit(agentId);
@@ -44,6 +49,20 @@ class Session {
       return this.#track(this.#scopes.write(agentId, params.path, params.text, { expectedHash: params.expectedHash }));
     }
     throw new Error(`Unknown broker method: ${method}`);
+  }
+
+  async registerRoot(client) {
+    if (!this.#releaseRoot || this.#rootRegistered || this.#closed) throw new Error('Root registration is unavailable');
+    this.#rootRegistered = true;
+    const job = { id: this.#rootId, pid: client.process.pid, role: 'root', paths: this.#scopes.paths(this.#rootId) };
+    const worker = { client, job, stopping: null };
+    this.#clients.add(worker);
+    try {
+      await this.#update(job, 'starting');
+      await this.#update(job, 'running');
+    } finally {
+      this.#releaseRoot();
+    }
   }
 
   async #track(operation) {
@@ -115,6 +134,7 @@ class Session {
 
   async close() {
     this.#closed = true;
+    this.#releaseRoot?.();
     this.#cancellation.abort();
     this.#closing ??= (async () => {
       const stops = await Promise.allSettled([...this.#clients].map(worker => this.#stop(worker)));
@@ -133,7 +153,7 @@ class Session {
   }
 }
 
-export async function startSession({ cwd, directory, rootId = randomUUID(), command, args = [], env = process.env, workerEnvironment }) {
+export async function startSession({ cwd, directory, rootId = randomUUID(), command, args = [], env = process.env, workerEnvironment, externalRoot = false }) {
   if (typeof command !== 'string' || !command) throw new TypeError('RPC command is required');
   if (!Array.isArray(args) || args.some(arg => typeof arg !== 'string')) throw new TypeError('RPC args must be strings');
   if (workerEnvironment !== undefined && typeof workerEnvironment !== 'function') throw new TypeError('workerEnvironment must be a function');
@@ -141,7 +161,7 @@ export async function startSession({ cwd, directory, rootId = randomUUID(), comm
   const scopes = new Scopes({ cwd: canonicalCwd, rootId });
   const journal = await begin({ cwd: canonicalCwd, directory, rootId });
   return new Session({
-    journal, scopes, rootId, workerEnvironment,
+    journal, scopes, rootId, workerEnvironment, externalRoot,
     launch: { cwd: canonicalCwd, command, args: [...args], env: { ...env } },
   });
 }

@@ -39,6 +39,7 @@ export async function startBroker(options) {
     });
     return {
       connection: Object.freeze({ socketPath, agentId: rootId, token: credential(token, rootId) }),
+      registerRoot: client => session.registerRoot(client),
       close,
     };
   } catch (error) {
