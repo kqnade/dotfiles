@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+exec mise exec -- node "$HOME/.pi/agent/runtime/main.mjs" "$@"
