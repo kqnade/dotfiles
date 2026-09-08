@@ -164,6 +164,29 @@ if not codex_global_rule_link.is_file():
 if codex_global_rule_link.read_text().strip() != "../.agents/rules/AGENTS.md":
     fail("Codex global AGENTS.md must link to the canonical rule aggregate")
 
+pi_global_rule_template = ROOT / "dot_pi/agent/AGENTS.md.tmpl"
+if not pi_global_rule_template.is_file():
+    fail("Pi global AGENTS template is missing")
+pi_global_rule_template_text = pi_global_rule_template.read_text()
+for required_include in (
+    '{{ include "dot_agents/rules/coding.md" }}',
+    '{{ include "dot_agents/rules/workflow-state.md" }}',
+    '{{ include "dot_agents/rules/git.md" }}',
+):
+    if required_include not in pi_global_rule_template_text:
+        fail(f"Pi global AGENTS template must include shared rule: {required_include}")
+if '{{ include "dot_agents/rules/delegation.md" }}' in pi_global_rule_template_text:
+    fail("Pi global AGENTS template must not include Codex delegation rules")
+for forbidden_route in (
+    "route-large-implementation",
+    "luna_parallelizer",
+    "herdr",
+):
+    if forbidden_route in pi_global_rule_template_text.casefold():
+        fail(f"Pi global AGENTS template must not include retired route: {forbidden_route}")
+if "# Pi agent contract" not in pi_global_rule_template_text:
+    fail("Pi global AGENTS template must include its Pi-specific contract")
+
 codex_config_modifier = ROOT / "dot_codex/modify_private_config.toml"
 if not codex_config_modifier.is_file():
     fail("Codex stable defaults modifier is missing")

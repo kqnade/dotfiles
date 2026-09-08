@@ -1,0 +1,13 @@
+{{ include "dot_agents/rules/coding.md" }}
+{{ include "dot_agents/rules/workflow-state.md" }}
+{{ include "dot_agents/rules/git.md" }}
+
+# Pi agent contract
+
+- The root agent runs as Sol and uses the managed read, edit, and write tools within each agent's
+  assigned paths.
+- The root Sol delegates exactly one task to Astra for complex or large work. Astra may delegate
+  scoped work to Sol, Luna, or Spark.
+- A delegated Sol may escalate to its waiting Astra. Delegated Sol, Luna, and Spark are leaf roles
+  and do not create additional workers.
+- The managed role prompts, broker, scheduler, and ownership checks enforce this contract.

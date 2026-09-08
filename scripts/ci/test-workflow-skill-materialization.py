@@ -110,6 +110,7 @@ class WorkflowSkillMaterializationTests(unittest.TestCase):
             destination.mkdir()
             (destination / ".agents").mkdir()
             (destination / ".claude/skills").mkdir(parents=True)
+            (destination / ".pi/agent").mkdir(parents=True)
             state = temp / "state.boltdb"
             environment = os.environ.copy()
             environment.update(
@@ -132,7 +133,11 @@ class WorkflowSkillMaterializationTests(unittest.TestCase):
                 "--no-tty",
                 "apply",
             ]
-            for target in (".agents/skills", ".claude/skills"):
+            for target in (
+                ".agents/skills",
+                ".claude/skills",
+                ".pi/agent/AGENTS.md",
+            ):
                 subprocess.run(
                     [*common, target],
                     check=True,
@@ -163,6 +168,21 @@ class WorkflowSkillMaterializationTests(unittest.TestCase):
 
             self.assertFalse((destination / ".codex/skills").exists())
             self.assertFalse((destination / ".config/opencode/skills").exists())
+
+            deployed_pi_global = destination / ".pi/agent/AGENTS.md"
+            self.assertTrue(deployed_pi_global.is_file())
+            deployed_pi_global_text = deployed_pi_global.read_text(encoding="utf-8")
+            self.assertNotIn("{{ include", deployed_pi_global_text)
+            for shared_rule in (
+                ROOT / "dot_agents/rules/coding.md",
+                ROOT / "dot_agents/rules/workflow-state.md",
+                ROOT / "dot_agents/rules/git.md",
+            ):
+                self.assertIn(
+                    shared_rule.read_text(encoding="utf-8").strip(),
+                    deployed_pi_global_text,
+                )
+            self.assertIn("# Pi agent contract", deployed_pi_global_text)
 
 
 if __name__ == "__main__":
