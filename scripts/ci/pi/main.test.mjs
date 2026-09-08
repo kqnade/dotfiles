@@ -150,6 +150,9 @@ test('managed CLI derives external package, extension, and journal paths', () =>
   assert.equal(resolvePiEntry(env), '/var/cache/tester/pi/agent/packages/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js');
   assert.equal(resolveJournalDirectory(env), '/var/state/tester/pi/sessions');
   assert.equal(options.extensionPath, resolveExtensionPath());
+  assert.deepEqual(options.additionalExtensions, [
+    fileURLToPath(new URL('../../../dot_pi/agent/extensions/lsp.ts', import.meta.url)),
+  ]);
   assert.equal(options.cwd, '/work/project');
   assert.equal(options.env.PI_PACKAGE_ROOT, '/var/cache/tester/pi/agent/packages');
   assert.deepEqual(options.rootArgs, ['--session-id', 'stable']);

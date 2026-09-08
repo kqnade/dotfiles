@@ -173,6 +173,7 @@ export function buildLaunchOptions({ env = process.env, cwd = process.cwd(), par
     directory: resolveJournalDirectory(env),
     piEntry: resolvePiEntry(env),
     extensionPath: resolveExtensionPath(),
+    additionalExtensions: [fileURLToPath(new URL('../extensions/lsp.ts', import.meta.url))],
     env: { ...env, PI_PACKAGE_ROOT: packageRoot },
     capture: false,
     prompt: options.prompt,
