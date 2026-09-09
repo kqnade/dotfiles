@@ -7,134 +7,238 @@ on-demand Astra escalation, scoped Sol/Luna/Spark delegation, LSP, six shared
 skills, and ownership-aware hooks. Complete the migration without losing
 authentication or conversation history.
 
-Status: partial implementation. Runtime primitives and dependency preparation
-exist, but normal Pi startup, the broker, extension tools, and migration gates
-are not integrated. Do not treat the unit-tested modules as a working agent
-environment or remove the existing environment before the integration gates pass.
+Status: **incomplete; paused at the user's request for a new session on macOS**.
+The launcher, broker, managed file tools, delegation, and LSP are integrated.
+Staged execution primitives exist, but shell/formatter exposure, sandbox
+verification, and final migration remain open. Do not remove the existing agent
+environment or mark this item complete before the remaining gates pass.
 
 ## Scope
 
-- Repository: `git@github.com:kqnade/dotfiles`; branch `agent/pi-configure`;
-  worktree `/Users/kanato.momose/repos/github.com/kqnade/dotfiles@agent-pi-configure`.
-- Implementation baseline: `53c2672939db97ece3fe03943333583f5f736b72`.
-- All model roles use provider `openai-codex` and existing ChatGPT OAuth:
+- Repository: `git@github.com:kqnade/dotfiles`; branch `agent/pi-configure`.
+- Evidence captured on 2026-09-09 in the Linux/WSL worktree
+  `/home/kqnade/repos/github.com/kqnade/dotfiles` at code baseline `e8b55ae`.
+  macOS has not executed the Seatbelt tests. The user has no remotely accessible
+  Mac and will resume in a new local Mac session.
+- Commits through this baseline are local; no push or other remote mutation was
+  performed. Reconcile the Mac checkout, remote identity, branch, dirty state,
+  and commit availability before relying on this record. Keep its `.dev/`
+  independent rather than redirecting it to another worktree.
+- All roles use provider `openai-codex` and existing ChatGPT OAuth, as defined
+  in `dot_pi/agent/runtime/models.mjs`:
   - root/Sol: `gpt-5.6-sol`, `medium`;
   - Astra: `gpt-6-astra`, `medium`;
   - Luna: `gpt-5.6-luna`, `max`;
   - Spark: `gpt-5.3-codex-spark`, `medium`.
-- Normal Sol escalates large or complex work to Astra. Astra delegates by task
-  size and directly implements algorithmically difficult work. A delegated Sol
-  escalates to its existing waiting Astra, without starting another Astra.
-  Luna and Spark cannot delegate.
-- Four runnable descendants per normal root session, including all nested
-  delegation tasks. The normal root itself is exempt. Separate root windows
-  have independent limits. Waiting parents release their slots only after
-  draining tools/writes; resumption reacquires a slot.
-- Ownership sequence: reject new writes, stop/await active writers and process
-  groups, confirm termination, snapshot scope, transfer a generation-tagged
-  lease. Apply the same sequence on return. Unknown termination quarantines
-  ownership and any occupied slot; timeout alone is not proof.
-- Adopt npm `@earendil-works/pi-coding-agent@0.85.1` through mise and
-  `pi-lsp-adapter@0.1.3`. Exact dependency integrity is in
-  `dot_pi/agent/packages/package-lock.json`. Do not adopt a same-named
-  `pi-subagents` package: the inspected concurrency controls did not cover the
-  required all-descendant session scope. Use official Pi RPC with one supervisor.
-- LSP uses mise-owned vtsls, pyright, gopls, and rust-analyzer with
-  `installMode: off`. Formatting uses stdin/stdout and ownership CAS writes,
-  never a formatter's in-place write option.
-- Retain these shared skills for Pi and work Claude: `test-driven-development`,
+- Root delegates to one Astra. Astra delegates to Sol/Luna/Spark. A delegated
+  Sol escalates to its existing waiting Astra; leaves cannot create workers.
+  Four runnable descendants are allowed per root; the root is exempt.
+- Waiting parents drain tools and relinquish runnable slots. Ownership uses
+  generation-tagged leases, drain/transfer/renew, and quarantine when process
+  termination cannot be confirmed. Unknown termination must not free a slot
+  or authorize publication.
+- User-selected macOS execution design: Seatbelt confines work to private
+  byte copies; the parent captures and validates outputs before CAS publication
+  to originals. This prioritizes original-file protection and does **not**
+  promise disappearance of every detached process. No VM was selected.
+- Pi `0.85.1`, `pi-lsp-adapter` `0.1.3`, and dependency integrity are declared
+  under `dot_pi/agent/packages/`. Use the managed launcher and broker, not an
+  unrelated subagent package.
+- Retain six shared skills for Pi and work Claude: `test-driven-development`,
   `evidence-review`, `sanitize-artifacts`, `using-workflow-skills`,
-  `context-handoff`, and `todo-management`, including required helper files.
+  `context-handoff`, and `todo-management`, including their resource closure.
 - Preserve work Claude authentication, history, namespace authorization, and
-  unrelated hooks/plugins. Update its Herdr hook and obsolete git-cc prohibition.
-- Git commit-message routing: `livesense-inc`/`jobtalk` only to approved Claude;
-  other validated GitHub owners to no-tools Sol. Reject unsupported or malformed
-  remotes before reading/transmitting a diff. No backend or model fallback.
+  unrelated hooks/plugins. Commit generation routes `livesense-inc`/`jobtalk`
+  only to approved Claude; other validated GitHub owners use no-tools Pi Sol.
+  This Codex account must not access actual company repositories.
 
 ## Non-goals
 
-- No Herdr integration, MCP setup, dedicated Plan Mode, metrics, or API-key migration.
+- No new Herdr integration, MCP setup, Plan Mode, metrics, or API-key migration.
 - No Neovim configuration changes or remote Git mutations.
-- No blanket deletion of authentication/history directories or unrelated `.dev` records.
-- No removal of old assets until the final authenticated/runtime/migration gates pass.
+- No blanket deletion of authentication/history or unrelated `.dev` records.
+- No removal of old assets until authenticated/runtime/migration gates pass.
+- No unsandboxed fallback when a platform or sandbox setup is unsupported.
 
 ## Durable records
 
-None: the migration is still active and its integration contract is not yet
-validated. This task item owns the current implementation evidence and remaining
-decisions; completed operational behavior belongs in repository documentation
-when the integration is complete.
+None: the migration remains active and its final operational contract is not
+validated. This TODO owns the resumption checkpoint. Promote durable operating
+instructions and required evidence before eventually completing the item.
 
-## Evidence and implementation boundaries
+## Verified implementation
 
-- Verified in this worktree: focused tests under `scripts/ci/pi/` cover RPC
-  model/effort verification, abort admission races, authenticated IPC, scheduling,
-  ownership drain/transfer/quarantine, process-group cancellation, scope borrowing,
-  supervisor role routing and existing-Astra escalation, formatter scope checks,
-  dependency preparation, and commit-message validation.
-- `node --test scripts/ci/pi/*.test.mjs` passed as a complete suite at the stopping
-  point. Unix-socket/process tests require permissions unavailable in the default
-  sandbox; they were also run with elevated local process permissions.
-- `/opt/homebrew/bin/python3.14 scripts/ci/validate-repository.py` passed.
-  `mise exec -- python3 scripts/ci/validate-repository.py` selected a Python without
-  `tomllib` and failed before validation. Use a Python with tomllib when resuming.
-- Verified authenticated preflight: all four exact models/efforts returned a
-  minimal response through Pi 0.85.1 RPC. Temporary CLI used:
-  `/private/tmp/pi-0851-smoke.SZFCDM/node_modules/@earendil-works/pi-coding-agent/dist/bundle/cli.js`.
-  Credentials were not copied into the repository. Repeat these probes through
-  the final launcher before deleting old assets; a preflight is not proof of
-  production broker integration.
-- LSP worker reported successful initialize/shutdown for all four pinned
-  servers. The adapter loads its seven read-only tools, but SDK diagnostic
-  execution stopped at `Theme not initialized. Call initTheme() first.`
-  Adapter diagnostics through the actual Pi runtime remain unverified.
-  Temporary adapter entry:
-  `/private/tmp/pi-lsp-runtime.93xkpP/install/node_modules/pi-lsp-adapter/src/index.ts`.
-  Temporary paths are disposable evidence aids, not deployment dependencies.
-- Pi catches exceptions from `before_provider_request` and may continue sending.
-  `runtime/guard.mjs` therefore terminates on model/effort mismatch. It still
-  needs integration with supervisor admission and extension load ordering.
-- `runtime/rpc.mjs` verifies state before prompting and fences pre-prompt aborts.
-  Its `close()` currently confirms only the RPC process, not all LSP/auxiliary
-  descendants. Wire POSIX process groups and the exported `stopProcessGroup`
-  helper before using RPC completion as an execution receipt's stop proof.
-- `runtime/supervisor.mjs` requires internal `{ stopped: true, result, error }`
-  receipts. Model output or untrusted IPC callers must never author this proof.
-  `Scopes` is connected to delegation, but no live RPC worker factory/broker exists.
-- `Ownership.runProcess` supervises a POSIX process group. Escaped/detached
-  writers are not established as contained. Enforce the managed detached-writer
-  prohibition and test the actual shell execution boundary before claiming the
-  complete stop contract. `expectedHash: null` create-only CAS is not implemented.
-- Directory scope snapshots can traverse a large tree. Decide the root/child
-  file-scope contract and metadata handling before defaulting to a whole-repo
-  scope. Existing source modules are not an OS sandbox.
-- `scripts/pi/setup.mjs` stages npm dependencies outside the source tree and
-  replaces the external install; it does not apply settings, migrate credentials,
-  activate services, or delete old assets.
-- `scripts/pi/commit-message.mjs` currently parses/routes/validates output through
-  an injected generator. Actual Sol/Claude backend execution and zsh `git cc` /
-  `git ccc` integration are not implemented.
-- Old Codex/OpenCode/Herdr tools, metrics, skills, and Claude settings remain.
-  No complete `mise run apply`, old-environment deletion, or remote mutation was done.
+- Launcher/broker/extension integration, fixed model checks, authenticated IPC,
+  cancellation, role permits, four-slot scheduling, and crash-marker handling
+  have runtime tests. Parent resumption renews the drained lease before
+  reacquiring its slot. Borrowed scopes transfer back to the correct owner.
+- Managed tools currently exposed in `extensions/managed.ts` are `read`,
+  `write`, `edit`, `delegate`, and `escalate`, plus the read-only LSP adapter.
+  **Bash, formatter, and skill-helper execution are not exposed.** `user_bash`
+  returns a denial; throwing from that hook would let Pi fall back to execution.
+- Writes support expected-hash replacement and atomic create-only publication
+  with `expectedHash: null`. Replacement CAS serializes this Ownership instance;
+  it is not an atomic transaction against arbitrary external processes.
+- Namespace guards inspect raw and Git-rewritten origin URLs. Commit generation
+  rejects effective owner/repository identity changes before reading the diff,
+  and rechecks identity and staged content before committing. Synthetic local
+  fixtures cover company namespaces; no real company repository was accessed.
+- The six-skill loader validates canonical resource identity and exact helper
+  closure before launch. Shared routing uses the six current owners. Seven
+  legacy skill directories and Claude symlinks remain until the final gate.
+- Pi's materialized global `AGENTS.md` includes canonical coding/workflow/Git
+  rules and Pi role topology. It does not include Codex/Herdr delegation rules.
+- LSP lifecycle drains pending tools and shuts down managed servers before
+  delegation/escalation; resumed parents get fresh managers. Actual diagnostic
+  tests through Pi passed for TypeScript, Python, Go, and Rust. Detached
+  auxiliary-process containment remains unproven.
+
+### Staged execution baseline
+
+The following code increments are committed:
+
+- `b29ced3`: `runtime/staging.mjs` creates private byte-copy workspaces with
+  immutable source hashes. It rejects missing, nonregular, escaping, duplicate,
+  and symlink sources. Copies have independent inodes; cleanup removes the
+  staging area. Creation/deletion/directory synchronization are not implemented.
+- `f5e185e`: `runtime/sandbox-env.mjs` supplies only fixed HOME/TMPDIR/PATH and
+  locale values. `runtime/seatbelt.mjs` generates a default-deny profile with
+  explicit system/runtime reads, workspace writes, and `/dev/null` writes.
+  It grants no network, Mach, AppleEvents, or POSIX IPC access. Path strings with
+  quotes, backslashes, or control characters are rejected.
+- `8d80534`: `runtime/staged-process.mjs` holds the original ownership run while
+  a separate staging Ownership supervises the command. Results return only
+  after cleanup. Unknown termination/cleanup failure quarantines the original
+  lease. The default backend invokes `/usr/bin/sandbox-exec` on Darwin and
+  rejects other platforms with `UNSUPPORTED_SANDBOX`.
+- `e8b55ae`: lifecycle tests cover success, scope rejection, command failure,
+  cancellation/drain/renew, unsupported-platform rejection, and quarantine.
+  The orchestration fixture injects the OS boundary and therefore is **not**
+  evidence of OS confinement. Both macOS CI jobs include the real Seatbelt test.
+
+`runStagedProcess` returns stdout and original-file preimage metadata; it does
+not publish changes or capture arbitrary staged-file outputs. `format.mjs`
+still uses the original cwd/path through `Ownership.runProcess`; wire staged
+execution before exposing it. Do not loosen that existing cwd guard globally.
+Keep sandbox configuration and `readPaths` behind trusted internal callers:
+recursive read grants must not expose auth directories, broker sockets, or
+unrelated sessions. A mode-0700 directory alone is not proof of a staging
+capability. Do not treat the SBPL generator as a command allowlist.
+
+## Current verification and deployment evidence
+
+- At `e8b55ae`, the full local Pi runtime suite passed: **174 passed, 1 skipped,
+  0 failed**. The skipped test is the macOS Seatbelt runtime test. The repository
+  validator passed, and `git diff --check` was clean.
+- Commands used:
+
+  ```bash
+  PI_PACKAGE_ROOT="${XDG_CACHE_HOME:-$HOME/.cache}/pi/agent/packages" \
+    mise exec -- node --test scripts/ci/pi/*.test.mjs \
+    scripts/ci/pi-runtime-extension.test.mjs \
+    scripts/ci/pi-runtime-lsp.test.mjs scripts/ci/pi-lsp-diagnostics.test.mjs
+  PYTHONDONTWRITEBYTECODE=1 mise exec -- python3 scripts/ci/validate-repository.py
+  ```
+
+- Linux logs are disposable evidence aids, not resumption dependencies:
+  `/tmp/pi-staged-runtime-suite.log` and
+  `/tmp/pi-staged-repository-validator.log`.
+- Harness limitation: default-sandbox Node children sometimes return empty
+  stdout despite exit 0. Elevated execution yielded the named passing tests
+  and a passing deployed Pi doctor. Do not fix product code around this harness
+  symptom or infer test coverage from a single empty child-test result.
+- Earlier authenticated evidence included all four fixed models and a synthetic
+  managed delegation run producing five files with peak four leaves and an
+  empty journal. It predates the latest global rules/lease/sandbox changes;
+  final authenticated validation is still required.
+- A subsequent synthetic real-model probe was rejected by automatic approval
+  review because the precise outbound payload/context was not explicitly
+  approved. The user has **not** approved that probe. The macOS design approval
+  and TODO/commit request do not authorize it. Before retrying, present a
+  concrete synthetic payload/destination and obtain explicit approval.
+- The old `/tmp/pi-managed-capacity-probe.mjs` preflight now encounters the
+  materialized real `~/.pi/agent/AGENTS.md`; do not remove global rules or copy
+  OAuth credentials to bypass isolation. Rebuild a genuinely synthetic context
+  while preserving OAuth refresh ownership, then validate the final launcher.
+- Linux HOME received nine scoped chezmoi targets through the earlier
+  `51da31b` baseline: shared rules/skills, mise manifests, zsh `cc`, Pi wrapper,
+  `.pi/agent`, and `.pi/bin`. Hash/mode checks preserved auth, sessions, and
+  `.zshrc`. `pi --version` returned `0.85.1`, mise resolved the managed Pi, and
+  `scripts/pi/doctor.mjs` passed. The new sandbox modules have not been applied.
+  This Linux deployment says nothing about the Mac HOME state.
+- Full `mise run apply` was not run because `.zshrc` has pre-existing manual
+  changes (`MM` in chezmoi status). Preserve/reconcile those changes rather than
+  overwriting them. No services or authentication/history were removed.
+
+## Resume on macOS
+
+1. Verify the authorized remote, current worktree, branch, commits, dirty state,
+   installed dependencies, and relevant target diffs. Treat this Linux record
+   as candidate evidence for the Mac runtime. Do not assume the local commits
+   have been pushed or that the Mac HOME matches the Linux deployment.
+2. Run `mise exec -- node --test scripts/ci/pi/seatbelt-runtime.test.mjs`.
+   The test requires successful staged write/read and original read, rejects
+   original append/create/rename/unlink/hardlink and symlink escape writes,
+   checks original inode/content, and checks staging cleanup. It must actually
+   execute on Darwin; a skip is not success for this gate.
+3. Add and run negative probes for external network/Unix sockets, Mach/shared
+   memory deputies, inherited writable FDs, and detached late writers. Validate
+   parser/path behavior and real formatter/runtime compatibility on supported
+   macOS architectures. Fix narrow required permissions from evidence; do not
+   substitute `(allow default)` or blanket IPC grants.
+4. Wire formatter stdin/stdout through staging and CAS publication, including
+   config/plugin/runtime read closure, cancellation, preimage changes, and
+   cleanup failure. Capture independent output bytes before publication.
+   `git cc` needs the real Git metadata, OAuth, and signing channel and must
+   remain a separate trusted operation, not a claim of generic sandbox shell
+   compatibility.
+5. Complete shell/helper execution and Linux containment without reducing the
+   final goal to formatter-only or existing-file-only support. For Linux,
+   avoid mounting the original checkout/HOME/run directories: pathname Unix
+   sockets can reach host helpers despite readonly mounts. A candidate is
+   minimal system read mounts plus private copies of explicit user runtime
+   inputs, rejecting sockets/devices and escaping symlinks. This is not yet
+   implemented or verified as a complete boundary.
+6. Complete authenticated and migration gates before removing the old assets,
+   then update operating docs/validators and apply the managed environment.
+
+Linux probe caveat: an exploratory minimal-root bwrap command failed with
+`--disable-userns requires --unshare-user` despite `--unshare-all`; no fallback
+ran and the original sentinel stayed unchanged. Explicit user-namespace flags
+need correction and actual tests before adopting that command. Earlier PID
+namespace probes are partial evidence, not proof of the proposed full adapter.
+
+## Retirement requirements
+
+Removing a mise service declaration does not stop an installed service. A
+synthetic Linux fixture verified explicit removal via
+`mise bootstrap services remove codex-usage-exporter --yes` after removing its
+manifest declaration: stop/disable/reload occurred, exporter unit disappeared,
+and yaskkserv2 plus auth/state sentinels remained. Use a dry run first. macOS
+LaunchAgent removal still requires actual verification. Update validators that
+currently require exporter declarations as part of retirement.
+
+Keep Codex/OpenCode/Herdr/ccusage/metrics management, the seven legacy skills,
+and Claude Herdr integration until adoption gates pass. Test setup failure,
+successful reapply, and repeated reapply with auth/history sentinels; preserve
+Claude namespace boundaries and unrelated settings.
 
 ## Commit checklist
 
-- [x] Pin Pi and LSP dependencies and implement external staged package preparation.
-- [x] Implement exact model/effort verification, fail-closed request guard, and RPC abort fencing.
-- [x] Implement authenticated local IPC and per-root descendant scheduling.
-- [x] Implement scoped write leases, stop/drain, transfer snapshots, quarantine, and process-group cancellation.
-- [x] Implement supervisor scope handoff and escalation results to the existing Astra.
-- [x] Implement stdout formatter selection and scoped CAS writeback primitives.
-- [x] Implement commit-message namespace routing and output validation primitives.
-- [ ] Integrate and review persistent supervisor crash markers with live worker lifecycle.
-- [ ] Implement broker startup/shutdown, private IPC credentials, role prompts, and Pi extension tools.
-- [ ] Wire RPC auxiliary-process termination proof, cancellation, permit checks, and scope recovery.
-- [ ] Expose managed write/edit/bash/format/delegate/escalate tools; prohibit unmanaged mutation paths and detached writers.
-- [ ] Validate saturated four-slot delegation/resume and escalation/cancellation during real writes; assert no overlapping edits or deadlock.
-- [ ] Validate formatter failure, mid-format cancellation, concurrent preimage changes, and language-specific real formatter behavior.
-- [ ] Execute adapter diagnostics through Pi for all four languages. Gate mutating `/lsp install`, `/lsp update`, `/lsp uninstall`, and `/lsp trust` commands.
-- [ ] Implement no-tools Sol and approved Claude commit-message backends; wire `git cc` and `git ccc` with failure tests.
-- [ ] Reduce shared skills to six and fix retained helper/reference closure, including Claude skill symlinks.
-- [ ] Remove Herdr and retired Codex/OpenCode/metrics management only after all adoption gates pass; preserve auth/history and Claude namespace boundaries.
-- [ ] Update public mise tasks, apply/doctor, managed removal paths, validators, CI, and operational documentation to the implemented Pi behavior.
-- [ ] Verify migration interruption/reapply with authentication/history sentinels, run final authenticated launcher probes and repository checks, then apply the managed environment.
+- [x] Pin Pi/LSP dependencies and external package preparation.
+- [x] Integrate launcher, broker, managed read/write/edit/delegate/escalate tools, role guards, and IPC.
+- [x] Integrate ownership CAS/create-only writes, scope borrowing, drain/renew, scheduling, and quarantine.
+- [x] Implement raw/effective Git origin authorization and no-tools Sol/approved Claude commit routing.
+- [x] Integrate six-skill discovery/resource closure and shared Pi rules; retain legacy assets pending retirement.
+- [x] Integrate LSP lifecycle handoff and test actual four-language diagnostics through Pi.
+- [x] Add private staging, sanitized environment, Seatbelt profile generation, and staged process orchestration.
+- [x] Add lifecycle regressions and macOS arm64/Intel CI Seatbelt test wiring.
+- [ ] Execute and harden Seatbelt on macOS, including IPC/FD/detached-writer negative probes and tool compatibility.
+- [ ] Implement and verify Linux sandbox execution with host socket/FD isolation.
+- [ ] Integrate formatter staging and validated CAS publication with real formatter failure/cancellation/conflict tests.
+- [ ] Expose complete managed shell/helper execution with scoped output validation and safe Git operation boundaries.
+- [ ] Verify LSP auxiliary-process original-write restrictions and persistent supervisor recovery under real failures.
+- [ ] Obtain explicit approval and repeat final synthetic authenticated launcher/delegation/cancellation probes.
+- [ ] Complete interruption/reapply migration tests with authentication/history sentinels and explicit service retirement.
+- [ ] Remove retired agent/metrics/skill/Herdr management only after adoption gates pass; preserve work Claude boundaries.
+- [ ] Update final operating documentation, public tasks, validators, and CI; apply the complete managed environment safely.
