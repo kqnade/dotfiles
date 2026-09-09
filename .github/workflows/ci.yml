@@ -65,7 +65,9 @@ jobs:
           mise exec -- npm ci --prefix "$PI_FORMATTER_PACKAGE_ROOT" --ignore-scripts --no-audit --no-fund
           mise exec -- uv pip install --no-config --no-python-downloads --python python3 --target "$RUNNER_TEMP/pi-ruff" --only-binary :all: --no-deps "ruff==0.16.0"
           export PI_RUFF_BIN="$RUNNER_TEMP/pi-ruff/bin/ruff"
-          export PI_RUSTFMT_BIN="$(mise exec -- rustup which rustfmt)"
+          PI_RUSTFMT_BIN="$(mise exec -- rustup which rustfmt)"
+          PI_RUSTUP_BIN="$(mise which rustup)"
+          export PI_RUSTFMT_BIN PI_RUSTUP_BIN
           mise exec -- node --test scripts/ci/pi/*.test.mjs
 
       - name: install pinned linters
@@ -260,7 +262,9 @@ jobs:
           mise exec -- npm ci --prefix "$PI_FORMATTER_PACKAGE_ROOT" --ignore-scripts --no-audit --no-fund
           mise exec -- uv pip install --no-config --no-python-downloads --python python3 --target "$RUNNER_TEMP/pi-ruff" --only-binary :all: --no-deps "ruff==0.16.0"
           export PI_RUFF_BIN="$RUNNER_TEMP/pi-ruff/bin/ruff"
-          export PI_RUSTFMT_BIN="$(mise exec -- rustup which rustfmt)"
+          PI_RUSTFMT_BIN="$(mise exec -- rustup which rustfmt)"
+          PI_RUSTUP_BIN="$(mise which rustup)"
+          export PI_RUSTFMT_BIN PI_RUSTUP_BIN
           mise exec -- node --test \
             scripts/ci/pi/lsp-lifecycle.test.mjs \
             scripts/ci/pi-runtime-extension.test.mjs \
@@ -353,7 +357,9 @@ jobs:
           mise exec -- npm ci --prefix "$PI_FORMATTER_PACKAGE_ROOT" --ignore-scripts --no-audit --no-fund
           mise exec -- uv pip install --no-config --no-python-downloads --python python3 --target "$RUNNER_TEMP/pi-ruff" --only-binary :all: --no-deps "ruff==0.16.0"
           export PI_RUFF_BIN="$RUNNER_TEMP/pi-ruff/bin/ruff"
-          export PI_RUSTFMT_BIN="$(mise exec -- rustup which rustfmt)"
+          PI_RUSTFMT_BIN="$(mise exec -- rustup which rustfmt)"
+          PI_RUSTUP_BIN="$(mise which rustup)"
+          export PI_RUSTFMT_BIN PI_RUSTUP_BIN
           mise exec -- node --test \
             scripts/ci/pi/lsp-lifecycle.test.mjs \
             scripts/ci/pi-runtime-extension.test.mjs \

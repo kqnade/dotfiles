@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { delimiter, join } from 'node:path';
+import { delimiter, dirname, join } from 'node:path';
 import { test } from 'node:test';
 
 import { Ownership } from '../../../dot_pi/agent/runtime/ownership.mjs';
@@ -12,6 +12,42 @@ import { sandboxEnvironment } from '../../../dot_pi/agent/runtime/sandbox-env.mj
 // Portable tests substitute only the OS confinement boundary.
 const runner = process.platform === 'darwin' ? undefined : invocation => runStagedProcess(invocation,
   async ({ workspace, command, args }) => ({ command, args, cwd: workspace, env: sandboxEnvironment(workspace) }));
+
+test('rustup shim selects the caller cwd toolchain inside the sandbox', {
+  skip: process.env.PI_RUSTUP_BIN && process.env.PI_RUSTFMT_BIN ? false : 'requires PI_RUSTUP_BIN and PI_RUSTFMT_BIN',
+  timeout: 60_000,
+}, async () => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'pi-format-rustup-')));
+  const environment = Object.fromEntries(['PATH', 'RUSTUP_HOME', 'RUSTUP_TOOLCHAIN'].map(name => [name, process.env[name]]));
+  try {
+    const cwd = join(root, 'project');
+    const rustupHome = join(root, 'rustup');
+    await mkdir(cwd);
+    await mkdir(join(cwd, 'src'));
+    await mkdir(join(root, 'bin'));
+    await mkdir(join(rustupHome, 'toolchains'), { recursive: true });
+    await symlink(await realpath(process.env.PI_RUSTUP_BIN), join(root, 'bin', 'rustfmt'));
+    await symlink(dirname(dirname(await realpath(process.env.PI_RUSTFMT_BIN))), join(rustupHome, 'toolchains', 'fixture'));
+    const settings = `version = "12"\ndefault_toolchain = "fixture"\n[overrides]\n${JSON.stringify(join(cwd, 'src'))} = "missing"\n`;
+    await writeFile(join(rustupHome, 'settings.toml'), settings);
+    process.env.PATH = join(root, 'bin') + delimiter + environment.PATH;
+    process.env.RUSTUP_HOME = rustupHome;
+    delete process.env.RUSTUP_TOOLCHAIN;
+    await writeFile(join(cwd, 'src', 'main.rs'), 'fn main(){println!("hello");}\n');
+    const ownership = new Ownership({ cwd });
+    const lease = ownership.claim('formatter', ['src/main.rs']);
+    await formatFile({ ownership, lease, cwd, path: 'src/main.rs' }, runner);
+    assert.equal(await readFile(join(cwd, 'src', 'main.rs'), 'utf8'), 'fn main() {\n    println!("hello");\n}\n');
+    assert.equal(await readFile(join(rustupHome, 'settings.toml'), 'utf8'), settings);
+    await ownership.drain(lease);
+  } finally {
+    for (const [name, value] of Object.entries(environment)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+    await rm(root, { recursive: true, force: true });
+  }
+});
 
 test('installed native rustfmt runs with its toolchain libraries', {
   skip: process.env.PI_RUSTFMT_BIN ? false : 'requires PI_RUSTFMT_BIN',

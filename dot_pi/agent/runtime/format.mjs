@@ -14,6 +14,7 @@ import { readFile } from 'node:fs/promises';
 import { realpath } from 'node:fs/promises';
 import { runStagedProcess } from './staged-process.mjs';
 import { copyRuntimeTree } from './staging.mjs';
+import { resolveRustfmt } from './rustup.mjs';
 
 function nodeModulesRoot(executable) {
   let root;
@@ -310,7 +311,10 @@ export async function formatFile({ ownership, lease, path: targetPath, cwd, sign
     if (formatter.skipped) {
       return { status: 'skipped', path: targetPath, reason: formatter.reason };
     }
-    const executable = await realpath(formatter.command);
+    let executable = await realpath(formatter.command);
+    if (formatter.runtime === 'rustfmt' && basename(executable) === 'rustup') {
+      executable = await resolveRustfmt({ ownership, lease, cwd: scope, path: canonical, command: executable, signal }, runStaged);
+    }
 
     const result = await runStaged({
       ownership,
