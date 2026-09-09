@@ -69,3 +69,34 @@ def directory_profile(directory_fd):
         error = ctypes.get_errno()
         raise OSError(error, os.strerror(error))
     return {"device": str(info.st_dev), **decode_volume_profile(buffer.raw)}
+
+
+def validate_destination_profiles(destination_fd, validation_fd):
+    def walk(original_fd, private_fd, inherited_profile=None):
+        expected = directory_profile(original_fd) if original_fd is not None else inherited_profile
+        actual = directory_profile(private_fd)
+        if expected["filesystem"] not in ("apfs", "hfs"):
+            raise NotImplementedError("destination filesystem name lookup is not supported")
+        if expected != actual:
+            raise ValueError("destination and validation name-lookup profiles differ")
+        with os.scandir(private_fd) as entries:
+            for entry in entries:
+                if not entry.is_dir(follow_symlinks=False):
+                    continue
+                private_child = os.open(entry.name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=private_fd)
+                original_child = None
+                try:
+                    if original_fd is not None:
+                        try:
+                            info = os.stat(entry.name, dir_fd=original_fd, follow_symlinks=False)
+                        except FileNotFoundError:
+                            info = None
+                        if info is not None and stat.S_ISDIR(info.st_mode):
+                            original_child = os.open(entry.name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=original_fd)
+                    walk(original_child, private_child, expected)
+                finally:
+                    if original_child is not None:
+                        os.close(original_child)
+                    os.close(private_child)
+
+    walk(destination_fd, validation_fd)
