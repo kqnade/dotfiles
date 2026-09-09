@@ -33,6 +33,17 @@ test('installed native rustfmt runs with its toolchain libraries', {
     assert.equal(result.status, 'formatted');
     assert.equal(await readFile(target, 'utf8'), 'fn main() {\n    println!("hello");\n}\n');
     await ownership.drain(lease);
+
+    await mkdir(join(cwd, 'src'));
+    await writeFile(join(cwd, 'rustfmt.toml'), 'tab_spaces = 4\nedition = "2015"\n');
+    await writeFile(join(cwd, 'src', '.rustfmt.toml'), 'tab_spaces = 2\nedition = "2024"\n');
+    const nested = join(cwd, 'src', 'lib.rs');
+    await writeFile(nested, 'async fn run(){println!("hello");}\n');
+    const nestedOwnership = new Ownership({ cwd });
+    const nestedLease = nestedOwnership.claim('formatter', ['src/lib.rs']);
+    await formatFile({ ownership: nestedOwnership, lease: nestedLease, cwd, path: 'src/lib.rs' }, runner);
+    assert.equal(await readFile(nested, 'utf8'), 'async fn run() {\n  println!("hello");\n}\n');
+    await nestedOwnership.drain(nestedLease);
   } finally {
     process.env.PATH = originalPath;
     await rm(root, { recursive: true, force: true });

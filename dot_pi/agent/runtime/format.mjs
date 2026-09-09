@@ -117,6 +117,16 @@ const hasNamedConfig = async (scopeRoot, startDirectory, names) => {
   return false;
 };
 
+async function rustfmtConfig(scopeRoot, filePath) {
+  for (let directory = dirname(filePath); isWithin(scopeRoot, directory); directory = dirname(directory)) {
+    for (const name of ['.rustfmt.toml', 'rustfmt.toml']) {
+      if (await hasConfig(directory, [name])) return join(directory, name);
+    }
+    if (directory === scopeRoot) break;
+  }
+  return undefined;
+}
+
 const hasPackageConfig = async (path, predicate) => {
   const text = await readFile(join(path, 'package.json'), 'utf8');
   const data = JSON.parse(text);
@@ -312,6 +322,10 @@ export async function formatFile({ ownership, lease, path: targetPath, cwd, sign
       prepare: async area => {
         const target = area.files.find(file => file.originalPath === canonical);
         const args = formatter.args.map(arg => arg === canonical ? target.stagedPath : arg);
+        if (formatter.runtime === 'rustfmt') {
+          const config = await rustfmtConfig(area.workspace, target.stagedPath);
+          if (config) args.push('--config-path', config);
+        }
         let command = isWithin(scope, executable) ? join(area.workspace, relative(scope, executable)) : executable;
         const packageRoot = nodeModulesRoot(executable);
         if (!isWithin(scope, executable) && packageRoot) {
