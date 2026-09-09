@@ -13,6 +13,13 @@ def inspect_tree_links(root):
     return sorted(reports, key=lambda report: report["path"])
 
 
+def validate_projected_links(baseline_root, projected_root):
+    baseline = {report["path"]: report for report in inspect_tree_links(baseline_root)}
+    for report in inspect_tree_links(projected_root):
+        if report["status"] == "escapes" and baseline.get(report["path"]) != report:
+            raise ValueError(f"projected link escapes validation root: {report['path']}")
+
+
 def inspect_link(ancestors, target):
     trace = [["target", target]]
     def result(status):
