@@ -436,6 +436,70 @@ capability. Do not treat the SBPL generator as a command allowlist.
   copied inputs, including workspace inheritance and explicit formatter-config
   precedence, before advancing the remaining formatter compatibility gates.
 
+### Cargo edition and macOS process-stop checkpoint
+
+- Observed on 2026-09-09 in the same macOS arm64 worktree/ref, producing client
+  Codex: code baseline `aaa9748`. No HOME apply or remote mutation occurred.
+- Observed: `3ae29ac` reads the closest copied Cargo package manifest with
+  pinned `smol-toml` 1.8.0 and passes its language edition to native rustfmt.
+  An actual async-source regression first failed under Rust 2015 and passed
+  with the package's 2024 edition. Original manifest bytes remain unchanged.
+  The parser is loaded from the absolute managed `PI_PACKAGE_ROOT`; it does
+  not search the project for executable parser code. Linux unit CI prepares
+  the managed package root through `scripts/pi/setup.mjs`.
+- Observed: `b109179` reconciles the existing exact dependency-list test with
+  the parser pin; that test failed after the initial manifest addition.
+  `478360c` supports `edition.workspace = true` from an ancestor workspace's
+  `[workspace.package]`, with a failing-then-passing parser regression and
+  macOS CI wiring. `58631c7` makes doctor reject a missing parser entry file.
+  Doctor does not yet compare the parser's installed version to the source pin.
+- Observed: whole-suite macOS validation exposed four path-alias fixture
+  failures, two process-stop failures, and two commit-backend readiness
+  timeouts. `d6b19be` canonicalizes fixture expectations and the snapshot fault
+  injection target; all four focused tests pass under elevated execution.
+- Observed: `6795b91` waits within the existing timeout for an uncertain
+  process-group observation to become a confirmed disappearance. `1426305`
+  also rechecks disappearance after SIGTERM returns EPERM. Neither treats
+  EPERM as proof of termination; permanent uncertainty still quarantines the
+  worker and reports failure. Deterministic OS-boundary regressions and the
+  34-test ownership/RPC/session/launch suite pass. The full-suite result is
+  recorded below; isolated successes alone do not resolve readiness timeouts.
+- Evidence: Apple's XNU `bsd/kern/kern_sig.c` process-group iterator excludes
+  zombie entries and can return EPERM when no signalable member is counted:
+  https://github.com/apple-oss-distributions/xnu/blob/main/bsd/kern/kern_sig.c
+  This supports the transient observation hypothesis; the runtime still
+  requires an actual ESRCH before reporting an empty process group.
+- Observed: `aaa9748` extends synthetic backend startup
+  readiness to 10 seconds while retaining post-readiness termination checks.
+  It canonicalizes the extension broker fixture and trusted-project LSP
+  fixtures, and runs all Pi runtime tests in both macOS jobs. The adapter's
+  normal trust registration stores canonical paths; lexical fixture paths had
+  prevented the tests from exercising trusted overrides.
+- Observed: the combined runtime/extension run passed all **189 runtime tests**
+  with **1 expected Darwin platform skip**, but initially failed five extension
+  tests. After the fixture corrections and missing tool installation, the
+  separate extension/LSP run passed **16 tests, 0 failures, 0 skips**, including
+  actual TypeScript, Python, Go, and Rust diagnostics. Together these cover
+  205 successful tests and one expected skip; they are not a claim that the
+  earlier combined invocation returned success. Repository validation passed
+  after CI expansion; final diffs passed whitespace checks.
+- Observed local setup: installed mise-locked `npm:@vtsls/language-server`
+  0.3.0 and `npm:pyright` 1.1.413, which were absent on this Mac. Existing
+  gopls and rust-analyzer were used. No dotfile apply, service retirement,
+  authentication/history modification, or remote mutation was performed.
+- Disposable fixtures: managed dependencies from the current lock are installed
+  at `/private/tmp/pi-cargo-packages` using npm ci with scripts disabled.
+  Rust, Ruff, and formatter-package fixtures use the preceding checkpoint's
+  paths. These paths are test inputs, not deployment requirements.
+- Remaining Cargo test list: explicit `package.workspace` paths (currently
+  rejected), missing/incomplete workspace inheritance, malformed manifests,
+  edition defaults, config-versus-CLI precedence, and manifest changes after
+  snapshot. External configuration/runtime layouts and all broader adoption
+  gates remain active. Formatter is still internal and migration incomplete.
+- Next action: complete Cargo failure/precedence cases and explicit workspace
+  paths. Preserve the Linux, shell/helper, LSP auxiliary/recovery, authenticated,
+  and migration gates.
+
 ## Resume on macOS
 
 1. Verify the authorized remote, current worktree, branch, commits, dirty state,
