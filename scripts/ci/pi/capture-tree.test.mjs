@@ -10,6 +10,22 @@ import { test } from 'node:test';
 const execute = promisify(execFile);
 const helper = fileURLToPath(new URL('../../../dot_pi/agent/runtime/capture-tree.py', import.meta.url));
 
+test('tree capture bounds total entries across directories even when files contain no bytes', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pi-capture-entries-'));
+  try {
+    await mkdir(join(root, 'dir'));
+    await writeFile(join(root, 'dir', 'a'), '');
+    await writeFile(join(root, 'dir', 'b'), '');
+    await assert.rejects(execute('python3', ['-I', helper, root, '0', '2']), error => {
+      assert.equal(error.stdout, '');
+      assert.match(error.stderr, /capture entry limit exceeded/);
+      return true;
+    });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('tree capture records symbolic links as targets without traversing directories or dangling links', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pi-capture-links-'));
   try {

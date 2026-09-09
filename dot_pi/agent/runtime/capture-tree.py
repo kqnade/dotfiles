@@ -5,17 +5,25 @@ import stat
 import sys
 
 
-def capture_tree(root, max_bytes=64 * 1024 * 1024):
+def capture_tree(root, max_bytes=64 * 1024 * 1024, max_entries=100_000):
     if not isinstance(max_bytes, int) or max_bytes < 0:
         raise ValueError("capture byte limit must be a nonnegative integer")
+    if not isinstance(max_entries, int) or max_entries < 0:
+        raise ValueError("capture entry limit must be a nonnegative integer")
     records = []
     remaining = max_bytes
+    remaining_entries = max_entries
 
     def walk(directory_fd, prefix):
-        nonlocal remaining
+        nonlocal remaining, remaining_entries
+        names = []
         with os.scandir(directory_fd) as entries:
-            names = sorted(entry.name for entry in entries)
-        for name in names:
+            for entry in entries:
+                if remaining_entries == 0:
+                    raise ValueError("capture entry limit exceeded")
+                remaining_entries -= 1
+                names.append(entry.name)
+        for name in sorted(names):
             path = f"{prefix}/{name}" if prefix else name
             info = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
             if stat.S_ISDIR(info.st_mode):
@@ -63,4 +71,6 @@ def capture_tree(root, max_bytes=64 * 1024 * 1024):
 
 if __name__ == "__main__":
     options = {"max_bytes": int(sys.argv[2])} if len(sys.argv) > 2 else {}
+    if len(sys.argv) > 3:
+        options["max_entries"] = int(sys.argv[3])
     json.dump(capture_tree(sys.argv[1], **options), sys.stdout)
