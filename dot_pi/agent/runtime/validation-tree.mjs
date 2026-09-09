@@ -1,6 +1,34 @@
 import { chmod, mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { isAbsolute, join, relative, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { sandboxEnvironment } from './sandbox-env.mjs';
 import { compareCapturedTrees } from './tree-changes.mjs';
+
+const helper = fileURLToPath(new URL('./validate-tree.py', import.meta.url));
+
+export async function validateCapturedTree({ records, stagingWorkspace, temporaryRoot, python, runProcess }) {
+  if (typeof python !== 'string' || !isAbsolute(python)) {
+    throw new TypeError('validation Python executable must be absolute');
+  }
+  const area = await createValidationTree({ records, stagingWorkspace, temporaryRoot });
+  try {
+    await runProcess({
+      command: await realpath(python),
+      args: ['-B', '-I', helper, area.workspace],
+      cwd: stagingWorkspace,
+      env: sandboxEnvironment(stagingWorkspace),
+      inheritEnv: false,
+      timeoutMs: 30_000,
+      maxOutputBytes: 64 * 1024,
+    });
+  } catch (error) {
+    try { await area.cleanup(); }
+    catch (cleanupError) { throw new AggregateError([error, cleanupError], 'tree validation and cleanup failed'); }
+    throw error;
+  }
+  await area.cleanup();
+  return area.records;
+}
 
 // The caller selects a temporaryRoot with the destination's name-lookup semantics.
 export async function createValidationTree({ records, stagingWorkspace, temporaryRoot }) {
@@ -24,6 +52,7 @@ export async function createValidationTree({ records, stagingWorkspace, temporar
     let cleanupPromise;
     return Object.freeze({
       workspace: directory,
+      records: Object.freeze(changes.map(change => change.after)),
       cleanup: () => cleanupPromise ??= rm(directory, { recursive: true, force: true }),
     });
   } catch (error) {
