@@ -9,8 +9,9 @@ authentication or conversation history.
 
 Status: **incomplete; active on macOS arm64**.
 The launcher, broker, managed file tools, delegation, and LSP are integrated.
-Staged execution primitives exist, but shell/formatter exposure, sandbox
-verification, and final migration remain open. Do not remove the existing agent
+Staged execution and formatter stdout publication are integrated internally,
+but formatter dependency closure, shell/tool exposure, sandbox verification,
+and final migration remain open. Do not remove the existing agent
 environment or mark this item complete before the remaining gates pass.
 
 ## Scope
@@ -117,8 +118,9 @@ The following code increments are committed:
 
 `runStagedProcess` returns stdout and original-file preimage metadata; it does
 not publish changes or capture arbitrary staged-file outputs. `format.mjs`
-still uses the original cwd/path through `Ownership.runProcess`; wire staged
-execution before exposing it. Do not loosen that existing cwd guard globally.
+uses staged cwd, copied target/config inputs, and stdout publication with the
+snapshot preimage. Package/plugin closure is incomplete; keep it unexposed
+until the formatter gates below pass. Do not loosen the ownership cwd guard.
 Keep sandbox configuration and `readPaths` behind trusted internal callers:
 recursive read grants must not expose auth directories, broker sockets, or
 unrelated sessions. A mode-0700 directory alone is not proof of a staging
@@ -215,10 +217,55 @@ capability. Do not treat the SBPL generator as a command allowlist.
   stdout inside Seatbelt (exit 0). This checks real gofmt runtime compatibility,
   not `formatFile` integration or CAS publication. Other formatters and their
   config/plugin closure remain unverified.
-- Next implementation: formatter staging must remap cwd/file arguments, preserve
+- Next implementation at this baseline: formatter staging must remap cwd/file arguments, preserve
   config/plugin/runtime closure, and publish independently captured stdout via
   the existing preimage check. Generic shell still needs creation/deletion and
   validated directory output synchronization; the final scope is unchanged.
+
+## Formatter staging checkpoint
+
+- Observed on 2026-09-09 in the same macOS worktree and branch: code baseline
+  `7969cdd82182b9553aac33a073bd1aa14366f38e`, clean before this TODO update;
+  producing client Codex. No HOME apply or remote mutation occurred.
+- Observed: `7da7549` adds trusted `prepare` and `readFiles` inputs to
+  `runStagedProcess`. Preparation sees copied file paths and can derive stdin
+  from the snapshot. Config files can lie outside a file-level write lease but
+  must remain valid regular sources under cwd. Returned publication preimages
+  include only owned files. Runtime staging tests passed 9 tests with the one
+  expected Darwin unsupported-platform skip.
+- Observed: `7969cdd` routes `formatFile` through staged execution, copies known
+  ancestor formatter configuration, remaps filename arguments, derives stdin
+  and expected hashes from the snapshot, and checks cancellation before
+  publication. Standard Node shebang launchers use the active Node executable;
+  parent metadata grants cover only ancestors of explicitly granted read paths
+  and workspace. Both macOS CI jobs run `scripts/ci/pi/format.test.mjs`.
+- Observed: all 10 formatter tests passed on Darwin through real Seatbelt using
+  `mise exec -- node --test --test-timeout=15000 scripts/ci/pi/format.test.mjs`.
+  Actual installed gofmt formats and publishes, repeated formatting reports
+  unchanged, and invalid Go preserves the source. Deterministic subprocess
+  fixtures cover staged filename/config lookup, external-edit conflicts,
+  cancellation after subprocess completion, skipped formatters, missing
+  formatter/config failures, and scope denial. A cancellation regression first
+  failed with missing rejection, then passed after the publication check.
+- Observed: the combined formatter/staged/Seatbelt suite passed 18 tests with
+  one expected skip before the two added publication regressions; those added
+  regressions subsequently passed in the complete formatter file. The
+  repository validator passed through the installed Python 3.11 command from
+  the preceding checkpoint, and `git diff --check` passed. An independent
+  bounded review found no additional publication or metadata-grant defects;
+  its default-sandbox runtime attempt hit the nested Seatbelt harness limit.
+- Incomplete: formatter package and plugin dependencies are not yet in the read
+  closure. Node wrappers that import sibling packages, imported JS config
+  modules, external config extensions, Ruff/Biome runtime dependencies, and
+  Rust toolchain shims/config must be tested with actual installations. The
+  fixed config-name list is not evidence of complete dependency closure.
+  Preparation/cleanup failures and active-process formatter cancellation need
+  formatter-level coverage. Linux formatter orchestration tests substitute the
+  unavailable OS boundary explicitly; production has no unsandboxed fallback.
+- Next smallest action: add a real package-based formatter/config/plugin probe,
+  then implement its validated dependency closure without exposing original
+  auth/session directories. Complete generic shell creation/deletion/output
+  synchronization and Linux confinement before tool/migration gates close.
 
 ## Resume on macOS
 
@@ -236,9 +283,9 @@ capability. Do not treat the SBPL generator as a command allowlist.
    parser/path behavior and real formatter/runtime compatibility on supported
    macOS architectures. Fix narrow required permissions from evidence; do not
    substitute `(allow default)` or blanket IPC grants.
-4. Wire formatter stdin/stdout through staging and CAS publication, including
-   config/plugin/runtime read closure, cancellation, preimage changes, and
-   cleanup failure. Capture independent output bytes before publication.
+4. Complete formatter config/plugin/runtime read closure and active-process
+   cancellation, preparation failure, and cleanup failure tests. Preserve the
+   staged stdout/preimage publication verified in the formatter checkpoint.
    `git cc` needs the real Git metadata, OAuth, and signing channel and must
    remain a separate trusted operation, not a claim of generic sandbox shell
    compatibility.
@@ -285,7 +332,8 @@ Claude namespace boundaries and unrelated settings.
 - [x] Add lifecycle regressions and macOS arm64/Intel CI Seatbelt test wiring.
 - [ ] Execute and harden Seatbelt on macOS, including IPC/FD/detached-writer negative probes and tool compatibility.
 - [ ] Implement and verify Linux sandbox execution with host socket/FD isolation.
-- [ ] Integrate formatter staging and validated CAS publication with real formatter failure/cancellation/conflict tests.
+- [x] Integrate formatter staged stdin/path/config and snapshot-based stdout publication; verify actual gofmt success/failure and publication conflict/cancellation.
+- [ ] Complete formatter package/plugin/config closure and runtime failure/cancellation/cleanup coverage across supported formatters.
 - [ ] Expose complete managed shell/helper execution with scoped output validation and safe Git operation boundaries.
 - [ ] Verify LSP auxiliary-process original-write restrictions and persistent supervisor recovery under real failures.
 - [ ] Obtain explicit approval and repeat final synthetic authenticated launcher/delegation/cancellation probes.
