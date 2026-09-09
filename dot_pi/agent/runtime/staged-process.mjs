@@ -86,6 +86,9 @@ export async function runStagedProcess({
         ownership.quarantine(lease, error);
         throw error;
       }
+      if (!failure && signal?.aborted) {
+        throw Object.assign(new Error('staged execution was aborted'), { code: 'ABORT_ERR' });
+      }
     }
   });
 }
