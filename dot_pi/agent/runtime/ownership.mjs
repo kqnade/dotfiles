@@ -524,7 +524,7 @@ const waitForEmptyProcessGroup = async (pid, timeoutMs) => {
     if (status === 'empty') {
       return;
     }
-    if (status === 'unknown' || Date.now() >= deadline) {
+    if (Date.now() >= deadline) {
       throw errorWithCode('could not prove process group is empty', 'PROCESS_GROUP_UNKNOWN');
     }
     await new Promise((resolvePromise) => setTimeout(resolvePromise, 10));
@@ -537,7 +537,8 @@ export const stopProcessGroup = async (pid, timeoutMs) => {
     return;
   }
   if (initial === 'unknown') {
-    throw errorWithCode('could not inspect process group', 'PROCESS_GROUP_UNKNOWN');
+    await waitForEmptyProcessGroup(pid, timeoutMs);
+    return;
   }
   signalProcessGroup(pid, 'SIGTERM');
   try {

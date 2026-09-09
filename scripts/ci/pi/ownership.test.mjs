@@ -7,9 +7,27 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { createHash } from 'node:crypto';
 
-import { Ownership } from '../../../dot_pi/agent/runtime/ownership.mjs';
+import { Ownership, stopProcessGroup } from '../../../dot_pi/agent/runtime/ownership.mjs';
 
 const hash = (text) => createHash('sha256').update(text).digest('hex');
+
+test('process group stop waits for an uncertain inspection to confirm disappearance', async t => {
+  let empty = false;
+  let settled = false;
+  t.mock.method(process, 'kill', (pid, signal) => {
+    assert.equal(pid, -424242);
+    assert.equal(signal, 0);
+    throw Object.assign(new Error('inspection result'), { code: empty ? 'ESRCH' : 'EPERM' });
+  });
+  const stopping = stopProcessGroup(424242, 1000).then(
+    () => { settled = true; return {}; },
+    error => { settled = true; return { error }; },
+  );
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.equal(settled, false);
+  empty = true;
+  assert.deepEqual(await stopping, {});
+});
 
 test('a canonical scoped claim can perform an expected-hash atomic write', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pi-ownership-'));
