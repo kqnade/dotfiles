@@ -1,4 +1,4 @@
-import { access, mkdir, mkdtemp, open } from 'node:fs/promises';
+import { access, chmod, copyFile, mkdir, mkdtemp, open, stat } from 'node:fs/promises';
 import {
   basename,
   dirname,
@@ -21,6 +21,25 @@ function nodeModulesRoot(executable) {
     if (basename(directory) === 'node_modules') root = directory;
   }
   return root;
+}
+
+async function stageRustfmtRuntime(executable, workspace) {
+  if (basename(executable) !== 'rustfmt' || basename(dirname(executable)) !== 'bin') return executable;
+  const libraries = join(dirname(dirname(executable)), 'lib');
+  try {
+    if (!(await stat(libraries)).isDirectory()) return executable;
+  } catch (error) {
+    if (error.code === 'ENOENT') return executable;
+    throw error;
+  }
+  const runtime = await mkdtemp(join(workspace, '.pi-rustfmt-runtime-'));
+  await mkdir(join(runtime, 'bin'), { mode: 0o700 });
+  await mkdir(join(runtime, 'lib'), { mode: 0o700 });
+  await copyRuntimeTree(libraries, join(runtime, 'lib'));
+  const command = join(runtime, 'bin', 'rustfmt');
+  await copyFile(executable, command);
+  await chmod(command, 0o700);
+  return command;
 }
 
 async function formatterInvocation(command, args) {
@@ -251,7 +270,7 @@ const selectFormatter = async (scopeRoot, filePath) => {
     if (command === undefined) {
       throw makeError('rustfmt is unavailable', 'FORMATTER_MISSING');
     }
-    return { command, args: ['--emit', 'stdout'] };
+    return { command, args: ['--emit', 'stdout'], runtime: 'rustfmt' };
   }
 
   return { skipped: true, reason: 'formatter_not_configured_for_file_type' };
@@ -301,6 +320,8 @@ export async function formatFile({ ownership, lease, path: targetPath, cwd, sign
           await mkdir(packages, { mode: 0o700 });
           await copyRuntimeTree(packageRoot, packages);
           command = join(packages, relative(packageRoot, executable));
+        } else if (!isWithin(scope, executable) && formatter.runtime === 'rustfmt') {
+          command = await stageRustfmtRuntime(executable, area.workspace);
         }
         return {
           ...await formatterInvocation(command, args),
