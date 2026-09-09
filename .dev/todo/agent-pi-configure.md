@@ -544,6 +544,62 @@ capability. Do not treat the SBPL generator as a command allowlist.
   auxiliary containment/recovery, authenticated validation, and final migration.
   Existing agent assets remain managed until the adoption gates pass.
 
+### Staged output capture checkpoint
+
+- Observed on 2026-09-09 in the same macOS arm64 worktree/ref, producing client
+  Codex: code baseline `0434a82`, clean before this TODO update. No HOME apply,
+  package installation, authentication/history change, or remote mutation occurred.
+- Observed: `2420fde` adds a trusted internal asynchronous capture callback after
+  command success and before staging cleanup. The original ownership lease stays
+  held. The callback is not a model-facing capability or a validated manifest.
+  `ab6be54` rejects cancellation during capture or successful cleanup with
+  `ABORT_ERR`, after cleanup; the initial cancellation regression failed because
+  captured output was returned. `c905511` verifies that a capture exception is
+  propagated unchanged, cleanup succeeds, originals remain unchanged, and the
+  original lease remains usable. This failure regression passed on existing code.
+- Observed: capture/staged-process tests passed 10 tests with one expected Darwin
+  platform skip. The preceding cancellation run including actual Seatbelt probes
+  passed 13 tests with the same skip. These are separate runs, not one combined
+  suite. Linux confinement was not verified.
+- Decision: use descriptor-relative traversal for the output reader. Node path
+  recursion plus final-component O_NOFOLLOW does not prevent an intermediate
+  directory symlink swap, and process-group completion does not establish that
+  every detached child has disappeared. Before/after realpath checks are not a
+  substitute for descriptor-relative lookup.
+- Observed: `05efeab` adds internal `capture-tree.py`, using Python standard-library
+  directory fds, scandir(fd), open(dir_fd=...), O_DIRECTORY/O_NOFOLLOW, and regular
+  file fstat plus O_NONBLOCK. Its normal-case test records binary bytes as base64,
+  executable mode, and empty directories; later writes do not change the emitted
+  manifest. It currently rejects all symlinks and other nonregular entries.
+  `0434a82` limits aggregate file bytes (default 64 MiB, configurable internally)
+  and fails before JSON emission on overflow. Both behavior tests failed for the
+  intended missing behavior before implementation; the final two tests pass.
+- Observed: repository validation passed after initial helper implementation;
+  the subsequent byte-limit increment passed the focused helper suite and
+  whitespace checks. All code commits above are local signed commits.
+- Incomplete: this helper is not connected to staged execution or exposed to Pi.
+  Tests currently invoke python3 with isolated mode through the test environment.
+  Production needs an explicitly managed, trusted absolute interpreter and
+  supervised IPC, timeout/cancellation, output-size limits, JSON schema validation,
+  and an immutable parent-side representation. Python is not yet a pinned mise
+  runtime dependency. Do not rely on the test PATH as a production contract.
+- Next test list: exact/zero byte-limit boundaries; bounded entry counts/metadata
+  and traversal depth; special-file rejection without blocking; root, final-file,
+  and intermediate-directory replacement races; internal symlink recording and
+  escaping-link rejection; concurrent content changes. Descriptor-relative reads
+  constrain traversal but do not promise a point-in-time consistent tree while a
+  detached child mutates it. Add race evidence before claiming that boundary.
+- Next integration: capture the execution baseline after trusted preparation so
+  copied runtimes do not appear as user-created output. Compare immutable initial
+  and final manifests, enforce original lease roots, preflight all original state,
+  and define tested partial-publication/rollback semantics. Empty projects/new-only
+  shell invocations, directory creation/deletion, file deletion, modes, and type
+  changes remain required. The staged API still requires an existing file.
+- Remaining adoption gates are unchanged: external formatter config/runtime
+  closure, doctor parser-version checking, complete generic shell/helper publication,
+  Linux confinement, LSP auxiliary containment/recovery, authenticated validation,
+  and final migration. Keep existing agent assets until all gates pass.
+
 ## Resume on macOS
 
 1. Verify the authorized remote, current worktree, branch, commits, dirty state,
