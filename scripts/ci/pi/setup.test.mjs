@@ -26,7 +26,7 @@ test('the global LSP config uses mise-owned system commands without auto-install
   }
 });
 
-test('the package manifests pin the Pi runtime and LSP adapter', async () => {
+test('the package manifests pin the Pi runtime, LSP adapter, and TOML parser', async () => {
   const packageRoot = new URL('../../../dot_pi/agent/packages/', import.meta.url);
   const manifest = JSON.parse(await readFile(new URL('package.json', packageRoot), 'utf8'));
   const lock = JSON.parse(await readFile(new URL('package-lock.json', packageRoot), 'utf8'));
@@ -34,11 +34,13 @@ test('the package manifests pin the Pi runtime and LSP adapter', async () => {
   assert.deepEqual(manifest.dependencies, {
     '@earendil-works/pi-coding-agent': '0.85.1',
     'pi-lsp-adapter': '0.1.3',
+    'smol-toml': '1.8.0',
   });
   assert.equal(lock.lockfileVersion, 3);
   assert.deepEqual(lock.packages[''].dependencies, manifest.dependencies);
   assert.equal(lock.packages['node_modules/@earendil-works/pi-coding-agent'].version, '0.85.1');
   assert.equal(lock.packages['node_modules/pi-lsp-adapter'].version, '0.1.3');
+  assert.equal(lock.packages['node_modules/smol-toml'].version, '1.8.0');
 });
 
 test('prepares the pinned package in an external npm install directory', async () => {
