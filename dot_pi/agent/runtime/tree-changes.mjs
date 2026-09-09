@@ -1,8 +1,19 @@
 import { isDeepStrictEqual } from 'node:util';
 
+function indexTree(records) {
+  const tree = new Map();
+  for (const record of records) {
+    if (tree.has(record.path)) {
+      throw Object.assign(new Error('captured tree contains a duplicate path'), { code: 'INVALID_CAPTURED_TREE' });
+    }
+    tree.set(record.path, record);
+  }
+  return tree;
+}
+
 export function compareCapturedTrees(baseline, captured) {
-  const before = new Map(baseline.map(record => [record.path, record]));
-  const after = new Map(captured.map(record => [record.path, record]));
+  const before = indexTree(baseline);
+  const after = indexTree(captured);
   const paths = [...new Set([...before.keys(), ...after.keys()])].sort();
   const changes = [];
   for (const path of paths) {
