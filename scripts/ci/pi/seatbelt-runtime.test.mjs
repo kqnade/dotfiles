@@ -138,7 +138,7 @@ test('Darwin Seatbelt denies host shared memory and Mach lookup and closes paren
   }
 });
 
-test('Darwin Seatbelt denies reachable host TCP and Unix sockets', {
+test('Darwin Seatbelt denies host sockets and detached original writes', {
   skip: process.platform === 'darwin' ? false : 'requires macOS Seatbelt',
   timeout: 20_000,
 }, async () => {
@@ -172,6 +172,12 @@ test('Darwin Seatbelt denies reachable host TCP and Unix sockets', {
       });
       assert.equal(result.stdout, 'denied\n', `${transport} must reject host access`);
     }
+    const result = await runStagedProcess({
+      ownership, lease, cwd, files: ['source.txt'], temporaryRoot: root,
+      command: executable, args: ['detached', join(cwd, 'source.txt')], timeoutMs: 5000,
+    });
+    assert.equal(result.stdout, 'detached-write-denied\n');
+    assert.equal(await readFile(join(cwd, 'source.txt'), 'utf8'), 'original');
   } finally {
     if (lease) await ownership.drain(lease);
     await Promise.all(servers.map(server => new Promise((resolve, reject) => {

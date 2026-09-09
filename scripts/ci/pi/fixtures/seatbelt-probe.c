@@ -15,7 +15,26 @@ int main(int argc, char **argv) {
   if (argc != 3) return 2;
   int descriptor;
   int result;
-  if (strcmp(argv[1], "mach") == 0) {
+  if (strcmp(argv[1], "detached") == 0) {
+    pid_t leader = getpid();
+    pid_t child = fork();
+    if (child < 0) return 1;
+    if (child > 0) return 0;
+    if (setsid() < 0) return 1;
+    for (int attempt = 0; getppid() == leader && attempt < 1000; attempt++) usleep(1000);
+    if (getppid() == leader) return 1;
+    descriptor = open("source.txt", O_WRONLY | O_APPEND);
+    if (descriptor < 0 || write(descriptor, "staged", 6) != 6) return 1;
+    close(descriptor);
+    descriptor = open(argv[2], O_WRONLY | O_APPEND);
+    if (descriptor >= 0) {
+      close(descriptor);
+      return 1;
+    }
+    if (errno != EPERM && errno != EACCES) return 1;
+    puts("detached-write-denied");
+    return 0;
+  } else if (strcmp(argv[1], "mach") == 0) {
     mach_port_t service = MACH_PORT_NULL;
     kern_return_t status = bootstrap_look_up(bootstrap_port, argv[2], &service);
     if (status == KERN_SUCCESS) {
