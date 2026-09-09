@@ -1,13 +1,17 @@
 import { createHash } from 'node:crypto';
+import { constants } from 'node:fs';
 import {
   chmod,
+  copyFile,
   lstat,
   mkdir,
   mkdtemp,
   readFile,
+  readdir,
   realpath,
   rm,
   stat,
+  symlink,
   writeFile,
 } from 'node:fs/promises';
 import { dirname, isAbsolute, join, normalize, relative, resolve, sep } from 'node:path';
@@ -36,12 +40,40 @@ const cleanupDirectory = async directory => {
   await rm(directory, { recursive: true, force: true });
 };
 
-export async function createStagingArea({ cwd, files, temporaryRoot = tmpdir() } = {}) {
+async function copyProjectFiles(cwd, workspace, copied, directory = '') {
+  for (const name of await readdir(join(cwd, directory))) {
+    if (name === '.git') continue;
+    const path = join(directory, name);
+    if (copied.has(path)) continue;
+    const source = join(cwd, path);
+    const destination = join(workspace, path);
+    const entry = await lstat(source);
+    if (entry.isSymbolicLink()) {
+      const target = await realpath(source);
+      if (!within(cwd, target) || relative(cwd, target).split(sep).includes('.git')) {
+        throw new Error(`project context link escapes copied files: ${path}`);
+      }
+      const stagedTarget = join(workspace, relative(cwd, target));
+      await symlink(relative(dirname(destination), stagedTarget) || '.', destination);
+    } else if (entry.isDirectory()) {
+      await mkdir(destination, { recursive: true, mode: 0o700 });
+      await copyProjectFiles(cwd, workspace, copied, path);
+    } else if (entry.isFile()) {
+      await copyFile(source, destination, constants.COPYFILE_EXCL);
+      await chmod(destination, (entry.mode & 0o111) === 0 ? 0o600 : 0o700);
+    } else {
+      throw new Error(`project context is not a regular file, directory, or internal link: ${path}`);
+    }
+  }
+}
+
+export async function createStagingArea({ cwd, files, temporaryRoot = tmpdir(), includeProjectFiles = false } = {}) {
   if (!Array.isArray(files) || files.length === 0) throw new TypeError('files must be a non-empty array');
   if (typeof cwd !== 'string' || cwd.length === 0) throw new TypeError('cwd must be a non-empty path');
   if (typeof temporaryRoot !== 'string' || temporaryRoot.length === 0) {
     throw new TypeError('temporaryRoot must be a non-empty path');
   }
+  if (typeof includeProjectFiles !== 'boolean') throw new TypeError('includeProjectFiles must be a boolean');
 
   const canonicalCwd = await realpath(cwd);
   if (!(await stat(canonicalCwd)).isDirectory()) throw new Error('cwd must be a directory');
@@ -97,6 +129,7 @@ export async function createStagingArea({ cwd, files, temporaryRoot = tmpdir() }
         hash: source.hash,
       }));
     }
+    if (includeProjectFiles) await copyProjectFiles(canonicalCwd, workspace, seen);
 
     let cleanupPromise;
     const cleanup = () => {
