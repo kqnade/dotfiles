@@ -7,9 +7,58 @@ import { Ownership } from '../../../dot_pi/agent/runtime/ownership.mjs';
 import { runStagedProcess } from '../../../dot_pi/agent/runtime/staged-process.mjs';
 import { sandboxEnvironment } from '../../../dot_pi/agent/runtime/sandbox-env.mjs';
 import { captureTree } from '../../../dot_pi/agent/runtime/capture-tree.mjs';
+import { compareCapturedTrees } from '../../../dot_pi/agent/runtime/tree-changes.mjs';
 
 const sandbox = process.platform === 'darwin' ? undefined : async ({ workspace, command, args }) => ({
   command, args, cwd: workspace, env: sandboxEnvironment(workspace),
+});
+
+test('ownership drain waits for cancellation of a capture helper and staging cleanup', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'pi-output-helper-abort-'));
+  const controller = new AbortController();
+  let execution;
+  let workspace;
+  try {
+    await writeFile(join(cwd, 'file.txt'), 'original');
+    const ownership = new Ownership({ cwd });
+    const lease = ownership.claim('worker', ['.']);
+    execution = runStagedProcess({
+      ownership, lease, cwd, files: ['file.txt'], signal: controller.signal,
+      command: '/bin/sh', args: ['-c', 'printf modified > file.txt'],
+      capture: area => {
+        workspace = area.workspace;
+        return area.runProcess({
+          command: '/usr/bin/python3',
+          args: ['-I', '-c', 'import os, time; open("ready", "w").write(str(os.getpid())); time.sleep(60)'],
+          cwd: workspace, env: sandboxEnvironment(workspace),
+        });
+      },
+    }, sandbox);
+    const cancelled = assert.rejects(execution, { code: 'ABORT_ERR' });
+    const deadline = Date.now() + 10_000;
+    let pid;
+    while (!pid) {
+      if (workspace) {
+        try { pid = Number(await readFile(join(workspace, 'ready'), 'utf8')); }
+        catch (error) { if (error.code !== 'ENOENT') throw error; }
+      }
+      assert.ok(Date.now() < deadline, 'capture helper did not become ready');
+      if (!pid) await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    const drained = ownership.drain(lease);
+    await assert.rejects(ownership.run(lease, async () => {}), { code: 'DRAINING' });
+    controller.abort();
+    await cancelled;
+    await drained;
+    assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' });
+    await assert.rejects(access(workspace), { code: 'ENOENT' });
+    assert.equal(await readFile(join(cwd, 'file.txt'), 'utf8'), 'original');
+    assert.equal(ownership.renew(lease).generation, lease.generation + 1);
+  } finally {
+    controller.abort();
+    await execution?.catch(() => {});
+    await rm(cwd, { recursive: true, force: true });
+  }
 });
 
 test('staged tree baseline includes trusted preparation and precedes command changes', async () => {
@@ -37,6 +86,9 @@ test('staged tree baseline includes trusted preparation and precedes command cha
     assert.deepEqual(result.captured, [
       { path: 'file.txt', type: 'file', mode: 0o600, content: Buffer.from('modified').toString('base64') },
       runtime,
+    ]);
+    assert.deepEqual(compareCapturedTrees(result.baseline, result.captured), [
+      { path: 'file.txt', before: result.baseline[0], after: result.captured[0] },
     ]);
     assert.equal(await readFile(join(cwd, 'file.txt'), 'utf8'), 'original');
     await assert.rejects(access(join(cwd, 'runtime.txt')), { code: 'ENOENT' });
