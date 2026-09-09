@@ -34,12 +34,16 @@ const createFixture = async () => {
   const home = join(root, 'home');
   const piTarget = join(target, 'node_modules', ...PI_PACKAGE.split('/'));
   const lspTarget = join(target, 'node_modules', LSP_PACKAGE);
+  const tomlTarget = join(target, 'node_modules', 'smol-toml');
   const wrapper = join(home, '.local', 'bin', 'pi');
   const piLink = join(home, '.pi', 'bin', 'pi');
 
   await mkdir(sourcePackages, { recursive: true });
   await mkdir(join(piTarget, 'dist', 'bundle'), { recursive: true });
   await mkdir(lspTarget, { recursive: true });
+  await mkdir(join(tomlTarget, 'dist'), { recursive: true });
+  await writeJson(join(tomlTarget, 'package.json'), { name: 'smol-toml', version: '1.8.0' });
+  await writeFile(join(tomlTarget, 'dist', 'index.cjs'), 'module.exports = {};\n');
   await mkdir(join(home, '.local', 'bin'), { recursive: true });
   await mkdir(join(home, '.pi', 'bin'), { recursive: true });
   await createManagedSkills(join(home, '.agents', 'skills'));
@@ -47,6 +51,7 @@ const createFixture = async () => {
   const dependencies = {
     [PI_PACKAGE]: PI_VERSION,
     [LSP_PACKAGE]: LSP_VERSION,
+    'smol-toml': '1.8.0',
   };
   await writeJson(join(sourcePackages, 'package.json'), {
     name: 'pi-agent-packages',
@@ -64,6 +69,7 @@ const createFixture = async () => {
       '': { dependencies },
       [`node_modules/${PI_PACKAGE}`]: { version: PI_VERSION },
       [`node_modules/${LSP_PACKAGE}`]: { version: LSP_VERSION },
+      'node_modules/smol-toml': { version: '1.8.0' },
     },
   });
   await writeFile(join(piTarget, 'dist', 'bundle', 'cli.js'), '#!/usr/bin/env node\n');
@@ -108,6 +114,19 @@ test('Pi doctor accepts a complete external install and managed wrapper', async 
     assert.equal(result.piVersion, PI_VERSION);
     assert.equal(result.adapterVersion, LSP_VERSION);
     assert.equal(result.wrapperVersion, PI_VERSION);
+  } finally {
+    await rm(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('Pi doctor reports a missing TOML parser entry before launch', async () => {
+  const fixture = await createFixture();
+  try {
+    await rm(join(fixture.target, 'node_modules', 'smol-toml', 'dist', 'index.cjs'));
+    await assert.rejects(
+      checkPiInstallation({ sourceRoot: fixture.source, env: fixture.env }),
+      /Missing required Pi file: .*smol-toml.*index.cjs/u,
+    );
   } finally {
     await rm(fixture.root, { recursive: true, force: true });
   }

@@ -109,6 +109,7 @@ const validateInstalledPackages = async ({ packageTarget: target, sourcePackages
   }
 
   await requiredFile(join(piRoot, 'dist', 'bundle', 'cli.js'));
+  await requiredFile(join(target, 'node_modules', 'smol-toml', 'dist', 'index.cjs'));
   for (const modulePath of REQUIRED_ADAPTER_MODULES) {
     await requiredFile(join(adapterRoot, modulePath));
   }
