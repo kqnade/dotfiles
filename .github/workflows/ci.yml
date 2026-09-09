@@ -58,11 +58,13 @@ jobs:
 
       - name: run Pi runtime unit tests
         run: |
-          mise install --locked node
+          mise install --locked node uv
           export PI_FORMATTER_PACKAGE_ROOT="$RUNNER_TEMP/pi-formatter-packages"
           mkdir -p "$PI_FORMATTER_PACKAGE_ROOT"
           cp scripts/ci/pi/fixtures/formatter-packages/package*.json "$PI_FORMATTER_PACKAGE_ROOT/"
           mise exec -- npm ci --prefix "$PI_FORMATTER_PACKAGE_ROOT" --ignore-scripts --no-audit --no-fund
+          mise exec -- uv pip install --no-config --no-python-downloads --python python3 --target "$RUNNER_TEMP/pi-ruff" --only-binary :all: --no-deps "ruff==0.16.0"
+          export PI_RUFF_BIN="$RUNNER_TEMP/pi-ruff/bin/ruff"
           mise exec -- node --test scripts/ci/pi/*.test.mjs
 
       - name: install pinned linters
@@ -255,6 +257,8 @@ jobs:
           mkdir -p "$PI_FORMATTER_PACKAGE_ROOT"
           cp scripts/ci/pi/fixtures/formatter-packages/package*.json "$PI_FORMATTER_PACKAGE_ROOT/"
           mise exec -- npm ci --prefix "$PI_FORMATTER_PACKAGE_ROOT" --ignore-scripts --no-audit --no-fund
+          mise exec -- uv pip install --no-config --no-python-downloads --python python3 --target "$RUNNER_TEMP/pi-ruff" --only-binary :all: --no-deps "ruff==0.16.0"
+          export PI_RUFF_BIN="$RUNNER_TEMP/pi-ruff/bin/ruff"
           mise exec -- node --test \
             scripts/ci/pi/lsp-lifecycle.test.mjs \
             scripts/ci/pi-runtime-extension.test.mjs \
@@ -262,6 +266,7 @@ jobs:
             scripts/ci/pi-lsp-diagnostics.test.mjs \
             scripts/ci/pi/seatbelt-runtime.test.mjs \
             scripts/ci/pi/format.test.mjs \
+            scripts/ci/pi/format-native.test.mjs \
             scripts/ci/pi/format-package.test.mjs
 
   intel-fallback:
@@ -344,6 +349,8 @@ jobs:
           mkdir -p "$PI_FORMATTER_PACKAGE_ROOT"
           cp scripts/ci/pi/fixtures/formatter-packages/package*.json "$PI_FORMATTER_PACKAGE_ROOT/"
           mise exec -- npm ci --prefix "$PI_FORMATTER_PACKAGE_ROOT" --ignore-scripts --no-audit --no-fund
+          mise exec -- uv pip install --no-config --no-python-downloads --python python3 --target "$RUNNER_TEMP/pi-ruff" --only-binary :all: --no-deps "ruff==0.16.0"
+          export PI_RUFF_BIN="$RUNNER_TEMP/pi-ruff/bin/ruff"
           mise exec -- node --test \
             scripts/ci/pi/lsp-lifecycle.test.mjs \
             scripts/ci/pi-runtime-extension.test.mjs \
@@ -351,4 +358,5 @@ jobs:
             scripts/ci/pi-lsp-diagnostics.test.mjs \
             scripts/ci/pi/seatbelt-runtime.test.mjs \
             scripts/ci/pi/format.test.mjs \
+            scripts/ci/pi/format-native.test.mjs \
             scripts/ci/pi/format-package.test.mjs

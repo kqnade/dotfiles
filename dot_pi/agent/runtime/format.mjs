@@ -150,7 +150,7 @@ const hasBiomeConfig = async (scopeRoot, startDirectory) => {
 };
 
 const hasRuffConfig = async (scopeRoot, startDirectory) => {
-  if (await hasNamedConfig(scopeRoot, startDirectory, ['.ruff.toml'])) {
+  if (await hasNamedConfig(scopeRoot, startDirectory, ['ruff.toml', '.ruff.toml'])) {
     return true;
   }
 
