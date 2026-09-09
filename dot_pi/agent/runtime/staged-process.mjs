@@ -30,7 +30,7 @@ async function seatbeltCommand({ workspace, command, args, readPaths }) {
 }
 
 export async function runStagedProcess({
-  ownership, lease, cwd, files, readFiles = [], temporaryRoot, prepare,
+  ownership, lease, cwd, files, readFiles = [], temporaryRoot, prepare, includeProjectFiles = false,
   command, args = [], readPaths = [], stdin = '', signal, timeoutMs, maxOutputBytes,
 }, sandbox = seatbeltCommand) {
   return ownership.run(lease, async () => {
@@ -45,7 +45,7 @@ export async function runStagedProcess({
       }
       ownedPaths.add(canonical);
     }
-    const area = await createStagingArea({ cwd, files: [...files, ...readFiles], temporaryRoot });
+    const area = await createStagingArea({ cwd, files: [...files, ...readFiles], temporaryRoot, includeProjectFiles });
     let stageOwnership;
     let stageLease;
     let failure;

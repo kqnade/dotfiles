@@ -13,33 +13,6 @@ import { readFile } from 'node:fs/promises';
 import { realpath } from 'node:fs/promises';
 import { runStagedProcess } from './staged-process.mjs';
 
-const contextNames = [
-  '.editorconfig', 'package.json', 'biome.json', 'biome.jsonc',
-  '.prettierrc', '.prettierrc.json', '.prettierrc.yaml', '.prettierrc.yml',
-  '.prettierrc.toml', '.prettierrc.js', '.prettierrc.cjs', '.prettierrc.mjs',
-  'prettier.config.js', 'prettier.config.cjs', 'prettier.config.mjs',
-  'prettier.config.json', 'prettier.config.toml',
-  '.ruff.toml', 'ruff.toml', 'pyproject.toml', 'rustfmt.toml', '.rustfmt.toml',
-];
-
-async function contextFiles(scope, target) {
-  const files = [];
-  for (let directory = dirname(target); isWithin(scope, directory); directory = dirname(directory)) {
-    for (const name of contextNames) {
-      const file = join(directory, name);
-      if (file === target) continue;
-      try {
-        await access(file);
-        files.push(relative(scope, file));
-      } catch (error) {
-        if (error.code !== 'ENOENT') throw error;
-      }
-    }
-    if (directory === scope) break;
-  }
-  return files;
-}
-
 async function formatterInvocation(command, args) {
   const executable = await realpath(command);
   const handle = await open(executable, 'r');
@@ -298,19 +271,21 @@ export async function formatFile({ ownership, lease, path: targetPath, cwd, sign
     if (formatter.skipped) {
       return { status: 'skipped', path: targetPath, reason: formatter.reason };
     }
+    const executable = await realpath(formatter.command);
 
     const result = await runStaged({
       ownership,
       lease,
       cwd: scope,
       files: [relative(scope, canonical)],
-      readFiles: await contextFiles(scope, canonical),
+      includeProjectFiles: true,
       signal,
       prepare: async area => {
         const target = area.files.find(file => file.originalPath === canonical);
         const args = formatter.args.map(arg => arg === canonical ? target.stagedPath : arg);
+        const command = isWithin(scope, executable) ? join(area.workspace, relative(scope, executable)) : executable;
         return {
-          ...await formatterInvocation(formatter.command, args),
+          ...await formatterInvocation(command, args),
           stdin: await readFile(target.stagedPath, 'utf8'),
         };
       },

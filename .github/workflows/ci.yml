@@ -59,6 +59,10 @@ jobs:
       - name: run Pi runtime unit tests
         run: |
           mise install --locked node
+          export PI_FORMATTER_PACKAGE_ROOT="$RUNNER_TEMP/pi-formatter-packages"
+          mkdir -p "$PI_FORMATTER_PACKAGE_ROOT"
+          cp scripts/ci/pi/fixtures/formatter-packages/package*.json "$PI_FORMATTER_PACKAGE_ROOT/"
+          mise exec -- npm ci --prefix "$PI_FORMATTER_PACKAGE_ROOT" --ignore-scripts --no-audit --no-fund
           mise exec -- node --test scripts/ci/pi/*.test.mjs
 
       - name: install pinned linters
@@ -247,13 +251,18 @@ jobs:
           test -d "$package_root/node_modules/@earendil-works/pi-coding-agent"
           test -d "$package_root/node_modules/pi-lsp-adapter"
           export PI_PACKAGE_ROOT="$package_root"
+          export PI_FORMATTER_PACKAGE_ROOT="$RUNNER_TEMP/pi-formatter-packages"
+          mkdir -p "$PI_FORMATTER_PACKAGE_ROOT"
+          cp scripts/ci/pi/fixtures/formatter-packages/package*.json "$PI_FORMATTER_PACKAGE_ROOT/"
+          mise exec -- npm ci --prefix "$PI_FORMATTER_PACKAGE_ROOT" --ignore-scripts --no-audit --no-fund
           mise exec -- node --test \
             scripts/ci/pi/lsp-lifecycle.test.mjs \
             scripts/ci/pi-runtime-extension.test.mjs \
             scripts/ci/pi-runtime-lsp.test.mjs \
             scripts/ci/pi-lsp-diagnostics.test.mjs \
             scripts/ci/pi/seatbelt-runtime.test.mjs \
-            scripts/ci/pi/format.test.mjs
+            scripts/ci/pi/format.test.mjs \
+            scripts/ci/pi/format-package.test.mjs
 
   intel-fallback:
     name: Intel Mac public interfaces and source fallbacks
@@ -331,10 +340,15 @@ jobs:
           test -d "$package_root/node_modules/@earendil-works/pi-coding-agent"
           test -d "$package_root/node_modules/pi-lsp-adapter"
           export PI_PACKAGE_ROOT="$package_root"
+          export PI_FORMATTER_PACKAGE_ROOT="$RUNNER_TEMP/pi-formatter-packages"
+          mkdir -p "$PI_FORMATTER_PACKAGE_ROOT"
+          cp scripts/ci/pi/fixtures/formatter-packages/package*.json "$PI_FORMATTER_PACKAGE_ROOT/"
+          mise exec -- npm ci --prefix "$PI_FORMATTER_PACKAGE_ROOT" --ignore-scripts --no-audit --no-fund
           mise exec -- node --test \
             scripts/ci/pi/lsp-lifecycle.test.mjs \
             scripts/ci/pi-runtime-extension.test.mjs \
             scripts/ci/pi-runtime-lsp.test.mjs \
             scripts/ci/pi-lsp-diagnostics.test.mjs \
             scripts/ci/pi/seatbelt-runtime.test.mjs \
-            scripts/ci/pi/format.test.mjs
+            scripts/ci/pi/format.test.mjs \
+            scripts/ci/pi/format-package.test.mjs
