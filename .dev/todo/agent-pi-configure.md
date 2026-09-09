@@ -342,6 +342,60 @@ capability. Do not treat the SBPL generator as a command allowlist.
   final migration. Whole-project/runtime copy cost remains unmeasured. This
   evidence does not authorize retirement of existing agent assets.
 
+### Rust formatter pause checkpoint
+
+- Observed on 2026-09-09 in the same macOS arm64 worktree/ref, producing client
+  Codex: code baseline `412f80d`, clean before this TODO update. The user
+  requested a pause at a Green boundary. No HOME apply or remote mutation occurred.
+- Observed: `38d4b2f` copies native rustfmt and its adjacent toolchain `lib`
+  tree into a private runtime. The actual installed 1.98.1 formatter first
+  aborted because Seatbelt denied its rustc driver library, then formatted
+  successfully with copied libraries. The current library copy is about 376 MB
+  on this host; a cold native formatter test took about 4 seconds including
+  setup/copy. This is correctness evidence, not a large-project performance gate.
+- Observed: `b4253e0` selects the nearest copied `.rustfmt.toml`/`rustfmt.toml`.
+  A nested config overrides ancestor indentation and enables Rust 2024 parsing.
+  `bba1b2a` verifies unchanged repeated output, invalid source preservation, and
+  unchanged config bytes. CI supplies the actual native formatter path.
+- Observed: `abd2837` adds trusted `readLiterals` to staged execution/Seatbelt.
+  Exact directory reads permit listing but not child-file content or original
+  writes; exact absent config paths return ENOENT. Real host socket probes
+  still fail even when their containing directory is explicitly listable.
+  The added permission is nonrecursive and remains behind trusted callers.
+- Observed: `412f80d` resolves rustup shims inside a separate staged process,
+  preserving the caller cwd for directory override semantics. It grants only
+  exact config/executable paths and nonrecursive discovery directories, disables
+  auto-installation, and retains the default-deny network/write boundary.
+  Returned stdout must be one absolute path resolving to a pre-enumerated
+  installed executable. The selected native runtime is then copied for formatting.
+  Registered toolchain symlinks are supported as explicit installed runtime inputs.
+- Observed: the synthetic registered-toolchain test uses a private RUSTUP_HOME,
+  retains a different unavailable override on the nested target directory, and
+  confirms caller cwd selection plus unchanged settings. A review identified
+  the cwd mismatch; its regression failed with the missing nested toolchain
+  before the correction and passed afterward. No host-side rustup subprocess
+  was introduced into production resolution.
+- Observed: the final native/package/format/Seatbelt/staged-process suite passed
+  **29 tests, 1 expected Darwin platform skip, 0 failures**. The earlier suite
+  including staging passed 32 tests with one expected skip before shim integration.
+  Repository validation passed after resolver/CI integration and before the
+  final cwd-only correction. All code increments passed `git diff --check`.
+  Fixture environment: `PI_RUSTUP_BIN=~/.cargo/bin/rustup`,
+  `PI_RUSTFMT_BIN=~/.rustup/toolchains/1.98.1-aarch64-apple-darwin/bin/rustfmt`,
+  plus the preceding Ruff/npm fixture paths. Shell commands must expand these
+  paths explicitly rather than pass a literal tilde in an environment value.
+- Incomplete: rust-toolchain/plain TOML selection, environment and caller-directory
+  override precedence, missing selected toolchains, hostile resolver stdout,
+  resolver cancellation, Cargo edition inference, external config references,
+  and nonstandard runtime layouts need further targeted verification/implementation.
+  The resolver does not forward `RUSTUP_OVERRIDE_UNIX_FALLBACK_SETTINGS`.
+  Custom path toolchains outside the enumerated installed set remain unsupported.
+  Keep formatter unexposed and do not mark the broad Rust compatibility gate complete.
+- Next action after resumption: revalidate this worktree, then complete the Rust
+  selection/failure test list before exposing formatter through the managed broker.
+  Linux containment, generic shell output synchronization, LSP recovery/auxiliaries,
+  authenticated probes, and final migration remain active requirements.
+
 ## Resume on macOS
 
 1. Verify the authorized remote, current worktree, branch, commits, dirty state,
