@@ -396,6 +396,46 @@ capability. Do not treat the SBPL generator as a command allowlist.
   Linux containment, generic shell output synchronization, LSP recovery/auxiliaries,
   authenticated probes, and final migration remain active requirements.
 
+### Rust selection and process environment checkpoint
+
+- Observed on 2026-09-09 in the same macOS arm64 worktree/ref, producing client
+  Codex: code baseline `ba85f39`, clean before this TODO update. No HOME apply
+  or remote mutation occurred.
+- Observed: `daee621` verifies actual rustup selection for plain and TOML
+  toolchain files, explicit environment selection, caller-directory override
+  precedence, and a missing selected toolchain. Failures preserve source and
+  settings; successful selection uses the private native runtime.
+- Observed: `922543a` maps resolver stdout directly to captured installed paths
+  and their canonical aliases. Unregistered, missing, relative, empty, and
+  multiline output produces `FORMATTER_MISSING` without resolving arbitrary
+  returned paths. Both macOS CI jobs now run the resolver tests.
+- Observed: `b93e2c9` verifies cancellation after a resolver readiness marker,
+  stage removal, unchanged original source, and a usable original lease. The
+  fixture uses one process via `exec /bin/sleep`. An exploratory multi-process
+  fixture once quarantined on unconfirmed descendant termination; subsequent
+  repetitions passed, but general descendant cancellation is not proven by
+  the single-process regression. Do not relax quarantine on uncertain exit.
+- Observed: a synthetic parent-only environment variable reached the staged
+  child despite the sandbox environment allowlist. `ba85f39` fixes the merge
+  in Ownership supervision by explicitly disabling inheritance for staged
+  execution. Direct Ownership callers retain default environment overlays.
+  The regression first failed on the synthetic value and then passed with
+  real Seatbelt. No actual credential values were read. Both macOS CI jobs
+  include staged-process tests so this boundary is checked on Darwin.
+- Observed after the environment fix: ownership, staged-process, rustup, and
+  Seatbelt tests passed **25 tests, 1 expected Darwin platform skip, 0 failures**.
+  Actual native/package/formatter tests passed **24 tests, 0 skips, 0 failures**
+  using the preceding Rust, Ruff, and npm fixtures. Repository validation and
+  `git diff --check` passed. All four code increments are locally signed.
+- Remaining: Cargo edition inference, external config references, additional
+  package-manager/runtime layouts, and the unsupported rustup settings noted
+  above. Keep formatter unexposed until its compatibility gates pass. Linux
+  confinement, shell/helper output synchronization, LSP auxiliaries/recovery,
+  authenticated probes, and final migration remain incomplete.
+- Next action: implement and verify Cargo manifest edition selection against
+  copied inputs, including workspace inheritance and explicit formatter-config
+  precedence, before advancing the remaining formatter compatibility gates.
+
 ## Resume on macOS
 
 1. Verify the authorized remote, current worktree, branch, commits, dirty state,
