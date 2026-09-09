@@ -4,7 +4,15 @@ import { dirname, isAbsolute, join, relative, sep } from 'node:path';
 
 const require = createRequire(import.meta.url);
 
+function validateEdition(edition) {
+  if (!['2015', '2018', '2021', '2024'].includes(edition)) {
+    throw new Error('Cargo edition must be 2015, 2018, 2021, or 2024');
+  }
+  return edition;
+}
+
 export async function cargoEdition(workspace, filePath) {
+  let inherited = false;
   for (let directory = dirname(filePath); ; directory = dirname(directory)) {
     const distance = relative(workspace, directory);
     if (isAbsolute(distance) || distance === '..' || distance.startsWith(`..${sep}`)) break;
@@ -19,15 +27,20 @@ export async function cargoEdition(workspace, filePath) {
       if (!root || !isAbsolute(root)) throw new Error('PI_PACKAGE_ROOT must be an absolute path');
       const { parse } = require(join(root, 'node_modules', 'smol-toml'));
       const manifest = parse(text);
-      if (manifest.package) {
+      if (!inherited && manifest.package) {
         const edition = manifest.package.edition ?? '2015';
-        if (!['2015', '2018', '2021', '2024'].includes(edition)) {
-          throw new Error('Cargo package edition must be 2015, 2018, 2021, or 2024');
+        if (edition?.workspace !== true) return validateEdition(edition);
+        if (manifest.package.workspace !== undefined) {
+          throw new Error('Explicit Cargo workspace paths are unsupported');
         }
-        return edition;
+        inherited = true;
+      }
+      if (inherited && manifest.workspace) {
+        return validateEdition(manifest.workspace.package?.edition);
       }
     }
     if (directory === workspace) break;
   }
+  if (inherited) throw new Error('Cargo workspace edition is unavailable inside the staged project');
   return undefined;
 }
