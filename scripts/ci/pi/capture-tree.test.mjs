@@ -10,6 +10,20 @@ import { test } from 'node:test';
 const execute = promisify(execFile);
 const helper = fileURLToPath(new URL('../../../dot_pi/agent/runtime/capture-tree.py', import.meta.url));
 
+test('tree capture limits metadata independently of file bytes and entry count', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pi-capture-metadata-'));
+  try {
+    await symlink('a'.repeat(100), join(root, 'link'));
+    await assert.rejects(execute('python3', ['-I', helper, root, '0', '1', '64']), error => {
+      assert.equal(error.stdout, '');
+      assert.match(error.stderr, /capture metadata limit exceeded/);
+      return true;
+    });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('tree capture bounds total entries across directories even when files contain no bytes', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pi-capture-entries-'));
   try {

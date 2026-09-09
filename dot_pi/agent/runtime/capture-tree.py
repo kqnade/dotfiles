@@ -5,14 +5,25 @@ import stat
 import sys
 
 
-def capture_tree(root, max_bytes=64 * 1024 * 1024, max_entries=100_000):
+def capture_tree(root, max_bytes=64 * 1024 * 1024, max_entries=100_000, max_metadata_bytes=8 * 1024 * 1024):
     if not isinstance(max_bytes, int) or max_bytes < 0:
         raise ValueError("capture byte limit must be a nonnegative integer")
     if not isinstance(max_entries, int) or max_entries < 0:
         raise ValueError("capture entry limit must be a nonnegative integer")
+    if not isinstance(max_metadata_bytes, int) or max_metadata_bytes < 0:
+        raise ValueError("capture metadata limit must be a nonnegative integer")
     records = []
     remaining = max_bytes
     remaining_entries = max_entries
+    remaining_metadata = max_metadata_bytes
+
+    def append_record(record):
+        nonlocal remaining_metadata
+        metadata = {key: value for key, value in record.items() if key != "content"}
+        remaining_metadata -= len(json.dumps(metadata).encode("ascii"))
+        if remaining_metadata < 0:
+            raise ValueError("capture metadata limit exceeded")
+        records.append(record)
 
     def walk(directory_fd, prefix):
         nonlocal remaining, remaining_entries
@@ -33,7 +44,7 @@ def capture_tree(root, max_bytes=64 * 1024 * 1024, max_entries=100_000):
                 )
                 try:
                     info = os.fstat(child_fd)
-                    records.append({"path": path, "type": "directory", "mode": stat.S_IMODE(info.st_mode)})
+                    append_record({"path": path, "type": "directory", "mode": stat.S_IMODE(info.st_mode)})
                     walk(child_fd, path)
                 finally:
                     os.close(child_fd)
@@ -52,12 +63,12 @@ def capture_tree(root, max_bytes=64 * 1024 * 1024, max_entries=100_000):
                         raise ValueError("capture byte limit exceeded")
                     remaining -= len(data)
                     content = base64.b64encode(data).decode("ascii")
-                    records.append({"path": path, "type": "file", "mode": stat.S_IMODE(info.st_mode), "content": content})
+                    append_record({"path": path, "type": "file", "mode": stat.S_IMODE(info.st_mode), "content": content})
                 finally:
                     os.close(file_fd)
             elif stat.S_ISLNK(info.st_mode):
                 target = os.readlink(name, dir_fd=directory_fd)
-                records.append({"path": path, "type": "symlink", "target": target})
+                append_record({"path": path, "type": "symlink", "target": target})
             else:
                 raise ValueError(f"unsupported capture entry: {path}")
 
@@ -73,4 +84,6 @@ if __name__ == "__main__":
     options = {"max_bytes": int(sys.argv[2])} if len(sys.argv) > 2 else {}
     if len(sys.argv) > 3:
         options["max_entries"] = int(sys.argv[3])
+    if len(sys.argv) > 4:
+        options["max_metadata_bytes"] = int(sys.argv[4])
     json.dump(capture_tree(sys.argv[1], **options), sys.stdout)
