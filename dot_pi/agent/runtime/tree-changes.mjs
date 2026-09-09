@@ -44,6 +44,12 @@ function indexTree(records) {
     }
     tree.set(record.path, record);
   }
+  for (const path of tree.keys()) {
+    const slash = path.lastIndexOf('/');
+    if (slash !== -1 && tree.get(path.slice(0, slash))?.type !== 'directory') {
+      throw invalidTree('captured tree entry must have a directory parent');
+    }
+  }
   return tree;
 }
 

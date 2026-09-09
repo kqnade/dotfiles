@@ -2,6 +2,20 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { compareCapturedTrees } from '../../../dot_pi/agent/runtime/tree-changes.mjs';
 
+test('tree comparison rejects children whose recorded parent is absent or is not a directory', () => {
+  const child = { path: 'parent/child', type: 'file', mode: 0o600, content: '' };
+  for (const records of [
+    [child],
+    [{ path: 'parent', type: 'file', mode: 0o600, content: '' }, child],
+    [{ path: 'parent', type: 'symlink', target: 'other' }, child],
+  ]) {
+    assert.throws(() => compareCapturedTrees(records, []), { code: 'INVALID_CAPTURED_TREE' });
+    assert.throws(() => compareCapturedTrees([], records), { code: 'INVALID_CAPTURED_TREE' });
+  }
+  const parent = { path: 'parent', type: 'directory', mode: 0o700 };
+  assert.deepEqual(compareCapturedTrees([child, parent], [parent, child]), []);
+});
+
 test('tree comparison rejects malformed snapshot records with one explicit validation error', () => {
   const file = { path: 'file', type: 'file', mode: 0o600, content: 'YQ==' };
   const invalid = [
