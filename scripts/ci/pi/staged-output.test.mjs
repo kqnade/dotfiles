@@ -11,6 +11,32 @@ const sandbox = process.platform === 'darwin' ? undefined : async ({ workspace, 
   command, args, cwd: workspace, env: sandboxEnvironment(workspace),
 });
 
+test('failed output capture preserves its error and cleans the stage without quarantining originals', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'pi-output-failure-'));
+  const failure = new Error('output cannot be validated');
+  let workspace;
+  try {
+    await writeFile(join(cwd, 'file.txt'), 'original');
+    const ownership = new Ownership({ cwd });
+    const lease = ownership.claim('worker', ['file.txt']);
+    await assert.rejects(runStagedProcess({
+      ownership, lease, cwd, files: ['file.txt'],
+      command: '/bin/sh', args: ['-c', 'printf modified > file.txt'],
+      capture: async area => {
+        workspace = area.workspace;
+        assert.equal(await readFile(join(workspace, 'file.txt'), 'utf8'), 'modified');
+        throw failure;
+      },
+    }, sandbox), error => error === failure);
+    await assert.rejects(access(workspace), { code: 'ENOENT' });
+    assert.equal(await readFile(join(cwd, 'file.txt'), 'utf8'), 'original');
+    await ownership.run(lease, async () => {});
+    await ownership.drain(lease);
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
 test('cancellation during output capture discards the result and cleans the stage', async () => {
   const cwd = await mkdtemp(join(tmpdir(), 'pi-output-abort-'));
   const controller = new AbortController();
