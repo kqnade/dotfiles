@@ -547,7 +547,7 @@ capability. Do not treat the SBPL generator as a command allowlist.
 ### Staged output capture checkpoint
 
 - Observed on 2026-09-09 in the same macOS arm64 worktree/ref, producing client
-  Codex: code baseline `92cd659`, clean before this TODO update. No HOME apply,
+  Codex: code baseline `533f27b`, clean before this TODO update. No HOME apply,
   package installation, authentication/history change, or remote mutation occurred.
 - Observed: `2420fde` adds a trusted internal asynchronous capture callback after
   command success and before staging cleanup. The original ownership lease stays
@@ -673,6 +673,30 @@ capability. Do not treat the SBPL generator as a command allowlist.
   capture/failures, and comparison tests passed 17 tests with no failures or skips.
   Repository validation passed after the wrapper implementation. The two additional
   failure regressions were then run with the focused suite. Whitespace checks passed.
+- Observed: `533f27b` exercises real macOS Seatbelt command execution, raw
+  capture, native validation, and cleanup of both temporary trees through the
+  original lease. A live supervised Python stand-in for the validation helper is
+  cancelled; its PID disappears, both trees are removed, and the original lease
+  can renew only after drain. A command cannot write a canary in the destination
+  validation directory, and its case-alias escape rejects on this host. Originals
+  remain unchanged. These are existing-behavior regressions, not observed Red fixes.
+  The staged validation/output and validated capture/failure suite passed 12 tests,
+  no failures or skips, with actual Seatbelt. Linux sandbox behavior remains untested.
+- Observed: a disposable macOS ctypes/fgetattrlist probe queried held directory fds
+  with ATTR_VOL_CAPABILITIES, ATTR_VOL_UUID, ATTR_VOL_FSTYPENAME, ATTR_VOL_FSSUBTYPE,
+  and ATTR_VOL_INFO. It returned APFS subtype 1, valid case-sensitive/preserving
+  capability bits, case-insensitive/preserving behavior, and a nonzero UUID. Parent
+  and new child profiles matched; the checkout reported the same volume UUID.
+  This is a local API probe, not a committed production destination selector.
+- Primary-source candidate contract: XNU exposes volume case capabilities and
+  identity through [volume attributes](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/sys/attr.h).
+  Linux exposes FS_CASEFOLD_FL and read-only FS_XFLAG_CASEFOLD in
+  [filesystem ioctls](https://github.com/torvalds/linux/blob/master/include/uapi/linux/fs.h).
+  Read native metadata for every relevant existing destination directory, including
+  nested mount/casefold overrides, and reproduce/verify lookup semantics in the
+  private reconstruction before creating its entries. A child beneath the destination
+  only inherits its immediate parent's defaults; it cannot prove mixed existing
+  subtree semantics. Exact platform/version support and fail-closed errors need tests.
 - Incomplete: the caller must select a private temporaryRoot with the actual
   destination directory's name-lookup semantics. Arbitrary tmpdir or st_dev equality
   alone does not prove this contract. Mutable stage resolution metadata is not a
@@ -682,7 +706,8 @@ capability. Do not treat the SBPL generator as a command allowlist.
   its schema and literal link graph. validateCapturedTree adds native checks under
   the explicit temporaryRoot contract. None authorizes original publication without
   lease scope, original preimages/modes, and tested publication/rollback semantics.
-  Helper cancellation and cleanup-failure integration remain to be covered directly.
+  Validation cleanup-failure integration and cancellation during reconstruction
+  remain to be covered directly; helper-process cancellation has the coverage above.
 - Incomplete: Python is not a pinned mise runtime. Integration fixtures use the
   explicitly supplied /usr/bin/python3; other helper tests use test-environment
   python3. Neither is a production discovery contract. Pin the managed interpreter
