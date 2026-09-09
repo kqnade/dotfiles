@@ -10,6 +10,21 @@ import { test } from 'node:test';
 const execute = promisify(execFile);
 const helper = fileURLToPath(new URL('../../../dot_pi/agent/runtime/capture-tree.py', import.meta.url));
 
+test('tree capture rejects aggregate file bytes over its limit without emitting a partial manifest', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pi-capture-limit-'));
+  try {
+    await writeFile(join(root, 'a'), 'ab');
+    await writeFile(join(root, 'b'), 'cd');
+    await assert.rejects(execute('python3', ['-I', helper, root, '3']), error => {
+      assert.equal(error.stdout, '');
+      assert.match(error.stderr, /capture byte limit exceeded/);
+      return true;
+    });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('tree capture records binary bytes, executable mode, and empty directories independently of later writes', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pi-capture-tree-'));
   try {

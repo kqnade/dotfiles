@@ -5,10 +5,14 @@ import stat
 import sys
 
 
-def capture_tree(root):
+def capture_tree(root, max_bytes=64 * 1024 * 1024):
+    if not isinstance(max_bytes, int) or max_bytes < 0:
+        raise ValueError("capture byte limit must be a nonnegative integer")
     records = []
+    remaining = max_bytes
 
     def walk(directory_fd, prefix):
+        nonlocal remaining
         with os.scandir(directory_fd) as entries:
             names = sorted(entry.name for entry in entries)
         for name in names:
@@ -35,7 +39,11 @@ def capture_tree(root):
                     if not stat.S_ISREG(info.st_mode):
                         raise ValueError(f"capture entry is not a regular file: {path}")
                     with os.fdopen(file_fd, "rb", closefd=False) as source:
-                        content = base64.b64encode(source.read()).decode("ascii")
+                        data = source.read(remaining + 1)
+                    if len(data) > remaining:
+                        raise ValueError("capture byte limit exceeded")
+                    remaining -= len(data)
+                    content = base64.b64encode(data).decode("ascii")
                     records.append({"path": path, "type": "file", "mode": stat.S_IMODE(info.st_mode), "content": content})
                 finally:
                     os.close(file_fd)
@@ -51,4 +59,5 @@ def capture_tree(root):
 
 
 if __name__ == "__main__":
-    json.dump(capture_tree(sys.argv[1]), sys.stdout)
+    options = {"max_bytes": int(sys.argv[2])} if len(sys.argv) > 2 else {}
+    json.dump(capture_tree(sys.argv[1], **options), sys.stdout)
