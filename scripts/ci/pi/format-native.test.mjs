@@ -107,6 +107,17 @@ test('installed rustfmt uses the package edition from copied Cargo.toml', {
     await formatFile({ ownership, lease, cwd, path: 'src/lib.rs' }, runner);
     assert.equal(await readFile(target, 'utf8'), 'pub async fn run() {\n  println!("hello");\n}\n');
     assert.equal(await readFile(join(cwd, 'rustfmt.toml'), 'utf8'), config);
+    const changedManifest = manifest.replace('2024', '2015');
+    await writeFile(target, 'pub async fn run(){println!("hello");}\n');
+    await formatFile({ ownership, lease, cwd, path: 'src/lib.rs' }, invocation => (runner ?? runStagedProcess)({
+      ...invocation,
+      prepare: async area => {
+        await writeFile(join(cwd, 'Cargo.toml'), changedManifest);
+        return invocation.prepare(area);
+      },
+    }));
+    assert.equal(await readFile(target, 'utf8'), 'pub async fn run() {\n  println!("hello");\n}\n');
+    assert.equal(await readFile(join(cwd, 'Cargo.toml'), 'utf8'), changedManifest);
     await writeFile(join(cwd, 'Cargo.toml'), '[package\n');
     await assert.rejects(formatFile({ ownership, lease, cwd, path: 'src/lib.rs' }, runner), /Invalid TOML document/u);
     assert.equal(await readFile(target, 'utf8'), 'pub async fn run() {\n  println!("hello");\n}\n');

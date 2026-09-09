@@ -66,6 +66,27 @@ test('Cargo defaults to 2015 unless the member opts into workspace inheritance',
   }
 });
 
+test('Cargo inheritance rejects unavailable or incomplete workspace editions', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'pi-cargo-incomplete-'));
+  try {
+    const member = join(root, 'member');
+    await mkdir(join(member, 'src'), { recursive: true });
+    await writeFile(join(member, 'Cargo.toml'), '[package]\nname = "member"\nedition.workspace = true\n');
+    for (const [name, manifest] of [
+      ['absent workspace', undefined],
+      ['missing workspace edition', '[workspace]\nmembers = ["member"]\n'],
+      ['invalid workspace edition', '[workspace.package]\nedition = "invalid"\n'],
+    ]) {
+      await t.test(name, async () => {
+        if (manifest !== undefined) await writeFile(join(root, 'Cargo.toml'), manifest);
+        await assert.rejects(cargoEdition(root, join(member, 'src', 'lib.rs')), /Cargo.*edition/u);
+      });
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('Cargo member inherits edition from its ancestor workspace', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pi-cargo-edition-'));
   try {
