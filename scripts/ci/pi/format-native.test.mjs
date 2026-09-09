@@ -33,6 +33,16 @@ test('installed Ruff uses ancestor ruff.toml for a nested Python file', {
     const result = await formatFile({ ownership, lease, cwd, path: 'src/app.py' }, runner);
     assert.equal(result.status, 'formatted');
     assert.equal(await readFile(target, 'utf8'), "message = 'hello'\n");
+    assert.equal((await formatFile({ ownership, lease, cwd, path: 'src/app.py' }, runner)).status, 'unchanged');
+
+    await writeFile(join(cwd, 'src', '.ruff.toml'), 'extend = "../ruff.toml"\n[format]\nquote-style = "double"\n');
+    await formatFile({ ownership, lease, cwd, path: 'src/app.py' }, runner);
+    assert.equal(await readFile(target, 'utf8'), 'message = "hello"\n');
+    assert.equal(await readFile(join(cwd, 'ruff.toml'), 'utf8'), '[format]\nquote-style = "single"\n');
+
+    await writeFile(target, 'def invalid(\n');
+    await assert.rejects(formatFile({ ownership, lease, cwd, path: 'src/app.py' }, runner), { code: 'PROCESS_FAILED' });
+    assert.equal(await readFile(target, 'utf8'), 'def invalid(\n');
     await ownership.drain(lease);
   } finally {
     process.env.PATH = originalPath;
