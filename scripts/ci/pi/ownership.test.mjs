@@ -39,7 +39,7 @@ test('a canonical scoped claim can perform an expected-hash atomic write', async
 });
 
 test('concurrent writes on one ownership serialize compare-and-swap publication', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'pi-ownership-write-serialization-'));
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'pi-ownership-write-serialization-')));
   try {
     const project = join(root, 'project');
     const target = join(project, 'note.js');
@@ -165,7 +165,7 @@ test('a create-only write rejects an existing target', async () => {
 });
 
 test('a create-only write rejects a target created before publication', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'pi-ownership-create-only-collision-'));
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'pi-ownership-create-only-collision-')));
   try {
     const project = join(root, 'project');
     const target = join(project, 'race.js');
