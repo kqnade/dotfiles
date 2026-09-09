@@ -750,6 +750,55 @@ capability. Do not treat the SBPL generator as a command allowlist.
   Linux confinement, LSP auxiliary containment/recovery, authenticated validation,
   and final migration. Keep existing agent assets until all gates pass.
 
+## Projected link validation checkpoint
+
+- Observed on 2026-09-09 in the macOS arm64 worktree
+  `/Users/kanato.momose/repos/github.com/kqnade/dotfiles@agent-pi-configure`,
+  branch `agent/pi-configure`, origin `git@github.com:kqnade/dotfiles`, producing
+  client Codex: code baseline `d4b3d20`. No HOME apply or remote mutation occurred.
+- Observed: `7e4c83f` checks native lookup profiles recursively against existing
+  destination directories, inheriting parent profiles for newly created directories.
+  `b759bfc` covers new directories, replacement of an original symlink without
+  following its target, and unsupported filesystem rejection. These metadata
+  checks do not prove a complete projected topology or publication authority.
+- Observed: `34d3d70` exposes native per-link status and traversal evidence;
+  `96bd29f` compares complete private baseline and projected trees. New or changed
+  escaping resolutions reject, including retained links affected by an intermediate
+  link change. An existing external link is permitted only when its path, raw
+  target, status, and traversal evidence remain identical. Contained and dangling
+  final resolutions are accepted. Cycles and other inspection errors fail closed.
+- Observed: `d4b3d20` covers preservation of unrelated external links, added and
+  changed escaping targets, dangling-to-contained and dangling-to-escaping changes,
+  and removal or regular-file replacement of an external link. The combined
+  projected-links, projected-links-regressions, link-resolution-evidence, and
+  native-tree-validation suite passed 12 tests with no failures or skips on this
+  baseline. `git diff --check` passed. Repository validation passed after the native
+  evidence implementation; it was not repeated after the additive projected policy.
+- Counterexample established with disposable fixtures: a fragment containing only
+  `escape -> dir/up/../outside` appears dangling when retained `dir/up -> ..` is
+  absent, but escapes in the destination. A forward-only closure also fails:
+  changing `dir/up` from `.` to `..` can make retained `a -> dir/up/../file` escape,
+  although the changed link itself remains internal. Validation therefore needs
+  the complete destination topology with staged changes applied, including reverse
+  dependents. A raw staged fragment is insufficient.
+- Observed in a disposable Linux aarch64 Podman VM probe: the same projected-link
+  API rejected the reverse-dependent escape, accepted an ordinary file change
+  with an unchanged external link, and preserved baseline bytes and the outside
+  sentinel. Source was streamed to isolated Python; no host repository or HOME
+  mount was added. This is API evidence, not Linux x64 sandbox coverage.
+- Incomplete: the new comparison is an internal Python API; the CLI and
+  validateCapturedTree still use strict single-tree validation. No production
+  caller assembles or authorizes the complete projected topology. Separate schema
+  validation from blanket external-link rejection before reconstructing a baseline
+  that includes unchanged external links. Add bounded descriptor-relative topology
+  capture with regular-file placeholders, then apply additions, deletions, and type
+  changes without retaining stale descendants of replaced parents.
+- Next integration must prove destination lookup profiles for both private trees,
+  preserve original preimages and modes separately from normalized staging modes,
+  enforce lease scope and native identities, and test publication/rollback. Explicit
+  traversal/report budgets, Linux profiles, and empty/new-only projects remain open.
+  All remaining adoption gates in this active item still apply.
+
 ## Resume on macOS
 
 1. Verify the authorized remote, current worktree, branch, commits, dirty state,
