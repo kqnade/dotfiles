@@ -14,6 +14,7 @@ test('Darwin Seatbelt confines staged writes to the workspace', {
   const cwd = join(root, 'repo');
   const temporaryRoot = join(root, 'temporary');
   const originalPath = join(cwd, 'source.txt');
+  const unreadablePath = join(cwd, 'ungranted.txt');
   const createdPath = join(cwd, 'created.txt');
   const renamedPath = join(cwd, 'renamed.txt');
   let ownership;
@@ -22,6 +23,7 @@ test('Darwin Seatbelt confines staged writes to the workspace', {
     await mkdir(cwd, { mode: 0o700 });
     await mkdir(temporaryRoot, { mode: 0o700 });
     await writeFile(originalPath, 'original\n', { mode: 0o600 });
+    await writeFile(unreadablePath, 'private\n', { mode: 0o600 });
     const before = await lstat(originalPath);
 
     ownership = new Ownership({ cwd });
@@ -38,6 +40,7 @@ test('Darwin Seatbelt confines staged writes to the workspace', {
         'printf "%s\\n" staged > source.txt',
         '/bin/cat source.txt',
         '/bin/cat "$1" > /dev/null',
+        'if /bin/cat "$4" > /dev/null; then printf "%s\\n" ungranted-read-succeeded; else printf "%s\\n" ungranted-read-denied; fi',
         'if printf append >> "$1"; then printf "%s\\n" append-succeeded; else printf "%s\\n" append-denied; fi',
         'if printf created > "$2"; then printf "%s\\n" create-succeeded; else printf "%s\\n" create-denied; fi',
         'if /bin/mv "$1" "$3"; then printf "%s\\n" rename-succeeded; else printf "%s\\n" rename-denied; fi',
@@ -47,7 +50,7 @@ test('Darwin Seatbelt confines staged writes to the workspace', {
         'if /bin/ln -s "$1" source.txt; then printf "%s\\n" symlink-created; else printf "%s\\n" symlink-create-failed; fi',
         'if printf linked > source.txt; then printf "%s\\n" symlink-write-succeeded; else printf "%s\\n" symlink-write-denied; fi',
         'printf "%s\\n" SEATBELT_OK',
-      ].join('\n'), 'seatbelt-runtime', originalPath, createdPath, renamedPath],
+      ].join('\n'), 'seatbelt-runtime', originalPath, createdPath, renamedPath, unreadablePath],
       readPaths: [originalPath],
       timeoutMs: 5_000,
     });
@@ -55,6 +58,7 @@ test('Darwin Seatbelt confines staged writes to the workspace', {
     assert.equal(result.code, 0);
     assert.equal(result.stdout, [
       'staged',
+      'ungranted-read-denied',
       'append-denied',
       'create-denied',
       'rename-denied',

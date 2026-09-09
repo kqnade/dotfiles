@@ -20,6 +20,8 @@ export async function createSeatbeltProfile({ workspace, readPaths = [] } = {}) 
   }
 
   const reads = new Set([
+    '(literal "/")',
+    '(literal "/private/var/select/sh")',
     '(subpath "/bin")',
     '(subpath "/sbin")',
     '(subpath "/usr/bin")',
@@ -48,6 +50,7 @@ export async function createSeatbeltProfile({ workspace, readPaths = [] } = {}) 
     '(allow process-info* (target same-sandbox))',
     '(allow signal (target same-sandbox))',
     '(allow sysctl-read)',
+    '(allow file-read-metadata (literal "/var") (literal "/System/Cryptexes/OS"))',
     `(allow file-read* ${[...reads].join(' ')})`,
     `(allow file-write* (subpath ${quotedWorkspace}))`,
     '(allow file-write-data (literal "/dev/null"))',
