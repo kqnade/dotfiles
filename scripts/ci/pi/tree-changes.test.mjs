@@ -2,6 +2,27 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { compareCapturedTrees } from '../../../dot_pi/agent/runtime/tree-changes.mjs';
 
+test('tree comparison rejects malformed snapshot records with one explicit validation error', () => {
+  const file = { path: 'file', type: 'file', mode: 0o600, content: 'YQ==' };
+  const invalid = [
+    null, {}, 'file', [null], [[]], [{}],
+    [{ ...file, type: 'socket' }],
+    [{ ...file, type: ['file'] }],
+    [{ ...file, mode: -1 }], [{ ...file, mode: 0o10000 }], [{ ...file, mode: 1.5 }],
+    [{ ...file, mode: '600' }],
+    [{ ...file, content: null }], [{ ...file, content: 'YQ' }], [{ ...file, content: 'YR==' }],
+    [{ ...file, extra: { mutable: true } }],
+    [{ path: 'dir', type: 'directory' }],
+    [{ path: 'dir', type: 'directory', mode: 0o700, content: '' }],
+    ...['', null, 'target\0tail', '\ud800'].map(target => [{ path: 'link', type: 'symlink', target }]),
+    [{ path: 'link', type: 'symlink', target: 'file', mode: 0o777 }],
+  ];
+  for (const records of invalid) {
+    assert.throws(() => compareCapturedTrees(records, []), { code: 'INVALID_CAPTURED_TREE' });
+    assert.throws(() => compareCapturedTrees([], records), { code: 'INVALID_CAPTURED_TREE' });
+  }
+});
+
 test('tree comparison requires canonical relative UTF-8 paths in both snapshots', () => {
   for (const path of ['', '/outside', '../file', 'dir/../file', './file', 'dir//file', 'dir/', 'file\0tail', '\ud800', null, 7]) {
     const record = { path, type: 'file', mode: 0o600, content: '' };
