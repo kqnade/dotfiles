@@ -5,7 +5,37 @@ import { join, resolve } from 'node:path';
 import { test } from 'node:test';
 
 import { Ownership } from '../../../dot_pi/agent/runtime/ownership.mjs';
-import { formatFile } from '../../../dot_pi/agent/runtime/format.mjs';
+import { formatFile as managedFormatFile } from '../../../dot_pi/agent/runtime/format.mjs';
+import { runStagedProcess } from '../../../dot_pi/agent/runtime/staged-process.mjs';
+import { sandboxEnvironment } from '../../../dot_pi/agent/runtime/sandbox-env.mjs';
+
+// The portable fixture substitutes only the unavailable OS boundary.
+const runStaged = invocation => runStagedProcess(invocation, process.platform === 'darwin' ? undefined :
+  async ({ workspace, command, args }) => ({
+    command, args, cwd: workspace, env: sandboxEnvironment(workspace),
+  }));
+const formatFile = options => managedFormatFile(options, runStaged);
+
+test('Darwin formats and publishes a Go file with the installed gofmt', {
+  skip: process.platform === 'darwin' ? false : 'requires macOS Seatbelt',
+}, async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pi-format-gofmt-'));
+  try {
+    const target = join(root, 'main.go');
+    await writeFile(target, 'package main\nfunc main(){println("hello")}\n');
+    const ownership = new Ownership({ cwd: root });
+    const lease = ownership.claim('formatter', ['main.go']);
+    const result = await managedFormatFile({ ownership, lease, cwd: root, path: 'main.go' });
+    assert.equal(result.status, 'formatted');
+    assert.equal(await readFile(target, 'utf8'), 'package main\n\nfunc main() { println("hello") }\n');
+    const repeated = await managedFormatFile({ ownership, lease, cwd: root, path: 'main.go' });
+    assert.equal(repeated.status, 'unchanged');
+    await writeFile(target, 'package main\nfunc invalid(\n');
+    await assert.rejects(managedFormatFile({ ownership, lease, cwd: root, path: 'main.go' }), { code: 'PROCESS_FAILED' });
+    assert.equal(await readFile(target, 'utf8'), 'package main\nfunc invalid(\n');
+    await ownership.drain(lease);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
 
 const writeFormatter = async (root, name, script) => {
   const bin = join(root, 'node_modules', '.bin');
@@ -13,6 +43,45 @@ const writeFormatter = async (root, name, script) => {
   const command = join(bin, name);
   await writeFile(command, `#!/usr/bin/env node\n${script}\n`, { mode: 0o755 });
 };
+
+test('formatter publication preserves an external edit after staged execution', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pi-format-conflict-'));
+  try {
+    const target = join(root, 'app.js');
+    await writeFile(target, 'const x=1;');
+    await writeFile(join(root, 'biome.json'), '{}');
+    await writeFormatter(root, 'biome', `process.stdin.resume(); process.stdin.on('end', () => process.stdout.write('const x = 1;\\n'));`);
+    const ownership = new Ownership({ cwd: root });
+    const lease = ownership.claim('formatter', ['app.js']);
+    await assert.rejects(managedFormatFile({ ownership, lease, cwd: root, path: 'app.js' }, async invocation => {
+      const result = await runStaged(invocation);
+      await writeFile(target, 'external edit');
+      return result;
+    }), { code: 'PREIMAGE_MISMATCH' });
+    assert.equal(await readFile(target, 'utf8'), 'external edit');
+    await ownership.drain(lease);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('formatter cancellation after staged execution prevents publication', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pi-format-cancel-'));
+  const controller = new AbortController();
+  try {
+    const target = join(root, 'app.js');
+    await writeFile(target, 'const x=1;');
+    await writeFile(join(root, 'biome.json'), '{}');
+    await writeFormatter(root, 'biome', `process.stdin.resume(); process.stdin.on('end', () => process.stdout.write('const x = 1;\\n'));`);
+    const ownership = new Ownership({ cwd: root });
+    const lease = ownership.claim('formatter', ['app.js']);
+    await assert.rejects(managedFormatFile({ ownership, lease, cwd: root, path: 'app.js', signal: controller.signal }, async invocation => {
+      const result = await runStaged(invocation);
+      controller.abort();
+      return result;
+    }), { code: 'ABORT_ERR' });
+    assert.equal(await readFile(target, 'utf8'), 'const x=1;');
+    await ownership.drain(lease);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
 
 test('format file through stdout formatter, keep unchanged targets', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pi-format-success-'));
@@ -66,7 +135,12 @@ test('format nested file with file-level lease using ancestor formatter config',
       const args = process.argv.slice(2);
       const expected = ${JSON.stringify(canonicalTarget)};
       const stdinPathIndex = args.indexOf('--stdin-file-path');
-      if (stdinPathIndex === -1 || args[stdinPathIndex + 1] !== expected) {
+      const stagedPath = args[stdinPathIndex + 1];
+      const fs = require('node:fs');
+      const path = require('node:path');
+      if (stdinPathIndex === -1 || stagedPath === expected
+        || stagedPath !== path.join(process.cwd(), 'project/src/app.js')
+        || fs.readFileSync(path.join(process.cwd(), 'project/biome.json'), 'utf8') !== '{"files": {"./": {"formatter": {"enabled": true}}}}') {
         process.exit(1);
       }
       const chunks = [];

@@ -1,4 +1,4 @@
-import { access } from 'node:fs/promises';
+import { access, open } from 'node:fs/promises';
 import {
   dirname,
   delimiter,
@@ -11,7 +11,49 @@ import {
 } from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { realpath } from 'node:fs/promises';
-import { sha256 as ownershipSha256 } from './ownership.mjs';
+import { runStagedProcess } from './staged-process.mjs';
+
+const contextNames = [
+  '.editorconfig', 'package.json', 'biome.json', 'biome.jsonc',
+  '.prettierrc', '.prettierrc.json', '.prettierrc.yaml', '.prettierrc.yml',
+  '.prettierrc.toml', '.prettierrc.js', '.prettierrc.cjs', '.prettierrc.mjs',
+  'prettier.config.js', 'prettier.config.cjs', 'prettier.config.mjs',
+  'prettier.config.json', 'prettier.config.toml',
+  '.ruff.toml', 'ruff.toml', 'pyproject.toml', 'rustfmt.toml', '.rustfmt.toml',
+];
+
+async function contextFiles(scope, target) {
+  const files = [];
+  for (let directory = dirname(target); isWithin(scope, directory); directory = dirname(directory)) {
+    for (const name of contextNames) {
+      const file = join(directory, name);
+      if (file === target) continue;
+      try {
+        await access(file);
+        files.push(relative(scope, file));
+      } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+      }
+    }
+    if (directory === scope) break;
+  }
+  return files;
+}
+
+async function formatterInvocation(command, args) {
+  const executable = await realpath(command);
+  const handle = await open(executable, 'r');
+  let header;
+  try {
+    const buffer = Buffer.alloc(256);
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+    header = buffer.subarray(0, bytesRead).toString('utf8').split('\n')[0];
+  } finally { await handle.close(); }
+  if (/^#!\s*(?:\/usr\/bin\/env\s+node|\/\S*\/node)\s*$/u.test(header)) {
+    return { command: process.execPath, args: [executable, ...args], readPaths: [executable] };
+  }
+  return { command: executable, args };
+}
 
 const isWithin = (root, candidate) => {
   const distance = relative(root, candidate);
@@ -232,7 +274,7 @@ const selectFormatter = async (scopeRoot, filePath) => {
   return { skipped: true, reason: 'formatter_not_configured_for_file_type' };
 };
 
-export async function formatFile({ ownership, lease, path: targetPath, cwd, signal } = {}) {
+export async function formatFile({ ownership, lease, path: targetPath, cwd, signal } = {}, runStaged = runStagedProcess) {
   assertType(targetPath, 'path');
   if (!ownership || typeof ownership.run !== 'function') {
     throw new TypeError('ownership must be provided');
@@ -252,21 +294,30 @@ export async function formatFile({ ownership, lease, path: targetPath, cwd, sign
       throw makeError(`target is outside ownership scope: ${targetPath}`, 'OUT_OF_SCOPE');
     }
 
-    const original = await readFile(lexical, 'utf8');
     const formatter = await selectFormatter(scope, canonical);
     if (formatter.skipped) {
       return { status: 'skipped', path: targetPath, reason: formatter.reason };
     }
 
-    const result = await ownership.runProcess(lease, {
-      command: formatter.command,
-      args: formatter.args,
+    const result = await runStaged({
+      ownership,
+      lease,
       cwd: scope,
-      stdin: original,
+      files: [relative(scope, canonical)],
+      readFiles: await contextFiles(scope, canonical),
       signal,
+      prepare: async area => {
+        const target = area.files.find(file => file.originalPath === canonical);
+        const args = formatter.args.map(arg => arg === canonical ? target.stagedPath : arg);
+        return {
+          ...await formatterInvocation(formatter.command, args),
+          stdin: await readFile(target.stagedPath, 'utf8'),
+        };
+      },
     });
 
-    const expectedHash = ownershipSha256(original);
+    if (signal?.aborted) throw makeError('formatter was aborted before publication', 'ABORT_ERR');
+    const expectedHash = result.files.find(file => file.originalPath === canonical).hash;
     const { hash } = await ownership.write(lease, targetPath, result.stdout, { expectedHash });
     return {
       status: hash === expectedHash ? 'unchanged' : 'formatted',

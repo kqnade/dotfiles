@@ -1,5 +1,5 @@
 import { realpath, stat } from 'node:fs/promises';
-import { isAbsolute, parse } from 'node:path';
+import { dirname, isAbsolute, parse } from 'node:path';
 
 const literal = path => {
   if (typeof path !== 'string' || !isAbsolute(path) || /[\x00-\x1f\x7f"\\]/u.test(path)) {
@@ -33,6 +33,13 @@ export async function createSeatbeltProfile({ workspace, readPaths = [] } = {}) 
     '(literal "/dev/urandom")',
     `(subpath ${quotedWorkspace})`,
   ]);
+  const metadata = new Set(['(literal "/var")', '(literal "/System/Cryptexes/OS")']);
+  const addAncestors = path => {
+    for (let parent = dirname(path); parent !== dirname(parent); parent = dirname(parent)) {
+      metadata.add(`(literal ${literal(parent)})`);
+    }
+  };
+  addAncestors(canonical);
   for (const path of readPaths) {
     literal(path);
     const resolved = await realpath(path);
@@ -40,6 +47,7 @@ export async function createSeatbeltProfile({ workspace, readPaths = [] } = {}) 
     const entry = await stat(resolved);
     if (!entry.isDirectory() && !entry.isFile()) throw new Error('Seatbelt read paths must be files or directories');
     reads.add(`(${entry.isDirectory() ? 'subpath' : 'literal'} ${quoted})`);
+    addAncestors(resolved);
   }
 
   return [
@@ -50,7 +58,7 @@ export async function createSeatbeltProfile({ workspace, readPaths = [] } = {}) 
     '(allow process-info* (target same-sandbox))',
     '(allow signal (target same-sandbox))',
     '(allow sysctl-read)',
-    '(allow file-read-metadata (literal "/var") (literal "/System/Cryptexes/OS"))',
+    `(allow file-read-metadata ${[...metadata].join(' ')})`,
     `(allow file-read* ${[...reads].join(' ')})`,
     `(allow file-write* (subpath ${quotedWorkspace}))`,
     '(allow file-write-data (literal "/dev/null"))',

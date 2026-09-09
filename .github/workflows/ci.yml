@@ -252,7 +252,8 @@ jobs:
             scripts/ci/pi-runtime-extension.test.mjs \
             scripts/ci/pi-runtime-lsp.test.mjs \
             scripts/ci/pi-lsp-diagnostics.test.mjs \
-            scripts/ci/pi/seatbelt-runtime.test.mjs
+            scripts/ci/pi/seatbelt-runtime.test.mjs \
+            scripts/ci/pi/format.test.mjs
 
   intel-fallback:
     name: Intel Mac public interfaces and source fallbacks
@@ -335,4 +336,5 @@ jobs:
             scripts/ci/pi-runtime-extension.test.mjs \
             scripts/ci/pi-runtime-lsp.test.mjs \
             scripts/ci/pi-lsp-diagnostics.test.mjs \
-            scripts/ci/pi/seatbelt-runtime.test.mjs
+            scripts/ci/pi/seatbelt-runtime.test.mjs \
+            scripts/ci/pi/format.test.mjs
