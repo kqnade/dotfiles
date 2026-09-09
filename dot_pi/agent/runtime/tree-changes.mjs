@@ -3,6 +3,11 @@ import { isDeepStrictEqual } from 'node:util';
 function indexTree(records) {
   const tree = new Map();
   for (const record of records) {
+    const path = record.path;
+    if (typeof path !== 'string' || !path.isWellFormed() || path.includes('\0')
+      || path.split('/').some(part => part === '' || part === '.' || part === '..')) {
+      throw Object.assign(new Error('captured tree path must be canonical and relative'), { code: 'INVALID_CAPTURED_TREE' });
+    }
     if (tree.has(record.path)) {
       throw Object.assign(new Error('captured tree contains a duplicate path'), { code: 'INVALID_CAPTURED_TREE' });
     }

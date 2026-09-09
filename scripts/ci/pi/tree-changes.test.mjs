@@ -2,6 +2,14 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { compareCapturedTrees } from '../../../dot_pi/agent/runtime/tree-changes.mjs';
 
+test('tree comparison requires canonical relative UTF-8 paths in both snapshots', () => {
+  for (const path of ['', '/outside', '../file', 'dir/../file', './file', 'dir//file', 'dir/', 'file\0tail', '\ud800', null, 7]) {
+    const record = { path, type: 'file', mode: 0o600, content: '' };
+    assert.throws(() => compareCapturedTrees([record], []), { code: 'INVALID_CAPTURED_TREE' });
+    assert.throws(() => compareCapturedTrees([], [record]), { code: 'INVALID_CAPTURED_TREE' });
+  }
+});
+
 test('tree comparison rejects duplicate paths in either snapshot instead of hiding changes', () => {
   const original = { path: 'file', type: 'file', mode: 0o600, content: 'YQ==' };
   const changed = { ...original, content: 'Yg==' };
