@@ -50,7 +50,34 @@ function indexTree(records) {
       throw invalidTree('captured tree entry must have a directory parent');
     }
   }
+  validateLiteralLinkTargets(tree);
   return tree;
+}
+
+function validateLiteralLinkTargets(tree) {
+  for (const record of tree.values()) {
+    if (record.type !== 'symlink') continue;
+    const resolved = record.path.split('/').slice(0, -1);
+    const pending = record.target.split('/').reverse();
+    let followed = 1;
+    if (record.target.startsWith('/')) throw invalidTree('captured link target escapes the tree');
+    while (pending.length > 0) {
+      const part = pending.pop();
+      if (part === '' || part === '.') continue;
+      if (part === '..') {
+        if (resolved.length === 0) throw invalidTree('captured link target escapes the tree');
+        resolved.pop();
+        continue;
+      }
+      resolved.push(part);
+      const target = tree.get(resolved.join('/'));
+      if (target?.type !== 'symlink') continue;
+      if (++followed > 40) throw invalidTree('captured link chain exceeds the resolution limit');
+      if (target.target.startsWith('/')) throw invalidTree('captured link target escapes the tree');
+      resolved.pop();
+      pending.push(...target.target.split('/').reverse());
+    }
+  }
 }
 
 export function compareCapturedTrees(baseline, captured) {

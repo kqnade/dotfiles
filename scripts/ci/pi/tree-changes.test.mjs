@@ -2,6 +2,29 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { compareCapturedTrees } from '../../../dot_pi/agent/runtime/tree-changes.mjs';
 
+test('tree comparison bounds link resolution and rejects cycles', () => {
+  const chain = length => Array.from({ length }, (_, index) => ({
+    path: `link${index}`, type: 'symlink', target: index + 1 === length ? 'missing' : `link${index + 1}`,
+  }));
+  const accepted = chain(40);
+  assert.deepEqual(compareCapturedTrees(accepted, accepted), []);
+  assert.throws(() => compareCapturedTrees([], chain(41)), { code: 'INVALID_CAPTURED_TREE' });
+  assert.throws(() => compareCapturedTrees([], [{ path: 'loop', type: 'symlink', target: 'loop' }]),
+    { code: 'INVALID_CAPTURED_TREE' });
+});
+
+test('tree comparison rejects external link targets including escapes through another link before dot-dot', () => {
+  const directory = { path: 'dir', type: 'directory', mode: 0o700 };
+  const up = { path: 'dir/up', type: 'symlink', target: '..' };
+  for (const target of ['/outside', '../outside', 'dir/up/../outside']) {
+    const records = [directory, up, { path: 'escape', type: 'symlink', target }];
+    assert.throws(() => compareCapturedTrees([], records), { code: 'INVALID_CAPTURED_TREE' });
+    assert.throws(() => compareCapturedTrees(records, []), { code: 'INVALID_CAPTURED_TREE' });
+  }
+  const internal = [directory, up, { path: 'alias', type: 'symlink', target: 'dir/up/missing' }];
+  assert.deepEqual(compareCapturedTrees(internal, [...internal].reverse()), []);
+});
+
 test('tree comparison rejects children whose recorded parent is absent or is not a directory', () => {
   const child = { path: 'parent/child', type: 'file', mode: 0o600, content: '' };
   for (const records of [
