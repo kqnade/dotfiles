@@ -8,6 +8,7 @@ import { setTimeout } from 'node:timers/promises';
 import { generateClaudeCommitMessage, generatePiCommitMessage } from '../../pi/commit-backends.mjs';
 
 const claudeFixturePath = fileURLToPath(new URL('./fixtures/commit-claude.mjs', import.meta.url));
+const READINESS_TIMEOUT_MS = 10_000;
 
 const installClaudeFixture = async (root) => {
   const command = join(root, 'claude');
@@ -36,7 +37,7 @@ const installAuthorizationHook = async (home) => {
 const readJson = async (path) => JSON.parse(await readFile(path, 'utf8'));
 
 const waitForJson = async (path) => {
-  for (let attempt = 0; attempt < 100; attempt += 1) {
+  for (let attempt = 0; attempt < READINESS_TIMEOUT_MS / 10; attempt += 1) {
     try {
       return JSON.parse(await readFile(path, 'utf8'));
     } catch (error) {

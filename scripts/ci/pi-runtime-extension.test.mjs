@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { copyFile, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, realpath, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -130,7 +130,7 @@ test('uses the authenticated broker for file tools and closes the connection twi
   requirePackageRoot(t);
   if (!loadExtension) return;
 
-  const cwd = await mkdtemp(join(tmpdir(), 'pi-extension-broker-'));
+  const cwd = await realpath(await mkdtemp(join(tmpdir(), 'pi-extension-broker-')));
   let broker;
   const loaded = await loadExtension();
   try {

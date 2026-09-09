@@ -268,17 +268,10 @@ jobs:
           PI_RUSTUP_BIN="$(mise which rustup)"
           export PI_RUSTFMT_BIN PI_RUSTUP_BIN
           mise exec -- node --test \
-            scripts/ci/pi/lsp-lifecycle.test.mjs \
+            scripts/ci/pi/*.test.mjs \
             scripts/ci/pi-runtime-extension.test.mjs \
             scripts/ci/pi-runtime-lsp.test.mjs \
-            scripts/ci/pi-lsp-diagnostics.test.mjs \
-            scripts/ci/pi/seatbelt-runtime.test.mjs \
-            scripts/ci/pi/staged-process.test.mjs \
-            scripts/ci/pi/format.test.mjs \
-            scripts/ci/pi/format-native.test.mjs \
-            scripts/ci/pi/cargo-edition.test.mjs \
-            scripts/ci/pi/rustup.test.mjs \
-            scripts/ci/pi/format-package.test.mjs
+            scripts/ci/pi-lsp-diagnostics.test.mjs
 
   intel-fallback:
     name: Intel Mac public interfaces and source fallbacks
@@ -366,14 +359,7 @@ jobs:
           PI_RUSTUP_BIN="$(mise which rustup)"
           export PI_RUSTFMT_BIN PI_RUSTUP_BIN
           mise exec -- node --test \
-            scripts/ci/pi/lsp-lifecycle.test.mjs \
+            scripts/ci/pi/*.test.mjs \
             scripts/ci/pi-runtime-extension.test.mjs \
             scripts/ci/pi-runtime-lsp.test.mjs \
-            scripts/ci/pi-lsp-diagnostics.test.mjs \
-            scripts/ci/pi/seatbelt-runtime.test.mjs \
-            scripts/ci/pi/staged-process.test.mjs \
-            scripts/ci/pi/format.test.mjs \
-            scripts/ci/pi/format-native.test.mjs \
-            scripts/ci/pi/cargo-edition.test.mjs \
-            scripts/ci/pi/rustup.test.mjs \
-            scripts/ci/pi/format-package.test.mjs
+            scripts/ci/pi-lsp-diagnostics.test.mjs

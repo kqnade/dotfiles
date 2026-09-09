@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { copyFile, lstat, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { copyFile, lstat, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -346,7 +346,7 @@ test('rejects a trusted project command override for a managed system server', a
   if (!(await requirePackage(t))) return;
 
   const home = await mkdtemp(join(tmpdir(), 'pi-lsp-command-home-'));
-  const cwd = await mkdtemp(join(tmpdir(), 'pi-lsp-command-project-'));
+  const cwd = await realpath(await mkdtemp(join(tmpdir(), 'pi-lsp-command-project-')));
   const previousPackageRoot = process.env.PI_PACKAGE_ROOT;
   try {
     await mkdir(join(home, '.pi', 'agent', 'lsp'), { recursive: true });
@@ -397,7 +397,7 @@ test('rejects a trusted per-server NODE_OPTIONS override for a managed system se
   if (!(await requirePackage(t))) return;
 
   const home = await mkdtemp(join(tmpdir(), 'pi-lsp-env-home-'));
-  const cwd = await mkdtemp(join(tmpdir(), 'pi-lsp-env-project-'));
+  const cwd = await realpath(await mkdtemp(join(tmpdir(), 'pi-lsp-env-project-')));
   const previousPackageRoot = process.env.PI_PACKAGE_ROOT;
   try {
     await mkdir(join(home, '.pi', 'agent', 'lsp'), { recursive: true });
@@ -448,7 +448,7 @@ test('rejects a trusted project installMode override before adapter initializati
   if (!(await requirePackage(t))) return;
 
   const home = await mkdtemp(join(tmpdir(), 'pi-lsp-mode-home-'));
-  const cwd = await mkdtemp(join(tmpdir(), 'pi-lsp-mode-project-'));
+  const cwd = await realpath(await mkdtemp(join(tmpdir(), 'pi-lsp-mode-project-')));
   const previousPackageRoot = process.env.PI_PACKAGE_ROOT;
   try {
     await mkdir(join(home, '.pi', 'agent', 'lsp'), { recursive: true });
