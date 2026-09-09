@@ -547,7 +547,7 @@ capability. Do not treat the SBPL generator as a command allowlist.
 ### Staged output capture checkpoint
 
 - Observed on 2026-09-09 in the same macOS arm64 worktree/ref, producing client
-  Codex: code baseline `6c46397`, clean before this TODO update. No HOME apply,
+  Codex: code baseline `51ebab0`, clean before this TODO update. No HOME apply,
   package installation, authentication/history change, or remote mutation occurred.
 - Observed: `2420fde` adds a trusted internal asynchronous capture callback after
   command success and before staging cleanup. The original ownership lease stays
@@ -618,11 +618,26 @@ capability. Do not treat the SBPL generator as a command allowlist.
 - Observed: combined staged output/process, helper/race, and tree-comparison tests
   passed 22 tests with one expected Darwin platform skip. Repository validation and
   whitespace checks passed. No complete formatter or Linux runtime suite was run.
-- Incomplete: capture and comparison are internal and do not authorize publication.
-  There is no strict JSON schema, duplicate-path rejection, structural validation,
-  link-graph validation, or original lease-scope validation yet. The comparator
-  currently expects helper-shaped primitive records and uses Maps keyed by path;
-  duplicate paths must be rejected before it can be used for publication.
+- Observed: `441c119` rejects duplicate paths in either snapshot before comparison;
+  previously a later record could hide an earlier change. `c23e02a` requires
+  canonical relative UTF-8 paths: absolute paths, empty/dot/dot-dot components,
+  NUL, and unpaired surrogates are rejected instead of being normalized or decoded
+  into a different path. Non-UTF-8 filesystem names are not supported for publication.
+- Observed: `a6e6519` validates array/object shape and exact file/directory/symlink
+  fields, permission-bit integer modes, canonical Base64 bytes, and nonempty UTF-8
+  link target strings without NUL. A discovered type-coercion case using ['file']
+  also failed before the strict string-type fix. `51ebab0` requires each non-root
+  entry's immediate recorded parent to be a directory, independent of record order.
+  These four increments each had intended failing cases before implementation.
+- Observed: the final combined comparison, staged output/process, and helper/race
+  suite passed 26 tests with one expected Darwin platform skip. Repository validation
+  and whitespace checks passed. All four implementation commits are locally signed.
+- Incomplete: validation currently runs before comparison; captureTree itself returns
+  frozen raw helper output. Neither result authorizes publication. Absolute/escaping
+  link targets remain raw data pending full link-graph validation. Original lease
+  scope, filesystem aliases, original preimages/modes, and publication semantics
+  still require validation. Do not expose shell publication on the strength of the
+  record-format checks alone.
 - Incomplete: Python is not a pinned mise runtime. Integration fixtures use the
   explicitly supplied /usr/bin/python3; other helper tests use test-environment
   python3. Neither is a production discovery contract. Pin the managed interpreter
@@ -637,8 +652,10 @@ capability. Do not treat the SBPL generator as a command allowlist.
   reads do not promise a point-in-time consistent tree while a detached child
   mutates it. Snapshot/helper failure before command launch, command-failure
   suppression of capture, helper timeout/output overflow, and cleanup failure after
-  successful capture also need direct coverage. Add mode/type/link comparison and
-  malformed/duplicate manifest cases before using raw differences for publication.
+  successful capture also need direct coverage. Add mode/type/link comparison,
+  positive Unicode/binary boundary cases, and link-graph escape cases before using
+  differences for publication. Record shape, duplicate paths, lexical paths, and
+  immediate-parent consistency have direct failure coverage.
 - Next integration: validate captured manifests, enforce original lease roots,
   reject escaping link graphs and malformed records, preflight all original state,
   and define tested partial-publication/rollback semantics. Empty projects/new-only
