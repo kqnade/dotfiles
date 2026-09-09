@@ -500,6 +500,50 @@ capability. Do not treat the SBPL generator as a command allowlist.
   paths. Preserve the Linux, shell/helper, LSP auxiliary/recovery, authenticated,
   and migration gates.
 
+### Cargo workspace resolution checkpoint
+
+- Observed on 2026-09-09 in the same macOS arm64 worktree/ref, producing client
+  Codex: code baseline `5e85eb4`, clean before this TODO update. No HOME apply,
+  package installation, authentication/history change, or remote mutation occurred.
+- Observed: `639a020` resolves an explicit relative `package.workspace` inside
+  the copied project, including a sibling workspace that overrides an ancestor.
+  The initial regression failed because explicit workspace paths were rejected.
+  Lexical and canonical boundary checks reject traversal, absolute paths, and
+  symlink escapes before reading a referenced manifest outside the copied tree.
+  Missing explicit references fail rather than falling back to an ancestor.
+- Observed: `ed39407` verifies Cargo's 2015 default without an explicit edition
+  or inheritance opt-in. The real rustfmt regression confirms Cargo's language
+  edition takes precedence over a conflicting rustfmt config edition while the
+  config's indentation still applies. Malformed TOML prevents publication and
+  leaves the original source and ownership usable.
+- Observed: `5e85eb4` rejects absent, incomplete, or invalid inherited editions.
+  A real formatter test changes the original manifest after staging and proves
+  the copied edition is used while the changed original manifest is preserved.
+  These cover the preceding checkpoint's Cargo test list for copied manifests;
+  external/absolute workspace roots still require a separate read-closure design.
+- Observed: Cargo resolution, actual native formatters, and formatter publication
+  tests passed **34 tests, 0 failures, 0 skips**. Repository validation and
+  whitespace checks passed. The suite took about 95 seconds on this run; copying
+  native toolchain libraries remains significant and is not a performance gate.
+- Next implementation: generic shell/helper execution needs immutable staged
+  output capture and a validated change manifest before original-file publication.
+  Current staged execution returns stdout and original preimages only, requires
+  at least one existing file, and has no output-capture callback. Ownership has
+  regular-file CAS/create-only writes but no directory/delete or multi-path
+  preflight/publication operation. Start with capture-before-cleanup and changed
+  existing files, then add nested creation, deletion, directories, and type changes.
+  This is an increment order, not a reduction of the required shell capability.
+- Design constraint for that work: runtime files introduced by trusted preparation
+  must not appear as user-created outputs. Capture the execution baseline after
+  preparation, retain explicit lease-root checks, validate symlinks/special files,
+  and preflight original state before publication. Partial publication and
+  rollback semantics still require a primary-agent decision and failure tests.
+  Do not expose shell or helper execution before these gates pass.
+- Remaining: external formatter config/runtime layouts, parser installed-version
+  checking in doctor, generic shell/helper publication, Linux confinement, LSP
+  auxiliary containment/recovery, authenticated validation, and final migration.
+  Existing agent assets remain managed until the adoption gates pass.
+
 ## Resume on macOS
 
 1. Verify the authorized remote, current worktree, branch, commits, dirty state,
