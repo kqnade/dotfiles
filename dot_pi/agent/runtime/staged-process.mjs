@@ -30,13 +30,14 @@ async function seatbeltCommand({ workspace, command, args, readPaths, readLitera
 }
 
 export async function runStagedProcess({
-  ownership, lease, cwd, files, readFiles = [], temporaryRoot, prepare, includeProjectFiles = false,
+  ownership, lease, cwd, files, readFiles = [], temporaryRoot, prepare, capture, includeProjectFiles = false,
   command, args = [], readPaths = [], readLiterals = [], stdin = '', signal, timeoutMs, maxOutputBytes,
 }, sandbox = seatbeltCommand) {
   return ownership.run(lease, async () => {
     if (!Array.isArray(files) || files.length === 0) throw new TypeError('files must be a non-empty array');
     if (!Array.isArray(readFiles)) throw new TypeError('readFiles must be an array');
     if (prepare !== undefined && typeof prepare !== 'function') throw new TypeError('prepare must be a function');
+    if (capture !== undefined && typeof capture !== 'function') throw new TypeError('capture must be a function');
     const ownedPaths = new Set();
     for (const file of files) {
       const canonical = await realpath(resolve(cwd, file));
@@ -63,8 +64,11 @@ export async function runStagedProcess({
       const output = await stageOwnership.runProcess(stageLease, {
         ...invocation, inheritEnv: false, stdin: prepared.stdin ?? stdin, signal, timeoutMs, maxOutputBytes,
       });
+      const captured = capture === undefined ? undefined : await stageOwnership.run(stageLease,
+        () => capture(Object.freeze({ workspace: area.workspace, files: area.files })));
       return {
         ...output,
+        ...(capture === undefined ? {} : { captured }),
         files: Object.freeze(area.files.filter(file => ownedPaths.has(file.originalPath))
           .map(({ path, originalPath, hash }) => Object.freeze({ path, originalPath, hash }))),
       };
