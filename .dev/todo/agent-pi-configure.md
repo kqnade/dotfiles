@@ -547,7 +547,7 @@ capability. Do not treat the SBPL generator as a command allowlist.
 ### Staged output capture checkpoint
 
 - Observed on 2026-09-09 in the same macOS arm64 worktree/ref, producing client
-  Codex: code baseline `9173479`, clean before this TODO update. No HOME apply,
+  Codex: code baseline `6c46397`, clean before this TODO update. No HOME apply,
   package installation, authentication/history change, or remote mutation occurred.
 - Observed: `2420fde` adds a trusted internal asynchronous capture callback after
   command success and before staging cleanup. The original ownership lease stays
@@ -595,22 +595,52 @@ capability. Do not treat the SBPL generator as a command allowlist.
   on macOS arm64. Repository validation and whitespace checks passed. The race
   probes are descriptor-reader evidence, not new OS sandbox or Linux evidence.
   All code commits above are local signed commits.
-- Incomplete: this helper is not connected to staged execution or exposed to Pi.
-  Tests currently invoke python3 with isolated mode through the test environment.
-  Production needs an explicitly managed, trusted absolute interpreter and
-  supervised IPC, timeout/cancellation, output-size limits, JSON schema validation,
-  and an immutable parent-side representation. Python is not yet a pinned mise
-  runtime dependency. Do not rely on the test PATH as a production contract.
+- Observed: `7602336` connects `capture-tree.mjs` to the staging lease's process
+  supervisor through a trusted internal runProcess callback. The wrapper requires
+  an absolute Python path, canonicalizes it, uses -B/-I and a replacement minimal
+  environment, imposes a 30-second timeout and 128 MiB limit per output stream, then
+  freezes the parsed array and primitive records. A real staged command modifies
+  an existing file and creates a nested file; both are captured before cleanup,
+  originals remain unchanged, and attempts to mutate the returned records fail.
+  The capture callback runs trusted host code; it is not an untrusted shell path.
+- Observed: `ca10103` adds an optional trusted snapshot callback after preparation
+  and before command execution, returning baseline alongside captured output.
+  The integration test proves prepared runtime bytes appear unchanged in both
+  manifests while the command's changed file differs. `7d9879d` adds raw tree
+  comparison producing copied, frozen before/after records for additions, changes,
+  and removals, omitting equal entries and preserving deterministic path order.
+  These three features each had the intended failing test before implementation.
+- Observed: `6c46397` verifies cancellation of a live Python capture helper. Original
+  ownership drain rejects new work, waits for cancellation and cleanup, then permits
+  renewal; the helper PID reports ESRCH, the stage is absent, and the original file
+  is unchanged. The baseline integration also compares actual helper output and
+  excludes the unchanged prepared runtime. These regressions passed existing code.
+- Observed: combined staged output/process, helper/race, and tree-comparison tests
+  passed 22 tests with one expected Darwin platform skip. Repository validation and
+  whitespace checks passed. No complete formatter or Linux runtime suite was run.
+- Incomplete: capture and comparison are internal and do not authorize publication.
+  There is no strict JSON schema, duplicate-path rejection, structural validation,
+  link-graph validation, or original lease-scope validation yet. The comparator
+  currently expects helper-shaped primitive records and uses Maps keyed by path;
+  duplicate paths must be rejected before it can be used for publication.
+- Incomplete: Python is not a pinned mise runtime. Integration fixtures use the
+  explicitly supplied /usr/bin/python3; other helper tests use test-environment
+  python3. Neither is a production discovery contract. Pin the managed interpreter
+  through mise.toml/mise.lock, resolve its trusted absolute executable in launcher
+  orchestration, and extend scripts/pi/doctor.mjs plus CI/validator coverage. Existing
+  npm package preparation needs no Python package dependency. Validate the selected
+  installation rather than treating an arbitrary project PATH entry as trusted.
 - Next test list: exact/zero resource-limit boundaries; explicit traversal-depth
   bounds; root and directory-before-open swaps; concurrent content changes;
   static special-file rejection; raw external-link capture without reads; complete
   graph-based escaping-link validation before publication. Descriptor-relative
   reads do not promise a point-in-time consistent tree while a detached child
-  mutates it. Capture callback command-failure suppression, drain while awaiting
-  capture, and cleanup failure after successful capture also need direct coverage.
-- Next integration: capture the execution baseline after trusted preparation so
-  copied runtimes do not appear as user-created output. Compare immutable initial
-  and final manifests, enforce original lease roots, preflight all original state,
+  mutates it. Snapshot/helper failure before command launch, command-failure
+  suppression of capture, helper timeout/output overflow, and cleanup failure after
+  successful capture also need direct coverage. Add mode/type/link comparison and
+  malformed/duplicate manifest cases before using raw differences for publication.
+- Next integration: validate captured manifests, enforce original lease roots,
+  reject escaping link graphs and malformed records, preflight all original state,
   and define tested partial-publication/rollback semantics. Empty projects/new-only
   shell invocations, directory creation/deletion, file deletion, modes, and type
   changes remain required. The staged API still requires an existing file.
