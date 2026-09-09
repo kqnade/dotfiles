@@ -10,7 +10,7 @@ authentication or conversation history.
 Status: **incomplete; active on macOS arm64**.
 The launcher, broker, managed file tools, delegation, and LSP are integrated.
 Staged execution and formatter stdout publication are integrated internally,
-but formatter dependency closure, shell/tool exposure, sandbox verification,
+but remaining formatter runtimes, shell/tool exposure, sandbox verification,
 and final migration remain open. Do not remove the existing agent
 environment or mark this item complete before the remaining gates pass.
 
@@ -119,8 +119,8 @@ The following code increments are committed:
 `runStagedProcess` returns stdout and original-file preimage metadata; it does
 not publish changes or capture arbitrary staged-file outputs. `format.mjs`
 uses staged cwd, copied target/config inputs, and stdout publication with the
-snapshot preimage. Package/plugin closure is incomplete; keep it unexposed
-until the formatter gates below pass. Do not loosen the ownership cwd guard.
+snapshot preimage. Remaining runtime and failure coverage is incomplete; keep
+it unexposed until the formatter gates below pass. Do not loosen the ownership cwd guard.
 Keep sandbox configuration and `readPaths` behind trusted internal callers:
 recursive read grants must not expose auth directories, broker sockets, or
 unrelated sessions. A mode-0700 directory alone is not proof of a staging
@@ -254,18 +254,48 @@ capability. Do not treat the SBPL generator as a command allowlist.
   the preceding checkpoint, and `git diff --check` passed. An independent
   bounded review found no additional publication or metadata-grant defects;
   its default-sandbox runtime attempt hit the nested Seatbelt harness limit.
-- Incomplete: formatter package and plugin dependencies are not yet in the read
-  closure. Node wrappers that import sibling packages, imported JS config
-  modules, external config extensions, Ruff/Biome runtime dependencies, and
-  Rust toolchain shims/config must be tested with actual installations. The
-  fixed config-name list is not evidence of complete dependency closure.
-  Preparation/cleanup failures and active-process formatter cancellation need
-  formatter-level coverage. Linux formatter orchestration tests substitute the
-  unavailable OS boundary explicitly; production has no unsandboxed fallback.
-- Next smallest action: add a real package-based formatter/config/plugin probe,
-  then implement its validated dependency closure without exposing original
-  auth/session directories. Complete generic shell creation/deletion/output
-  synchronization and Linux confinement before tool/migration gates close.
+### Package and plugin checkpoint
+
+- Observed on 2026-09-09, same macOS worktree/ref, producing client Codex: code
+  baseline `a19179918b66a26e51ddc06f4fd92c9c3f0bc125`, clean before this TODO
+  update. No HOME deployment or remote mutation occurred.
+- Observed: `352b636` snapshots project context into independent regular files,
+  preserving executable context-file modes and remapping internal symlinks into
+  the copy. Git metadata is omitted. External/Git links and sockets fail
+  explicitly; failed preparation removes partial copies. Existing explicit
+  target snapshots cannot be overwritten by the context traversal.
+- Observed: `8002917` runs project-installed formatter executables from their
+  copies and replaces the fixed config-name copy list with project context.
+  Actual Prettier 3.6.2 loads imported JS config and a local parser plugin;
+  plugin writes to the original project are denied by Seatbelt. The dedicated
+  `scripts/ci/pi/fixtures/formatter-packages/` manifest and integrity lock are
+  installed without lifecycle scripts into runner temporary storage. Linux
+  unit tests and both macOS CI jobs run the package fixture.
+- Observed: `a191799` copies an external formatter's enclosing npm package tree
+  into a private staged runtime. Actual external Prettier works, and config
+  writes to its original installation are denied. Runtime source/destination
+  overlap is rejected. Both package cases first failed with missing
+  `../package.json`, then passed through Seatbelt after runtime copying.
+- Observed: with `PI_FORMATTER_PACKAGE_ROOT` pointing to the temporary fixture
+  install, the combined format-package/format/staging/staged-process/Seatbelt
+  suite passed 25 tests with one expected Darwin platform skip. After adding
+  external runtime handling, format-package/format/staging passed all 17 tests;
+  the five staging tests also passed with the overlap assertions. `npm ci`
+  succeeded from the fixture lock. The repository validator passed through
+  installed Python 3.11 after package/CI integration; `git diff --check` passed
+  before each code commit. Independent bounded review found no additional
+  target-snapshot or symlink-isolation defect.
+- Incomplete: actual Biome/Ruff and Rust toolchain shim/config/runtime coverage,
+  config references outside the copied project/runtime roots, formatter-level
+  active-process cancellation and preparation/cleanup failure tests, and Linux
+  confinement remain open. Local/standard npm Prettier evidence does not prove
+  every package-manager layout. Whole-project/package copying is a correctness
+  baseline; large-repository cost has not been measured. No original auth or
+  session directories are granted to the formatter to bypass missing inputs.
+- Next smallest action: exercise actual Biome/Ruff/Rust installations and close
+  their runtime/config gaps, then complete formatter failure gates and expose
+  the managed tool. Generic shell creation/deletion/output synchronization and
+  Linux containment remain required before final migration.
 
 ## Resume on macOS
 
@@ -333,6 +363,7 @@ Claude namespace boundaries and unrelated settings.
 - [ ] Execute and harden Seatbelt on macOS, including IPC/FD/detached-writer negative probes and tool compatibility.
 - [ ] Implement and verify Linux sandbox execution with host socket/FD isolation.
 - [x] Integrate formatter staged stdin/path/config and snapshot-based stdout publication; verify actual gofmt success/failure and publication conflict/cancellation.
+- [x] Verify project and external npm Prettier packages with copied config imports/plugins and original project/runtime protection.
 - [ ] Complete formatter package/plugin/config closure and runtime failure/cancellation/cleanup coverage across supported formatters.
 - [ ] Expose complete managed shell/helper execution with scoped output validation and safe Git operation boundaries.
 - [ ] Verify LSP auxiliary-process original-write restrictions and persistent supervisor recovery under real failures.
