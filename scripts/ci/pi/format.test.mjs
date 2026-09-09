@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
+import { access, chmod, mkdtemp, mkdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
@@ -43,6 +43,114 @@ const writeFormatter = async (root, name, script) => {
   const command = join(bin, name);
   await writeFile(command, `#!/usr/bin/env node\n${script}\n`, { mode: 0o755 });
 };
+
+test('cancelling an active formatter discards stdout and cleans its workspace', { timeout: 10_000 }, async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pi-format-active-cancel-'));
+  const controller = new AbortController();
+  let execution;
+  let workspace;
+  try {
+    await writeFile(join(root, 'app.js'), 'const value=1;\n');
+    await writeFile(join(root, 'biome.json'), '{}');
+    await writeFormatter(root, 'biome', `
+      require('node:fs').writeFileSync('ready', 'ready');
+      process.stdout.write('const value = 2;\\n');
+      setInterval(() => {}, 1000);
+    `);
+    const ownership = new Ownership({ cwd: root });
+    const lease = ownership.claim('formatter', ['app.js']);
+    execution = managedFormatFile({ ownership, lease, cwd: root, path: 'app.js', signal: controller.signal }, invocation =>
+      runStaged({ ...invocation, prepare: async area => {
+        workspace = area.workspace;
+        return invocation.prepare(area);
+      } }));
+    const cancelled = assert.rejects(execution, { code: 'ABORT_ERR' });
+    const deadline = Date.now() + 3000;
+    while (true) {
+      try {
+        if (workspace) {
+          await access(join(workspace, 'ready'));
+          break;
+        }
+      } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+      }
+      assert.ok(Date.now() < deadline, 'formatter did not become ready');
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    controller.abort();
+    await cancelled;
+    assert.equal(await readFile(join(root, 'app.js'), 'utf8'), 'const value=1;\n');
+    await assert.rejects(access(workspace), { code: 'ENOENT' });
+    await ownership.run(lease, async () => {});
+    await ownership.drain(lease);
+  } finally {
+    controller.abort();
+    await execution?.catch(() => {});
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('formatter preparation failure preserves the source and cleans the workspace', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pi-format-prepare-failure-'));
+  let workspace;
+  try {
+    await writeFile(join(root, 'app.js'), 'const value=1;\n');
+    await writeFile(join(root, 'biome.json'), '{}');
+    await writeFormatter(root, 'biome', 'process.stdout.write("changed");');
+    const ownership = new Ownership({ cwd: root });
+    const lease = ownership.claim('formatter', ['app.js']);
+    await assert.rejects(managedFormatFile({ ownership, lease, cwd: root, path: 'app.js' }, invocation =>
+      runStaged({ ...invocation, prepare: async area => {
+        workspace = area.workspace;
+        await rm(join(workspace, 'node_modules', '.bin', 'biome'));
+        return invocation.prepare(area);
+      } })), { code: 'ENOENT' });
+    assert.equal(await readFile(join(root, 'app.js'), 'utf8'), 'const value=1;\n');
+    await assert.rejects(access(workspace), { code: 'ENOENT' });
+    await ownership.run(lease, async () => {});
+    await ownership.drain(lease);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('formatter cleanup failure prevents publication and quarantines ownership', {
+  skip: process.getuid?.() === 0 ? 'requires filesystem permission enforcement' : false,
+}, async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pi-format-cleanup-failure-'));
+  let workspace;
+  try {
+    const cwd = join(root, 'project');
+    const temporaryRoot = join(root, 'temporary');
+    await mkdir(cwd);
+    await mkdir(temporaryRoot);
+    await writeFile(join(cwd, 'app.js'), 'const value=1;\n');
+    await writeFile(join(cwd, 'biome.json'), '{}');
+    await writeFormatter(cwd, 'biome', `
+      process.stdin.resume();
+      process.stdin.on('end', () => {
+        require('node:fs').chmodSync('.', 0o500);
+        process.stdout.write('changed');
+      });
+    `);
+    const ownership = new Ownership({ cwd });
+    const lease = ownership.claim('formatter', ['app.js']);
+    await assert.rejects(managedFormatFile({ ownership, lease, cwd, path: 'app.js' }, invocation =>
+      runStaged({ ...invocation, temporaryRoot, prepare: async area => {
+        workspace = area.workspace;
+        return invocation.prepare(area);
+      } })), error => {
+      assert.ok(error instanceof AggregateError);
+      assert.equal(error.errors.length, 1);
+      assert.ok(['EACCES', 'EPERM'].includes(error.errors[0].code));
+      return true;
+    });
+    assert.equal(await readFile(join(cwd, 'app.js'), 'utf8'), 'const value=1;\n');
+    await assert.rejects(ownership.run(lease, async () => {}), { code: 'QUARANTINED' });
+  } finally {
+    if (workspace) await chmod(workspace, 0o700);
+    await rm(root, { recursive: true, force: true });
+  }
+});
 
 test('formatter publication preserves an external edit after staged execution', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pi-format-conflict-'));
