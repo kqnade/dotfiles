@@ -59,6 +59,8 @@ jobs:
       - name: run Pi runtime unit tests
         run: |
           mise install --locked node uv rust
+          export PI_PACKAGE_ROOT="$RUNNER_TEMP/pi-agent-packages"
+          PI_PACKAGE_TARGET="$PI_PACKAGE_ROOT" mise exec -- node scripts/pi/setup.mjs
           export PI_FORMATTER_PACKAGE_ROOT="$RUNNER_TEMP/pi-formatter-packages"
           mkdir -p "$PI_FORMATTER_PACKAGE_ROOT"
           cp scripts/ci/pi/fixtures/formatter-packages/package*.json "$PI_FORMATTER_PACKAGE_ROOT/"

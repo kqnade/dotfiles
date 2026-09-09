@@ -15,6 +15,7 @@ import { realpath } from 'node:fs/promises';
 import { runStagedProcess } from './staged-process.mjs';
 import { copyRuntimeTree } from './staging.mjs';
 import { resolveRustfmt } from './rustup.mjs';
+import { cargoEdition } from './cargo-edition.mjs';
 
 function nodeModulesRoot(executable) {
   let root;
@@ -329,6 +330,8 @@ export async function formatFile({ ownership, lease, path: targetPath, cwd, sign
         if (formatter.runtime === 'rustfmt') {
           const config = await rustfmtConfig(area.workspace, target.stagedPath);
           if (config) args.push('--config-path', config);
+          const edition = await cargoEdition(area.workspace, target.stagedPath);
+          if (edition) args.push('--edition', edition);
         }
         let command = isWithin(scope, executable) ? join(area.workspace, relative(scope, executable)) : executable;
         const packageRoot = nodeModulesRoot(executable);

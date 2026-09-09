@@ -80,6 +80,35 @@ test('rustup shim selects the caller cwd toolchain inside the sandbox', {
   }
 });
 
+test('installed rustfmt uses the package edition from copied Cargo.toml', {
+  skip: process.env.PI_RUSTFMT_BIN ? false : 'requires PI_RUSTFMT_BIN',
+  timeout: 60_000,
+}, async () => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'pi-format-cargo-')));
+  const originalPath = process.env.PATH;
+  try {
+    const cwd = join(root, 'project');
+    await mkdir(join(cwd, 'src'), { recursive: true });
+    await mkdir(join(root, 'bin'));
+    await symlink(await realpath(process.env.PI_RUSTFMT_BIN), join(root, 'bin', 'rustfmt'));
+    process.env.PATH = join(root, 'bin') + delimiter + originalPath;
+    const manifest = '[package]\nname = "fixture"\nversion = "0.1.0"\nedition = "2024"\n';
+    await writeFile(join(cwd, 'Cargo.toml'), manifest);
+    const target = join(cwd, 'src', 'lib.rs');
+    await writeFile(target, 'pub async fn run(){println!("hello");}\n');
+    const ownership = new Ownership({ cwd });
+    const lease = ownership.claim('formatter', ['src/lib.rs']);
+    const result = await formatFile({ ownership, lease, cwd, path: 'src/lib.rs' }, runner);
+    assert.equal(result.status, 'formatted');
+    assert.equal(await readFile(target, 'utf8'), 'pub async fn run() {\n    println!("hello");\n}\n');
+    assert.equal(await readFile(join(cwd, 'Cargo.toml'), 'utf8'), manifest);
+    await ownership.drain(lease);
+  } finally {
+    process.env.PATH = originalPath;
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('installed native rustfmt runs with its toolchain libraries', {
   skip: process.env.PI_RUSTFMT_BIN ? false : 'requires PI_RUSTFMT_BIN',
   timeout: 60_000,
