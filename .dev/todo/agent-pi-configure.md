@@ -547,7 +547,7 @@ capability. Do not treat the SBPL generator as a command allowlist.
 ### Staged output capture checkpoint
 
 - Observed on 2026-09-09 in the same macOS arm64 worktree/ref, producing client
-  Codex: code baseline `533f27b`, clean before this TODO update. No HOME apply,
+  Codex: code baseline `5476cb0`, clean before this TODO update. No HOME apply,
   package installation, authentication/history change, or remote mutation occurred.
 - Observed: `2420fde` adds a trusted internal asynchronous capture callback after
   command success and before staging cleanup. The original ownership lease stays
@@ -688,6 +688,20 @@ capability. Do not treat the SBPL generator as a command allowlist.
   capability bits, case-insensitive/preserving behavior, and a nonzero UUID. Parent
   and new child profiles matched; the checkout reported the same volume UUID.
   This is a local API probe, not a committed production destination selector.
+- Observed: `9ff3726` implements directory-profile.py for held macOS directory
+  descriptors, with device, filesystem type/subtype, volume UUID, and case behavior.
+  Its native test first failed for the missing profile, then passed against actual
+  case lookup and parent/child identity. The decoder rejects incomplete capabilities,
+  zero UUIDs, malformed attribute references, and malformed filesystem names.
+  `5476cb0` adds parser/descriptor regressions; the unsupported-platform guard is
+  exercised with an explicit simulated platform value. Nine profile tests passed,
+  none skipped, on macOS arm64. Repository validation passed after implementation;
+  regression additions then passed the focused suite. Whitespace checks passed.
+- Incomplete: directory profiles are metadata, not an authorization decision.
+  directory_profile rejects non-Darwin platforms. Add Linux native profiles and
+  connect metadata comparison to destination-aware reconstruction, including every
+  relevant nested directory and mount. The existing validator still requires the
+  explicit caller-selected temporaryRoot contract below.
 - Primary-source candidate contract: XNU exposes volume case capabilities and
   identity through [volume attributes](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/sys/attr.h).
   Linux exposes FS_CASEFOLD_FL and read-only FS_XFLAG_CASEFOLD in
@@ -768,11 +782,24 @@ capability. Do not treat the SBPL generator as a command allowlist.
 6. Complete authenticated and migration gates before removing the old assets,
    then update operating docs/validators and apply the managed environment.
 
-Linux probe caveat: an exploratory minimal-root bwrap command failed with
-`--disable-userns requires --unshare-user` despite `--unshare-all`; no fallback
-ran and the original sentinel stayed unchanged. Explicit user-namespace flags
-need correction and actual tests before adopting that command. Earlier PID
-namespace probes are partial evidence, not proof of the proposed full adapter.
+Linux probe evidence (2026-09-09): an existing local Podman VM named
+podman-machine-default is running Linux aarch64 with Python 3.14.6 and
+/usr/bin/bwrap. Disposable directories under both /tmp and /var/tmp accepted
+FS_IOC_GETFLAGS (0x80086601 on this 64-bit host) and returned flags 0; the
+directories were removed. No Linux directory-profile implementation exists yet.
+This VM supplies useful API evidence, not the required Linux x64 coverage.
+
+An earlier bwrap probe failed with `--disable-userns requires --unshare-user`.
+An actual probe in this VM succeeded with explicit --unshare-user/pid/net/ipc/uts,
+--disable-userns, --die-with-parent, --new-session, read-only /usr, Fedora's
+/bin,/sbin,/lib,/lib64 symlinks into /usr, namespace /proc and /dev, tmpfs /tmp,
+and a writable private /work fixture. It used a replacement HOME/PATH/TMPDIR
+environment and /work cwd. The shell could not see the original's absolute path,
+wrote only its private output, and the outside synthetic sentinel stayed unchanged.
+All fixtures were removed; no installation, VM configuration change, or host
+repository/HOME mount was performed. This is a minimal runtime viability probe,
+not proof of FD/socket/deputy/descendant containment or generic shell compatibility.
+The production Linux sandbox and its complete negative probes remain required.
 
 ## Retirement requirements
 
