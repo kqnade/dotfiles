@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, realpath, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -132,7 +132,7 @@ test('the launcher forwards managed companion extension paths', async () => {
 });
 
 test('the launcher loads exactly the retained skills with discovery disabled', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'pi-launch-skills-'));
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'pi-launch-skills-')));
   const cwd = root;
   const skillsRoot = join(root, '.agents', 'skills');
   const directory = join(cwd, 'journal');

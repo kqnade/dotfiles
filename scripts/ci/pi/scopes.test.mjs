@@ -73,8 +73,9 @@ test('a failed child snapshot releases its reservation before execution', async 
     await writeFile(target, 'old');
     const scopes = new Scopes({ cwd, rootId: 'root' });
     await scopes.pause('root');
+    const canonicalTarget = await realpath(target);
     fs.promises.readFile = async (path, ...args) => {
-      if (path === target) {
+      if (path === canonicalTarget) {
         const error = new Error('snapshot read failed');
         error.code = 'EIO';
         throw error;

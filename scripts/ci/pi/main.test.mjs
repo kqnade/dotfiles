@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { access, chmod, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, chmod, copyFile, mkdir, mkdtemp, realpath, readFile, rm, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -246,7 +246,7 @@ test('managed CLI refuses a stale installed Pi package version', async () => {
 });
 
 test('managed CLI starts an interactive root from the external package target', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'pi-main-interactive-'));
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'pi-main-interactive-')));
   try {
     const packageTarget = await createPiInstall(root);
     const logPath = join(root, 'root.log');

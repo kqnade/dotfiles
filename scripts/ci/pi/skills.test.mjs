@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -14,7 +14,7 @@ import {
 } from './fixtures/managed-skills.mjs';
 
 test('managed skills resolve to exactly six skill files and their read-only closure', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'pi-skills-'));
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'pi-skills-')));
   const skillsRoot = join(root, '.agents', 'skills');
   try {
     await createManagedSkills(skillsRoot);
