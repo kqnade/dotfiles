@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,6 +9,23 @@ import { test } from 'node:test';
 
 const execute = promisify(execFile);
 const helper = fileURLToPath(new URL('../../../dot_pi/agent/runtime/capture-tree.py', import.meta.url));
+
+test('tree capture records symbolic links as targets without traversing directories or dangling links', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pi-capture-links-'));
+  try {
+    await mkdir(join(root, 'dir'), { mode: 0o700 });
+    await symlink('dir', join(root, 'alias'));
+    await symlink('../missing', join(root, 'dir', 'dangling'));
+    const { stdout } = await execute('python3', ['-I', helper, root]);
+    assert.deepEqual(JSON.parse(stdout), [
+      { path: 'alias', type: 'symlink', target: 'dir' },
+      { path: 'dir', type: 'directory', mode: 0o700 },
+      { path: 'dir/dangling', type: 'symlink', target: '../missing' },
+    ]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
 
 test('tree capture rejects aggregate file bytes over its limit without emitting a partial manifest', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pi-capture-limit-'));

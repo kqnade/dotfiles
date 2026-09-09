@@ -47,6 +47,9 @@ def capture_tree(root, max_bytes=64 * 1024 * 1024):
                     records.append({"path": path, "type": "file", "mode": stat.S_IMODE(info.st_mode), "content": content})
                 finally:
                     os.close(file_fd)
+            elif stat.S_ISLNK(info.st_mode):
+                target = os.readlink(name, dir_fd=directory_fd)
+                records.append({"path": path, "type": "symlink", "target": target})
             else:
                 raise ValueError(f"unsupported capture entry: {path}")
 
