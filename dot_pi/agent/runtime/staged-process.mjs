@@ -11,7 +11,7 @@ const within = (parent, child) => {
   return distance === '' || (distance !== '..' && !distance.startsWith(`..${sep}`) && !isAbsolute(distance));
 };
 
-async function seatbeltCommand({ workspace, command, args, readPaths }) {
+async function seatbeltCommand({ workspace, command, args, readPaths, readLiterals }) {
   if (process.platform !== 'darwin') {
     throw Object.assign(new Error('staged execution requires the macOS Seatbelt backend'), { code: 'UNSUPPORTED_SANDBOX' });
   }
@@ -20,7 +20,7 @@ async function seatbeltCommand({ workspace, command, args, readPaths }) {
     throw new TypeError('sandbox arguments must be strings without NUL');
   }
   const executable = await realpath(command);
-  const profile = await createSeatbeltProfile({ workspace, readPaths: [executable, ...readPaths] });
+  const profile = await createSeatbeltProfile({ workspace, readPaths: [executable, ...readPaths], readLiterals });
   return {
     command: '/usr/bin/sandbox-exec',
     args: ['-p', profile, executable, ...args],
@@ -31,7 +31,7 @@ async function seatbeltCommand({ workspace, command, args, readPaths }) {
 
 export async function runStagedProcess({
   ownership, lease, cwd, files, readFiles = [], temporaryRoot, prepare, includeProjectFiles = false,
-  command, args = [], readPaths = [], stdin = '', signal, timeoutMs, maxOutputBytes,
+  command, args = [], readPaths = [], readLiterals = [], stdin = '', signal, timeoutMs, maxOutputBytes,
 }, sandbox = seatbeltCommand) {
   return ownership.run(lease, async () => {
     if (!Array.isArray(files) || files.length === 0) throw new TypeError('files must be a non-empty array');
@@ -58,6 +58,7 @@ export async function runStagedProcess({
         command: prepared.command ?? command,
         args: prepared.args ?? args,
         readPaths: prepared.readPaths ?? readPaths,
+        readLiterals: prepared.readLiterals ?? readLiterals,
       });
       const output = await stageOwnership.runProcess(stageLease, {
         ...invocation, stdin: prepared.stdin ?? stdin, signal, timeoutMs, maxOutputBytes,

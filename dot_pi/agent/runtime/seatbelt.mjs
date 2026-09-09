@@ -1,5 +1,5 @@
 import { realpath, stat } from 'node:fs/promises';
-import { dirname, isAbsolute, parse } from 'node:path';
+import { dirname, isAbsolute, normalize, parse } from 'node:path';
 
 const literal = path => {
   if (typeof path !== 'string' || !isAbsolute(path) || /[\x00-\x1f\x7f"\\]/u.test(path)) {
@@ -9,9 +9,10 @@ const literal = path => {
   return `"${path}"`;
 };
 
-export async function createSeatbeltProfile({ workspace, readPaths = [] } = {}) {
+export async function createSeatbeltProfile({ workspace, readPaths = [], readLiterals = [] } = {}) {
   literal(workspace);
   if (!Array.isArray(readPaths)) throw new TypeError('readPaths must be an array');
+  if (!Array.isArray(readLiterals)) throw new TypeError('readLiterals must be an array');
   const canonical = await realpath(workspace);
   const quotedWorkspace = literal(canonical);
   const directory = await stat(canonical);
@@ -40,6 +41,12 @@ export async function createSeatbeltProfile({ workspace, readPaths = [] } = {}) 
     }
   };
   addAncestors(canonical);
+  for (const path of readLiterals) {
+    const quoted = literal(path);
+    if (normalize(path) !== path) throw new Error('literal read paths must be normalized');
+    reads.add(`(literal ${quoted})`);
+    addAncestors(path);
+  }
   for (const path of readPaths) {
     literal(path);
     const resolved = await realpath(path);

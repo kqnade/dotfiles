@@ -13,6 +13,38 @@ import { runStagedProcess } from '../../../dot_pi/agent/runtime/staged-process.m
 
 const execute = promisify(execFile);
 
+test('Darwin literal directory reads permit discovery without child file access', {
+  skip: process.platform === 'darwin' ? false : 'requires macOS Seatbelt',
+}, async () => {
+  const root = await mkdtemp('/private/tmp/pi-seatbelt-discovery-');
+  const cwd = join(root, 'project');
+  try {
+    await mkdir(cwd);
+    await writeFile(join(cwd, 'source.txt'), 'original');
+    const ownership = new Ownership({ cwd });
+    const lease = ownership.claim('discovery', ['source.txt']);
+    const result = await runStagedProcess({
+      ownership, lease, cwd, files: ['source.txt'], temporaryRoot: root,
+      command: process.execPath,
+      args: ['-e', `
+        const fs = require('node:fs');
+        const path = require('node:path');
+        const assert = require('node:assert/strict');
+        const cwd = process.argv[1];
+        assert.deepEqual(fs.readdirSync(cwd), ['source.txt']);
+        assert.throws(() => fs.readFileSync(path.join(cwd, 'source.txt')), { code: 'EPERM' });
+        assert.throws(() => fs.writeFileSync(path.join(cwd, 'source.txt'), 'changed'), { code: 'EPERM' });
+        assert.throws(() => fs.readFileSync(path.join(cwd, 'rust-toolchain.toml')), { code: 'ENOENT' });
+        process.stdout.write('discovery-only');
+      `, cwd],
+      readLiterals: [cwd, join(cwd, 'rust-toolchain.toml')],
+    });
+    assert.equal(result.stdout, 'discovery-only');
+    assert.equal(await readFile(join(cwd, 'source.txt'), 'utf8'), 'original');
+    await ownership.drain(lease);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('Darwin Seatbelt confines staged writes to the workspace', {
   skip: process.platform === 'darwin' ? false : 'requires macOS Seatbelt',
 }, async () => {
@@ -168,6 +200,7 @@ test('Darwin Seatbelt denies host sockets and detached original writes', {
       assert.equal((await execute(executable, args)).stdout, 'connected\n');
       const result = await runStagedProcess({
         ownership, lease, cwd, files: ['source.txt'], temporaryRoot: root,
+        readLiterals: [root],
         command: executable, args, timeoutMs: 5000,
       });
       assert.equal(result.stdout, 'denied\n', `${transport} must reject host access`);
