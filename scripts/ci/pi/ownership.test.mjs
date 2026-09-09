@@ -29,6 +29,24 @@ test('process group stop waits for an uncertain inspection to confirm disappeara
   assert.deepEqual(await stopping, {});
 });
 
+test('process group stop confirms disappearance after a denied termination signal', async t => {
+  let terminating = false;
+  let checkedAfterSignal = false;
+  t.mock.method(process, 'kill', (pid, signal) => {
+    assert.equal(pid, -424242);
+    if (signal === 0 && !terminating) return true;
+    if (signal === 'SIGTERM') {
+      terminating = true;
+      throw Object.assign(new Error('group is exiting'), { code: 'EPERM' });
+    }
+    assert.equal(signal, 0);
+    checkedAfterSignal = true;
+    throw Object.assign(new Error('group is absent'), { code: 'ESRCH' });
+  });
+  await stopProcessGroup(424242, 1000);
+  assert.equal(checkedAfterSignal, true);
+});
+
 test('a canonical scoped claim can perform an expected-hash atomic write', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pi-ownership-'));
   try {

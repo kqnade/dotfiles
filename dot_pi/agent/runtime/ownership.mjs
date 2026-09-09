@@ -540,7 +540,13 @@ export const stopProcessGroup = async (pid, timeoutMs) => {
     await waitForEmptyProcessGroup(pid, timeoutMs);
     return;
   }
-  signalProcessGroup(pid, 'SIGTERM');
+  try {
+    signalProcessGroup(pid, 'SIGTERM');
+  } catch (error) {
+    if (error.code !== 'EPERM') throw error;
+    await waitForEmptyProcessGroup(pid, timeoutMs);
+    return;
+  }
   try {
     await waitForEmptyProcessGroup(pid, timeoutMs);
   } catch (error) {
