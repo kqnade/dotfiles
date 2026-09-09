@@ -273,6 +273,7 @@ jobs:
             scripts/ci/pi/seatbelt-runtime.test.mjs \
             scripts/ci/pi/format.test.mjs \
             scripts/ci/pi/format-native.test.mjs \
+            scripts/ci/pi/rustup.test.mjs \
             scripts/ci/pi/format-package.test.mjs
 
   intel-fallback:
@@ -368,4 +369,5 @@ jobs:
             scripts/ci/pi/seatbelt-runtime.test.mjs \
             scripts/ci/pi/format.test.mjs \
             scripts/ci/pi/format-native.test.mjs \
+            scripts/ci/pi/rustup.test.mjs \
             scripts/ci/pi/format-package.test.mjs

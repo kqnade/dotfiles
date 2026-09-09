@@ -7,7 +7,7 @@ export async function resolveRustfmt({ ownership, lease, cwd, path, command, sig
   const toolchains = join(home, 'toolchains');
   const readPaths = [command];
   const readLiterals = new Set([home, toolchains, join(home, 'settings.toml'), join(home, 'state.toml')]);
-  const candidates = new Set();
+  const candidates = new Map();
   let names;
   try { names = await readdir(toolchains); }
   catch (error) {
@@ -19,10 +19,12 @@ export async function resolveRustfmt({ ownership, lease, cwd, path, command, sig
     readLiterals.add(directory);
     try {
       readLiterals.add(await realpath(directory));
-      const executable = await realpath(join(directory, 'bin', 'rustfmt'));
+      const installedPath = join(directory, 'bin', 'rustfmt');
+      const executable = await realpath(installedPath);
       const entry = await stat(executable);
       if (!entry.isFile() || (entry.mode & 0o111) === 0) continue;
-      candidates.add(executable);
+      candidates.set(installedPath, executable);
+      candidates.set(executable, executable);
       readPaths.push(executable);
     } catch (error) {
       if (!['ENOENT', 'ENOTDIR'].includes(error.code)) throw error;
@@ -49,8 +51,8 @@ export async function resolveRustfmt({ ownership, lease, cwd, path, command, sig
     readPaths, readLiterals: [...readLiterals],
   });
   const match = /^([^\r\n]+)\n?$/u.exec(result.stdout);
-  const selected = match && isAbsolute(match[1]) ? await realpath(match[1]) : undefined;
-  if (!candidates.has(selected)) {
+  const selected = match && isAbsolute(match[1]) ? candidates.get(match[1]) : undefined;
+  if (selected === undefined) {
     throw Object.assign(new Error('rustup did not select an installed rustfmt executable'), { code: 'FORMATTER_MISSING' });
   }
   return selected;
