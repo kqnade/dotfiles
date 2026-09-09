@@ -1,8 +1,13 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, realpath } from 'node:fs/promises';
 import { createRequire } from 'node:module';
-import { dirname, isAbsolute, join, relative, sep } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
 const require = createRequire(import.meta.url);
+
+function isWithin(root, path) {
+  const distance = relative(root, path);
+  return !isAbsolute(distance) && distance !== '..' && !distance.startsWith(`..${sep}`);
+}
 
 function validateEdition(edition) {
   if (!['2015', '2018', '2021', '2024'].includes(edition)) {
@@ -31,7 +36,18 @@ export async function cargoEdition(workspace, filePath) {
         const edition = manifest.package.edition ?? '2015';
         if (edition?.workspace !== true) return validateEdition(edition);
         if (manifest.package.workspace !== undefined) {
-          throw new Error('Explicit Cargo workspace paths are unsupported');
+          const selected = manifest.package.workspace;
+          if (typeof selected !== 'string' || isAbsolute(selected)) {
+            throw new Error('Cargo workspace must be a relative path inside the staged project');
+          }
+          const path = resolve(directory, selected, 'Cargo.toml');
+          if (!isWithin(workspace, path)) throw new Error('Cargo workspace escapes the staged project');
+          const canonical = await realpath(path);
+          if (!isWithin(await realpath(workspace), canonical)) {
+            throw new Error('Cargo workspace escapes the staged project');
+          }
+          const target = parse(await readFile(canonical, 'utf8'));
+          return validateEdition(target.workspace?.package?.edition);
         }
         inherited = true;
       }
