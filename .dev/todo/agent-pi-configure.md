@@ -547,7 +547,7 @@ capability. Do not treat the SBPL generator as a command allowlist.
 ### Staged output capture checkpoint
 
 - Observed on 2026-09-09 in the same macOS arm64 worktree/ref, producing client
-  Codex: code baseline `0434a82`, clean before this TODO update. No HOME apply,
+  Codex: code baseline `9173479`, clean before this TODO update. No HOME apply,
   package installation, authentication/history change, or remote mutation occurred.
 - Observed: `2420fde` adds a trusted internal asynchronous capture callback after
   command success and before staging cleanup. The original ownership lease stays
@@ -570,25 +570,44 @@ capability. Do not treat the SBPL generator as a command allowlist.
   directory fds, scandir(fd), open(dir_fd=...), O_DIRECTORY/O_NOFOLLOW, and regular
   file fstat plus O_NONBLOCK. Its normal-case test records binary bytes as base64,
   executable mode, and empty directories; later writes do not change the emitted
-  manifest. It currently rejects all symlinks and other nonregular entries.
+  manifest. Other special files are rejected.
   `0434a82` limits aggregate file bytes (default 64 MiB, configurable internally)
   and fails before JSON emission on overflow. Both behavior tests failed for the
   intended missing behavior before implementation; the final two tests pass.
-- Observed: repository validation passed after initial helper implementation;
-  the subsequent byte-limit increment passed the focused helper suite and
-  whitespace checks. All code commits above are local signed commits.
+- Observed: `fb3bf47` records symlink targets with readlink(dir_fd=...) without
+  traversing directory or dangling links. This is raw capture data: absolute and
+  escaping target strings are also recorded, not authorized for publication.
+  Publication must validate the complete link graph; normalizing each target
+  independently is insufficient when a target traverses another link before `..`.
+- Observed: `5b27eb1` bounds aggregate entry count during scandir enumeration
+  (default 100,000), including directories and empty files. `1a8d863` bounds
+  serialized metadata excluding content (default 8 MiB), including link targets.
+  These limits complement the 64 MiB file-byte limit. Link capture and both
+  resource limits each had the intended failing test before implementation.
+- Observed: `9173479` adds three deterministic descriptor-race regressions using
+  Python os.open wrappers around real filesystem operations. After an intermediate
+  directory fd opens, replacing its pathname with a symlink to a sibling outside
+  the stage still captures only the original stage bytes. Replacing a regular
+  file with an external symlink before open rejects with ELOOP; replacing it with
+  a FIFO rejects as nonregular, with empty stdout and no timeout kill or signal.
+  The race tests passed on existing production behavior, not an observed Red fix.
+- Observed: the combined helper/race suite passed 8 tests, no failures or skips,
+  on macOS arm64. Repository validation and whitespace checks passed. The race
+  probes are descriptor-reader evidence, not new OS sandbox or Linux evidence.
+  All code commits above are local signed commits.
 - Incomplete: this helper is not connected to staged execution or exposed to Pi.
   Tests currently invoke python3 with isolated mode through the test environment.
   Production needs an explicitly managed, trusted absolute interpreter and
   supervised IPC, timeout/cancellation, output-size limits, JSON schema validation,
   and an immutable parent-side representation. Python is not yet a pinned mise
   runtime dependency. Do not rely on the test PATH as a production contract.
-- Next test list: exact/zero byte-limit boundaries; bounded entry counts/metadata
-  and traversal depth; special-file rejection without blocking; root, final-file,
-  and intermediate-directory replacement races; internal symlink recording and
-  escaping-link rejection; concurrent content changes. Descriptor-relative reads
-  constrain traversal but do not promise a point-in-time consistent tree while a
-  detached child mutates it. Add race evidence before claiming that boundary.
+- Next test list: exact/zero resource-limit boundaries; explicit traversal-depth
+  bounds; root and directory-before-open swaps; concurrent content changes;
+  static special-file rejection; raw external-link capture without reads; complete
+  graph-based escaping-link validation before publication. Descriptor-relative
+  reads do not promise a point-in-time consistent tree while a detached child
+  mutates it. Capture callback command-failure suppression, drain while awaiting
+  capture, and cleanup failure after successful capture also need direct coverage.
 - Next integration: capture the execution baseline after trusted preparation so
   copied runtimes do not appear as user-created output. Compare immutable initial
   and final manifests, enforce original lease roots, preflight all original state,
