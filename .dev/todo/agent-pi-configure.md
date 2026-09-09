@@ -547,7 +547,7 @@ capability. Do not treat the SBPL generator as a command allowlist.
 ### Staged output capture checkpoint
 
 - Observed on 2026-09-09 in the same macOS arm64 worktree/ref, producing client
-  Codex: code baseline `51ebab0`, clean before this TODO update. No HOME apply,
+  Codex: code baseline `0551b79`, clean before this TODO update. No HOME apply,
   package installation, authentication/history change, or remote mutation occurred.
 - Observed: `2420fde` adds a trusted internal asynchronous capture callback after
   command success and before staging cleanup. The original ownership lease stays
@@ -632,12 +632,37 @@ capability. Do not treat the SBPL generator as a command allowlist.
 - Observed: the final combined comparison, staged output/process, and helper/race
   suite passed 26 tests with one expected Darwin platform skip. Repository validation
   and whitespace checks passed. All four implementation commits are locally signed.
-- Incomplete: validation currently runs before comparison; captureTree itself returns
-  frozen raw helper output. Neither result authorizes publication. Absolute/escaping
-  link targets remain raw data pending full link-graph validation. Original lease
-  scope, filesystem aliases, original preimages/modes, and publication semantics
-  still require validation. Do not expose shell publication on the strength of the
-  record-format checks alone.
+- Observed: `0551b79` validates literal link chains before comparison. It expands
+  recorded symlinks before processing subsequent dot-dot components, rejects
+  absolute targets and escapes above the captured root, and accepts internal
+  relative/dangling links. Resolution is bounded to 40 links, with cycles and a
+  41-link chain rejected. The escape regression failed before implementation; a
+  boundary test exposed and corrected an initial off-by-one count before commit.
+- Observed: the combined comparison, staged output/process, and helper/race suite
+  passed 28 tests with one expected Darwin platform skip. Repository validation
+  and whitespace checks passed. git cc failed during 1Password signing with
+  "failed to fill whole buffer"; a local git commit fallback using the configured
+  signing succeeded. The resulting commit has a verified signature.
+- Confirmed incomplete gate: literal link validation does not prove native filesystem
+  containment. On this macOS temporary volume, a synthetic stage containing dir/up
+  -> '..' and escape -> 'DIR/UP/../outside' passes the literal comparator, while
+  native lookup reads the synthetic sibling outside file. The probe used only a
+  disposable /private/tmp fixture and removed it afterward. A separate agent probe
+  observed case-insensitive lookup and composed/decomposed Unicode name equivalence
+  on the same host. Do not turn these observed host properties into universal Linux
+  or macOS assumptions, and do not encode the unsafe acceptance as required behavior.
+- Next native validation design: use kernel-applied name lookup within a descriptor
+  root or a trusted immutable validation tree, not unconditional lowercase/NFD maps.
+  A candidate capture contract includes snapshot-local identities and resolved-link
+  evidence, but identity alone is not yet accepted as sufficient under mutation,
+  inode reuse, or different staging/original filesystem semantics. Prove that any
+  resolution metadata describes the emitted immutable graph and the destination
+  filesystem, without following external targets or trusting mutable stage paths.
+- Incomplete: validation runs before comparison; captureTree itself returns frozen
+  raw helper output. Neither result authorizes publication. Original lease scope,
+  native filesystem aliases, original preimages/modes, and publication semantics
+  still require validation. The demonstrated alias escape must be closed before
+  exposing shell publication; literal graph checks do not waive that gate.
 - Incomplete: Python is not a pinned mise runtime. Integration fixtures use the
   explicitly supplied /usr/bin/python3; other helper tests use test-environment
   python3. Neither is a production discovery contract. Pin the managed interpreter
