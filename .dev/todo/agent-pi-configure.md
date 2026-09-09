@@ -7,7 +7,7 @@ on-demand Astra escalation, scoped Sol/Luna/Spark delegation, LSP, six shared
 skills, and ownership-aware hooks. Complete the migration without losing
 authentication or conversation history.
 
-Status: **incomplete; paused at the user's request for a new session on macOS**.
+Status: **incomplete; active on macOS arm64**.
 The launcher, broker, managed file tools, delegation, and LSP are integrated.
 Staged execution primitives exist, but shell/formatter exposure, sandbox
 verification, and final migration remain open. Do not remove the existing agent
@@ -18,8 +18,7 @@ environment or mark this item complete before the remaining gates pass.
 - Repository: `git@github.com:kqnade/dotfiles`; branch `agent/pi-configure`.
 - Evidence captured on 2026-09-09 in the Linux/WSL worktree
   `/home/kqnade/repos/github.com/kqnade/dotfiles` at code baseline `e8b55ae`.
-  macOS has not executed the Seatbelt tests. The user has no remotely accessible
-  Mac and will resume in a new local Mac session.
+  This is historical Linux evidence; current macOS evidence is recorded below.
 - Commits through this baseline are local; no push or other remote mutation was
   performed. Reconcile the Mac checkout, remote identity, branch, dirty state,
   and commit availability before relying on this record. Keep its `.dev/`
@@ -169,6 +168,57 @@ capability. Do not treat the SBPL generator as a command allowlist.
 - Full `mise run apply` was not run because `.zshrc` has pre-existing manual
   changes (`MM` in chezmoi status). Preserve/reconcile those changes rather than
   overwriting them. No services or authentication/history were removed.
+
+## macOS verification checkpoint
+
+- Observed on 2026-09-09: remote `git@github.com:kqnade/dotfiles`, branch
+  `agent/pi-configure`, worktree
+  `/Users/kanato.momose/repos/github.com/kqnade/dotfiles@agent-pi-configure`.
+  Code baseline: `85fa015f50da7415461ab5e3f4fa3c79a6b194f9`; producing client:
+  Codex. The code worktree was clean before this TODO update. No remote mutation
+  or HOME deployment was performed.
+- Observed: `774c4c6` adds narrowly scoped system reads for macOS
+  binary startup: root directory itself, `/private/var/select/sh`, and metadata for
+  `/var` and `/System/Cryptexes/OS`. The real Seatbelt test confirms staged
+  writes, explicit original reads, denied ungranted reads, denied original
+  append/create/rename/unlink/hardlink/symlink writes, and original inode/content.
+- Observed: `fb68538` canonicalizes two ownership-test temporary roots. The
+  `/var` versus `/private/var` alias otherwise prevents test hooks from firing.
+  The complete ownership file passed all 12 tests on this Mac.
+- Observed: `e6ff1fb`, `7641753`, and `85fa015` add compiled native probes in
+  `scripts/ci/pi/fixtures/seatbelt-probe.c`, exercised by the existing macOS CI
+  entry `scripts/ci/pi/seatbelt-runtime.test.mjs`. Real reachable loopback TCP
+  and pathname Unix sockets are denied under Seatbelt. A pre-created POSIX
+  shared-memory object and a reachable Mach service are inaccessible; positive
+  controls outside Seatbelt pass. A writable parent FD is closed in the managed
+  child. A child that calls `setsid()` and outlives its leader can write its
+  stage but cannot open the original for append. All three Darwin runtime
+  tests passed with no skips using:
+  `mise exec -- node --test --test-timeout=25000 scripts/ci/pi/seatbelt-runtime.test.mjs`.
+- Limitation: the detached probe retains stdout until reporting denial; it does
+  not establish disappearance of detached processes or output publication after
+  staging cleanup. The security contract still prioritizes original protection.
+  Mach lookup rejection is not proof against every possible OS deputy. Intel
+  macOS and actual formatter/config/plugin compatibility remain unverified.
+- Observed: the related Seatbelt/staging/environment/process suite passed 12
+  tests with one expected unsupported-platform skip on Darwin. Repository
+  validation passed with the already installed Python 3.11 executable at
+  `~/.local/share/uv/python/cpython-3.11.15-macos-aarch64-none/bin/python3`.
+  macOS `/usr/bin/python3` lacks `tomllib`; no dependency installation or product
+  workaround was made. `git diff --check` passed before each code commit.
+- Observed harness boundary: nested `sandbox_apply` fails with `Operation not
+  permitted` inside Codex's sandbox. Actual Seatbelt tests ran through approved
+  elevated execution. Broadening the product sandbox was not used as a harness
+  workaround.
+- Observed: a disposable direct `runStagedProcess` probe with installed Go
+  `1.27.1` gofmt returned the independently expected formatted Go source on
+  stdout inside Seatbelt (exit 0). This checks real gofmt runtime compatibility,
+  not `formatFile` integration or CAS publication. Other formatters and their
+  config/plugin closure remain unverified.
+- Next implementation: formatter staging must remap cwd/file arguments, preserve
+  config/plugin/runtime closure, and publish independently captured stdout via
+  the existing preimage check. Generic shell still needs creation/deletion and
+  validated directory output synchronization; the final scope is unchanged.
 
 ## Resume on macOS
 
