@@ -16,7 +16,7 @@ const runner = process.platform === 'darwin' ? undefined : invocation => runStag
 test('rustup shim selects the caller cwd toolchain inside the sandbox', {
   skip: process.env.PI_RUSTUP_BIN && process.env.PI_RUSTFMT_BIN ? false : 'requires PI_RUSTUP_BIN and PI_RUSTFMT_BIN',
   timeout: 60_000,
-}, async () => {
+}, async t => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'pi-format-rustup-')));
   const environment = Object.fromEntries(['PATH', 'RUSTUP_HOME', 'RUSTUP_TOOLCHAIN'].map(name => [name, process.env[name]]));
   try {
@@ -39,6 +39,37 @@ test('rustup shim selects the caller cwd toolchain inside the sandbox', {
     await formatFile({ ownership, lease, cwd, path: 'src/main.rs' }, runner);
     assert.equal(await readFile(join(cwd, 'src', 'main.rs'), 'utf8'), 'fn main() {\n    println!("hello");\n}\n');
     assert.equal(await readFile(join(rustupHome, 'settings.toml'), 'utf8'), settings);
+    await writeFile(join(rustupHome, 'settings.toml'), 'version = "12"\ndefault_toolchain = "missing"\n');
+    for (const [name, contents] of [
+      ['rust-toolchain', 'fixture\n'],
+      ['rust-toolchain.toml', '[toolchain]\nchannel = "fixture"\n'],
+    ]) {
+      await t.test(`selects ${name} over the default`, async () => {
+        await writeFile(join(cwd, name), contents);
+        assert.equal((await formatFile({ ownership, lease, cwd, path: 'src/main.rs' }, runner)).status, 'unchanged');
+        assert.equal(await readFile(join(cwd, name), 'utf8'), contents);
+        await rm(join(cwd, name));
+      });
+    }
+    await writeFile(join(cwd, 'rust-toolchain.toml'), '[toolchain]\nchannel = "missing"\n');
+    await t.test('environment overrides the toolchain file', async () => {
+      process.env.RUSTUP_TOOLCHAIN = 'fixture';
+      try {
+        assert.equal((await formatFile({ ownership, lease, cwd, path: 'src/main.rs' }, runner)).status, 'unchanged');
+      } finally { delete process.env.RUSTUP_TOOLCHAIN; }
+    });
+    await t.test('caller directory override takes precedence over its toolchain file', async () => {
+      await writeFile(join(rustupHome, 'settings.toml'), `version = "12"\ndefault_toolchain = "missing"\n[overrides]\n${JSON.stringify(cwd)} = "fixture"\n`);
+      assert.equal((await formatFile({ ownership, lease, cwd, path: 'src/main.rs' }, runner)).status, 'unchanged');
+    });
+    await t.test('missing selected toolchain preserves source and settings', async () => {
+      const unavailable = 'version = "12"\ndefault_toolchain = "missing"\n';
+      await writeFile(join(rustupHome, 'settings.toml'), unavailable);
+      await assert.rejects(formatFile({ ownership, lease, cwd, path: 'src/main.rs' }, runner), { code: 'PROCESS_FAILED' });
+      assert.equal(await readFile(join(cwd, 'src', 'main.rs'), 'utf8'), 'fn main() {\n    println!("hello");\n}\n');
+      assert.equal(await readFile(join(rustupHome, 'settings.toml'), 'utf8'), unavailable);
+      await ownership.run(lease, async () => {});
+    });
     await ownership.drain(lease);
   } finally {
     for (const [name, value] of Object.entries(environment)) {
