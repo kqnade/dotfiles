@@ -30,13 +30,14 @@ async function seatbeltCommand({ workspace, command, args, readPaths, readLitera
 }
 
 export async function runStagedProcess({
-  ownership, lease, cwd, files, readFiles = [], temporaryRoot, prepare, capture, includeProjectFiles = false,
+  ownership, lease, cwd, files, readFiles = [], temporaryRoot, prepare, snapshot, capture, includeProjectFiles = false,
   command, args = [], readPaths = [], readLiterals = [], stdin = '', signal, timeoutMs, maxOutputBytes,
 }, sandbox = seatbeltCommand) {
   return ownership.run(lease, async () => {
     if (!Array.isArray(files) || files.length === 0) throw new TypeError('files must be a non-empty array');
     if (!Array.isArray(readFiles)) throw new TypeError('readFiles must be an array');
     if (prepare !== undefined && typeof prepare !== 'function') throw new TypeError('prepare must be a function');
+    if (snapshot !== undefined && typeof snapshot !== 'function') throw new TypeError('snapshot must be a function');
     if (capture !== undefined && typeof capture !== 'function') throw new TypeError('capture must be a function');
     const ownedPaths = new Set();
     for (const file of files) {
@@ -54,6 +55,14 @@ export async function runStagedProcess({
       stageOwnership = new Ownership({ cwd: area.workspace });
       stageLease = stageOwnership.claim(lease.owner, ['.']);
       const prepared = prepare === undefined ? {} : await prepare(Object.freeze({ workspace: area.workspace, files: area.files }));
+      const captureArea = Object.freeze({
+        workspace: area.workspace,
+        files: area.files,
+        // Capture hooks are trusted host code; helpers share the staging lease.
+        runProcess: options => stageOwnership.runProcess(stageLease, { ...options, inheritEnv: false, signal }),
+      });
+      const baseline = snapshot === undefined ? undefined : await stageOwnership.run(stageLease,
+        () => snapshot(captureArea));
       const invocation = await sandbox({
         workspace: area.workspace,
         command: prepared.command ?? command,
@@ -65,14 +74,10 @@ export async function runStagedProcess({
         ...invocation, inheritEnv: false, stdin: prepared.stdin ?? stdin, signal, timeoutMs, maxOutputBytes,
       });
       const captured = capture === undefined ? undefined : await stageOwnership.run(stageLease,
-        () => capture(Object.freeze({
-          workspace: area.workspace,
-          files: area.files,
-          // Capture hooks are trusted host code; helpers share the staging lease.
-          runProcess: options => stageOwnership.runProcess(stageLease, { ...options, inheritEnv: false, signal }),
-        })));
+        () => capture(captureArea));
       return {
         ...output,
+        ...(snapshot === undefined ? {} : { baseline }),
         ...(capture === undefined ? {} : { captured }),
         files: Object.freeze(area.files.filter(file => ownedPaths.has(file.originalPath))
           .map(({ path, originalPath, hash }) => Object.freeze({ path, originalPath, hash }))),

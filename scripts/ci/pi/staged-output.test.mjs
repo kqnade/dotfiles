@@ -12,6 +12,40 @@ const sandbox = process.platform === 'darwin' ? undefined : async ({ workspace, 
   command, args, cwd: workspace, env: sandboxEnvironment(workspace),
 });
 
+test('staged tree baseline includes trusted preparation and precedes command changes', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'pi-output-baseline-'));
+  try {
+    await writeFile(join(cwd, 'file.txt'), 'original');
+    const ownership = new Ownership({ cwd });
+    const lease = ownership.claim('worker', ['.']);
+    const capture = area => captureTree({ ...area, python: '/usr/bin/python3' });
+    const result = await runStagedProcess({
+      ownership, lease, cwd, files: ['file.txt'],
+      command: '/bin/sh', args: ['-c', 'printf modified > file.txt'],
+      prepare: async ({ workspace }) => {
+        await writeFile(join(workspace, 'runtime.txt'), 'runtime', { mode: 0o600 });
+        return {};
+      },
+      snapshot: capture,
+      capture,
+    }, sandbox);
+    const runtime = { path: 'runtime.txt', type: 'file', mode: 0o600, content: Buffer.from('runtime').toString('base64') };
+    assert.deepEqual(result.baseline, [
+      { path: 'file.txt', type: 'file', mode: 0o600, content: Buffer.from('original').toString('base64') },
+      runtime,
+    ]);
+    assert.deepEqual(result.captured, [
+      { path: 'file.txt', type: 'file', mode: 0o600, content: Buffer.from('modified').toString('base64') },
+      runtime,
+    ]);
+    assert.equal(await readFile(join(cwd, 'file.txt'), 'utf8'), 'original');
+    await assert.rejects(access(join(cwd, 'runtime.txt')), { code: 'ENOENT' });
+    await ownership.drain(lease);
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
 test('staged execution captures an immutable tree through a supervised Python helper before cleanup', async () => {
   const cwd = await mkdtemp(join(tmpdir(), 'pi-output-tree-'));
   let workspace;
