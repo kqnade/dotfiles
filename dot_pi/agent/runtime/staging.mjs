@@ -67,6 +67,15 @@ async function copyProjectFiles(cwd, workspace, copied, directory = '') {
   }
 }
 
+export async function copyRuntimeTree(source, destination) {
+  const canonicalSource = await realpath(source);
+  const canonicalDestination = await realpath(destination);
+  if (within(canonicalSource, canonicalDestination) || within(canonicalDestination, canonicalSource)) {
+    throw new Error('runtime source and destination must be separate directories');
+  }
+  await copyProjectFiles(canonicalSource, canonicalDestination, new Set());
+}
+
 export async function createStagingArea({ cwd, files, temporaryRoot = tmpdir(), includeProjectFiles = false } = {}) {
   if (!Array.isArray(files) || files.length === 0) throw new TypeError('files must be a non-empty array');
   if (typeof cwd !== 'string' || cwd.length === 0) throw new TypeError('cwd must be a non-empty path');

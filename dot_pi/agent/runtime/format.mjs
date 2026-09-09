@@ -1,5 +1,6 @@
-import { access, open } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, open } from 'node:fs/promises';
 import {
+  basename,
   dirname,
   delimiter,
   extname,
@@ -12,6 +13,15 @@ import {
 import { readFile } from 'node:fs/promises';
 import { realpath } from 'node:fs/promises';
 import { runStagedProcess } from './staged-process.mjs';
+import { copyRuntimeTree } from './staging.mjs';
+
+function nodeModulesRoot(executable) {
+  let root;
+  for (let directory = dirname(executable); directory !== dirname(directory); directory = dirname(directory)) {
+    if (basename(directory) === 'node_modules') root = directory;
+  }
+  return root;
+}
 
 async function formatterInvocation(command, args) {
   const executable = await realpath(command);
@@ -283,7 +293,15 @@ export async function formatFile({ ownership, lease, path: targetPath, cwd, sign
       prepare: async area => {
         const target = area.files.find(file => file.originalPath === canonical);
         const args = formatter.args.map(arg => arg === canonical ? target.stagedPath : arg);
-        const command = isWithin(scope, executable) ? join(area.workspace, relative(scope, executable)) : executable;
+        let command = isWithin(scope, executable) ? join(area.workspace, relative(scope, executable)) : executable;
+        const packageRoot = nodeModulesRoot(executable);
+        if (!isWithin(scope, executable) && packageRoot) {
+          const runtime = await mkdtemp(join(area.workspace, '.pi-format-runtime-'));
+          const packages = join(runtime, 'node_modules');
+          await mkdir(packages, { mode: 0o700 });
+          await copyRuntimeTree(packageRoot, packages);
+          command = join(packages, relative(packageRoot, executable));
+        }
         return {
           ...await formatterInvocation(command, args),
           stdin: await readFile(target.stagedPath, 'utf8'),

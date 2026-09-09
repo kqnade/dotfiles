@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 
-import { createStagingArea } from '../../../dot_pi/agent/runtime/staging.mjs';
+import { copyRuntimeTree, createStagingArea } from '../../../dot_pi/agent/runtime/staging.mjs';
 
 test('project context snapshots config dependencies and internal package links', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pi-stage-context-'));
@@ -28,6 +28,8 @@ test('project context snapshots config dependencies and internal package links',
     await writeFile(join(area.workspace, 'node_modules', '.bin', 'formatter'), 'staged');
     assert.equal(await readFile(join(cwd, 'node_modules', 'formatter', 'cli.js'), 'utf8'), '#!/usr/bin/env node\n');
     await assert.rejects(access(join(area.workspace, '.git')), { code: 'ENOENT' });
+    await assert.rejects(copyRuntimeTree(cwd, join(cwd, 'config')), /separate directories/u);
+    await assert.rejects(copyRuntimeTree(cwd, root), /separate directories/u);
   } finally {
     if (area) await area.cleanup();
     await rm(root, { recursive: true, force: true });
