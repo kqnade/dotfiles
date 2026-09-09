@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { access, lstat, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { access, lstat, mkdir, mkdtemp, open, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -88,6 +88,53 @@ test('Darwin Seatbelt confines staged writes to the workspace', {
     } finally {
       await rm(root, { recursive: true, force: true });
     }
+  }
+});
+
+test('Darwin Seatbelt denies host shared memory and Mach lookup and closes parent file descriptors', {
+  skip: process.platform === 'darwin' ? false : 'requires macOS Seatbelt',
+  timeout: 20_000,
+}, async () => {
+  const root = await mkdtemp('/private/tmp/pi-seatbelt-deputies-');
+  const cwd = join(root, 'repo');
+  const executable = join(root, 'probe');
+  const shmName = `/pi-test-${process.pid}-${Date.now()}`;
+  let memoryCreated = false;
+  let ownership;
+  let lease;
+  let original;
+  try {
+    await mkdir(cwd);
+    const target = join(cwd, 'source.txt');
+    await writeFile(target, 'original');
+    original = await open(target, 'r+');
+    assert.equal((await original.write('original', 0, 'utf8')).bytesWritten, 8);
+    await execute('/usr/bin/cc', ['-Wall', '-Wextra', '-Werror',
+      fileURLToPath(new URL('fixtures/seatbelt-probe.c', import.meta.url)), '-o', executable]);
+    await execute(executable, ['shm-create', shmName]);
+    memoryCreated = true;
+    ownership = new Ownership({ cwd });
+    lease = ownership.claim('deputy-test', ['source.txt']);
+    for (const args of [['shm', shmName], ['mach', 'com.apple.cfprefsd.daemon']]) {
+      assert.equal((await execute(executable, args)).stdout, 'connected\n');
+      const result = await runStagedProcess({
+        ownership, lease, cwd, files: ['source.txt'], temporaryRoot: root,
+        command: executable, args, timeoutMs: 5000,
+      });
+      assert.equal(result.stdout, 'denied\n', `${args[0]} must reject host access`);
+      assert.equal((await execute(executable, args)).stdout, 'connected\n');
+    }
+    const result = await runStagedProcess({
+      ownership, lease, cwd, files: ['source.txt'], temporaryRoot: root,
+      command: executable, args: ['fd', String(original.fd)], timeoutMs: 5000,
+    });
+    assert.equal(result.stdout, 'closed\n');
+    assert.equal(await readFile(target, 'utf8'), 'original');
+  } finally {
+    if (lease) await ownership.drain(lease);
+    if (original) await original.close();
+    if (memoryCreated) await execute(executable, ['shm-remove', shmName]);
+    await rm(root, { recursive: true, force: true });
   }
 });
 

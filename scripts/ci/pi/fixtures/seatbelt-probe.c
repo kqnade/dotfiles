@@ -1,9 +1,13 @@
 #include <arpa/inet.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <mach/mach.h>
+#include <servers/bootstrap.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/mman.h>
 #include <sys/un.h>
 #include <unistd.h>
 
@@ -11,7 +15,36 @@ int main(int argc, char **argv) {
   if (argc != 3) return 2;
   int descriptor;
   int result;
-  if (strcmp(argv[1], "tcp") == 0) {
+  if (strcmp(argv[1], "mach") == 0) {
+    mach_port_t service = MACH_PORT_NULL;
+    kern_return_t status = bootstrap_look_up(bootstrap_port, argv[2], &service);
+    if (status == KERN_SUCCESS) {
+      mach_port_deallocate(mach_task_self(), service);
+      puts("connected");
+    } else if (status == BOOTSTRAP_NOT_PRIVILEGED || status == BOOTSTRAP_UNKNOWN_SERVICE) {
+      puts("denied");
+    } else {
+      fprintf(stderr, "unexpected Mach failure: %d\n", status);
+      return 1;
+    }
+    return 0;
+  } else if (strcmp(argv[1], "shm-create") == 0) {
+    descriptor = shm_open(argv[2], O_CREAT | O_EXCL | O_RDWR, 0600);
+    if (descriptor < 0) return 1;
+    result = ftruncate(descriptor, 1);
+    close(descriptor);
+    return result == 0 ? 0 : 1;
+  } else if (strcmp(argv[1], "shm-remove") == 0) {
+    return shm_unlink(argv[2]) == 0 ? 0 : 1;
+  } else if (strcmp(argv[1], "shm") == 0) {
+    descriptor = shm_open(argv[2], O_RDWR, 0);
+    result = descriptor < 0 ? -1 : 0;
+  } else if (strcmp(argv[1], "fd") == 0) {
+    result = write(atoi(argv[2]), "changed", 7);
+    if (result < 0 && errno == EBADF) puts("closed");
+    else return 1;
+    return 0;
+  } else if (strcmp(argv[1], "tcp") == 0) {
     struct sockaddr_in address = {0};
     address.sin_family = AF_INET;
     address.sin_port = htons((unsigned short)atoi(argv[2]));
