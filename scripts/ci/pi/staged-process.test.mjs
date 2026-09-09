@@ -8,6 +8,36 @@ import { Ownership } from '../../../dot_pi/agent/runtime/ownership.mjs';
 import { runStagedProcess } from '../../../dot_pi/agent/runtime/staged-process.mjs';
 import { sandboxEnvironment } from '../../../dot_pi/agent/runtime/sandbox-env.mjs';
 
+test('staged invocation prepares file arguments and stdin from copied inputs outside the write lease', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pi-staged-prepare-'));
+  const cwd = join(root, 'repo');
+  let workspace;
+  try {
+    await mkdir(join(cwd, 'src'), { recursive: true });
+    await writeFile(join(cwd, 'src', 'file.txt'), 'original');
+    await writeFile(join(cwd, 'config.txt'), 'configuration');
+    const ownership = new Ownership({ cwd });
+    const lease = ownership.claim('formatter', ['src/file.txt']);
+    const result = await runStagedProcess({
+      ownership, lease, cwd, files: ['src/file.txt'], readFiles: ['config.txt'], temporaryRoot: root,
+      prepare: async area => {
+        workspace = area.workspace;
+        const target = area.files.find(file => file.path === 'src/file.txt');
+        await writeFile(join(cwd, 'config.txt'), 'external change');
+        return {
+          command: '/bin/sh', args: ['-c', 'cat config.txt; cat "$1"; cat', 'formatter', target.stagedPath],
+          stdin: await readFile(target.stagedPath, 'utf8'),
+        };
+      },
+    }, async ({ workspace, command, args }) => ({ command, args, cwd: workspace, env: sandboxEnvironment(workspace) }));
+    assert.equal(result.stdout, 'configurationoriginaloriginal');
+    assert.deepEqual(result.files.map(file => file.path), ['src/file.txt']);
+    assert.equal(await readFile(join(cwd, 'config.txt'), 'utf8'), 'external change');
+    await assert.rejects(access(workspace), { code: 'ENOENT' });
+    await ownership.drain(lease);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('staged process orchestration runs against copied bytes and cleans before returning output', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pi-staged-process-'));
   const cwd = join(root, 'repo');
