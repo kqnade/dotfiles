@@ -6,9 +6,42 @@ import { test } from 'node:test';
 import { Ownership } from '../../../dot_pi/agent/runtime/ownership.mjs';
 import { runStagedProcess } from '../../../dot_pi/agent/runtime/staged-process.mjs';
 import { sandboxEnvironment } from '../../../dot_pi/agent/runtime/sandbox-env.mjs';
+import { captureTree } from '../../../dot_pi/agent/runtime/capture-tree.mjs';
 
 const sandbox = process.platform === 'darwin' ? undefined : async ({ workspace, command, args }) => ({
   command, args, cwd: workspace, env: sandboxEnvironment(workspace),
+});
+
+test('staged execution captures an immutable tree through a supervised Python helper before cleanup', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'pi-output-tree-'));
+  let workspace;
+  try {
+    await writeFile(join(cwd, 'file.txt'), 'original');
+    const ownership = new Ownership({ cwd });
+    const lease = ownership.claim('worker', ['.']);
+    const result = await runStagedProcess({
+      ownership, lease, cwd, files: ['file.txt'],
+      command: '/bin/sh',
+      args: ['-c', 'printf modified > file.txt; mkdir -m 700 generated; printf created > generated/new.txt; chmod 600 generated/new.txt'],
+      capture: area => {
+        workspace = area.workspace;
+        return captureTree({ ...area, python: '/usr/bin/python3' });
+      },
+    }, sandbox);
+    assert.deepEqual(result.captured, [
+      { path: 'file.txt', type: 'file', mode: 0o600, content: Buffer.from('modified').toString('base64') },
+      { path: 'generated', type: 'directory', mode: 0o700 },
+      { path: 'generated/new.txt', type: 'file', mode: 0o600, content: Buffer.from('created').toString('base64') },
+    ]);
+    assert.throws(() => result.captured.push({}), TypeError);
+    assert.throws(() => { result.captured[0].content = ''; }, TypeError);
+    await assert.rejects(access(workspace), { code: 'ENOENT' });
+    assert.equal(await readFile(join(cwd, 'file.txt'), 'utf8'), 'original');
+    await assert.rejects(access(join(cwd, 'generated')), { code: 'ENOENT' });
+    await ownership.drain(lease);
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
 });
 
 test('failed output capture preserves its error and cleans the stage without quarantining originals', async () => {

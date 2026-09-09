@@ -65,7 +65,12 @@ export async function runStagedProcess({
         ...invocation, inheritEnv: false, stdin: prepared.stdin ?? stdin, signal, timeoutMs, maxOutputBytes,
       });
       const captured = capture === undefined ? undefined : await stageOwnership.run(stageLease,
-        () => capture(Object.freeze({ workspace: area.workspace, files: area.files })));
+        () => capture(Object.freeze({
+          workspace: area.workspace,
+          files: area.files,
+          // Capture hooks are trusted host code; helpers share the staging lease.
+          runProcess: options => stageOwnership.runProcess(stageLease, { ...options, inheritEnv: false, signal }),
+        })));
       return {
         ...output,
         ...(capture === undefined ? {} : { captured }),
