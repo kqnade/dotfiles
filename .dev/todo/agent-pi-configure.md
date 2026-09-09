@@ -297,6 +297,51 @@ capability. Do not treat the SBPL generator as a command allowlist.
   the managed tool. Generic shell creation/deletion/output synchronization and
   Linux containment remain required before final migration.
 
+### Native formatter and failure checkpoint
+
+- Observed on 2026-09-09 in the same macOS arm64 worktree/ref, producing client
+  Codex: code baseline `2069667`, clean before this TODO update. No HOME apply
+  or remote mutation occurred.
+- Observed: `0cd9296` recognizes `ruff.toml`, with a real Ruff regression that
+  first returned `skipped` instead of formatting. Ruff 0.16.0 formats a nested
+  Python target using ancestor configuration inside Seatbelt. `352ea7b` verifies
+  repeated formatting, nested `.ruff.toml` extending the ancestor config,
+  quote-style overrides, and invalid syntax preserving the source. CI installs
+  the pinned binary wheel into runner temporary storage with uv and runs the
+  native test on Linux and both macOS architectures; only arm64 executed here.
+- Observed: `39805ad` adds integrity-pinned Biome 2.5.12 to the npm fixture.
+  Its actual Node launcher/native package runs from private copies, loads an
+  extended config, formats nested JavaScript, reports unchanged on repetition,
+  and preserves invalid source after a failed parse. The existing project and
+  external Prettier tests pass with the combined package fixture.
+- Observed: `2069667` verifies formatter-level active cancellation after a
+  readiness marker, preparation failure caused by removal of the staged
+  executable, and cleanup failure caused by the child making its workspace
+  non-writable. Cancellation discards captured stdout and removes the stage;
+  preparation failure preserves the original lease and cleans the stage.
+  Successful process exit followed by the sole cleanup permission error blocks
+  publication and quarantines original ownership. The test restores permissions
+  and removes its fixture; root-user runs skip permission enforcement coverage.
+- Observed: the final formatter/native/package/staging/staged-process/Seatbelt
+  suite passed **31 tests, 1 expected Darwin platform skip, 0 failures** with
+  `PI_RUFF_BIN=/private/tmp/pi-ruff-fixture-0160/bin/ruff` and
+  `PI_FORMATTER_PACKAGE_ROOT=/private/tmp/pi-formatter-packages.87IlMy`.
+  These temporary paths are disposable fixtures, not runtime dependencies.
+  Repository validation passed after Ruff/CI integration with installed
+  Python 3.11; every increment passed `git diff --check` and was locally signed.
+- Candidate investigation: installed `~/.cargo/bin/rustfmt` resolves to rustup.
+  `format.mjs` realpath resolution loses the rustfmt dispatch basename; private
+  HOME also prevents rustup from finding its installed toolchain. The installed
+  native rustfmt requires adjacent toolchain libraries. Do not execute a
+  PATH-resolved rustup outside confinement as a resolution shortcut. Toolchain
+  selection, config/edition handling, and safe runtime closure still require
+  implementation and actual tests; no Rust fix was included in this checkpoint.
+- Remaining: Rust shim/config/native closure, external config references and
+  additional package-manager layouts, Linux confinement, managed formatter and
+  shell/helper exposure, LSP auxiliaries/recovery, authenticated validation, and
+  final migration. Whole-project/runtime copy cost remains unmeasured. This
+  evidence does not authorize retirement of existing agent assets.
+
 ## Resume on macOS
 
 1. Verify the authorized remote, current worktree, branch, commits, dirty state,
@@ -364,7 +409,8 @@ Claude namespace boundaries and unrelated settings.
 - [ ] Implement and verify Linux sandbox execution with host socket/FD isolation.
 - [x] Integrate formatter staged stdin/path/config and snapshot-based stdout publication; verify actual gofmt success/failure and publication conflict/cancellation.
 - [x] Verify project and external npm Prettier packages with copied config imports/plugins and original project/runtime protection.
-- [ ] Complete formatter package/plugin/config closure and runtime failure/cancellation/cleanup coverage across supported formatters.
+- [x] Verify actual Ruff and Biome, plus formatter active cancellation, preparation failure, and cleanup failure.
+- [ ] Complete Rust formatter runtime/config closure and remaining formatter compatibility coverage.
 - [ ] Expose complete managed shell/helper execution with scoped output validation and safe Git operation boundaries.
 - [ ] Verify LSP auxiliary-process original-write restrictions and persistent supervisor recovery under real failures.
 - [ ] Obtain explicit approval and repeat final synthetic authenticated launcher/delegation/cancellation probes.
