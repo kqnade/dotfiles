@@ -557,6 +557,7 @@ const superviseProcess = (ownership, lease, state, options) => {
     args = [],
     cwd = state.cwd,
     env,
+    inheritEnv = true,
     stdin = '',
     signal,
     timeoutMs = 30_000,
@@ -568,6 +569,7 @@ const superviseProcess = (ownership, lease, state, options) => {
   if (!Array.isArray(args) || args.some((arg) => typeof arg !== 'string')) {
     throw new TypeError('args must be an array of strings');
   }
+  if (typeof inheritEnv !== 'boolean') throw new TypeError('inheritEnv must be a boolean');
   if (typeof timeoutMs !== 'number' || timeoutMs <= 0 || !Number.isFinite(timeoutMs)) {
     throw new TypeError('timeoutMs must be a positive number');
   }
@@ -779,7 +781,7 @@ const superviseProcess = (ownership, lease, state, options) => {
     try {
       child = spawn(command, args, {
         cwd: processCwd,
-        env: { ...process.env, ...env },
+        env: inheritEnv ? { ...process.env, ...env } : { ...env },
         detached: true,
         shell: false,
         stdio: ['pipe', 'pipe', 'pipe'],

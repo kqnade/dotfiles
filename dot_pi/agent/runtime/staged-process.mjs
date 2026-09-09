@@ -61,7 +61,7 @@ export async function runStagedProcess({
         readLiterals: prepared.readLiterals ?? readLiterals,
       });
       const output = await stageOwnership.runProcess(stageLease, {
-        ...invocation, stdin: prepared.stdin ?? stdin, signal, timeoutMs, maxOutputBytes,
+        ...invocation, inheritEnv: false, stdin: prepared.stdin ?? stdin, signal, timeoutMs, maxOutputBytes,
       });
       return {
         ...output,

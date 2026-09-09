@@ -8,6 +8,36 @@ import { Ownership } from '../../../dot_pi/agent/runtime/ownership.mjs';
 import { runStagedProcess } from '../../../dot_pi/agent/runtime/staged-process.mjs';
 import { sandboxEnvironment } from '../../../dot_pi/agent/runtime/sandbox-env.mjs';
 
+test('staged processes receive only their supplied environment', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pi-staged-environment-'));
+  const original = process.env.PI_PARENT_ONLY_SENTINEL;
+  try {
+    process.env.PI_PARENT_ONLY_SENTINEL = 'synthetic-parent-value';
+    await writeFile(join(root, 'file.txt'), 'original');
+    const ownership = new Ownership({ cwd: root });
+    const lease = ownership.claim('worker', ['file.txt']);
+    const result = await runStagedProcess({
+      ownership, lease, cwd: root, files: ['file.txt'], command: process.execPath,
+      args: ['-e', `
+        const assert = require('node:assert/strict');
+        assert.equal(process.env.PI_PARENT_ONLY_SENTINEL, undefined);
+        assert.equal(process.env.HOME, process.cwd());
+        assert.equal(process.env.TMPDIR, process.cwd());
+        assert.equal(process.env.PATH, '/usr/bin:/bin:/usr/sbin:/sbin');
+        process.stdout.write('private-environment');
+      `],
+    }, process.platform === 'darwin' ? undefined : async ({ workspace, command, args }) => ({
+      command, args, cwd: workspace, env: sandboxEnvironment(workspace),
+    }));
+    assert.equal(result.stdout, 'private-environment');
+    await ownership.drain(lease);
+  } finally {
+    if (original === undefined) delete process.env.PI_PARENT_ONLY_SENTINEL;
+    else process.env.PI_PARENT_ONLY_SENTINEL = original;
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('staged invocation prepares file arguments and stdin from copied inputs outside the write lease', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pi-staged-prepare-'));
   const cwd = join(root, 'repo');
