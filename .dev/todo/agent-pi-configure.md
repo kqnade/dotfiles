@@ -547,7 +547,7 @@ capability. Do not treat the SBPL generator as a command allowlist.
 ### Staged output capture checkpoint
 
 - Observed on 2026-09-09 in the same macOS arm64 worktree/ref, producing client
-  Codex: code baseline `0551b79`, clean before this TODO update. No HOME apply,
+  Codex: code baseline `92cd659`, clean before this TODO update. No HOME apply,
   package installation, authentication/history change, or remote mutation occurred.
 - Observed: `2420fde` adds a trusted internal asynchronous capture callback after
   command success and before staging cleanup. The original ownership lease stays
@@ -651,18 +651,38 @@ capability. Do not treat the SBPL generator as a command allowlist.
   observed case-insensitive lookup and composed/decomposed Unicode name equivalence
   on the same host. Do not turn these observed host properties into universal Linux
   or macOS assumptions, and do not encode the unsafe acceptance as required behavior.
-- Next native validation design: use kernel-applied name lookup within a descriptor
-  root or a trusted immutable validation tree, not unconditional lowercase/NFD maps.
-  A candidate capture contract includes snapshot-local identities and resolved-link
-  evidence, but identity alone is not yet accepted as sufficient under mutation,
-  inode reuse, or different staging/original filesystem semantics. Prove that any
-  resolution metadata describes the emitted immutable graph and the destination
-  filesystem, without following external targets or trusting mutable stage paths.
-- Incomplete: validation runs before comparison; captureTree itself returns frozen
-  raw helper output. Neither result authorizes publication. Original lease scope,
-  native filesystem aliases, original preimages/modes, and publication semantics
-  still require validation. The demonstrated alias escape must be closed before
-  exposing shell publication; literal graph checks do not waive that gate.
+- Observed: `9ff5e6d` and `5227b58` add descriptor-relative native link
+  validation for a private immutable tree. Kernel lookup applies actual case and
+  Unicode aliases; dot-dot is bounded by the held root without traversing outside
+  it. Internal relative, directory, and dangling links pass. Native alias escape
+  probes reject on this host; case-sensitive hosts test the dangling branch.
+- Observed: `7d5d2a5` reconstructs topology from copied strict records in a private
+  tree outside the command stage. `c55eddf` covers rejected staging/nested/alias
+  roots, malformed/duplicate records, and case-name collision cleanup. Files are
+  empty placeholders because the native validator needs topology, not file bytes.
+- Observed: `7799b2c` connects reconstruction to supervised native validation through
+  a trusted runProcess callback, returning only the exact frozen records used to
+  reconstruct the tree after successful validation and cleanup. The helper uses an
+  absolute canonical Python path, -B/-I, a replacement minimal environment, a
+  30-second timeout, and a 64 KiB limit per output stream. The normal test failed
+  before implementation and proves later stage/input changes do not affect output.
+  `92cd659` verifies native case-alias rejection and interpreter-resolution failure
+  cleanup, with the lease usable afterward. These failure regressions passed
+  existing behavior; they were not observed Red fixes.
+- Observed: native validation, validation-tree construction/failures, validated
+  capture/failures, and comparison tests passed 17 tests with no failures or skips.
+  Repository validation passed after the wrapper implementation. The two additional
+  failure regressions were then run with the focused suite. Whitespace checks passed.
+- Incomplete: the caller must select a private temporaryRoot with the actual
+  destination directory's name-lookup semantics. Arbitrary tmpdir or st_dev equality
+  alone does not prove this contract. Mutable stage resolution metadata is not a
+  substitute for validation of the emitted immutable graph. No production caller
+  selects/proves this root yet, and validation is not connected to shell publication.
+- Incomplete: captureTree returns raw helper output; compareCapturedTrees validates
+  its schema and literal link graph. validateCapturedTree adds native checks under
+  the explicit temporaryRoot contract. None authorizes original publication without
+  lease scope, original preimages/modes, and tested publication/rollback semantics.
+  Helper cancellation and cleanup-failure integration remain to be covered directly.
 - Incomplete: Python is not a pinned mise runtime. Integration fixtures use the
   explicitly supplied /usr/bin/python3; other helper tests use test-environment
   python3. Neither is a production discovery contract. Pin the managed interpreter
