@@ -40,6 +40,32 @@ test('explicit Cargo workspace references cannot escape the copied project', asy
   }
 });
 
+test('an explicit missing Cargo workspace never falls back to an ancestor', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pi-cargo-missing-'));
+  try {
+    const member = join(root, 'member');
+    await mkdir(join(member, 'src'), { recursive: true });
+    await writeFile(join(root, 'Cargo.toml'), '[workspace.package]\nedition = "2024"\n');
+    await writeFile(join(member, 'Cargo.toml'), '[package]\nname = "member"\nworkspace = "../missing"\nedition.workspace = true\n');
+    await assert.rejects(cargoEdition(root, join(member, 'src', 'lib.rs')), { code: 'ENOENT' });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('Cargo defaults to 2015 unless the member opts into workspace inheritance', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'pi-cargo-default-'));
+  try {
+    const member = join(root, 'member');
+    await mkdir(join(member, 'src'), { recursive: true });
+    await writeFile(join(root, 'Cargo.toml'), '[workspace.package]\nedition = "2024"\n');
+    await writeFile(join(member, 'Cargo.toml'), '[package]\nname = "member"\n');
+    assert.equal(await cargoEdition(root, join(member, 'src', 'lib.rs')), '2015');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('Cargo member inherits edition from its ancestor workspace', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pi-cargo-edition-'));
   try {
