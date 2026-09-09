@@ -3,9 +3,15 @@ import { access, lstat, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { execFile } from 'node:child_process';
+import { createServer } from 'node:net';
+import { promisify } from 'node:util';
+import { fileURLToPath } from 'node:url';
 
 import { Ownership } from '../../../dot_pi/agent/runtime/ownership.mjs';
 import { runStagedProcess } from '../../../dot_pi/agent/runtime/staged-process.mjs';
+
+const execute = promisify(execFile);
 
 test('Darwin Seatbelt confines staged writes to the workspace', {
   skip: process.platform === 'darwin' ? false : 'requires macOS Seatbelt',
@@ -82,5 +88,48 @@ test('Darwin Seatbelt confines staged writes to the workspace', {
     } finally {
       await rm(root, { recursive: true, force: true });
     }
+  }
+});
+
+test('Darwin Seatbelt denies reachable host TCP and Unix sockets', {
+  skip: process.platform === 'darwin' ? false : 'requires macOS Seatbelt',
+  timeout: 20_000,
+}, async () => {
+  const root = await mkdtemp('/private/tmp/pi-seatbelt-ipc-');
+  const cwd = join(root, 'repo');
+  const executable = join(root, 'probe');
+  const servers = [];
+  let ownership;
+  let lease;
+  try {
+    await mkdir(cwd);
+    await writeFile(join(cwd, 'source.txt'), 'original');
+    await execute('/usr/bin/cc', ['-Wall', '-Wextra', '-Werror',
+      fileURLToPath(new URL('fixtures/seatbelt-probe.c', import.meta.url)), '-o', executable]);
+    ownership = new Ownership({ cwd });
+    lease = ownership.claim('ipc-test', ['source.txt']);
+    for (const transport of ['tcp', 'unix']) {
+      const server = createServer(socket => socket.end());
+      servers.push(server);
+      const address = transport === 'tcp' ? { host: '127.0.0.1', port: 0 } : join(root, 'host.sock');
+      await new Promise((resolve, reject) => {
+        server.once('error', reject);
+        server.listen(address, resolve);
+      });
+      const endpoint = transport === 'tcp' ? String(server.address().port) : address;
+      const args = [transport, endpoint];
+      assert.equal((await execute(executable, args)).stdout, 'connected\n');
+      const result = await runStagedProcess({
+        ownership, lease, cwd, files: ['source.txt'], temporaryRoot: root,
+        command: executable, args, timeoutMs: 5000,
+      });
+      assert.equal(result.stdout, 'denied\n', `${transport} must reject host access`);
+    }
+  } finally {
+    if (lease) await ownership.drain(lease);
+    await Promise.all(servers.map(server => new Promise((resolve, reject) => {
+      server.close(error => error ? reject(error) : resolve());
+    })));
+    await rm(root, { recursive: true, force: true });
   }
 });
