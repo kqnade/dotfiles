@@ -9,6 +9,38 @@ import { formatFile } from '../../../dot_pi/agent/runtime/format.mjs';
 import { runStagedProcess } from '../../../dot_pi/agent/runtime/staged-process.mjs';
 import { sandboxEnvironment } from '../../../dot_pi/agent/runtime/sandbox-env.mjs';
 
+test('installed Biome uses copied configuration and native package runtime', {
+  skip: process.env.PI_FORMATTER_PACKAGE_ROOT ? false : 'requires PI_FORMATTER_PACKAGE_ROOT',
+  timeout: 30_000,
+}, async () => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'pi-biome-package-')));
+  try {
+    await cp(join(process.env.PI_FORMATTER_PACKAGE_ROOT, 'node_modules'), join(root, 'node_modules'), {
+      recursive: true, verbatimSymlinks: true,
+    });
+    await mkdir(join(root, 'src'));
+    await mkdir(join(root, 'config'));
+    await writeFile(join(root, 'biome.json'), JSON.stringify({ extends: ['./config/base.json'] }));
+    await writeFile(join(root, 'config', 'base.json'), JSON.stringify({
+      javascript: { formatter: { quoteStyle: 'single', semicolons: 'asNeeded' } },
+    }));
+    const target = join(root, 'src', 'app.js');
+    await writeFile(target, 'const message="hello";\n');
+    const ownership = new Ownership({ cwd: root });
+    const lease = ownership.claim('formatter', ['src/app.js']);
+    const runner = process.platform === 'darwin' ? undefined : invocation => runStagedProcess(invocation,
+      async ({ workspace, command, args }) => ({ command, args, cwd: workspace, env: sandboxEnvironment(workspace) }));
+    const result = await formatFile({ ownership, lease, cwd: root, path: 'src/app.js' }, runner);
+    assert.equal(result.status, 'formatted');
+    assert.equal(await readFile(target, 'utf8'), "const message = 'hello'\n");
+    assert.equal((await formatFile({ ownership, lease, cwd: root, path: 'src/app.js' }, runner)).status, 'unchanged');
+    await writeFile(target, 'const = ;\n');
+    await assert.rejects(formatFile({ ownership, lease, cwd: root, path: 'src/app.js' }, runner), { code: 'PROCESS_FAILED' });
+    assert.equal(await readFile(target, 'utf8'), 'const = ;\n');
+    await ownership.drain(lease);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('Prettier installed outside the project runs from a private runtime copy', {
   skip: process.env.PI_FORMATTER_PACKAGE_ROOT ? false : 'requires PI_FORMATTER_PACKAGE_ROOT',
   timeout: 30_000,
