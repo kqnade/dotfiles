@@ -43,6 +43,11 @@ test('installed native rustfmt runs with its toolchain libraries', {
     const nestedLease = nestedOwnership.claim('formatter', ['src/lib.rs']);
     await formatFile({ ownership: nestedOwnership, lease: nestedLease, cwd, path: 'src/lib.rs' }, runner);
     assert.equal(await readFile(nested, 'utf8'), 'async fn run() {\n  println!("hello");\n}\n');
+    assert.equal((await formatFile({ ownership: nestedOwnership, lease: nestedLease, cwd, path: 'src/lib.rs' }, runner)).status, 'unchanged');
+    await writeFile(nested, 'fn invalid(\n');
+    await assert.rejects(formatFile({ ownership: nestedOwnership, lease: nestedLease, cwd, path: 'src/lib.rs' }, runner), { code: 'PROCESS_FAILED' });
+    assert.equal(await readFile(nested, 'utf8'), 'fn invalid(\n');
+    assert.equal(await readFile(join(cwd, 'src', '.rustfmt.toml'), 'utf8'), 'tab_spaces = 2\nedition = "2024"\n');
     await nestedOwnership.drain(nestedLease);
   } finally {
     process.env.PATH = originalPath;
