@@ -9,8 +9,8 @@ authentication or conversation history.
 
 Status: **incomplete; active on macOS arm64**.
 The launcher, broker, managed file tools, delegation, and LSP are integrated.
-Staged execution and formatter stdout publication are integrated internally,
-but remaining formatter runtimes, shell/tool exposure, sandbox verification,
+The format tool is connected through the broker and Pi extension. Staged execution
+remains internal; ordinary shell execution, remaining runtime compatibility,
 and final migration remain open. Do not remove the existing agent
 environment or mark this item complete before the remaining gates pass.
 
@@ -23,9 +23,8 @@ environment or mark this item complete before the remaining gates pass.
   working tool. Keep basic scope checks, original-file protection, cancellation,
   and explicit errors. Fix reproduced defects; do not expand hypothetical threat
   coverage while the normal workflow remains unavailable.
-- Next product increment: connect the implemented formatter through the broker
-  and Pi extension, verify a real formatting request, then complete ordinary shell
-  command execution and file creation/update/deletion. Preserve the selected
+- Next product increment: complete ordinary shell command execution and file
+  creation/update/deletion. Preserve the selected
   private-workspace execution model without adding speculative compatibility.
 - Keep authentication/history preservation and successful normal migration/reapply
   as completion requirements. The final goal remains a usable Pi replacement.
@@ -89,9 +88,18 @@ instructions and required evidence before eventually completing the item.
   have runtime tests. Parent resumption renews the drained lease before
   reacquiring its slot. Borrowed scopes transfer back to the correct owner.
 - Managed tools currently exposed in `extensions/managed.ts` are `read`,
-  `write`, `edit`, `delegate`, and `escalate`, plus the read-only LSP adapter.
-  **Bash, formatter, and skill-helper execution are not exposed.** `user_bash`
+  `write`, `edit`, `format`, `delegate`, and `escalate`, plus the read-only LSP adapter.
+  **Bash and skill-helper execution are not exposed.** `user_bash`
   returns a denial; throwing from that hook would let Pi fall back to execution.
+- Observed on 2026-09-10 at `a428180` in the current macOS arm64 worktree/ref:
+  Pi's loaded format tool calls the broker, scoped formatter, and actual gofmt.
+  It returns formatted/unchanged/skipped and propagates execution failures while
+  preserving invalid source. Caller/session/agent cancellation signals are forwarded
+  through the existing formatter lifecycle. The extension/scopes/session/format
+  suite passed 34 tests with no skips; repository validation and whitespace checks
+  passed. Package fixture: /private/tmp/pi-cargo-packages. No HOME deployment or
+  authenticated model request was performed; Linux formatting still requires its
+  sandbox backend. Previous formatter exposure restrictions are historical.
 - Writes support expected-hash replacement and atomic create-only publication
   with `expectedHash: null`. Replacement CAS serializes this Ownership instance;
   it is not an atomic transaction against arbitrary external processes.
@@ -923,6 +931,7 @@ Claude namespace boundaries and unrelated settings.
 - [x] Verify project and external npm Prettier packages with copied config imports/plugins and original project/runtime protection.
 - [x] Verify actual Ruff and Biome, plus formatter active cancellation, preparation failure, and cleanup failure.
 - [ ] Complete Rust formatter runtime/config closure and remaining formatter compatibility coverage.
+- [x] Expose the managed format tool through Pi and verify actual gofmt success, unchanged, skipped, and failure outcomes.
 - [ ] Expose complete managed shell/helper execution with scoped output validation and safe Git operation boundaries.
 - [ ] Verify LSP auxiliary-process original-write restrictions and persistent supervisor recovery under real failures.
 - [ ] Obtain explicit approval and repeat final synthetic authenticated launcher/delegation/cancellation probes.
