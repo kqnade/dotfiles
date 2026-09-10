@@ -50,3 +50,15 @@ test('lifecycle events form a trace and optional reasoning stays absent', () => 
   assert(!metrics.some(m => m.name === 'pi.token.usage' && m.attributes.type === 'reasoning'));
   assert(!JSON.stringify({metrics, spans}).includes('SECRET'));
 });
+
+test('stream events aggregate and tool usage remains separate from model usage', () => {
+  const metrics = [];
+  const c = createCollector({ addMetric: m => metrics.push(m), addSpan: () => {} });
+  for (let i = 0; i < 100; i++) c.handle({ type: 'message_update', assistantMessageEvent: { type: 'text_delta', delta: 'SECRET' } });
+  c.handle({ type: 'tool_result', toolName: 'subagent', usage: { input: 40, output: 10 } });
+  c.handle({ type: 'turn_end' });
+  assert.equal(metrics.find(m => m.name === 'pi.event.count' && m.attributes.event === 'message_update').value, 100);
+  assert.equal(metrics.filter(m => m.attributes.event === 'message_update').length, 1);
+  assert.equal(metrics.find(m => m.name === 'pi.tool.token.usage' && m.attributes.type === 'input').value, 40);
+  assert(!JSON.stringify(metrics).includes('SECRET'));
+});

@@ -7,8 +7,9 @@ const bytes = text => typeof text === 'string' ? Buffer.byteLength(text) : 0;
 export function createCollector({ addMetric, addSpan, now = Date.now }) {
   let base = {}, trace = id(16), turn, modelStart, session, agent, message, waiting, providerStart;
   const tools = new Map();
+  const updates = new Map();
   const metric = (name, value, attributes = {}) => {
-    if (finite(value)) addMetric({ name, type: name.endsWith('.count') || name === 'pi.token.usage' || name === 'pi.edit.bytes' || name === 'pi.cost.usage' ? 'count' : 'gauge', value, timestamp: now(), 'interval.ms': 1, attributes: { ...base, ...attributes } });
+    if (finite(value)) addMetric({ name, type: name.endsWith('.count') || name.endsWith('.usage') || name === 'pi.edit.bytes' ? 'count' : 'gauge', value, timestamp: now(), 'interval.ms': 1, attributes: { ...base, ...attributes } });
   };
   const start = () => ({ id: id(8), time: now(), attributes: { ...base } });
   const end = (name, state, attributes = {}) => {
@@ -19,7 +20,15 @@ export function createCollector({ addMetric, addSpan, now = Date.now }) {
   };
   function handle(event, metadata = {}, observation = {}) {
     base = { ...base, ...metadata };
-    metric('pi.event.count', 1, { event: event.type });
+    if (['message_update', 'tool_execution_update'].includes(event.type)) updates.set(event.type, (updates.get(event.type) ?? 0) + 1);
+    else metric('pi.event.count', 1, { event: event.type });
+    if (['turn_end', 'agent_end', 'session_shutdown'].includes(event.type)) {
+      for (const [event, count] of updates) metric('pi.event.count', count, { event });
+      updates.clear();
+    }
+    if (event.type === 'tool_result') {
+      for (const [field, type] of Object.entries({ input: 'input', output: 'output', cacheRead: 'cache_read', cacheWrite: 'cache_write', reasoning: 'reasoning' })) metric('pi.tool.token.usage', event.usage?.[field], { tool: event.toolName, type });
+    }
     if (event.type === 'session_start') session = start();
     if (event.type === 'agent_start') agent = start();
     if (event.type === 'input') {
