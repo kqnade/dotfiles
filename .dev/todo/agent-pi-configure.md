@@ -14,6 +14,22 @@ but remaining formatter runtimes, shell/tool exposure, sandbox verification,
 and final migration remain open. Do not remove the existing agent
 environment or mark this item complete before the remaining gates pass.
 
+## Delivery priorities
+
+- Current user direction, 2026-09-10: avoid excessive safety design. Prioritize
+  usable editing, command execution, delegation, and the managed launcher.
+- Earlier checkpoints include research and adversarial test ideas, not an
+  unconditional requirement to finish every investigation before exposing a
+  working tool. Keep basic scope checks, original-file protection, cancellation,
+  and explicit errors. Fix reproduced defects; do not expand hypothetical threat
+  coverage while the normal workflow remains unavailable.
+- Next product increment: connect the implemented formatter through the broker
+  and Pi extension, verify a real formatting request, then complete ordinary shell
+  command execution and file creation/update/deletion. Preserve the selected
+  private-workspace execution model without adding speculative compatibility.
+- Keep authentication/history preservation and successful normal migration/reapply
+  as completion requirements. The final goal remains a usable Pi replacement.
+
 ## Scope
 
 - Repository: `git@github.com:kqnade/dotfiles`; branch `agent/pi-configure`.
@@ -798,6 +814,32 @@ capability. Do not treat the SBPL generator as a command allowlist.
   enforce lease scope and native identities, and test publication/rollback. Explicit
   traversal/report budgets, Linux profiles, and empty/new-only projects remain open.
   All remaining adoption gates in this active item still apply.
+
+## Topology capture checkpoint
+
+- Observed on 2026-09-10, same macOS arm64 worktree, origin and branch as above,
+  producing client Codex: code baseline `7a16993`, clean before this TODO update.
+  No HOME apply or remote mutation occurred.
+- `4a64e2c` adds topology_only capture: regular-file metadata without a content
+  field, directory metadata, and raw symlink targets. A Python audit hook rejects
+  every non-directory open during the test, proving the helper does not read file
+  bytes. Existing descriptor-relative traversal and capture limits still apply.
+- `b008111` adds captureTopology through the existing supervised process wrapper
+  and a --topology CLI flag. Its output is frozen; ordinary capture retains bytes.
+  `7a16993` bounds directory nesting (default 128) in both modes. Boundary tests
+  also cover entry/metadata limits and FIFO rejection without partial output.
+- Verification: 14 capture tests passed with no skips or failures. After the CLI
+  integration, the staged-output/staged-validation suite passed nine tests through
+  actual macOS Seatbelt, including cancellation and cleanup. Repository validation
+  passed after the final capture changes at `7a16993`. Whitespace checks passed.
+- Observed: /usr/bin/python3 is an Xcode launcher on this host and creates xcrun_db
+  when HOME/TMPDIR point at the captured workspace. The supervised fixture resolves
+  sys.executable first and uses the actual interpreter. Production must resolve a
+  managed Python executable rather than rely on the system launcher; do not filter
+  incidental files out of captured output to hide runtime writes.
+- Incomplete: topology records are internal inputs, not file contents or permission
+  to publish. Complete-tree reconstruction/merging and normal shell output handling
+  are not wired to the Pi extension. Resume according to Delivery priorities above.
 
 ## Resume on macOS
 
