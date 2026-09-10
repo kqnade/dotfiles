@@ -5,13 +5,21 @@ import { sandboxEnvironment } from './sandbox-env.mjs';
 
 const helper = fileURLToPath(new URL('./capture-tree.py', import.meta.url));
 
-export async function captureTree({ workspace, python, runProcess }) {
+export function captureTree(options) {
+  return capture(options, false);
+}
+
+export function captureTopology(options) {
+  return capture(options, true);
+}
+
+async function capture({ workspace, python, runProcess }, topologyOnly) {
   if (typeof python !== 'string' || !isAbsolute(python)) {
     throw new TypeError('capture Python executable must be absolute');
   }
   const { stdout } = await runProcess({
     command: await realpath(python),
-    args: ['-B', '-I', helper, workspace],
+    args: ['-B', '-I', helper, ...(topologyOnly ? ['--topology'] : []), workspace],
     cwd: workspace,
     env: sandboxEnvironment(workspace),
     inheritEnv: false,

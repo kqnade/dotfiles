@@ -84,9 +84,12 @@ def capture_tree(root, max_bytes=64 * 1024 * 1024, max_entries=100_000, max_meta
 
 
 if __name__ == "__main__":
-    options = {"max_bytes": int(sys.argv[2])} if len(sys.argv) > 2 else {}
-    if len(sys.argv) > 3:
-        options["max_entries"] = int(sys.argv[3])
-    if len(sys.argv) > 4:
-        options["max_metadata_bytes"] = int(sys.argv[4])
-    json.dump(capture_tree(sys.argv[1], **options), sys.stdout)
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--topology", action="store_true", dest="topology_only")
+    parser.add_argument("root")
+    parser.add_argument("max_bytes", type=int, nargs="?", default=64 * 1024 * 1024)
+    parser.add_argument("max_entries", type=int, nargs="?", default=100_000)
+    parser.add_argument("max_metadata_bytes", type=int, nargs="?", default=8 * 1024 * 1024)
+    json.dump(capture_tree(**vars(parser.parse_args())), sys.stdout)
