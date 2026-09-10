@@ -7,7 +7,6 @@ const bytes = text => typeof text === 'string' ? Buffer.byteLength(text) : 0;
 export function createCollector({ addMetric, addSpan, now = Date.now }) {
   let base = {}, trace = id(16), turn, modelStart, session, agent, message, waiting, providerStart;
   const tools = new Map();
-  const updates = new Map();
   const metric = (name, value, attributes = {}) => {
     if (finite(value)) addMetric({ name, type: name.endsWith('.count') || name.endsWith('.usage') || name === 'pi.edit.bytes' ? 'count' : 'gauge', value, timestamp: now(), 'interval.ms': 1, attributes: { ...base, ...attributes } });
   };
@@ -20,12 +19,23 @@ export function createCollector({ addMetric, addSpan, now = Date.now }) {
   };
   function handle(event, metadata = {}, observation = {}) {
     base = { ...base, ...metadata };
-    if (['message_update', 'tool_execution_update'].includes(event.type)) updates.set(event.type, (updates.get(event.type) ?? 0) + 1);
-    else metric('pi.event.count', 1, { event: event.type });
-    if (['turn_end', 'agent_end', 'session_shutdown'].includes(event.type)) {
-      for (const [event, count] of updates) metric('pi.event.count', count, { event });
-      updates.clear();
+    metric('pi.event.count', 1, { event: event.type });
+    const attributes = { ...base, name: `pi.event.${event.type}`, 'duration.ms': 0 };
+    const parent = turn ?? agent ?? session;
+    if (parent) attributes['parent.id'] = parent.id;
+    if (finite(event.turnIndex)) attributes.turn_index = event.turnIndex;
+    if (typeof event.toolName === 'string') attributes.tool = event.toolName;
+    for (const field of ['isError', 'aborted', 'willRetry', 'fromExtension', 'excludeFromContext']) {
+      if (typeof event[field] === 'boolean') attributes[field] = event[field];
     }
+    if (['manual', 'threshold', 'overflow', 'quit', 'reload', 'new', 'resume', 'fork', 'ui_prompt'].includes(event.reason)) attributes.reason = event.reason;
+    if (['interactive', 'rpc', 'extension', 'set', 'cycle', 'restore'].includes(event.source)) attributes.source = event.source;
+    const delta = event.assistantMessageEvent;
+    if (delta && ['text_delta', 'thinking_delta', 'toolcall_delta'].includes(delta.type)) {
+      attributes['stream.event'] = delta.type;
+      attributes['stream.bytes'] = bytes(delta.delta);
+    }
+    addSpan({ id: id(8), 'trace.id': trace, timestamp: now(), attributes });
     if (event.type === 'tool_result') {
       for (const [field, type] of Object.entries({ input: 'input', output: 'output', cacheRead: 'cache_read', cacheWrite: 'cache_write', reasoning: 'reasoning' })) metric('pi.tool.token.usage', event.usage?.[field], { tool: event.toolName, type });
     }

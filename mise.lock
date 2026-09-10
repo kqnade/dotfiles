@@ -414,6 +414,10 @@ url = "https://nodejs.org/dist/v26.7.0/node-v26.7.0-darwin-x64.tar.gz"
 version = "0.85.1"
 backend = "npm:@earendil-works/pi-coding-agent"
 
+[[tools."npm:bash-language-server"]]
+version = "5.6.0"
+backend = "npm:bash-language-server"
+
 [[tools."npm:ccusage"]]
 version = "20.0.20"
 backend = "npm:ccusage"
@@ -421,6 +425,18 @@ backend = "npm:ccusage"
 [[tools."npm:pnpm"]]
 version = "11.25.0"
 backend = "npm:pnpm"
+
+[[tools."npm:pyright"]]
+version = "1.1.414"
+backend = "npm:pyright"
+
+[[tools."npm:typescript"]]
+version = "5.9.3"
+backend = "npm:typescript"
+
+[[tools."npm:typescript-language-server"]]
+version = "6.0.0"
+backend = "npm:typescript-language-server"
 
 [[tools.opencode]]
 version = "1.18.27"

@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+readonly NEW_RELIC_LICENSE_KEY_OP_REF_DEFAULT="op://Personal/j465rncuz4fcf2rc7aogcosypi/credential"
+
+run_pi() {
+  local pi_bin
+  if ! pi_bin="$(command -v pi 2>/dev/null)"; then
+    printf '%s\n' 'Pi coding agent is not installed.' >&2
+    exit 127
+  fi
+  unset NEW_RELIC_LICENSE_KEY
+  exec "$pi_bin" "$@"
+}
+
+telemetry_enabled="${PI_NEW_RELIC_ENABLE:-1}"
+telemetry_enabled_lower="$(printf '%s' "$telemetry_enabled" | tr '[:upper:]' '[:lower:]')"
+case "$telemetry_enabled_lower" in
+  0 | false | no | off | disabled)
+    run_pi "$@"
+    ;;
+  *)
+    telemetry_enabled="1"
+    ;;
+esac
+
+case "${1:-}" in
+  -h | --help | -v | --version | install | remove | uninstall | update | list | config | auth)
+    run_pi "$@"
+    ;;
+esac
+
+license_key="${PI_NEW_RELIC_API_KEY:-${NEW_RELIC_LICENSE_KEY:-}}"
+if [[ -z "$license_key" ]]; then
+  if ! op_bin="$(command -v op 2>/dev/null)"; then
+    printf '%s\n' 'Pi telemetry requires 1Password CLI or PI_NEW_RELIC_API_KEY.' >&2
+    exit 1
+  fi
+  op_ref="${NEW_RELIC_LICENSE_KEY_OP_REF:-$NEW_RELIC_LICENSE_KEY_OP_REF_DEFAULT}"
+  if ! license_key="$("$op_bin" read "$op_ref")"; then
+    printf '%s\n' 'Failed to read the New Relic license key from 1Password.' >&2
+    exit 1
+  fi
+fi
+if [[ -z "$license_key" ]]; then
+  printf '%s\n' 'New Relic license key is empty.' >&2
+  exit 1
+fi
+
+export PI_NEW_RELIC_ENABLE="$telemetry_enabled"
+export PI_NEW_RELIC_API_KEY="$license_key"
+unset NEW_RELIC_LICENSE_KEY
+run_pi "$@"
