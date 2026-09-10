@@ -76,6 +76,9 @@ herdr = "v0.9.0"
 claude = "2.1.266"
 "aqua:openai/codex" = "0.154.0"
 opencode = "1.18.27"
+"npm:@earendil-works/pi-coding-agent" = { version = "0.85.1", depends = [
+  "node",
+] }
 "npm:ccusage" = { version = "20.0.20", depends = ["node"] }
 
 # SKK server and dictionary builder. Keep this on the Cargo git backend on
