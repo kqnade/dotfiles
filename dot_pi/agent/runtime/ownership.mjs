@@ -11,6 +11,7 @@ import {
   readdir,
   rename,
   rm,
+  unlink,
 } from 'node:fs/promises';
 import {
   dirname,
@@ -302,6 +303,26 @@ export class Ownership {
   async write(lease, path, text, { expectedHash } = {}) {
     const state = this.#assertWritable(lease);
     const queued = state.writeQueue.then(() => this.#writeNow(lease, path, text, { expectedHash }));
+    state.writeQueue = queued.catch(() => {});
+    return queued;
+  }
+
+  async remove(lease, path, { expectedHash } = {}) {
+    const state = this.#assertWritable(lease);
+    const queued = state.writeQueue.then(async () => {
+      this.#assertWritable(lease);
+      if (typeof expectedHash !== 'string') throw new TypeError('remove requires expectedHash');
+      const expected = normalizedHash(expectedHash);
+      const target = pathFromCwd(state.cwd, path);
+      const initial = await inspectTarget(state, target, path);
+      const bytes = await readPreimage(target);
+      if (bytes === null || digest(bytes) !== expected) {
+        throw errorWithCode(`preimage hash mismatch for ${path}`, 'PREIMAGE_MISMATCH');
+      }
+      this.#assertWritable(lease);
+      await unlink(target);
+      return { path: initial.canonical, hash: null };
+    });
     state.writeQueue = queued.catch(() => {});
     return queued;
   }
