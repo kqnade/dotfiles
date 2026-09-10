@@ -88,7 +88,7 @@ instructions and required evidence before eventually completing the item.
   have runtime tests. Parent resumption renews the drained lease before
   reacquiring its slot. Borrowed scopes transfer back to the correct owner.
 - Managed tools currently exposed in `extensions/managed.ts` are `read`,
-  `write`, `edit`, `format`, `delegate`, and `escalate`, plus the read-only LSP adapter.
+  `write`, `edit`, `remove`, `format`, `delegate`, and `escalate`, plus the read-only LSP adapter.
   **Bash and skill-helper execution are not exposed.** `user_bash`
   returns a denial; throwing from that hook would let Pi fall back to execution.
 - Observed on 2026-09-10 at `a428180` in the current macOS arm64 worktree/ref:
@@ -100,6 +100,18 @@ instructions and required evidence before eventually completing the item.
   passed. Package fixture: /private/tmp/pi-cargo-packages. No HOME deployment or
   authenticated model request was performed; Linux formatting still requires its
   sandbox backend. Previous formatter exposure restrictions are historical.
+- Observed on 2026-09-10 at `b8c1842` in the current macOS arm64 worktree/ref:
+  `6ba75c1` allows an empty files array for staged execution, including an empty
+  project. A real Seatbelt command created its first nested file and returned its
+  captured output after cleanup; the staging suite passed 19 tests with one expected
+  unsupported-platform skip. This supersedes the earlier existing-file requirement.
+  `adaa981` adds regular-file removal through the ownership write queue with a
+  required preimage hash; stale content and out-of-scope paths remain unchanged.
+  `b8c1842` exposes remove through Pi and the broker. The loaded extension executed
+  read/edit/remove; extension/ownership/scopes tests passed 33 tests without skips.
+  Repository validation and whitespace checks passed. No HOME deployment occurred.
+  Shell output publication, directory creation/removal, and mode/type changes still
+  require integration; an empty stage and the remove tool do not complete that work.
 - Writes support expected-hash replacement and atomic create-only publication
   with `expectedHash: null`. Replacement CAS serializes this Ownership instance;
   it is not an atomic transaction against arbitrary external processes.
@@ -932,6 +944,7 @@ Claude namespace boundaries and unrelated settings.
 - [x] Verify actual Ruff and Biome, plus formatter active cancellation, preparation failure, and cleanup failure.
 - [ ] Complete Rust formatter runtime/config closure and remaining formatter compatibility coverage.
 - [x] Expose the managed format tool through Pi and verify actual gofmt success, unchanged, skipped, and failure outcomes.
+- [x] Permit empty staged projects and expose preimage-checked file deletion through Pi.
 - [ ] Expose complete managed shell/helper execution with scoped output validation and safe Git operation boundaries.
 - [ ] Verify LSP auxiliary-process original-write restrictions and persistent supervisor recovery under real failures.
 - [ ] Obtain explicit approval and repeat final synthetic authenticated launcher/delegation/cancellation probes.
