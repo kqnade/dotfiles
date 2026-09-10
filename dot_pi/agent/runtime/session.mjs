@@ -131,6 +131,12 @@ class Session {
       throwIfAborted(signal);
       return result;
     }
+    if (method === 'remove') {
+      if (typeof params.expectedHash !== 'string') throw new Error('remove requires expectedHash string');
+      const result = await this.#track(this.#scopes.remove(agentId, params.path, { expectedHash: params.expectedHash }));
+      throwIfAborted(signal);
+      return result;
+    }
     if (method === 'escalate') {
       const result = await this.#track(this.#supervisor.escalate(agentId, params.reason));
       throwIfAborted(signal);

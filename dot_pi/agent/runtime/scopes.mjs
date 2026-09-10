@@ -79,6 +79,11 @@ export class Scopes {
     return formatFile({ ownership, lease, cwd: this.#cwd, path, signal });
   }
 
+  async remove(id, path, options) {
+    const { ownership, lease } = this.#get(id);
+    return ownership.run(lease, () => ownership.remove(lease, path, options));
+  }
+
   async edit(id, path, oldText, newText, options) {
     if (typeof oldText !== 'string' || oldText.length === 0 || typeof newText !== 'string') {
       throw new TypeError('edit requires nonempty oldText and string newText');

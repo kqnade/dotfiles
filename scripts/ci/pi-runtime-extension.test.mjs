@@ -133,8 +133,9 @@ test('loads broker-backed file, formatting, delegation, and escalation tools', a
     }, async () => {
       const pi = createPi();
       loaded.factory(pi);
-      assert.deepEqual([...pi.tools.keys()].sort(), ['delegate', 'edit', 'escalate', 'format', 'read', 'write']);
+      assert.deepEqual([...pi.tools.keys()].sort(), ['delegate', 'edit', 'escalate', 'format', 'read', 'remove', 'write']);
       assert.deepEqual(pi.tools.get('format').parameters.required, ['path']);
+      assert.deepEqual(pi.tools.get('remove').parameters.required, ['path', 'expectedHash']);
       assert.deepEqual(pi.tools.get('edit').parameters.required, ['path', 'oldText', 'newText', 'expectedHash']);
       assert.equal(pi.tools.get('edit').parameters.properties.expectedHash.type, 'string');
       assert.deepEqual(pi.tools.get('escalate').parameters.required, ['reason']);
@@ -217,6 +218,9 @@ test('uses the authenticated broker for file tools and closes the connection twi
       await pi.emit('session_start', { type: 'session_start', reason: 'resume' });
       const reopened = await pi.tools.get('read').execute('read-2', { path: 'code.txt' });
       assert.equal(reopened.details.text, 'edited');
+      const removed = await pi.tools.get('remove').execute('remove-1', { path: 'code.txt', expectedHash: reopened.details.hash });
+      assert.deepEqual(removed.details, { path: join(cwd, 'code.txt'), hash: null });
+      await assert.rejects(readFile(join(cwd, 'code.txt')), { code: 'ENOENT' });
       await pi.emit('session_shutdown', { type: 'session_shutdown', reason: 'quit' });
       await pi.emit('session_shutdown', { type: 'session_shutdown', reason: 'quit' });
       await assert.rejects(
