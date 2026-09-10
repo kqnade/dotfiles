@@ -34,7 +34,7 @@ export async function runStagedProcess({
   command, args = [], readPaths = [], readLiterals = [], stdin = '', signal, timeoutMs, maxOutputBytes,
 }, sandbox = seatbeltCommand) {
   return ownership.run(lease, async () => {
-    if (!Array.isArray(files) || files.length === 0) throw new TypeError('files must be a non-empty array');
+    if (!Array.isArray(files)) throw new TypeError('files must be an array');
     if (!Array.isArray(readFiles)) throw new TypeError('readFiles must be an array');
     if (prepare !== undefined && typeof prepare !== 'function') throw new TypeError('prepare must be a function');
     if (snapshot !== undefined && typeof snapshot !== 'function') throw new TypeError('snapshot must be a function');

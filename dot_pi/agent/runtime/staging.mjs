@@ -77,7 +77,7 @@ export async function copyRuntimeTree(source, destination) {
 }
 
 export async function createStagingArea({ cwd, files, temporaryRoot = tmpdir(), includeProjectFiles = false } = {}) {
-  if (!Array.isArray(files) || files.length === 0) throw new TypeError('files must be a non-empty array');
+  if (!Array.isArray(files)) throw new TypeError('files must be an array');
   if (typeof cwd !== 'string' || cwd.length === 0) throw new TypeError('cwd must be a non-empty path');
   if (typeof temporaryRoot !== 'string' || temporaryRoot.length === 0) {
     throw new TypeError('temporaryRoot must be a non-empty path');

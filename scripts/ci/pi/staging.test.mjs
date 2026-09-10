@@ -115,7 +115,7 @@ test('staging snapshots regular files, isolates edits, and cleans only its tempo
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-test('staging rejects empty, escaping, duplicate, missing, non-regular, and symlink paths', async () => {
+test('staging rejects invalid lists, escaping, duplicate, missing, non-regular, and symlink paths', async () => {
   const root = await mkdtemp(join(tmpdir(), 'pi-staging-invalid-'));
   const cwd = join(root, 'repo');
   const temporaryRoot = join(root, 'temporary');
@@ -127,7 +127,7 @@ test('staging rejects empty, escaping, duplicate, missing, non-regular, and syml
     await writeFile(join(root, 'outside.txt'), 'outside\n');
     await access(source);
 
-    await assert.rejects(createStagingArea({ cwd, files: [], temporaryRoot }), /non-empty array/u);
+    await assert.rejects(createStagingArea({ cwd, files: null, temporaryRoot }), /must be an array/u);
     await assert.rejects(createStagingArea({ cwd, files: [source], temporaryRoot }), /escapes cwd/u);
     await assert.rejects(createStagingArea({ cwd, files: ['../outside.txt'], temporaryRoot }), /escapes cwd/u);
     await assert.rejects(
