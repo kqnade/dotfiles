@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { createExporter } from './lib/new-relic-exporter.mjs';
 import { createCollector } from './lib/telemetry-events.mjs';
 
-export default function (pi) {
+export default function (pi, { conversation = 'main' } = {}) {
   const apiKey = process.env.PI_NEW_RELIC_API_KEY;
   const enabled = process.env.PI_NEW_RELIC_ENABLE === '1' && !!apiKey;
   const exporter = enabled ? createExporter({ apiKey }) : undefined;
@@ -70,7 +70,7 @@ export default function (pi) {
     const model = event.message?.role === 'assistant' ? event.message : event.model ?? ctx.model;
     collector.handle(event, {
       provider: model?.provider ?? 'unknown', model: model?.model ?? model?.id ?? 'unknown',
-      thinking: pi.getThinkingLevel(), mode: ctx.mode,
+      thinking: pi.getThinkingLevel(), mode: ctx.mode, conversation,
     }, observation);
     if (name === 'agent_end') void exporter.flush();
     if (name === 'session_shutdown') {

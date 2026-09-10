@@ -14,7 +14,7 @@ test('Pi hooks deliver metadata through both New Relic APIs', async () => {
     return { status: 202, json: async () => ({}) };
   };
   try {
-    extension({ on: (name, handler) => handlers.set(name, handler), registerCommand() {}, getThinkingLevel: () => 'high' });
+    extension({ on: (name, handler) => handlers.set(name, handler), registerCommand() {}, getThinkingLevel: () => 'high' }, { conversation: 'btw' });
     const ctx = { cwd: '/tmp', mode: 'print', model: { provider: 'openai-codex', id: 'test' }, getContextUsage: () => ({ tokens: 10, contextWindow: 100, percent: 10 }) };
     for (const type of ['session_start', 'agent_start', 'turn_start']) await handlers.get(type)({ type }, ctx);
     await handlers.get('input')({ type: 'input', text: 'PRIVATE_PROMPT' }, ctx);
@@ -25,6 +25,7 @@ test('Pi hooks deliver metadata through both New Relic APIs', async () => {
     assert(!JSON.stringify(bodies).includes('PRIVATE'));
     assert(!JSON.stringify(bodies).includes('TEST_KEY'));
     assert(bodies.some(b => b.body[0].metrics?.some(m => m.name === 'pi.context.tokens')));
+    assert(bodies.every(b => (b.body[0].metrics ?? b.body[0].spans).every(record => record.attributes.conversation === 'btw')));
   } finally {
     globalThis.fetch = savedFetch;
     if (savedKey === undefined) delete process.env.PI_NEW_RELIC_API_KEY; else process.env.PI_NEW_RELIC_API_KEY = savedKey;
