@@ -136,6 +136,14 @@ class Session {
       throwIfAborted(signal);
       return result;
     }
+    if (method === 'format') {
+      const cancellation = combinedSignal(this.#cancellation.signal, this.#agentSignals.get(agentId), signal);
+      try {
+        return await this.#track(this.#scopes.format(agentId, params.path, { signal: cancellation.signal }));
+      } finally {
+        cancellation.dispose();
+      }
+    }
     throw new Error(`Unknown broker method: ${method}`);
   }
 

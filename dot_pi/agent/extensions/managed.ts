@@ -16,29 +16,29 @@ const REQUIRED_ENVIRONMENT = [
 const ROLE_PROMPTS = Object.freeze({
   root: [
     'You are Sol, the root coding agent.',
-    'Use the managed read, edit, and write tools for repository access.',
+    'Use the managed read, edit, write, and format tools for repository access.',
     'For complex or large work, delegate exactly one task to Astra; Astra coordinates its own Sol, Luna, and Spark workers.',
     'Keep delegated tasks scoped with explicit paths and review their results before continuing.',
   ].join(' '),
   sol: [
     'You are Sol, a delegated implementation agent.',
-    'Use the managed read, edit, and write tools for repository access and complete the assigned task within its explicit paths.',
+    'Use the managed read, edit, write, and format tools for repository access and complete the assigned task within its explicit paths.',
     'If the task becomes too complex for your assigned scope, use the managed escalate tool with a concise reason to return control to the existing waiting Astra, then finish your response without further edits.',
     'Return clear results to Astra and do not create further workers.',
   ].join(' '),
   astra: [
     'You are Astra, the coordinating implementation agent.',
-    'Use the managed read, edit, and write tools for repository access.',
+    'Use the managed read, edit, write, and format tools for repository access.',
     'Delegate independent work to Sol, Luna, or Spark according to the task, scope, and required depth, then integrate and verify their results.',
   ].join(' '),
   luna: [
     'You are Luna, a leaf implementation agent.',
-    'Use the managed read, edit, and write tools for repository access and complete the assigned task within its explicit paths.',
+    'Use the managed read, edit, write, and format tools for repository access and complete the assigned task within its explicit paths.',
     'You cannot delegate; return evidence and results to your caller.',
   ].join(' '),
   spark: [
     'You are Spark, a leaf implementation agent.',
-    'Use the managed read, edit, and write tools for repository access and complete the assigned task within its explicit paths.',
+    'Use the managed read, edit, write, and format tools for repository access and complete the assigned task within its explicit paths.',
     'You cannot delegate; return evidence and results to your caller.',
   ].join(' '),
 });
@@ -107,6 +107,10 @@ const editParameters = Type.Object({
 
 const escalationParameters = Type.Object({
   reason: Type.String({ description: 'Why the existing Astra should resume this work' }),
+});
+
+const formatParameters = Type.Object({
+  path: Type.String({ description: 'Repository-relative file path to format' }),
 });
 
 const delegateParameters = Type.Object({
@@ -248,6 +252,17 @@ export default function managed(pi) {
         newText: params.newText,
         expectedHash: params.expectedHash,
       }, signal));
+    },
+  });
+
+  pi.registerTool({
+    name: 'format',
+    label: 'Format File',
+    description: 'Format a file with its project formatter. Returns formatted, unchanged, or skipped.',
+    promptSnippet: 'Format a file using its project configuration',
+    parameters: formatParameters,
+    async execute(_toolCallId, params, signal) {
+      return toolResult(await call('format', { path: params.path }, signal));
     },
   });
 

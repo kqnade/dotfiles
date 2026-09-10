@@ -73,7 +73,53 @@ const requirePackageRoot = (t) => {
   }
 };
 
-test('loads only broker-backed read, edit, write, delegate, and escalation tools', async (t) => {
+test('formats a Go file through the Pi tool and broker with installed gofmt', {
+  skip: process.platform !== 'darwin' && 'requires macOS Seatbelt',
+}, async t => {
+  requirePackageRoot(t);
+  if (!loadExtension) return;
+  const cwd = await realpath(await mkdtemp(join(tmpdir(), 'pi-extension-format-')));
+  const loaded = await loadExtension();
+  let broker;
+  let pi;
+  try {
+    await writeFile(join(cwd, 'main.go'), 'package main\nfunc main(){println("hello")}\n');
+    broker = await startBroker({
+      cwd, directory: join(cwd, 'journal'), command: process.execPath,
+      args: [fileURLToPath(new URL('./pi/fixtures/rpc-child.mjs', import.meta.url))],
+    });
+    await withEnvironment({
+      PI_BROKER_SOCKET: broker.connection.socketPath,
+      PI_AGENT_ID: broker.connection.agentId,
+      PI_AGENT_TOKEN: broker.connection.token,
+      PI_AGENT_ROLE: 'root',
+    }, async () => {
+      pi = createPi();
+      loaded.factory(pi);
+      await pi.emit('session_start', { type: 'session_start', reason: 'startup' });
+      const result = await pi.tools.get('format').execute('format-1', { path: 'main.go' });
+      assert.equal(result.details.status, 'formatted');
+      assert.equal(result.details.path, 'main.go');
+      assert.deepEqual(JSON.parse(result.content[0].text), result.details);
+      assert.equal(await readFile(join(cwd, 'main.go'), 'utf8'), 'package main\n\nfunc main() { println("hello") }\n');
+      const repeated = await pi.tools.get('format').execute('format-2', { path: 'main.go' });
+      assert.equal(repeated.details.status, 'unchanged');
+      await writeFile(join(cwd, 'main.go'), 'package main\nfunc invalid(\n');
+      await assert.rejects(pi.tools.get('format').execute('format-3', { path: 'main.go' }), /process exited unsuccessfully/);
+      assert.equal(await readFile(join(cwd, 'main.go'), 'utf8'), 'package main\nfunc invalid(\n');
+      await writeFile(join(cwd, 'notes.txt'), 'plain text');
+      const skipped = await pi.tools.get('format').execute('format-4', { path: 'notes.txt' });
+      assert.equal(skipped.details.status, 'skipped');
+    });
+  } finally {
+    await pi?.emit('session_shutdown', { type: 'session_shutdown', reason: 'quit' });
+    await broker?.close();
+    await loaded.cleanup();
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test('loads broker-backed file, formatting, delegation, and escalation tools', async (t) => {
   requirePackageRoot(t);
   if (!loadExtension) return;
 
@@ -87,7 +133,8 @@ test('loads only broker-backed read, edit, write, delegate, and escalation tools
     }, async () => {
       const pi = createPi();
       loaded.factory(pi);
-      assert.deepEqual([...pi.tools.keys()].sort(), ['delegate', 'edit', 'escalate', 'read', 'write']);
+      assert.deepEqual([...pi.tools.keys()].sort(), ['delegate', 'edit', 'escalate', 'format', 'read', 'write']);
+      assert.deepEqual(pi.tools.get('format').parameters.required, ['path']);
       assert.deepEqual(pi.tools.get('edit').parameters.required, ['path', 'oldText', 'newText', 'expectedHash']);
       assert.equal(pi.tools.get('edit').parameters.properties.expectedHash.type, 'string');
       assert.deepEqual(pi.tools.get('escalate').parameters.required, ['reason']);

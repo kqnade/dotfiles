@@ -2,6 +2,7 @@ import { relative, isAbsolute, resolve, sep } from 'node:path';
 import { realpathSync } from 'node:fs';
 import { readFile, realpath } from 'node:fs/promises';
 import { Ownership, sha256 } from './ownership.mjs';
+import { formatFile } from './format.mjs';
 
 const within = (parent, child) => {
   const distance = relative(parent, child);
@@ -71,6 +72,11 @@ export class Scopes {
   async write(id, path, text, options) {
     const { ownership, lease } = this.#get(id);
     return ownership.run(lease, () => ownership.write(lease, path, text, options));
+  }
+
+  async format(id, path, { signal } = {}) {
+    const { ownership, lease } = this.#get(id);
+    return formatFile({ ownership, lease, cwd: this.#cwd, path, signal });
   }
 
   async edit(id, path, oldText, newText, options) {
