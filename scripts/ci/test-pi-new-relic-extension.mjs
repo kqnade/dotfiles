@@ -20,12 +20,18 @@ test('Pi hooks deliver metadata through both New Relic APIs', async () => {
     await handlers.get('input')({ type: 'input', text: 'PRIVATE_PROMPT' }, ctx);
     await handlers.get('message_end')({ type: 'message_end', message: { role: 'assistant', provider: 'openai-codex', model: 'test', content: 'PRIVATE_OUTPUT', usage: { input: 8, output: 2, totalTokens: 10 } } }, ctx);
     for (const type of ['turn_end', 'agent_end', 'session_shutdown']) await handlers.get(type)({ type }, ctx);
-    assert(bodies.some(b => b.url.includes('metric-api')));
-    assert(bodies.some(b => b.url.includes('trace-api')));
+    assert(bodies.some(b => b.url.endsWith('/v1/metrics')));
+    assert(bodies.some(b => b.url.endsWith('/v1/traces')));
     assert(!JSON.stringify(bodies).includes('PRIVATE'));
     assert(!JSON.stringify(bodies).includes('TEST_KEY'));
-    assert(bodies.some(b => b.body[0].metrics?.some(m => m.name === 'pi.context.tokens')));
-    assert(bodies.every(b => (b.body[0].metrics ?? b.body[0].spans).every(record => record.attributes.conversation === 'btw')));
+    assert(bodies.some(b => b.body.resourceMetrics?.[0].scopeMetrics[0].metrics.some(m => m.name === 'pi.context.tokens')));
+    assert(bodies.some(b => b.url.endsWith('/v1/logs')));
+    const records = bodies.flatMap(b => {
+      if (b.body.resourceMetrics) return b.body.resourceMetrics[0].scopeMetrics[0].metrics.flatMap(m => (m.sum ?? m.gauge).dataPoints);
+      if (b.body.resourceSpans) return b.body.resourceSpans[0].scopeSpans[0].spans;
+      return b.body.resourceLogs[0].scopeLogs[0].logRecords;
+    });
+    assert(records.every(r => r.attributes.some(a => a.key === 'conversation' && a.value.stringValue === 'btw')));
   } finally {
     globalThis.fetch = savedFetch;
     if (savedKey === undefined) delete process.env.PI_NEW_RELIC_API_KEY; else process.env.PI_NEW_RELIC_API_KEY = savedKey;

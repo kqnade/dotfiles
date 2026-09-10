@@ -1,3 +1,5 @@
+import { otlpRecord, otlpBatchParts } from "./otlp.mjs";
+
 const MAX_BATCH_BYTES = 1_000_000;
 const MAX_QUEUE_RECORDS = 5_000;
 const MAX_RETRIES = 2;
@@ -6,21 +8,6 @@ const RETRY_DELAY_MS = 250;
 
 function byteLength(value) {
 	return new TextEncoder().encode(value).byteLength;
-}
-
-function serializeBatch(serviceName, field, records) {
-	return JSON.stringify([
-		{
-			common: { attributes: { "service.name": serviceName } },
-			[field]: records,
-		},
-	]);
-}
-
-function batchParts(serviceName, field) {
-	const empty = serializeBatch(serviceName, field, []);
-	const marker = empty.lastIndexOf("[]");
-	return { prefix: empty.slice(0, marker + 1), suffix: empty.slice(marker + 1) };
 }
 
 async function responseHasErrors(response) {
@@ -40,7 +27,8 @@ async function responseHasErrors(response) {
 	}
 	return (
 		(Array.isArray(payload?.errors) && payload.errors.length > 0) ||
-		Boolean(payload?.error)
+		Boolean(payload?.error) ||
+		Object.entries(payload?.partialSuccess ?? {}).some(([key, value]) => key.startsWith("rejected") && Number(value) > 0)
 	);
 }
 
@@ -53,12 +41,14 @@ export function createExporter({
 	serviceName = "pi-coding-agent",
 	fetchImpl = globalThis.fetch,
 	onError,
-	metricsEndpoint = "https://metric-api.newrelic.com/metric/v1",
-	tracesEndpoint = "https://trace-api.newrelic.com/trace/v1",
+	metricsEndpoint = "https://otlp.nr-data.net/v1/metrics",
+	tracesEndpoint = "https://otlp.nr-data.net/v1/traces",
+	logsEndpoint = "https://otlp.nr-data.net/v1/logs",
 } = {}) {
 	const configuredApiKey = typeof apiKey === "string" ? apiKey.trim() : "";
 	const metricQueue = [];
 	const spanQueue = [];
+	const logQueue = [];
 	let activeFlush;
 	let lastError = null;
 	let lastFlushAt = null;
@@ -153,14 +143,14 @@ export function createExporter({
 			return null;
 		}
 
-		const { prefix, suffix } = batchParts(serviceName, field);
+		const { prefix, suffix } = otlpBatchParts(serviceName, field);
 		const serializedRecords = [];
 		const records = [];
 		let size = byteLength(prefix) + byteLength(suffix);
 		for (const record of queue) {
 			let serialized;
 			try {
-				serialized = JSON.stringify(record) ?? "null";
+				serialized = JSON.stringify(otlpRecord(field, record));
 			} catch {
 				if (records.length === 0) {
 					return { invalid: true };
@@ -208,14 +198,12 @@ export function createExporter({
 	}
 
 	async function flushInternal() {
-		if (!configuredApiKey && (metricQueue.length > 0 || spanQueue.length > 0)) {
-			reportError("metrics", "missing-api-key");
-			return false;
-		}
-		if (!(await flushQueue(metricQueue, "metrics", metricsEndpoint, "metrics"))) {
-			return false;
-		}
-		return flushQueue(spanQueue, "spans", tracesEndpoint, "traces");
+		const results = await Promise.all([
+			flushQueue(metricQueue, "metrics", metricsEndpoint, "metrics"),
+			flushQueue(spanQueue, "spans", tracesEndpoint, "traces"),
+			flushQueue(logQueue, "logs", logsEndpoint, "logs"),
+		]);
+		return results.every(Boolean);
 	}
 
 	function flush() {
@@ -252,6 +240,12 @@ export function createExporter({
 			metricQueue.push(record);
 		},
 		addSpan(record) {
+			if (logQueue.length >= MAX_QUEUE_RECORDS) {
+				droppedRecords += 1;
+				reportError("logs", "queue-full");
+			} else {
+				logQueue.push(record);
+			}
 			if (spanQueue.length >= MAX_QUEUE_RECORDS) {
 				droppedRecords += 1;
 				reportError("traces", "queue-full");
@@ -266,6 +260,7 @@ export function createExporter({
 				apiKeyConfigured: Boolean(configuredApiKey),
 				metricsQueued: metricQueue.length,
 				spansQueued: spanQueue.length,
+				logsQueued: logQueue.length,
 				flushInProgress: Boolean(activeFlush),
 				lastError: lastError ? { ...lastError } : null,
 				lastFlushAt,

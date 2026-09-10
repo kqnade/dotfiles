@@ -9,8 +9,18 @@ records and reports HTTP delivery status, queue sizes, errors, and dropped recor
 
 ## New Relic
 
-The extension sends dimensional metrics and distributed traces to the native
-New Relic Metric API and Trace API with `service.name = pi-coding-agent`.
+The extension sends logs, dimensional metrics, and distributed traces using
+OTLP/HTTP JSON to `https://otlp.nr-data.net/v1/{logs,metrics,traces}` with
+`service.name = pi-coding-agent` and deployment environment `prod`.
+Log records contain event names and measurement attributes, with matching trace
+and span IDs. Response events include `input_token_count`, `output_token_count`,
+`cached_token_count`, `cache_write_token_count`, `reasoning_token_count` when
+available, and `total_token_count`.
+
+The New Relic account routes `service.name = 'pi-coding-agent'` to `Log_Pi`
+with the `SECONDARY` retention policy. This is an account-side data partition
+rule; a different account needs the same rule to route logs out of the default
+`Log` partition. Metrics and traces remain in `Metric` and `Span`.
 Events retain their individual timestamps; HTTP batches flush every second,
 after an agent run, and during orderly shutdown. Abrupt termination can lose
 queued records. Each signal queues at most 5,000 records during delivery failures;
@@ -58,6 +68,11 @@ are exported. HTTP status, success flags, and model stop categories provide
 diagnostic information.
 
 Example NRQL:
+
+```sql
+FROM Log_Pi SELECT count(*)
+WHERE service.name = 'pi-coding-agent' FACET event.name, conversation SINCE 1 hour ago
+```
 
 ```sql
 FROM Metric SELECT sum(pi.token.usage)
