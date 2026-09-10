@@ -31,3 +31,17 @@ test('side sessions keep their context and load telemetry, including shutdown', 
   await result.session.dispose();
   assert.deepEqual(observed, [['bind', 'rpc'], ['conversation', 'btw'], ['event', 'session_shutdown'], ['dispose']]);
 });
+
+test('failed session creation releases the telemetry runtime', async () => {
+  let disposed = 0;
+  const create = withTelemetry({
+    createSession: async () => { throw new Error('creation failed'); },
+    createLoader: options => ({
+      reload: async () => options.extensionFactories[0].factory({}),
+      getExtensions: () => ({ extensions: [] }),
+    }),
+    telemetry: () => ({ dispose: async () => { disposed++; } }),
+  });
+  await assert.rejects(create({ resourceLoader: {}, tools: [] }), /creation failed/);
+  assert.equal(disposed, 1);
+});

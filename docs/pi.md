@@ -36,7 +36,8 @@ accepted the request, not that a subsequent query has verified ingestion.
 | Context use and compaction size | `pi.context.{tokens,window,percent}`, `pi.compaction.tokens_before` |
 | Process memory and CPU since previous turn sample | `pi.process.{rss.bytes,heap.bytes,cpu.user.us,cpu.system.us}` |
 
-Metrics carry `provider`, `model`, `thinking`, and execution `mode`. Spans relate
+Metrics carry `provider`, `model`, `thinking`, execution `mode`, and `conversation`
+(`main`, `btw`, or `btw_summary`). Spans relate
 sessions, agent runs, turns, model responses, and tools using generated trace IDs.
 An agent run may contain multiple model turns and tool executions.
 
@@ -83,3 +84,22 @@ Taplo and the platform's clangd can serve TOML and C/C++ where installed.
 The local UI uses a quiet startup, collapsed thinking, and a two-line footer for
 model, thinking level, context use, directory, Git state, and cost. The footer,
 subagent, web-access, and LSP packages are configured in Pi's local settings.
+
+## Side conversations
+
+The managed `btw.ts` extension includes pi-btw 0.4.1 with telemetry-enabled
+side sessions. Do not also enable the npm pi-btw extension: both register the
+same commands. The upstream license and source information accompany the copy
+under `extensions/lib/vendor/`.
+
+- `/btw question` opens or continues a side conversation with the main context.
+- `/btw:tangent question` uses an independent context.
+- `Alt+/` switches focus; `Esc` dismisses the overlay.
+- `/btw:inject` sends the side thread to the main agent.
+- `/btw:summarize` sends a summary instead.
+
+Side conversations inherit the main model unless `/btw:model` overrides it.
+Both side and summary sessions load the same metadata-only telemetry extension;
+their session shutdown waits for export. Query `conversation = 'btw'` or
+`conversation = 'btw_summary'` to isolate their usage. Each session has its own
+trace and export queue; the main `/telemetry-status` reports its own queue.

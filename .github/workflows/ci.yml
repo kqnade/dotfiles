@@ -44,7 +44,7 @@ jobs:
           mise exec -- python3 scripts/ci/test-validate-mise.py
           python3 scripts/ci/test-codex-usage-exporter.py
           python3 scripts/ci/test-pi-telemetry.py
-          mise exec -- node --test scripts/ci/test-pi-telemetry-events.mjs scripts/ci/test-pi-new-relic-exporter.mjs scripts/ci/test-pi-new-relic-extension.mjs
+          mise exec -- node --test scripts/ci/test-pi-telemetry-events.mjs scripts/ci/test-pi-new-relic-exporter.mjs scripts/ci/test-pi-new-relic-extension.mjs scripts/ci/test-pi-btw-telemetry.mjs
           python3 scripts/ci/test-claude-settings.py
           mise exec -- python3 scripts/ci/test-workflow-skill-materialization.py
           python3 scripts/ci/test-herdr-worktree.py

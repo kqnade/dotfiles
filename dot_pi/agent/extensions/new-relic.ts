@@ -12,6 +12,10 @@ export default function (pi, { conversation = 'main' } = {}) {
   let cpu = process.cpuUsage();
   const timer = exporter ? setInterval(() => { void exporter.flush(); }, 1000) : undefined;
   timer?.unref();
+  const dispose = async () => {
+    clearInterval(timer);
+    await exporter?.shutdown();
+  };
 
   pi.registerCommand('telemetry-status', {
     description: 'Show New Relic delivery status without credentials',
@@ -74,8 +78,8 @@ export default function (pi, { conversation = 'main' } = {}) {
     }, observation);
     if (name === 'agent_end') void exporter.flush();
     if (name === 'session_shutdown') {
-      clearInterval(timer);
-      await exporter.shutdown();
+      await dispose();
     }
   });
+  return { dispose };
 }
