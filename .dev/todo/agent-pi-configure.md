@@ -112,6 +112,17 @@ instructions and required evidence before eventually completing the item.
   Repository validation and whitespace checks passed. No HOME deployment occurred.
   Shell output publication, directory creation/removal, and mode/type changes still
   require integration; an empty stage and the remove tool do not complete that work.
+- Observed on 2026-09-10 in the current macOS worktree, based on `8cfd722`:
+  runtime/publish-files.mjs applies captured regular-file additions, updates, and
+  removals through Ownership. Publication is sequential; an error reports immutable
+  publishedPaths so callers can describe partial completion. The 11 focused
+  publication/tree-comparison/removal tests passed, including preservation of an
+  external edit after an earlier file was published. Whitespace checks passed.
+  This internal seam is not connected to the shell tool. It currently accepts only
+  mode-preserving regular-file changes and new mode-0600 files. Directory/link/mode
+  changes, original preimages separate from prepared stage inputs, and propagation
+  of partial-result details through the broker remain integration work. Do not
+  describe this as transactional publication or complete shell support.
 - Writes support expected-hash replacement and atomic create-only publication
   with `expectedHash: null`. Replacement CAS serializes this Ownership instance;
   it is not an atomic transaction against arbitrary external processes.
