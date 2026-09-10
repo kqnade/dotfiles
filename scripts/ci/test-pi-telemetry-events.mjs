@@ -34,3 +34,19 @@ test('successful edits and skill reads are counted while errors expose no payloa
   assert(!JSON.stringify({metrics, spans}).includes('SECRET'));
   assert(!JSON.stringify({metrics, spans}).includes('secret'));
 });
+
+test('lifecycle events form a trace and optional reasoning stays absent', () => {
+  const metrics = [], spans = [];
+  let now = 1000;
+  const c = createCollector({ addMetric: m => metrics.push(m), addSpan: s => spans.push(s), now: () => now });
+  for (const type of ['session_start', 'agent_start', 'turn_start']) c.handle({ type });
+  c.handle({ type: 'after_provider_response', status: 429, headers: { authorization: 'SECRET' } });
+  c.handle({ type: 'message_end', message: { role: 'assistant', usage: { input: 10, output: 2, totalTokens: 12 }, stopReason: 'error', errorMessage: 'SECRET' } });
+  now = 1500;
+  for (const type of ['turn_end', 'agent_end', 'session_shutdown']) c.handle({ type });
+  assert(spans.some(s => s.attributes.name === 'pi.agent'));
+  assert.equal(new Set(spans.map(s => s['trace.id'])).size, 1);
+  assert.equal(metrics.find(m => m.name === 'pi.provider.response.count').attributes.status, 429);
+  assert(!metrics.some(m => m.name === 'pi.token.usage' && m.attributes.type === 'reasoning'));
+  assert(!JSON.stringify({metrics, spans}).includes('SECRET'));
+});

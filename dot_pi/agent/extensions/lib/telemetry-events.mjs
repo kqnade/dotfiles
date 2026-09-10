@@ -5,20 +5,51 @@ const finite = value => typeof value === 'number' && Number.isFinite(value) && v
 const bytes = text => typeof text === 'string' ? Buffer.byteLength(text) : 0;
 
 export function createCollector({ addMetric, addSpan, now = Date.now }) {
-  let base = {}, trace = id(16), turn, modelStart;
+  let base = {}, trace = id(16), turn, modelStart, session, agent, message, waiting, providerStart;
   const tools = new Map();
   const metric = (name, value, attributes = {}) => {
-    if (finite(value)) addMetric({ name, type: 'gauge', value, timestamp: now(), attributes: { ...base, ...attributes } });
+    if (finite(value)) addMetric({ name, type: name.endsWith('.count') || name === 'pi.token.usage' || name === 'pi.edit.bytes' || name === 'pi.cost.usage' ? 'count' : 'gauge', value, timestamp: now(), 'interval.ms': 1, attributes: { ...base, ...attributes } });
   };
   const start = () => ({ id: id(8), time: now(), attributes: { ...base } });
   const end = (name, state, attributes = {}) => {
     if (!state) return;
     const duration = Math.max(0, now() - state.time);
-    metric(`${name}.duration`, duration);
+    metric(`${name}.duration`, duration, attributes);
     addSpan({ id: state.id, 'trace.id': trace, timestamp: state.time, attributes: { ...state.attributes, ...attributes, name, 'duration.ms': duration } });
   };
   function handle(event, metadata = {}, observation = {}) {
     base = { ...base, ...metadata };
+    metric('pi.event.count', 1, { event: event.type });
+    if (event.type === 'session_start') session = start();
+    if (event.type === 'agent_start') agent = start();
+    if (event.type === 'input') {
+      metric('pi.prompt.bytes', bytes(event.text));
+      metric('pi.prompt.images', event.images?.length ?? 0);
+      if (observation.skillName) metric('pi.skill.count', 1, { skill: observation.skillName, method: 'command' });
+    }
+    if (event.type === 'before_agent_start') {
+      metric('pi.system_prompt.bytes', bytes(event.systemPrompt));
+      metric('pi.skills.available', event.systemPromptOptions?.skills?.length);
+      metric('pi.context.files', event.systemPromptOptions?.contextFiles?.length);
+    }
+    if (event.type === 'before_provider_request') providerStart = now();
+    if (event.type === 'after_provider_response') {
+      metric('pi.provider.response.count', 1, { status: event.status });
+      if (providerStart !== undefined) metric('pi.provider.headers.duration', now() - providerStart);
+    }
+    if (event.type === 'ui_prompt_start') waiting = start();
+    if (event.type === 'ui_prompt_end') { end('pi.ui_wait', waiting); waiting = undefined; }
+    if (event.type === 'message_start' && event.message?.role === 'assistant') {
+      message = start();
+      modelStart = now();
+    }
+    if (event.type === 'message_update' && message) {
+      const type = event.assistantMessageEvent?.type;
+      if (['text_delta', 'thinking_delta', 'toolcall_delta'].includes(type) && !message.firstDelta) {
+        message.firstDelta = now();
+        metric('pi.model.first_delta.duration', now() - modelStart);
+      }
+    }
     if (event.type === 'tool_execution_start') {
       const args = event.args ?? {};
       const edits = Array.isArray(args.edits) ? args.edits : [args];
@@ -30,7 +61,7 @@ export function createCollector({ addMetric, addSpan, now = Date.now }) {
       const state = tools.get(event.toolCallId);
       const attributes = { tool: event.toolName, success: !event.isError };
       metric('pi.tool.count', 1, attributes);
-      end('pi.tool', state, attributes);
+      end('pi.tool', state, { ...attributes, ...(turn ? { 'parent.id': turn.id } : {}) });
       if (state && !event.isError) {
         if (['edit', 'write'].includes(state.tool)) {
           metric('pi.edit.bytes', state.added, { tool: state.tool, type: 'added' });
@@ -46,18 +77,30 @@ export function createCollector({ addMetric, addSpan, now = Date.now }) {
     }
     if (event.type === 'message_end' && event.message?.role === 'assistant') {
       const usage = event.message.usage ?? {};
+      metric('pi.reasoning.available', finite(usage.reasoning) ? 1 : 0);
       for (const [field, type] of Object.entries({ input: 'input', output: 'output', cacheRead: 'cache_read', cacheWrite: 'cache_write', reasoning: 'reasoning' })) {
         metric('pi.token.usage', usage[field], { type });
       }
       if (turn && finite(usage.totalTokens)) turn.tokens += usage.totalTokens;
+      for (const field of ['input', 'output', 'cacheRead', 'cacheWrite', 'total']) metric('pi.cost.usage', usage.cost?.[field], { type: field });
       const seconds = (now() - modelStart) / 1000;
       if (seconds > 0) for (const type of ['input', 'output']) metric('pi.token.rate', usage[type] / seconds, { type, denominator: 'model_response_wall_time' });
+      const stopReason = ['stop', 'length', 'toolUse', 'error', 'aborted'].includes(event.message.stopReason) ? event.message.stopReason : 'unknown';
+      end('pi.model', message, { stop_reason: stopReason, ...(turn ? { 'parent.id': turn.id } : {}) });
+      message = undefined;
     }
     if (event.type === 'turn_end') {
       if (turn) metric('pi.turn.tokens', turn.tokens);
-      end('pi.turn', turn);
+      end('pi.turn', turn, agent ? { 'parent.id': agent.id, tokens: turn?.tokens ?? 0 } : {});
       turn = undefined;
     }
+    if (event.type === 'agent_end') { end('pi.agent', agent, session ? { 'parent.id': session.id } : {}); agent = undefined; }
+    if (event.type === 'session_shutdown') {
+      end('pi.session', session);
+      tools.clear();
+    }
+    if (event.type === 'session_compact') metric('pi.compaction.tokens_before', event.compactionEntry?.tokensBefore);
+    for (const [key, value] of Object.entries(observation.measurements ?? {})) metric(`pi.${key}`, value);
   }
   return { handle };
 }
