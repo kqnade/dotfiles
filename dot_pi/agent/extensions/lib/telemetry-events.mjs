@@ -25,6 +25,12 @@ export function createCollector({ addMetric, addSpan, now = Date.now }) {
     if (parent) attributes['parent.id'] = parent.id;
     if (finite(event.turnIndex)) attributes.turn_index = event.turnIndex;
     if (typeof event.toolName === 'string') attributes.tool = event.toolName;
+    if (event.type === 'message_end' && event.message?.role === 'assistant') {
+      const usage = event.message.usage ?? {};
+      for (const [field, name] of Object.entries({ input: 'input_token_count', output: 'output_token_count', cacheRead: 'cached_token_count', cacheWrite: 'cache_write_token_count', reasoning: 'reasoning_token_count', totalTokens: 'total_token_count' })) {
+        if (finite(usage[field])) attributes[name] = usage[field];
+      }
+    }
     for (const field of ['isError', 'aborted', 'willRetry', 'fromExtension', 'excludeFromContext']) {
       if (typeof event[field] === 'boolean') attributes[field] = event[field];
     }

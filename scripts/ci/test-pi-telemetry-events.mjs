@@ -17,6 +17,9 @@ test('a model turn exports usage and timing without message contents', () => {
   assert.equal(metrics.find(m => m.name === 'pi.token.rate' && m.attributes.type === 'output').value, 20);
   assert(!JSON.stringify({metrics, spans}).includes('PRIVATE'));
   assert(spans.some(s => s.attributes.name === 'pi.turn'));
+  const response = spans.find(s => s.attributes.name === 'pi.event.message_end');
+  assert.equal(response.attributes.input_token_count, 100);
+  assert.equal(response.attributes.reasoning_token_count, 5);
 });
 
 test('successful edits and skill reads are counted while errors expose no payload', () => {
