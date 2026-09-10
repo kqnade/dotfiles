@@ -5,13 +5,15 @@ import stat
 import sys
 
 
-def capture_tree(root, max_bytes=64 * 1024 * 1024, max_entries=100_000, max_metadata_bytes=8 * 1024 * 1024, *, topology_only=False):
+def capture_tree(root, max_bytes=64 * 1024 * 1024, max_entries=100_000, max_metadata_bytes=8 * 1024 * 1024, *, topology_only=False, max_depth=128):
     if not isinstance(max_bytes, int) or max_bytes < 0:
         raise ValueError("capture byte limit must be a nonnegative integer")
     if not isinstance(max_entries, int) or max_entries < 0:
         raise ValueError("capture entry limit must be a nonnegative integer")
     if not isinstance(max_metadata_bytes, int) or max_metadata_bytes < 0:
         raise ValueError("capture metadata limit must be a nonnegative integer")
+    if type(max_depth) is not int or max_depth < 0:
+        raise ValueError("capture directory depth limit must be a nonnegative integer")
     records = []
     remaining = max_bytes
     remaining_entries = max_entries
@@ -25,7 +27,7 @@ def capture_tree(root, max_bytes=64 * 1024 * 1024, max_entries=100_000, max_meta
             raise ValueError("capture metadata limit exceeded")
         records.append(record)
 
-    def walk(directory_fd, prefix):
+    def walk(directory_fd, prefix, depth):
         nonlocal remaining, remaining_entries
         names = []
         with os.scandir(directory_fd) as entries:
@@ -38,6 +40,8 @@ def capture_tree(root, max_bytes=64 * 1024 * 1024, max_entries=100_000, max_meta
             path = f"{prefix}/{name}" if prefix else name
             info = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
             if stat.S_ISDIR(info.st_mode):
+                if depth == max_depth:
+                    raise ValueError("capture directory depth limit exceeded")
                 child_fd = os.open(
                     name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
                     dir_fd=directory_fd,
@@ -45,7 +49,7 @@ def capture_tree(root, max_bytes=64 * 1024 * 1024, max_entries=100_000, max_meta
                 try:
                     info = os.fstat(child_fd)
                     append_record({"path": path, "type": "directory", "mode": stat.S_IMODE(info.st_mode)})
-                    walk(child_fd, path)
+                    walk(child_fd, path, depth + 1)
                 finally:
                     os.close(child_fd)
             elif stat.S_ISREG(info.st_mode):
@@ -77,7 +81,7 @@ def capture_tree(root, max_bytes=64 * 1024 * 1024, max_entries=100_000, max_meta
 
     root_fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
     try:
-        walk(root_fd, "")
+        walk(root_fd, "", 0)
     finally:
         os.close(root_fd)
     return records
@@ -88,6 +92,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--topology", action="store_true", dest="topology_only")
+    parser.add_argument("--max-depth", type=int, default=128)
     parser.add_argument("root")
     parser.add_argument("max_bytes", type=int, nargs="?", default=64 * 1024 * 1024)
     parser.add_argument("max_entries", type=int, nargs="?", default=100_000)
