@@ -43,13 +43,13 @@ Rules:
 
 == Git diff ==
 %s
-' "$log" "$diff" | codex exec \
+' "$log" "$diff" | "$HOME/.local/bin/pi-telemetry" \
+    --provider openai-codex \
     --model gpt-5.6-luna \
-    --ephemeral \
-    --sandbox read-only \
-    --color never \
-    --output-last-message "$output" \
-    - >/dev/null
+    --thinking medium \
+    --offline --print --no-session --no-tools \
+    --no-extensions --extension "$HOME/.pi/agent/extensions/new-relic.ts" \
+    --no-skills --no-prompt-templates --no-context-files >"$output"
   local exit_code=$?
 
   local msg=""
@@ -67,7 +67,6 @@ Rules:
   git commit -m "$msg"
 }
 
-# Backward compatibility for the old command name.
 function git-ccc() {
   git-cc "$@"
 }
