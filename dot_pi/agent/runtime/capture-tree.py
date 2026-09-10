@@ -5,7 +5,7 @@ import stat
 import sys
 
 
-def capture_tree(root, max_bytes=64 * 1024 * 1024, max_entries=100_000, max_metadata_bytes=8 * 1024 * 1024):
+def capture_tree(root, max_bytes=64 * 1024 * 1024, max_entries=100_000, max_metadata_bytes=8 * 1024 * 1024, *, topology_only=False):
     if not isinstance(max_bytes, int) or max_bytes < 0:
         raise ValueError("capture byte limit must be a nonnegative integer")
     if not isinstance(max_entries, int) or max_entries < 0:
@@ -49,6 +49,9 @@ def capture_tree(root, max_bytes=64 * 1024 * 1024, max_entries=100_000, max_meta
                 finally:
                     os.close(child_fd)
             elif stat.S_ISREG(info.st_mode):
+                if topology_only:
+                    append_record({"path": path, "type": "file", "mode": stat.S_IMODE(info.st_mode)})
+                    continue
                 file_fd = os.open(
                     name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
                     dir_fd=directory_fd,
