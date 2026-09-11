@@ -38,48 +38,16 @@ skkeleton は `127.0.0.1:1178` の yaskkserv2 を参照します。source dictio
 - macOS/Linux desktop は native 1Password SSH agent
 - WSL は Windows 側 `op.exe` / OpenSSH proxy
 
-## AI CLI / Herdr
+## AI CLI
 
-Claude Codeの設定と安全hook、Codex、OpenCode、Herdr integrationをchezmoiで維持します。
-ClaudeはGitHub remote ownerが`livesense-inc`または`jobtalk`のrepositoryだけで利用でき、
-shell wrapperが起動前に、hookがprompt送信前とtool実行前にそれ以外を拒否します。
-Claudeのglobal rulesはcoding、verification、operations、Git、PRD / STD deliveryに限定します。
-Codexはcanonicalなglobal delegation / Git ruleを読み、Claude専用namespace以外では`git cc`を
-使います。大規模ではない複数領域の作業は`luna_parallelizer`が浅く探索し、独立packetをLuna
-workerへfan-outします。独立して検証・commit可能な複数機能を隔離worktreeで並行実装できる
-大規模変更は`route-large-implementation`が優先されます。Codexのmodel、reasoning、approval、
-subagent、hookの安定したdefaultだけをchezmoiで適用し、subagent同時実行上限は8、既定subagentは
-Luna/maxとします。project trust、notice、hook trust hash、session、cacheなどのruntime stateは
-Codexへ残します。
-workflow skillのcanonical sourceは`~/.agents/skills/`です。Claudeはsymlink、CodexとOpenCodeは
-native discoveryで同じ内容を利用します。source workflowの構造ではなく、得たい効果ごとに
-`evidence-review`、`context-handoff`、`security-audit`、`prose-proofreading`、
-`sanitize-artifacts`、`assumption-pruning`、`peer-consultation`を構成し、
-`using-workflow-skills`がtaskをownerへ
-routeします。TDDのcanonical workflowはt-wadaのList → Red → Green → Refactorです。
-`.dev/`の基本的な読込境界は`~/.agents/rules/workflow-state.md`を正本とし、Claude、Codex、
-OpenCodeがglobal ruleとして共有します。repository固有のlayoutとlifecycleは各repositoryの
-`AGENTS.md`を優先します。
+Claude Code、Codex、OpenCode、Piの設定・hooks・拡張をchezmoiで維持します。
+認証情報やセッションなどのruntime stateは各clientが管理します。ClaudeはGitHub remote ownerが`livesense-inc`または`jobtalk`のrepository
+だけで利用でき、shell wrapperとauthorization hookが起動前、prompt送信前、tool実行前に
+それ以外を拒否します。
 
-このintegrationの目的は、skill数や文章量を小さくすることではありません。change reviewと
-dependency update reviewは同じsnapshot・claim ledger・verification contractを使うため
-`evidence-review`へ、handoffのexport/importは同じidentity・provenance・staleness contractを
-使うため`context-handoff`へ統合しています。peerを呼ぶtransportも、独立した意見をcurrent
-evidenceで再検証する`peer-consultation`が一貫して管理します。これによりtriggerの競合、client間の
-判定差、片方のworkflowだけが古くなるdriftを減らせます。
+開発workflowのglobal rules、skills、custom subagents、client間のルール共有symlinkは
+配置しません。Claudeの設定は他のclientから独立して管理します。
+Claudeのautomatic memoryは無効です。
 
-tradeoffとして、各skillの内部に明示的なmode分岐が増え、以前の細かなskill名から目的を探す
-discoverabilityは下がります。また、共通contractの変更は複数use caseへ影響し、state resolverが
-continuityのcentral dependencyになります。mode別の手順、owner境界、atomic writeと
-optimistic concurrencyの実動test、stateを書けない場合のchat fallbackでこれらを制御します。
-
-Claudeのautomatic memoryは無効のままです。handoffとsecurity coverageは、defaultではcurrent
-worktreeの`.dev`へ保存します。ADR、design doc、todoを含むため、linked worktree間で`.dev`の
-contentは共有しません。`livesense-inc`または`jobtalk`namespaceのrepoだけは、resolverが
-`/.dev/`をclone-localな`.git/info/exclude`へidempotentに追加します。他のrepoを自動ignoreしません。
-repositoryへ`.dev`を置けない場合に限り、明示的な`AGENT_WORKFLOW_STATE_HOME`でexternal fallbackを
-選べます。current worktreeのrepository-owned stateは通常のproject contextとして扱い、identity、
-provenance、freshnessを確認します。別worktree、import、legacy workflow、またはprovenance不明のrecordは
-candidate evidenceとしてより厳密にreconcileします。いずれもClaude automatic memoryではなく、矛盾時は
-current code、Git、tests、runtime、primary sourcesを優先します。
+Herdrのターミナル設定、worktree操作、状態通知integrationも管理します。
 Herdr integrationはbootstrap taskでidempotentに反映します。

@@ -13,7 +13,6 @@ VALIDATORS = (
     "validate-shell-integrations.py",
     "validate-claude-authorization.py",
     "validate-agent-materialization.py",
-    "validate-workflow-state.py",
     "validate-repository-layout.py",
     "validate-agent-client-config.py",
     "validate-project-contracts.py",

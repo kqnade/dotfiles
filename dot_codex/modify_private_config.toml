@@ -7,10 +7,10 @@ expression='
   .approvals_reviewer = "auto_review" |
   .model = "gpt-6-astra" |
   .model_reasoning_effort = "medium" |
-  .agents.max_concurrent_threads_per_session = 8 |
-  .agents.default_subagent_model = "gpt-5.6-luna" |
-  .agents.default_subagent_reasoning_effort = "max" |
-  .features.hooks = true
+  .features.hooks = true |
+  del(.agents.max_concurrent_threads_per_session) |
+  del(.agents.default_subagent_model) |
+  del(.agents.default_subagent_reasoning_effort)
 '
 
 if [[ -n "${NEW_RELIC_LICENSE_KEY:-}" ]]; then

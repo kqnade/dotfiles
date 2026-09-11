@@ -91,7 +91,7 @@ if settings.get("model") != "opus[1m]":
     fail("Claude default model must track the latest Opus release")
 
 if settings.get("autoMemoryEnabled") is not False:
-    fail("Claude automatic memory must remain disabled; use explicit workflow state")
+    fail("Claude automatic memory must remain disabled")
 
 enabled_plugins = settings.get("enabledPlugins")
 if not isinstance(enabled_plugins, dict):
@@ -125,13 +125,6 @@ hook_commands = {
     for hook in group.get("hooks", [])
     if isinstance(hook, dict)
 }
-for command in (
-    "~/.claude/hooks/herdr-review-notify.sh success",
-    "~/.claude/hooks/herdr-review-notify.sh failure",
-):
-    if command in hook_commands:
-        fail(f"legacy Herdr review hook remains configured: {command}")
-
 permissions = settings.get("permissions")
 if not isinstance(permissions, dict):
     fail("Claude settings permissions must be an object")

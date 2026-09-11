@@ -8,31 +8,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
-EXPECTED_CLAUDE_RULE_TARGETS = {
-    "coding.md",
-    "delivery.md",
-    "git.md",
-    "operations.md",
-    "verification.md",
-    "workflow-state.md",
-}
-EXPECTED_AGENT_SKILLS = {
-    "assumption-pruning",
-    "context-handoff",
-    "execute-worktree-implementation",
-    "evidence-review",
-    "herdr",
-    "peer-consultation",
-    "prose-proofreading",
-    "sanitize-artifacts",
-    "route-large-implementation",
-    "security-audit",
-    "test-driven-development",
-    "todo-management",
-    "using-workflow-skills",
-}
-
-
 def fail(message: str) -> None:
     print(f"error: {message}", file=sys.stderr)
     raise SystemExit(1)

@@ -26,23 +26,6 @@ if ! git diff-index --quiet HEAD -- 2>/dev/null; then
   CONTEXT="$CONTEXT | dirty"
 fi
 
-# Warn about the previous setupdotclaude kit without modifying project files.
-PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
-LEGACY_FOUND=""
-for marker in \
-  ".claude/.dotclaude.json" \
-  ".claude/rules/development-workflow.md" \
-  ".claude/rules/git-workflow.md" \
-  ".claude/skills/codex-consultation" \
-  ".claude/skills/context-budget"; do
-  if [ -n "$PROJECT_ROOT" ] && [ -e "$PROJECT_ROOT/$marker" ]; then
-    LEGACY_FOUND="${LEGACY_FOUND}${LEGACY_FOUND:+, }$marker"
-  fi
-done
-if [ -n "$LEGACY_FOUND" ]; then
-  CONTEXT="$CONTEXT | Legacy project-local Claude config detected: $LEGACY_FOUND; it overrides global rules. Compare and migrate it manually."
-fi
-
 # Verbose extras (opt-in via DOTCLAUDE_SESSION_VERBOSE=1).
 if [ "$VERBOSE" = "1" ]; then
   LAST_COMMIT=$(git log --oneline -1 2>/dev/null)

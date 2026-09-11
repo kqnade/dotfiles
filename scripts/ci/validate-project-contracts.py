@@ -183,7 +183,6 @@ repository_validator_commands = (
     "mise exec -- python3 scripts/ci/validate-shell-integrations.py",
     "mise exec -- python3 scripts/ci/validate-claude-authorization.py",
     "mise exec -- python3 scripts/ci/validate-agent-materialization.py",
-    "mise exec -- python3 scripts/ci/validate-workflow-state.py",
     "mise exec -- python3 scripts/ci/validate-repository-layout.py",
     "mise exec -- python3 scripts/ci/validate-agent-client-config.py",
     "mise exec -- python3 scripts/ci/validate-project-contracts.py",

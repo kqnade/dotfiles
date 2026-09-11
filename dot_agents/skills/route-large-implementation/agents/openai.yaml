@@ -1,4 +1,0 @@
-interface:
-  display_name: "Route Large Implementation"
-  short_description: "Contract-first large worktree routing"
-  default_prompt: "Use $route-large-implementation to establish shared contracts, then route a large implementation through isolated worktrees."

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Sanitize Artifacts"
-  short_description: "Make artifacts independent of the conversation"
-  default_prompt: "Use $sanitize-artifacts to make these artifacts standalone and remove production-process residue."

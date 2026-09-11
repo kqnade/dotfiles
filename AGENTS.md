@@ -60,9 +60,8 @@ Always inspect the final diff and run `git diff --check` before handing work off
 | zsh alias or function | `dot_config/zsh/aliases.zsh` or `dot_config/zsh/functions/<name>.zsh` |
 | Neovim LSP or formatter | `dot_config/nvim/lua/modules/configs/lsp/init.lua` or `dot_config/nvim/lua/modules/configs/editor/conform.lua` |
 | OpenCode configuration | `dot_config/opencode/opencode.json` |
-| Shared agent rule | `dot_agents/rules/` |
-| Cross-client workflow skill | `dot_agents/skills/<name>/` |
-| Codex adapter or custom agent | `dot_codex/` |
+| Codex settings adapter | `dot_codex/` |
+| Pi extensions | `dot_pi/agent/extensions/` |
 | Claude-specific rule, setting, or hook | `dot_claude/` |
 
 Chezmoi source names describe their deployed targets: `dot_` becomes a leading `.`,
@@ -90,22 +89,16 @@ dictionary sources belong in `.chezmoiexternal.toml.tmpl`; removed managed targe
 
 ## Agent configuration model
 
-Agent configuration has a canonical layer and client adapters:
+Claude configuration is independent of the other clients. This repository does not deploy
+shared development rules, workflow skills, global AGENTS files, or custom subagent instructions.
 
-- Shared unconditional rules live in `dot_agents/rules/`. Claude receives shared rules through
-  symlinks, Codex receives the generated `dot_agents/rules/AGENTS.md.tmpl` aggregate through
-  `dot_codex/symlink_AGENTS.md`, and OpenCode receives the shared workflow-state rule. Do not copy
-  canonical rules into client-specific directories.
-- Cross-client skills live only in `dot_agents/skills/`. Claude uses the symlinks in
-  `dot_claude/skills/`; Codex and OpenCode discover the materialized `~/.agents/skills/` tree.
-- Claude-specific unconditional rules and hooks live in `dot_claude/`. Claude may run only in
+- Claude safety rules, settings, and hooks live in `dot_claude/`. Claude may run only in
   repositories whose GitHub remote owner is `livesense-inc` or `jobtalk`; the wrapper and hooks
-  enforce that boundary. Worktree sessions and built-in subagents also require an explicitly
-  invoked workflow, the same approved account, and an authorized repository.
-- Codex-specific delegation and Git policy live in `dot_agents/rules/{delegation,git}.md`. Luna is
-  the default subagent; `luna_parallelizer` routes non-large multi-area work, while
-  `route-large-implementation` owns work with multiple independently verifiable features that can
-  run concurrently in isolated worktrees. Bounded low-ambiguity packets may use `spark_worker`.
+  enforce that boundary using the approved account.
+- Codex settings live in `dot_codex/`, OpenCode settings in `dot_config/opencode/`, and Pi
+  extensions in `dot_pi/agent/extensions/`.
+- Removed managed targets belong in `.chezmoiremove`. Name specific files or managed symlinks;
+  preserve unknown skills, credentials, and runtime state in their parent directories.
 - `dot_codex/modify_private_config.toml` applies stable Codex defaults while preserving
   Codex-managed runtime state and sibling tables. Claude Code's expected runtime edits to
   `settings.json` should be folded back into `dot_claude/settings.json.tmpl` only when intentional.

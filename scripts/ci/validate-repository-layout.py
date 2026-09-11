@@ -14,44 +14,10 @@ import tempfile
 import tomllib
 from pathlib import Path
 
-from validate_common import (
-    EXPECTED_AGENT_SKILLS as expected_agent_skills,
-    EXPECTED_CLAUDE_RULE_TARGETS as expected_claude_rule_targets,
-    ROOT,
-    fail,
-    strip_json_comments,
-    tracked_files,
-)
+from validate_common import ROOT, fail, strip_json_comments, tracked_files
 
-
-if (ROOT / "dot_claude/hooks/executable_herdr-review-notify.sh").exists():
-    fail("legacy Herdr review notification hook remains")
 
 removals = (ROOT / ".chezmoiremove").read_text().splitlines()
-for restored_rule_name in expected_claude_rule_targets:
-    restored_target = f".claude/rules/{restored_rule_name}"
-    if restored_target in removals:
-        fail(f"restored Claude rule must not remain in .chezmoiremove: {restored_target}")
-
-if ".codex/AGENTS.md" in removals:
-    fail("restored Codex global AGENTS.md must not remain in .chezmoiremove")
-if ".config/opencode/AGENTS.md" in removals:
-    fail("restored OpenCode global AGENTS.md must not remain in .chezmoiremove")
-
-opencode_global_rule_link = ROOT / "dot_config/opencode/symlink_AGENTS.md"
-if not opencode_global_rule_link.is_file():
-    fail("OpenCode global AGENTS.md symlink source is missing")
-if (
-    opencode_global_rule_link.read_text().strip()
-    != "../../.agents/rules/workflow-state.md"
-):
-    fail("OpenCode global AGENTS.md must link to the canonical workflow-state rule")
-
-for restored_skill_name in expected_agent_skills:
-    restored_target = f".claude/skills/{restored_skill_name}"
-    if restored_target in removals:
-        fail(f"restored Claude skill must not remain in .chezmoiremove: {restored_target}")
-
 for target in (
     ".claude/CLAUDE.md",
     ".claude/agents/frontend-designer.md",
