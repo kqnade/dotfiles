@@ -15,11 +15,11 @@ task.run_auto_install = false
 
 [tools]
 # Bootstrap and shell
-chezmoi = "2.72.1"
+chezmoi = "2.72.2"
 sheldon = { version = "0.8.5", os = ["linux", "macos/arm64"] }
 "cargo:sheldon" = { version = "0.8.5", os = ["macos/x64"], depends = ["rust"] }
 starship = "1.26.0"
-gh = "2.100.0"
+gh = "2.101.0"
 ghq = "1.10.1"
 git-lfs = "3.8.0"
 delta = { version = "0.19.2", os = ["linux", "macos/arm64"] }
@@ -35,7 +35,7 @@ delta = { version = "0.19.2", os = ["linux", "macos/arm64"] }
 ], features = [
   "vendored-libgit2",
 ] }
-fzf = "0.74.3"
+fzf = "0.74.4"
 fd = { version = "10.5.0", os = ["linux", "macos/arm64"] }
 "cargo:fd-find" = { version = "10.5.0", os = ["macos/x64"], depends = ["rust"] }
 ripgrep = "15.2.0"
@@ -44,8 +44,8 @@ zoxide = "0.10.0"
 jq = "1.8.2"
 yq = "4.53.6"
 just = "1.58.0"
-atuin = { version = "18.21.0", os = ["linux", "macos/arm64"] }
-"cargo:atuin" = { version = "18.21.0", os = ["macos/x64"], depends = ["rust"] }
+atuin = { version = "18.22.0", os = ["linux", "macos/arm64"] }
+"cargo:atuin" = { version = "18.22.0", os = ["macos/x64"], depends = ["rust"] }
 "aqua:babarot/gomi" = "1.6.4"
 btop = { version = "1.4.7", os = ["linux"] }
 
@@ -55,38 +55,33 @@ tree-sitter = "0.27.0"
 shellcheck = "0.11.0"
 shfmt = "3.14.1"
 taplo = "0.10.0"
-typos = "1.50.1"
-"npm:typescript" = { version = "5.9.3", depends = ["node"] }
+typos = "1.50.2"
+"npm:typescript" = { version = "7.0.2", depends = ["node"] }
 "npm:typescript-language-server" = { version = "6.0.0", depends = [
   "node",
   "npm:typescript",
 ] }
 "npm:pyright" = { version = "1.1.414", depends = ["node"] }
-"npm:bash-language-server" = { version = "5.6.0", depends = ["node"] }
+"npm:bash-language-server" = { version = "5.8.0", depends = ["node"] }
 
 # Language runtimes
 rust = "1.98.1"
-node = "26.7.0"
+node = "26.9.0"
 bun = "1.4.2"
-pnpm = { version = "11.25.0", os = [
-  "linux",
-  "macos/arm64",
-], depends = [
-  "node",
-] }
-"npm:pnpm" = { version = "11.25.0", os = ["macos/x64"], depends = ["node"] }
-uv = "0.12.9"
+pnpm = { version = "12.4.2", os = ["linux", "macos/arm64"], depends = ["node"] }
+"npm:pnpm" = { version = "12.4.2", os = ["macos/x64"], depends = ["node"] }
+uv = "0.12.17"
 
 # Agent and application CLIs
 1password-cli = "2.39.0"
-herdr = "v0.9.0"
-claude = "2.1.268"
-"aqua:openai/codex" = "0.154.0"
+herdr = "v0.9.1"
+claude = "2.1.277"
+"aqua:openai/codex" = "0.155.1"
 opencode = "1.18.31"
 "npm:@earendil-works/pi-coding-agent" = { version = "0.85.1", depends = [
   "node",
 ] }
-"npm:ccusage" = { version = "20.0.20", depends = ["node"] }
+"npm:ccusage" = { version = "20.0.23", depends = ["node"] }
 
 # SKK server and dictionary builder. Keep this on the Cargo git backend on
 # every platform so the service behaves identically on macOS and Linux.
