@@ -197,7 +197,7 @@ if not isinstance(mole, dict) or mole != {
     "version": "1.49.2",
     "os": ["macos"],
     "url": "https://github.com/tw93/Mole/archive/refs/tags/V{{ version }}.tar.gz",
-    "checksum": "sha256:ffa39b625416ac150587bcc93dfccac83c6eece6922b87ccc8d3000875ff3885",
+    "checksum": "sha256:dec79ca0c4a8780509f0bf813ba14efdc5b16637e2f7c49be3ea1910c15a2278",
     "strip_components": 1,
     "bin_path": ".",
     "postinstall": 'bash "${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/install-mole-helpers.sh"',

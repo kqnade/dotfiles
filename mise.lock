@@ -334,15 +334,15 @@ backend = "http:mole"
 strip_components = "1"
 
 [tools."http:mole"."platforms.linux-x64"]
-checksum = "sha256:ffa39b625416ac150587bcc93dfccac83c6eece6922b87ccc8d3000875ff3885"
+checksum = "sha256:dec79ca0c4a8780509f0bf813ba14efdc5b16637e2f7c49be3ea1910c15a2278"
 url = "https://github.com/tw93/Mole/archive/refs/tags/V1.49.2.tar.gz"
 
 [tools."http:mole"."platforms.macos-arm64"]
-checksum = "sha256:ffa39b625416ac150587bcc93dfccac83c6eece6922b87ccc8d3000875ff3885"
+checksum = "sha256:dec79ca0c4a8780509f0bf813ba14efdc5b16637e2f7c49be3ea1910c15a2278"
 url = "https://github.com/tw93/Mole/archive/refs/tags/V1.49.2.tar.gz"
 
 [tools."http:mole"."platforms.macos-x64"]
-checksum = "sha256:ffa39b625416ac150587bcc93dfccac83c6eece6922b87ccc8d3000875ff3885"
+checksum = "sha256:dec79ca0c4a8780509f0bf813ba14efdc5b16637e2f7c49be3ea1910c15a2278"
 url = "https://github.com/tw93/Mole/archive/refs/tags/V1.49.2.tar.gz"
 
 [[tools.jq]]
