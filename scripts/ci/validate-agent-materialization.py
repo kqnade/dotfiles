@@ -144,49 +144,17 @@ for key, expected_value in preserved_codex_runtime_state.items():
     if codex_modified_config.get(key) != expected_value:
         fail(f"Codex config modifier changed runtime-owned {key}")
 
-pi_settings_modifier = ROOT / "dot_pi/agent/modify_settings.json.tmpl"
-if not pi_settings_modifier.is_file():
-    fail("Pi stable defaults modifier is missing")
+pi_settings_source = ROOT / "dot_pi/agent/settings.json"
+if not pi_settings_source.is_file():
+    fail("Canonical Pi settings source is missing")
 
 pi_runtime_settings = {
     "defaultProvider": "runtime-provider",
     "defaultModel": "runtime-model",
     "defaultThinkingLevel": "low",
-    "runtimeMarker": "preserve-me",
+    "runtimeMarker": "must-be-replaced",
     "packages": ["npm:runtime-package@1.0.0"],
-    "modelThinkingLevels": {"openai-codex/gpt-5.6-luna": "max"},
-    "lsp": {"hookMode": "agent_end"},
 }
-pi_modified_result = subprocess.run(
-    ["bash", str(pi_settings_modifier)],
-    cwd=ROOT,
-    input=json.dumps(pi_runtime_settings),
-    text=True,
-    capture_output=True,
-    check=False,
-)
-if pi_modified_result.returncode != 0:
-    fail(f"Pi settings modifier failed: {pi_modified_result.stderr.strip()}")
-pi_modified_settings = json.loads(pi_modified_result.stdout)
-expected_pi_defaults = {
-    "defaultProvider": "openai-codex",
-    "defaultModel": "gpt-5.6-sol",
-    "defaultThinkingLevel": "xhigh",
-}
-for key, expected_value in expected_pi_defaults.items():
-    if pi_modified_settings.get(key) != expected_value:
-        fail(f"Pi settings modifier did not enforce {key}")
-if pi_modified_settings.get("modelThinkingLevels", {}).get(
-    "openai-codex/gpt-5.6-sol"
-) != "xhigh":
-    fail("Pi settings modifier did not pin GPT-5.6 Sol to xhigh thinking")
-for key in ("runtimeMarker", "packages", "lsp"):
-    if pi_modified_settings.get(key) != pi_runtime_settings[key]:
-        fail(f"Pi settings modifier changed runtime-owned {key}")
-if pi_modified_settings.get("modelThinkingLevels", {}).get(
-    "openai-codex/gpt-5.6-luna"
-) != "max":
-    fail("Pi settings modifier changed another model's thinking default")
 
 with tempfile.TemporaryDirectory() as temp_dir:
     codex_home = Path(temp_dir) / "home"
@@ -240,8 +208,42 @@ with tempfile.TemporaryDirectory() as temp_dir:
         text=True,
         capture_output=True,
         check=False,
+        env={**os.environ, "HOME": str(codex_home)},
     )
     if pi_apply_result.returncode != 0:
         fail(f"Pi settings apply failed: {pi_apply_result.stderr.strip()}")
-    if json.loads(pi_settings.read_text()) != pi_modified_settings:
-        fail("Pi settings apply did not preserve runtime state and enforce stable defaults")
+    rendered_pi_settings = json.loads(pi_settings.read_text())
+    expected_pi_defaults = {
+        "defaultProvider": "openai-codex",
+        "defaultModel": "gpt-6-sol",
+        "defaultThinkingLevel": "xhigh",
+    }
+    for key, expected_value in expected_pi_defaults.items():
+        if rendered_pi_settings.get(key) != expected_value:
+            fail(f"Canonical Pi settings did not enforce {key}")
+    expected_pi_packages = [
+        "npm:pi-footer@0.5.1",
+        "npm:pi-subagents@0.67.0",
+        "npm:pi-web-access@0.28.0",
+        "git:github.com/trotsky1997/pi-lsp-extension@39d56f0cdaf4b5e77ee038f0670de14cd19e228d",
+    ]
+    if rendered_pi_settings.get("packages") != expected_pi_packages:
+        fail("Canonical Pi settings did not deploy the complete package set")
+    if "runtimeMarker" in rendered_pi_settings:
+        fail("Canonical Pi settings preserved machine-local runtime state")
+    if rendered_pi_settings.get("modelThinkingLevels", {}).get(
+        "openai-codex/gpt-6-sol"
+    ) != "xhigh":
+        fail("Canonical Pi settings did not pin GPT-6 Sol to xhigh thinking")
+    if rendered_pi_settings.get("subagents", {}).get("defaultModel") != (
+        "openai-codex/gpt-6-luna"
+    ):
+        fail("Canonical Pi settings did not pin subagents to GPT-6 Luna")
+    configured_typescript_server = (
+        rendered_pi_settings.get("lsp", {}).get("servers", {}).get("typescript")
+    )
+    if configured_typescript_server != {
+        "command": "tsc",
+        "args": ["--lsp", "--stdio"],
+    }:
+        fail("Canonical Pi settings did not deploy the TypeScript 7 native LSP")

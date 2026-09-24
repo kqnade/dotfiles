@@ -197,7 +197,7 @@
       "extensions": [".java"]
     },
     "javascript": {
-      "command": ["typescript-language-server", "--stdio"],
+      "command": ["tsc", "--lsp", "--stdio"],
       "extensions": [".js", ".jsx", ".mjs", ".cjs"]
     },
     "json": {
@@ -237,7 +237,7 @@
       "extensions": [".css", ".html", ".jsx", ".tsx", ".vue"]
     },
     "typescript": {
-      "command": ["typescript-language-server", "--stdio"],
+      "command": ["tsc", "--lsp", "--stdio"],
       "extensions": [".ts", ".tsx", ".mts", ".cts"]
     },
     "yaml": {

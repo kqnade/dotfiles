@@ -44,7 +44,6 @@ EXPECTED_TOOLS = {
     "npm:ccusage",
     "npm:pyright",
     "npm:typescript",
-    "npm:typescript-language-server",
     "opencode",
     "ripgrep",
     "rust",

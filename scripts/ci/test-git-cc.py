@@ -63,7 +63,7 @@ class GitCommitMessageTests(unittest.TestCase):
         self.assertIn("--print", args)
         self.assertIn("--no-session", args)
         self.assertEqual(args[args.index("--provider") + 1], "openai-codex")
-        self.assertEqual(args[args.index("--model") + 1], "gpt-5.6-luna")
+        self.assertEqual(args[args.index("--model") + 1], "gpt-6-luna")
 
     def test_generation_failure_keeps_changes_staged(self):
         self.env["TEST_EXIT"] = "1"

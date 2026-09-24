@@ -29,6 +29,14 @@ if "AGENTS.md" in opencode_instructions:
 if ".cursor/rules/*.md" not in opencode_instructions:
     fail("OpenCode must retain project Cursor rule discovery")
 
+for language in ("javascript", "typescript"):
+    if opencode.get("lsp", {}).get(language, {}).get("command") != [
+        "tsc",
+        "--lsp",
+        "--stdio",
+    ]:
+        fail(f"OpenCode {language} must use the TypeScript 7 native LSP")
+
 opencode_permissions = opencode.get("permission")
 if not isinstance(opencode_permissions, dict):
     fail("OpenCode permission must be an object")

@@ -45,7 +45,7 @@ Rules:
 %s
 ' "$log" "$diff" | "$HOME/.local/bin/pi-telemetry" \
     --provider openai-codex \
-    --model gpt-5.6-luna \
+    --model gpt-6-luna \
     --thinking medium \
     --offline --print --no-session --no-tools \
     --no-extensions --extension "$HOME/.pi/agent/extensions/new-relic.ts" \

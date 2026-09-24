@@ -100,10 +100,10 @@ shared development rules, workflow skills, global AGENTS files, or custom subage
   settings and extensions in `dot_pi/`.
 - Removed managed targets belong in `.chezmoiremove`. Name specific files or managed symlinks;
   preserve unknown skills, credentials, and runtime state in their parent directories.
-- `dot_codex/modify_private_config.toml` and `dot_pi/agent/modify_settings.json.tmpl` apply stable
-  defaults while preserving client-managed runtime state and sibling settings. Claude Code's
-  expected runtime edits to `settings.json` should be folded back into
-  `dot_claude/settings.json.tmpl` only when intentional.
+- `dot_codex/modify_private_config.toml` applies stable Codex defaults while preserving
+  Codex-managed runtime state and sibling settings. `dot_pi/agent/settings.json` deploys the
+  complete canonical Pi configuration. Claude Code's expected runtime edits to `settings.json`
+  should be folded back into `dot_claude/settings.json.tmpl` only when intentional.
 - Herdr integration is applied idempotently during bootstrap. Claude automatic memory remains
   disabled; durable workflow state uses the repository model below.
 

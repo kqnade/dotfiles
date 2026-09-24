@@ -1,0 +1,108 @@
+{
+  "lastChangelogVersion": "0.85.1",
+  "theme": "dark/dark",
+  "defaultProvider": "openai-codex",
+  "defaultModel": "gpt-6-sol",
+  "defaultThinkingLevel": "xhigh",
+  "quietStartup": true,
+  "hideThinkingBlock": true,
+  "collapseChangelog": true,
+  "packages": [
+    "npm:pi-footer@0.5.1",
+    "npm:pi-subagents@0.67.0",
+    "npm:pi-web-access@0.28.0",
+    "git:github.com/trotsky1997/pi-lsp-extension@39d56f0cdaf4b5e77ee038f0670de14cd19e228d"
+  ],
+  "terminal": {
+    "showTerminalProgress": true
+  },
+  "steeringMode": "one-at-a-time",
+  "enabledModels": [
+    "openai-codex/*"
+  ],
+  "showHardwareCursor": true,
+  "defaultTools": [
+    "read",
+    "bash",
+    "edit",
+    "write",
+    "grep",
+    "find",
+    "ls"
+  ],
+  "subagents": {
+    "defaultModel": "openai-codex/gpt-6-luna",
+    "defaultThinking": "medium",
+    "modelScope": {
+      "enforce": true,
+      "strict": true,
+      "allow": [
+        "openai-codex/*"
+      ]
+    },
+    "agentOverrides": {
+      "scout": {
+        "model": "openai-codex/gpt-6-luna",
+        "thinking": "low"
+      },
+      "reviewer": {
+        "model": "openai-codex/gpt-6-sol",
+        "thinking": "high"
+      },
+      "oracle": {
+        "model": "openai-codex/gpt-6-sol",
+        "thinking": "high"
+      },
+      "claude-code": {
+        "disabled": true
+      },
+      "claude-code-writer": {
+        "disabled": true
+      },
+      "cursor-agent": {
+        "disabled": true
+      },
+      "cursor-agent-writer": {
+        "disabled": true
+      },
+      "codex-exec": {
+        "disabled": true
+      },
+      "codex-exec-writer": {
+        "disabled": true
+      }
+    }
+  },
+  "tuiMode": "fullscreen",
+  "modelThinkingLevels": {
+    "openai-codex/gpt-6-astra": "medium",
+    "openai-codex/gpt-6-sol": "xhigh",
+    "openai-codex/gpt-6-luna": "max",
+    "openai-codex/gpt-5.3-codex-spark": "medium",
+    "openai-codex/gpt-5.6-terra": "high"
+  },
+  "warnings": {
+    "anthropicExtraUsage": true
+  },
+  "treeFilterMode": "all",
+  "defaultProjectTrust": "ask",
+  "showCacheMissNotices": true,
+  "markdown": {
+    "mermaid": "streaming"
+  },
+  "lsp": {
+    "hookMode": "agent_end",
+    "python": {
+      "provider": "pyright"
+    },
+    "servers": {
+      "typescript": {
+        "command": "tsc",
+        "args": [
+          "--lsp",
+          "--stdio"
+        ]
+      }
+    }
+  }
+}

@@ -461,10 +461,6 @@ backend = "npm:pyright"
 version = "7.0.2"
 backend = "npm:typescript"
 
-[[tools."npm:typescript-language-server"]]
-version = "6.0.0"
-backend = "npm:typescript-language-server"
-
 [[tools.opencode]]
 version = "1.18.32"
 backend = "aqua:anomalyco/opencode"

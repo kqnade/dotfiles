@@ -1,10 +1,11 @@
 # Pi
 
 Pi uses the ChatGPT OAuth provider (`openai-codex`). Its local settings and OAuth
-credentials live under `~/.pi/agent/`. A chezmoi modifier keeps the startup model at
-`openai-codex/gpt-5.6-sol` with `xhigh` thinking while preserving Pi-managed package and
-runtime settings. The `pi` shell function starts Pi through `~/.local/bin/pi-telemetry`,
-reading the New Relic ingest key from 1Password.
+credentials live under `~/.pi/agent/`. The complete global settings file is managed as the
+canonical configuration for every machine, including packages, subagents, LSP, the startup model
+`openai-codex/gpt-6-sol`, and `xhigh` thinking. Subagents and commit-message generation use
+`openai-codex/gpt-6-luna`. The `pi` shell function starts Pi through
+`~/.local/bin/pi-telemetry`, reading the New Relic ingest key from 1Password.
 `PI_NEW_RELIC_ENABLE=0 pi` disables export. An explicit `PI_NEW_RELIC_API_KEY`
 can supply the ingest key without 1Password. `/telemetry-status` flushes pending
 records and reports HTTP delivery status, queue sizes, errors, and dropped records.
@@ -93,9 +94,9 @@ FACET name SINCE 1 hour ago
 
 ## LSP and UI
 
-Mise supplies TypeScript 5.9 (including tsserver), typescript-language-server,
-Pyright, and bash-language-server. Pi's LSP package selects servers using local
-project markers and `lsp` settings; diagnostics can run at the end of an agent run.
+Mise supplies TypeScript 7's native LSP, Pyright, and bash-language-server. Pi's LSP
+package selects servers using local project markers and `lsp` settings; diagnostics can run at
+the end of an agent run.
 Taplo and the platform's clangd can serve TOML and C/C++ where installed.
 
 The local UI uses a quiet startup, collapsed thinking, and a two-line footer for
