@@ -215,6 +215,7 @@ for fragment in (
     "format --check --stdin-filepath mise.lock - < mise.lock",
     "cargo:sheldon",
     "cargo:git-delta",
+    "github:sharkdp/fd",
     "github:atuinsh/atuin",
     "npm:pnpm",
     "dotfiles_wait_for_port 127.0.0.1 1178",

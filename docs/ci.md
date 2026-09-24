@@ -26,7 +26,7 @@ login shellを標準`/bin/zsh`へ揃え、`bash install.sh`、`mise run apply`�
 
 - `cargo:sheldon`
 - `cargo:git-delta`
-- `fd`のupstream x64 binary
+- `github:sharkdp/fd`のupstream x64 binary
 - `github:atuinsh/atuin`のupstream x64 binary
 - `npm:pnpm`
 

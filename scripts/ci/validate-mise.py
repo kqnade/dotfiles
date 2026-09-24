@@ -26,12 +26,12 @@ EXPECTED_TOOLS = {
     "chezmoi",
     "claude",
     "delta",
-    "fd",
     "fzf",
     "gh",
     "ghq",
     "git-lfs",
     "github:atuinsh/atuin",
+    "github:sharkdp/fd",
     "herdr",
     "http:mole",
     "jq",
@@ -213,7 +213,7 @@ for primary in ("delta", "sheldon", "pnpm"):
     value = tools[primary]
     if active_on(value, "macos-x64"):
         fail(f"{primary} must not be selected on macos/x64")
-for binary in ("fd", "github:atuinsh/atuin"):
+for binary in ("github:sharkdp/fd", "github:atuinsh/atuin"):
     if not active_on(tools[binary], "macos-x64"):
         fail(f"{binary} must use its upstream binary on macos-x64")
 
