@@ -61,7 +61,7 @@ Always inspect the final diff and run `git diff --check` before handing work off
 | Neovim LSP or formatter | `dot_config/nvim/lua/modules/configs/lsp/init.lua` or `dot_config/nvim/lua/modules/configs/editor/conform.lua` |
 | OpenCode configuration | `dot_config/opencode/opencode.json` |
 | Codex settings adapter | `dot_codex/` |
-| Pi extensions | `dot_pi/agent/extensions/` |
+| Pi settings adapter or extension | `dot_pi/` |
 | Claude-specific rule, setting, or hook | `dot_claude/` |
 
 Chezmoi source names describe their deployed targets: `dot_` becomes a leading `.`,
@@ -97,12 +97,13 @@ shared development rules, workflow skills, global AGENTS files, or custom subage
   repositories whose GitHub remote owner is `livesense-inc` or `jobtalk`; the wrapper and hooks
   enforce that boundary using the approved account.
 - Codex settings live in `dot_codex/`, OpenCode settings in `dot_config/opencode/`, and Pi
-  extensions in `dot_pi/agent/extensions/`.
+  settings and extensions in `dot_pi/`.
 - Removed managed targets belong in `.chezmoiremove`. Name specific files or managed symlinks;
   preserve unknown skills, credentials, and runtime state in their parent directories.
-- `dot_codex/modify_private_config.toml` applies stable Codex defaults while preserving
-  Codex-managed runtime state and sibling tables. Claude Code's expected runtime edits to
-  `settings.json` should be folded back into `dot_claude/settings.json.tmpl` only when intentional.
+- `dot_codex/modify_private_config.toml` and `dot_pi/agent/modify_settings.json.tmpl` apply stable
+  defaults while preserving client-managed runtime state and sibling settings. Claude Code's
+  expected runtime edits to `settings.json` should be folded back into
+  `dot_claude/settings.json.tmpl` only when intentional.
 - Herdr integration is applied idempotently during bootstrap. Claude automatic memory remains
   disabled; durable workflow state uses the repository model below.
 

@@ -87,8 +87,8 @@ except json.JSONDecodeError as error:
 if settings.get("language") != "Japanese":
     fail("Claude language must not encode a voice or tone")
 
-if settings.get("model") != "opus[1m]":
-    fail("Claude default model must track the latest Opus release")
+if settings.get("model") != "claude-opus-5-5[1m]":
+    fail("Claude default model must remain pinned to Opus 5.5")
 
 if settings.get("autoMemoryEnabled") is not False:
     fail("Claude automatic memory must remain disabled")

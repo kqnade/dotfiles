@@ -129,7 +129,7 @@ trust_level = "trusted"
         settings = json.loads(
             (ROOT / "dot_claude/settings.json.tmpl").read_text().split("{{-", 1)[0]
         )
-        self.assertEqual(settings["model"], "opus[1m]")
+        self.assertEqual(settings["model"], "claude-opus-5-5[1m]")
         self.assertEqual(settings["preferredNotifChannel"], "notifications_disabled")
         commands = {
             hook["command"]

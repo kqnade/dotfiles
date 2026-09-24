@@ -1,8 +1,10 @@
 # Pi
 
 Pi uses the ChatGPT OAuth provider (`openai-codex`). Its local settings and OAuth
-credentials live under `~/.pi/agent/`. The `pi` shell function starts Pi through
-`~/.local/bin/pi-telemetry`, reading the New Relic ingest key from 1Password.
+credentials live under `~/.pi/agent/`. A chezmoi modifier keeps the startup model at
+`openai-codex/gpt-5.6-sol` with `xhigh` thinking while preserving Pi-managed package and
+runtime settings. The `pi` shell function starts Pi through `~/.local/bin/pi-telemetry`,
+reading the New Relic ingest key from 1Password.
 `PI_NEW_RELIC_ENABLE=0 pi` disables export. An explicit `PI_NEW_RELIC_API_KEY`
 can supply the ingest key without 1Password. `/telemetry-status` flushes pending
 records and reports HTTP delivery status, queue sizes, errors, and dropped records.
