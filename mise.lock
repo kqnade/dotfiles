@@ -72,9 +72,9 @@ version = "0.26.1"
 backend = "aqua:sharkdp/bat"
 
 [tools.bat."platforms.linux-x64"]
-checksum = "sha256:0dcd8ac79732c0d5b136f11f4ee00e581440e16a44eab5b3105b611bbf2cf191"
-url = "https://github.com/sharkdp/bat/releases/download/v0.26.1/bat-v0.26.1-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/sharkdp/bat/releases/assets/323549429"
+checksum = "sha256:726f04c8f576a7fd18b7634f1bbf2f915c43494c1c0f013baa3287edb0d5a2a3"
+url = "https://github.com/sharkdp/bat/releases/download/v0.26.1/bat-v0.26.1-x86_64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/sharkdp/bat/releases/assets/323549181"
 
 [tools.bat."platforms.macos-arm64"]
 checksum = "sha256:e30beff26779c9bf60bb541e1d79046250cb74378f2757f8eb250afddb19e114"
@@ -177,32 +177,32 @@ url_api = "https://api.github.com/repos/twpayne/chezmoi/releases/assets/56170629
 provenance = "cosign"
 
 [[tools.claude]]
-version = "2.1.277"
+version = "2.1.280"
 backend = "aqua:anthropics/claude-code"
 
 [tools.claude."platforms.linux-x64"]
-checksum = "sha256:6ade0a13de4a1967a4ed6b72a4485a028b3d86c9f8873317b12acee5f92aca99"
-url = "https://github.com/anthropics/claude-code/releases/download/v2.1.277/claude-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/anthropics/claude-code/releases/assets/572988689"
+checksum = "sha256:4239c476881f46f5bd2cccee97c10b1c8073f4ab4ae40e3c829493210e757764"
+url = "https://github.com/anthropics/claude-code/releases/download/v2.1.280/claude-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/anthropics/claude-code/releases/assets/581709942"
 
 [tools.claude."platforms.macos-arm64"]
-checksum = "sha256:2e512ad5a7e6769e2455e9dc4a4b01ff5f4cb1ed0bcb919a400901119cfbc34c"
-url = "https://github.com/anthropics/claude-code/releases/download/v2.1.277/claude-darwin-arm64.tar.gz"
-url_api = "https://api.github.com/repos/anthropics/claude-code/releases/assets/572988435"
+checksum = "sha256:872a1fa1f770165202bfa0e1771a8b02ce0a13b5f6de4f4489ec4ff268946b56"
+url = "https://github.com/anthropics/claude-code/releases/download/v2.1.280/claude-darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/anthropics/claude-code/releases/assets/581709751"
 
 [tools.claude."platforms.macos-x64"]
-checksum = "sha256:48fe292cc3462f6f7f6a3945a647b14a38589336305bd71edb1189b19096a077"
-url = "https://github.com/anthropics/claude-code/releases/download/v2.1.277/claude-darwin-x64.tar.gz"
-url_api = "https://api.github.com/repos/anthropics/claude-code/releases/assets/572988434"
+checksum = "sha256:96c54208699e555f67da028f12d7ab594b6bbb844b5d65b47640c086c65ad959"
+url = "https://github.com/anthropics/claude-code/releases/download/v2.1.280/claude-darwin-x64.tar.gz"
+url_api = "https://api.github.com/repos/anthropics/claude-code/releases/assets/581709749"
 
 [[tools.delta]]
 version = "0.19.2"
 backend = "aqua:dandavison/delta"
 
 [tools.delta."platforms.linux-x64"]
-checksum = "sha256:f1ea01ca7728ce3462debc359f39dfc7cbbc1a63224b71fefabf92042864aa1b"
-url = "https://github.com/dandavison/delta/releases/download/0.19.2/delta-0.19.2-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/dandavison/delta/releases/assets/383662298"
+checksum = "sha256:8e695c5f586a8c53d6c3b01be0b4a422ed218bfed2a56191caebe373a1c18ab2"
+url = "https://github.com/dandavison/delta/releases/download/0.19.2/delta-0.19.2-x86_64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/dandavison/delta/releases/assets/383662069"
 
 [tools.delta."platforms.macos-arm64"]
 checksum = "sha256:9be36612a5a13e9e386dc498fb8e50dc87c72ee42b63db0ea05b32f99a72a69a"
@@ -428,7 +428,7 @@ version = "20.0.23"
 backend = "npm:ccusage"
 
 [[tools."npm:pnpm"]]
-version = "12.4.2"
+version = "12.5.1"
 backend = "npm:pnpm"
 
 [[tools."npm:pyright"]]
@@ -444,38 +444,38 @@ version = "6.0.0"
 backend = "npm:typescript-language-server"
 
 [[tools.opencode]]
-version = "1.18.31"
+version = "1.18.32"
 backend = "aqua:anomalyco/opencode"
 
 [tools.opencode."platforms.linux-x64"]
-checksum = "sha256:e9312be75ed803b7415fc2aeabda1f4fe938912a39673762dc0c38c0e11ebde4"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.18.31/opencode-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/563876605"
+checksum = "sha256:3046e0404fdc60fb80307e7a47824ba07477364178a4d09baa8548496dd6d43b"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.18.32/opencode-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/580000044"
 
 [tools.opencode."platforms.macos-arm64"]
-checksum = "sha256:caf7f31fa1aec2353ea859d4ef9ab824c6273d941b016e88d51193fa3028d34e"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.18.31/opencode-darwin-arm64.zip"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/563876553"
+checksum = "sha256:fa643f93401c13508d8d513780e54ce9cc01203d501114be9b88d62408b8101f"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.18.32/opencode-darwin-arm64.zip"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/579999982"
 
 [tools.opencode."platforms.macos-x64"]
-checksum = "sha256:f8510eaf400f07c3a2014e3a517e3650c705bcd6ac3e6740351b723ee685042f"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.18.31/opencode-darwin-x64.zip"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/563876552"
+checksum = "sha256:a24bf10499382f8855e19d2a081b8683e4ab99c7c2affb32dc89b17c8a00ccd6"
+url = "https://github.com/anomalyco/opencode/releases/download/v1.18.32/opencode-darwin-x64.zip"
+url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/579999983"
 
 [[tools.pnpm]]
-version = "12.4.2"
+version = "12.5.1"
 backend = "aqua:pnpm/pnpm"
 
 [tools.pnpm."platforms.linux-x64"]
-checksum = "sha256:ce1ed690fe9c2f091d7267e1afbe9380abb08bb577e95348fda194a41147d2ec"
-url = "https://github.com/pnpm/pnpm/releases/download/v12.4.2/pnpm-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/565468079"
+checksum = "sha256:5a397dfb6b3d4b07d3d7769586aeb471048faf04299a492e2808b95a9a1c701f"
+url = "https://github.com/pnpm/pnpm/releases/download/v12.5.1/pnpm-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/573486211"
 provenance = "github-attestations"
 
 [tools.pnpm."platforms.macos-arm64"]
-checksum = "sha256:5aae95a95f0a98f9372dee7d1797386011fa6571b06b82554c7c7847d201308e"
-url = "https://github.com/pnpm/pnpm/releases/download/v12.4.2/pnpm-darwin-arm64.tar.gz"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/565468070"
+checksum = "sha256:776b26182ea825d5846dc236d29773cf4b7568b7f0abe145c328a342284c8b75"
+url = "https://github.com/pnpm/pnpm/releases/download/v12.5.1/pnpm-darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/573486213"
 provenance = "github-attestations"
 
 [[tools.ripgrep]]
@@ -558,9 +558,9 @@ version = "1.26.0"
 backend = "aqua:starship/starship"
 
 [tools.starship."platforms.linux-x64"]
-checksum = "sha256:b7c232b0e8249d8e55a40beb79c5c43a7d370f3f9408bd215deb0170daeaadf3"
-url = "https://github.com/starship/starship/releases/download/v1.26.0/starship-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/starship/starship/releases/assets/460374630"
+checksum = "sha256:321f0dd7af8340a5f2e6a8fec6538a04f617486f9ec70d878f91c09cd8deef22"
+url = "https://github.com/starship/starship/releases/download/v1.26.0/starship-x86_64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/starship/starship/releases/assets/460374620"
 
 [tools.starship."platforms.macos-arm64"]
 checksum = "sha256:c40b27b11f580411e068f2fa6c1be7830a387c0bc47a94d1d37f32b054c5361d"
