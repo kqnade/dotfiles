@@ -217,22 +217,15 @@ for fragment in (
     "cargo:git-delta",
     "github:sharkdp/fd",
     "github:atuinsh/atuin",
-    "npm:pnpm",
+    "github:pnpm/pnpm",
     "dotfiles_wait_for_port 127.0.0.1 1178",
-    "intel-macos-mise-v1-${{ runner.os }}-${{ runner.arch }}-",
-    "~/.local/share/mise",
-    "~/.rustup",
-    "~/.cargo/registry",
-    "~/.cargo/git",
 ):
     if fragment not in workflow:
         fail(f"CI no longer executes required integration path: {fragment}")
 
-if not re.search(
-    r"(?m)^\s+uses: actions/cache@[0-9a-f]{40} # v[0-9]+\.[0-9]+\.[0-9]+$",
-    workflow,
-):
-    fail("actions/cache must use a full commit SHA with an exact semver comment")
+intel_job = workflow.split("  intel-fallback:", 1)[1]
+if "actions/cache@" in intel_job:
+    fail("Intel CI must exercise a cold install without restoring a tool cache")
 
 if "\tdefaultBranch = trunk" not in (ROOT / "dot_gitconfig.tmpl").read_text():
     fail("new Git repositories must default to trunk")

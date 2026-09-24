@@ -73,8 +73,8 @@ dictionary sources belong in `.chezmoiexternal.toml.tmpl`; removed managed targe
 
 - macOS uses its built-in zsh, Git, SSH, and Xcode Command Line Tools. Casks use mise's built-in
   `brew-cask` manager; no Brewfile or external `brew` CLI is required.
-- Intel macOS uses Cargo fallbacks for sheldon and delta, the upstream x64 archives for fd and
-  atuin, and an npm fallback for pnpm.
+- Intel macOS uses Cargo fallbacks for sheldon and delta and the upstream x64 archives for fd,
+  atuin, and pnpm.
 - macOS and Linux desktop use the native 1Password SSH agent socket. WSL deploys
   `~/.local/bin/{op,ssh,ssh-add}` proxies to the corresponding Windows executables and uses
   `op-ssh-sign-wsl.exe` for commit signing. Keep WSL proxies separate from native Windows support.

@@ -31,6 +31,7 @@ EXPECTED_TOOLS = {
     "ghq",
     "git-lfs",
     "github:atuinsh/atuin",
+    "github:pnpm/pnpm",
     "github:sharkdp/fd",
     "herdr",
     "http:mole",
@@ -41,12 +42,10 @@ EXPECTED_TOOLS = {
     "npm:@earendil-works/pi-coding-agent",
     "npm:bash-language-server",
     "npm:ccusage",
-    "npm:pnpm",
     "npm:pyright",
     "npm:typescript",
     "npm:typescript-language-server",
     "opencode",
-    "pnpm",
     "ripgrep",
     "rust",
     "shellcheck",
@@ -64,7 +63,6 @@ EXPECTED_TOOLS = {
 INTEL_FALLBACKS = {
     "cargo:git-delta",
     "cargo:sheldon",
-    "npm:pnpm",
 }
 
 NON_URL_LOCKS = {"rust"}
@@ -209,11 +207,15 @@ for fallback in INTEL_FALLBACKS:
     if not isinstance(value, dict) or value.get("os") != ["macos/x64"]:
         fail(f"{fallback} must be restricted to macos/x64")
 
-for primary in ("delta", "sheldon", "pnpm"):
+for primary in ("delta", "sheldon"):
     value = tools[primary]
     if active_on(value, "macos-x64"):
         fail(f"{primary} must not be selected on macos/x64")
-for binary in ("github:sharkdp/fd", "github:atuinsh/atuin"):
+for binary in (
+    "github:atuinsh/atuin",
+    "github:pnpm/pnpm",
+    "github:sharkdp/fd",
+):
     if not active_on(tools[binary], "macos-x64"):
         fail(f"{binary} must use its upstream binary on macos-x64")
 
