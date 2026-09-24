@@ -29,16 +29,16 @@ class ClaudeSettingsTests(unittest.TestCase):
         template = (ROOT / "dot_claude/settings.json.tmpl").read_text()
         settings = json.loads(template.split("{{-", 1)[0])
 
-        self.assert_sorted_keys(settings)
+        self.assertEqual(list(settings), sorted(settings))
 
-    def assert_sorted_keys(self, value: object, path: str = "root") -> None:
-        if isinstance(value, dict):
-            self.assertEqual(list(value), sorted(value), path)
-            for key, child in value.items():
-                self.assert_sorted_keys(child, f"{path}.{key}")
-        elif isinstance(value, list):
-            for index, child in enumerate(value):
-                self.assert_sorted_keys(child, f"{path}[{index}]")
+    def test_herdr_session_hook_matches_installer_serialization(self) -> None:
+        template = (ROOT / "dot_claude/settings.json.tmpl").read_text()
+        settings = json.loads(template.split("{{-", 1)[0])
+        hook = settings["hooks"]["SessionStart"][1]
+
+        self.assertEqual(list(hook), ["matcher", "hooks"])
+        self.assertEqual(hook["matcher"], "^(startup|resume|clear|compact|fork)$")
+        self.assertEqual(list(hook["hooks"][0]), ["type", "command", "timeout"])
 
 
 if __name__ == "__main__":
