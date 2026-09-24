@@ -22,13 +22,12 @@ GitHub-hosted runnerのlogin shellを、対象macOSと同じ標準`/bin/zsh`へ�
 
 login shellを標準`/bin/zsh`へ揃え、`bash install.sh`、`mise run apply`、
 `mise run doctor`をIntel runnerでも実行します。
-さらに次のfallbackを実際にsourceからbuildまたはnpmからinstallし、それぞれの
-`--version`を実行します。
+さらにIntel向けの次の選択を実際にinstallし、それぞれの`--version`を実行します。
 
 - `cargo:sheldon`
 - `cargo:git-delta`
-- `cargo:fd-find`
-- `cargo:atuin`
+- `fd`のupstream x64 binary
+- `github:atuinsh/atuin`のupstream x64 binary
 - `npm:pnpm`
 
 pnpmはversionがpinと一致することまで検証します。

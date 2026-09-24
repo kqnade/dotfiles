@@ -36,16 +36,14 @@ delta = { version = "0.19.2", os = ["linux", "macos/arm64"] }
   "vendored-libgit2",
 ] }
 fzf = "0.74.4"
-fd = { version = "10.5.0", os = ["linux", "macos/arm64"] }
-"cargo:fd-find" = { version = "10.5.0", os = ["macos/x64"], depends = ["rust"] }
+fd = { version = "10.5.0", os = ["linux", "macos"] }
 ripgrep = "15.2.0"
 bat = "0.26.1"
 zoxide = "0.10.0"
 jq = "1.8.2"
 yq = "4.53.6"
 just = "1.58.0"
-atuin = { version = "18.22.0", os = ["linux", "macos/arm64"] }
-"cargo:atuin" = { version = "18.22.0", os = ["macos/x64"], depends = ["rust"] }
+"github:atuinsh/atuin" = "18.22.0"
 "aqua:babarot/gomi" = "1.6.4"
 btop = { version = "1.4.7", os = ["linux"] }
 

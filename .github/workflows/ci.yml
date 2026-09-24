@@ -269,8 +269,8 @@ jobs:
           for selector in \
             cargo:sheldon \
             cargo:git-delta \
-            cargo:fd-find \
-            cargo:atuin \
+            fd \
+            github:atuinsh/atuin \
             npm:pnpm; do
             mise ls --current "$selector" --no-header | grep -F "$selector"
           done

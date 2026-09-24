@@ -16,13 +16,10 @@ EXPECTED_TOOLS = {
     "1password-cli",
     "aqua:babarot/gomi",
     "aqua:openai/codex",
-    "atuin",
     "bat",
     "btop",
     "bun",
-    "cargo:atuin",
     "cargo:eza",
-    "cargo:fd-find",
     "cargo:git-delta",
     "cargo:https://github.com/wachikun/yaskkserv2",
     "cargo:sheldon",
@@ -34,6 +31,7 @@ EXPECTED_TOOLS = {
     "gh",
     "ghq",
     "git-lfs",
+    "github:atuinsh/atuin",
     "herdr",
     "http:mole",
     "jq",
@@ -64,8 +62,6 @@ EXPECTED_TOOLS = {
 }
 
 INTEL_FALLBACKS = {
-    "cargo:atuin",
-    "cargo:fd-find",
     "cargo:git-delta",
     "cargo:sheldon",
     "npm:pnpm",
@@ -192,6 +188,10 @@ codex = tools["aqua:openai/codex"]
 if not isinstance(codex, str):
     fail("Codex must use the pinned Aqua package without a Node dependency")
 
+atuin = tools["github:atuinsh/atuin"]
+if not isinstance(atuin, str):
+    fail("Atuin must use the GitHub backend for upstream platform binaries")
+
 mole = tools["http:mole"]
 if not isinstance(mole, dict) or mole != {
     "version": "1.49.2",
@@ -209,10 +209,13 @@ for fallback in INTEL_FALLBACKS:
     if not isinstance(value, dict) or value.get("os") != ["macos/x64"]:
         fail(f"{fallback} must be restricted to macos/x64")
 
-for primary in ("atuin", "fd", "delta", "sheldon", "pnpm"):
+for primary in ("delta", "sheldon", "pnpm"):
     value = tools[primary]
     if active_on(value, "macos-x64"):
         fail(f"{primary} must not be selected on macos/x64")
+for binary in ("fd", "github:atuinsh/atuin"):
+    if not active_on(tools[binary], "macos-x64"):
+        fail(f"{binary} must use its upstream binary on macos-x64")
 
 yaskkserv2 = tools["cargo:https://github.com/wachikun/yaskkserv2"]
 if not isinstance(yaskkserv2, dict) or yaskkserv2.get("install_env") != {

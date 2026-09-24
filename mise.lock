@@ -51,22 +51,6 @@ checksum = "sha256:be752aebb2ac022c5bfed3fa14f46943d11ddb36a950b553b058794aba224
 url = "https://github.com/openai/codex/releases/download/rust-v0.155.1/codex-package-x86_64-apple-darwin.tar.gz"
 url_api = "https://api.github.com/repos/openai/codex/releases/assets/573353601"
 
-[[tools.atuin]]
-version = "18.22.0"
-backend = "aqua:atuinsh/atuin"
-
-[tools.atuin."platforms.linux-x64"]
-checksum = "sha256:920200b8e2ecff88eb8f2c2d4bfc4c62ed1c2f4efca2ba854a23bd157a542328"
-url = "https://github.com/atuinsh/atuin/releases/download/v18.22.0/atuin-x86_64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/atuinsh/atuin/releases/assets/553690960"
-provenance = "github-attestations"
-
-[tools.atuin."platforms.macos-arm64"]
-checksum = "sha256:5e6e525f60147351f114397e7f09aeded87f302e99ef83a5eee74c524b805812"
-url = "https://github.com/atuinsh/atuin/releases/download/v18.22.0/atuin-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/atuinsh/atuin/releases/assets/553690857"
-provenance = "github-attestations"
-
 [[tools.bat]]
 version = "0.26.1"
 backend = "aqua:sharkdp/bat"
@@ -127,20 +111,12 @@ url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.2/bun-darwin-x6
 checksum = "sha256:bad5bbd6cf14d0980d115f5954c9ff904df619d5e994d2da1ffccd3f316300b0"
 url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.2/bun-darwin-x64-baseline.zip"
 
-[[tools."cargo:atuin"]]
-version = "18.22.0"
-backend = "cargo:atuin"
-
 [[tools."cargo:eza"]]
 version = "0.23.5"
 backend = "cargo:eza"
 
 [tools."cargo:eza".options]
 features = "vendored-libgit2"
-
-[[tools."cargo:fd-find"]]
-version = "10.5.0"
-backend = "cargo:fd-find"
 
 [[tools."cargo:git-delta"]]
 version = "0.19.2"
@@ -306,6 +282,29 @@ url_api = "https://api.github.com/repos/git-lfs/git-lfs/releases/assets/53299359
 checksum = "sha256:f1c17aeca0b4eaab9ea606226477dbed3b84b56fe0811a9f967d2ea2b2393c53"
 url = "https://github.com/git-lfs/git-lfs/releases/download/v3.8.0/git-lfs-darwin-amd64-v3.8.0.zip"
 url_api = "https://api.github.com/repos/git-lfs/git-lfs/releases/assets/532993568"
+
+[[tools."github:atuinsh/atuin"]]
+version = "18.22.0"
+backend = "github:atuinsh/atuin"
+
+[tools."github:atuinsh/atuin"."platforms.linux-x64"]
+checksum = "sha256:920200b8e2ecff88eb8f2c2d4bfc4c62ed1c2f4efca2ba854a23bd157a542328"
+url = "https://github.com/atuinsh/atuin/releases/download/v18.22.0/atuin-x86_64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/atuinsh/atuin/releases/assets/553690960"
+provenance = "github-attestations"
+
+[tools."github:atuinsh/atuin"."platforms.macos-arm64"]
+checksum = "sha256:5e6e525f60147351f114397e7f09aeded87f302e99ef83a5eee74c524b805812"
+url = "https://github.com/atuinsh/atuin/releases/download/v18.22.0/atuin-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/atuinsh/atuin/releases/assets/553690857"
+provenance = "github-attestations"
+provenance_verified = true
+
+[tools."github:atuinsh/atuin"."platforms.macos-x64"]
+checksum = "sha256:9394aabdbbac39dbb553af7beb8ece195f2105a51f4759142e3fa5febc5b5b91"
+url = "https://github.com/atuinsh/atuin/releases/download/v18.22.0/atuin-x86_64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/atuinsh/atuin/releases/assets/553690947"
+provenance = "github-attestations"
 
 [[tools.herdr]]
 version = "v0.9.1"
