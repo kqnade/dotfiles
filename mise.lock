@@ -442,7 +442,7 @@ checksum = "sha256:06b2e742ed9025dc84adc830243b3f731956eac9c321bccd0ede384209af0
 url = "https://nodejs.org/dist/v26.9.0/node-v26.9.0-darwin-x64.tar.gz"
 
 [[tools."npm:@earendil-works/pi-coding-agent"]]
-version = "0.87.0"
+version = "0.87.1"
 backend = "npm:@earendil-works/pi-coding-agent"
 
 [[tools."npm:bash-language-server"]]

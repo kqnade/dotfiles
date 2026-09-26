@@ -71,7 +71,7 @@ herdr = "v0.9.1"
 claude = "2.1.282"
 "aqua:openai/codex" = "0.155.1"
 opencode = "1.18.32"
-"npm:@earendil-works/pi-coding-agent" = { version = "0.87.0", depends = [
+"npm:@earendil-works/pi-coding-agent" = { version = "0.87.1", depends = [
   "node",
 ] }
 "npm:ccusage" = { version = "20.0.23", depends = ["node"] }
