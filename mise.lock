@@ -33,23 +33,23 @@ url = "https://github.com/babarot/gomi/releases/download/v1.6.4/gomi_Darwin_x86_
 url_api = "https://api.github.com/repos/babarot/gomi/releases/assets/440758870"
 
 [[tools."aqua:openai/codex"]]
-version = "0.155.1"
+version = "0.157.1"
 backend = "aqua:openai/codex"
 
 [tools."aqua:openai/codex"."platforms.linux-x64"]
-checksum = "sha256:a65b895c6ac1a73629bbe4b864640c86133e94a43b4d67b3103044e1a306d5a2"
-url = "https://github.com/openai/codex/releases/download/rust-v0.155.1/codex-package-x86_64-unknown-linux-musl.tar.gz"
-url_api = "https://api.github.com/repos/openai/codex/releases/assets/573353456"
+checksum = "sha256:0e211868c9fd73cb49ad35ac675b5eafdf6b9f453df8a493df980c59a590fe5f"
+url = "https://github.com/openai/codex/releases/download/rust-v0.157.1/codex-package-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/openai/codex/releases/assets/589593045"
 
 [tools."aqua:openai/codex"."platforms.macos-arm64"]
-checksum = "sha256:e6e08717da9e35b72332eff753527fe79a9ae876081033c5c6820a8e5f58b943"
-url = "https://github.com/openai/codex/releases/download/rust-v0.155.1/codex-package-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/openai/codex/releases/assets/573353582"
+checksum = "sha256:6cda538d19c2f4d9dce965369aa22011afa9dce8c7a73c234b66eb3611ea4aab"
+url = "https://github.com/openai/codex/releases/download/rust-v0.157.1/codex-package-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/openai/codex/releases/assets/589607687"
 
 [tools."aqua:openai/codex"."platforms.macos-x64"]
-checksum = "sha256:be752aebb2ac022c5bfed3fa14f46943d11ddb36a950b553b058794aba22496a"
-url = "https://github.com/openai/codex/releases/download/rust-v0.155.1/codex-package-x86_64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/openai/codex/releases/assets/573353601"
+checksum = "sha256:d2285a56c7d1f74923e708b18308870e367479a4423784ed488578af89d6af77"
+url = "https://github.com/openai/codex/releases/download/rust-v0.157.1/codex-package-x86_64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/openai/codex/releases/assets/589598502"
 
 [[tools.bat]]
 version = "0.26.1"
