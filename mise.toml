@@ -63,7 +63,7 @@ rust = "1.98.1"
 node = "26.9.0"
 bun = "1.4.2"
 "github:pnpm/pnpm" = "12.5.1"
-uv = "0.12.17"
+uv = "0.12.19"
 
 # Agent and application CLIs
 1password-cli = "2.39.0"
