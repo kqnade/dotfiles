@@ -1,0 +1,138 @@
+{
+  "version": 1,
+  "enabled": true,
+  "preset": "default",
+  "lines": [
+    [
+      {
+        "id": "model",
+        "type": "model",
+        "enabled": true,
+        "options": {
+          "raw": true,
+          "icon": "",
+          "fg": "pi:accent",
+          "bg": "default",
+          "bold": true,
+          "showProvider": false
+        }
+      },
+      {
+        "id": "thinking-level",
+        "type": "thinking-level",
+        "enabled": true,
+        "options": {
+          "raw": true,
+          "hideWhenEmpty": true,
+          "icon": "",
+          "text": "",
+          "fg": "pi:muted",
+          "bg": "default",
+          "bold": false
+        }
+      },
+      {
+        "id": "context-bar",
+        "type": "context-bar",
+        "enabled": true,
+        "options": {
+          "raw": true,
+          "hideWhenEmpty": true,
+          "icon": "",
+          "text": "",
+          "fg": "pi:muted",
+          "bg": "default",
+          "bold": false,
+          "tokenFormatStyle": "compact",
+          "contextBarMode": "short",
+          "contextConditionalColors": true,
+          "contextWarningPercent": 70,
+          "contextDangerPercent": 90,
+          "warningFg": "pi:warning",
+          "warningBg": "default",
+          "dangerFg": "pi:error",
+          "dangerBg": "default"
+        }
+      }
+    ],
+    [
+      {
+        "id": "git-root",
+        "type": "git-root",
+        "enabled": true,
+        "options": {
+          "raw": true,
+          "hideWhenEmpty": true,
+          "icon": "",
+          "text": "",
+          "fg": "cyan",
+          "bg": "default",
+          "bold": false
+        }
+      },
+      {
+        "id": "git-branch",
+        "type": "git-branch",
+        "enabled": true,
+        "options": {
+          "raw": true,
+          "hideWhenEmpty": true,
+          "icon": "",
+          "text": "",
+          "fg": "magenta",
+          "bg": "default",
+          "bold": false,
+          "gitBranchDisplayStyle": "round-brackets"
+        }
+      },
+      {
+        "id": "git-diff",
+        "type": "git-diff",
+        "enabled": true,
+        "options": {
+          "raw": true,
+          "hideWhenEmpty": false,
+          "icon": "",
+          "text": "",
+          "fg": "yellow",
+          "bg": "default",
+          "bold": false,
+          "gitDiffMode": "compact"
+        }
+      },
+      {
+        "id": "cost-right-align",
+        "type": "flex-separator",
+        "enabled": true,
+        "options": {}
+      },
+      {
+        "id": "cost",
+        "type": "cost",
+        "enabled": true,
+        "options": {
+          "raw": true,
+          "icon": "",
+          "fg": "green",
+          "bg": "default",
+          "bold": false,
+          "costFormatStyle": "compact",
+          "showSubscription": true
+        }
+      }
+    ]
+  ],
+  "separator": "dot",
+  "separatorFg": "pi:dim",
+  "separatorBg": "default",
+  "iconMode": "text",
+  "minimalist": false,
+  "terminal": {
+    "widthMode": "full",
+    "colorLevel": "ansi256"
+  },
+  "extensionStatusRow": {
+    "hiddenKeys": [],
+    "knownKeys": []
+  }
+}
