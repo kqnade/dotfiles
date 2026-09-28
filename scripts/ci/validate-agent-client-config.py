@@ -86,10 +86,16 @@ for action, patterns in required_opencode_bash.items():
     if invalid:
         fail(f"OpenCode permission.bash must set {action}: {sorted(invalid)}")
 
-settings_template = (ROOT / "dot_claude/settings.json.tmpl").read_text()
 try:
-    settings = json.loads(settings_template.split("{{-", 1)[0])
-except json.JSONDecodeError as error:
+    rendered_settings = subprocess.check_output(
+        [
+            "chezmoi", "--source", str(ROOT), "execute-template", "--file",
+            str(ROOT / "dot_claude/settings.json.tmpl"),
+        ],
+        text=True,
+    )
+    settings = json.loads(rendered_settings)
+except (subprocess.CalledProcessError, json.JSONDecodeError) as error:
     fail(f"invalid Claude settings JSON: {error}")
 
 if settings.get("language") != "Japanese":

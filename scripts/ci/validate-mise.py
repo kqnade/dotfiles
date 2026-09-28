@@ -181,6 +181,10 @@ eza = tools["cargo:eza"]
 if not isinstance(eza, dict) or eza.get("features") != ["vendored-libgit2"]:
     fail("eza must build its bundled libgit2 instead of linking a system copy")
 
+herdr = tools["herdr"]
+if not isinstance(herdr, dict) or herdr.get("os") != ["linux"]:
+    fail("Herdr must be selected only on Linux")
+
 codex = tools["aqua:openai/codex"]
 if not isinstance(codex, str):
     fail("Codex must use the pinned Aqua package without a Node dependency")

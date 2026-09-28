@@ -49,5 +49,6 @@ Claude Code、Codex、OpenCode、Piの設定・hooks・拡張をchezmoiで維持
 配置しません。Claudeの設定は他のclientから独立して管理します。
 Claudeのautomatic memoryは無効です。
 
-Herdrのターミナル設定、worktree操作、状態通知integrationも管理します。
-Herdr integrationはbootstrap taskでidempotentに反映します。
+LinuxではHerdrのターミナル設定、worktree操作、状態通知integrationも管理します。
+Herdr integrationはLinuxのbootstrap taskでidempotentに反映します。macOSではOrcaを使い、
+Herdrを導入しません。既存のインストールやユーザーデータも自動削除しません。

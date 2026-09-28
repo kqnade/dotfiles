@@ -13,6 +13,11 @@ mise.lock
 renovate.jsonc
 .config/nvim/README.md
 
+{{ if eq .chezmoi.os "darwin" -}}
+.config/herdr
+.local/bin/herdr-worktree
+{{ end -}}
+
 {{- $isWsl := and (eq .chezmoi.os "linux") (contains "microsoft" (.chezmoi.kernel.osrelease | default "" | lower)) }}
 {{ if not $isWsl -}}
 .local/bin/op

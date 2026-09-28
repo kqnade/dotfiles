@@ -287,6 +287,42 @@ class ValidateMiseTests(unittest.TestCase):
         managed_paths = {Path(path) for path in result.stdout.splitlines()}
         self.assertNotIn(destination / "mise/config.toml", managed_paths)
 
+    def test_herdr_dotfiles_are_linux_only(self) -> None:
+        chezmoi = shutil.which("chezmoi")
+        self.assertIsNotNone(chezmoi)
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            destination = Path(temporary_directory)
+            for os_name in ("darwin", "linux"):
+                result = subprocess.run(
+                    [
+                        chezmoi,
+                        "--source",
+                        str(ROOT),
+                        "--destination",
+                        str(destination),
+                        "--override-data",
+                        json.dumps(
+                            {"chezmoi": {"os": os_name, "kernel": {"osrelease": "generic"}}}
+                        ),
+                        "managed",
+                        "--path-style=absolute",
+                    ],
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                managed = set(result.stdout.splitlines())
+                for relative in (
+                    ".config/herdr",
+                    ".config/herdr/config.toml",
+                    ".local/bin/herdr-worktree",
+                ):
+                    self.assertEqual(
+                        str(destination / relative) in managed, os_name == "linux"
+                    )
+
     def test_requested_version_must_own_each_locked_platform_url(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             fixture_root = Path(temporary_directory)

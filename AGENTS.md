@@ -104,8 +104,9 @@ shared development rules, workflow skills, global AGENTS files, or custom subage
   Codex-managed runtime state and sibling settings. `dot_pi/agent/settings.json` deploys the
   complete canonical Pi configuration. Claude Code's expected runtime edits to `settings.json`
   should be folded back into `dot_claude/settings.json.tmpl` only when intentional.
-- Herdr integration is applied idempotently during bootstrap. Claude automatic memory remains
-  disabled; durable workflow state uses the repository model below.
+- On Linux, Herdr integration is applied idempotently during bootstrap; macOS uses Orca
+  instead. Claude automatic memory remains disabled; durable workflow state uses the
+  repository model below.
 
 ## Repository workflow state
 

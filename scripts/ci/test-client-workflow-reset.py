@@ -126,9 +126,14 @@ trust_level = "trusted"
         self.assertEqual(rendered["projects"]["/user/project"]["trust_level"], "trusted")
 
     def test_operational_settings_and_authorization_remain(self) -> None:
-        settings = json.loads(
-            (ROOT / "dot_claude/settings.json.tmpl").read_text().split("{{-", 1)[0]
+        rendered = subprocess.check_output(
+            [
+                "chezmoi", "--source", str(ROOT), "execute-template", "--file",
+                str(ROOT / "dot_claude/settings.json.tmpl"),
+            ],
+            text=True,
         )
+        settings = json.loads(rendered)
         self.assertEqual(settings["model"], "claude-opus-5-5[1m]")
         self.assertEqual(settings["preferredNotifChannel"], "notifications_disabled")
         commands = {

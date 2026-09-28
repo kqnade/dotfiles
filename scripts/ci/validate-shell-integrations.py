@@ -490,18 +490,26 @@ with tempfile.TemporaryDirectory() as temp_dir:
         "#!/bin/sh\n"
         'test "$1 $2 $3" = "integration install codex" || exit 1\n'
         'test -d "$HOME/.codex" || exit 42\n'
+        'touch "$HOME/herdr-called"\n'
     )
     herdr_stub.chmod(0o755)
+    uname_stub = fake_bin / "uname"
+    uname_stub.write_text('#!/bin/sh\nprintf "%s\\n" "$TEST_UNAME"\n')
+    uname_stub.chmod(0o755)
     configure_env = dict(os.environ)
+    configure_env.pop("CODEX_HOME", None)
     configure_env.update(
         HOME=str(fake_home),
         PATH=f"{fake_bin}:/usr/bin:/bin",
+        TEST_UNAME="Darwin",
     )
-    configure_result = subprocess.run(
-        ["bash", str(ROOT / "scripts/configure-herdr.sh")],
-        cwd=ROOT,
-        env=configure_env,
-        check=False,
-    )
-    if configure_result.returncode != 0:
-        fail("Herdr setup must initialize Codex's config directory")
+    configure_script = ["bash", str(ROOT / "scripts/configure-herdr.sh")]
+    mac_result = subprocess.run(configure_script, cwd=ROOT, env=configure_env, check=False)
+    if (mac_result.returncode != 0 or (fake_home / "herdr-called").exists()
+            or (fake_home / ".codex").exists()):
+        fail("Herdr integration must not run on macOS")
+    configure_env["TEST_UNAME"] = "Linux"
+    linux_result = subprocess.run(configure_script, cwd=ROOT, env=configure_env, check=False)
+    if (linux_result.returncode != 0 or not (fake_home / ".codex").is_dir()
+            or not (fake_home / "herdr-called").is_file()):
+        fail("Herdr setup must initialize Codex's config directory on Linux")

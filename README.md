@@ -42,8 +42,8 @@ curl -fsSL https://raw.githubusercontent.com/kqnade/dotfiles/trunk/install.sh | 
 bootstrap は OS パッケージ、mise の tools、ユーザー設定、macOS defaults、
 launchd/systemd の管理サービスを収束させ、最後にリポジトリの bootstrap task を
 実行します。この task は dotfile の適用、zsh 初期化キャッシュ、フォント、SKK 辞書、
-Herdr、pre-commit hook を準備し、`yaskkserv2` が `127.0.0.1:1178` で待ち受けるまで
-確認します。何度実行しても収束する設計です。
+Linux では Herdr integration、全 OS で pre-commit hook を準備し、`yaskkserv2` が
+`127.0.0.1:1178` で待ち受けるまで確認します。何度実行しても収束する設計です。
 
 既存の外部パッケージマネージャや、その管理データは自動削除しません。
 
@@ -76,7 +76,7 @@ Herdr、pre-commit hook を準備し、`yaskkserv2` が `127.0.0.1:1178` で待�
 - Vim / Neovim: プラグイン、LSP、formatter、Colemak 向け keymap
 - SKK: skkeleton と yaskkserv2、外部辞書、`127.0.0.1:1178` のローカル server
 - Git / 認証: SSH 署名、delta、macOS/Linux の 1Password SSH agent、WSL proxy
-- AI / 開発: Claude Code、Codex、OpenCode、Pi、Herdr と安全設定・拡張
+- AI / 開発: Claude Code、Codex、OpenCode、Pi、Linux の Herdr と安全設定・拡張
 
 詳細は [設定一覧](docs/features.md)、[macOS セットアップ](docs/setup-macos.md)、
 [Linux / WSL セットアップ](docs/setup-linux.md) を参照してください。

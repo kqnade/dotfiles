@@ -2,6 +2,7 @@
 
 set -euo pipefail
 
+[[ "$(uname -s)" == Linux ]] || exit 0
 command -v herdr >/dev/null 2>&1 || exit 0
 
 for agent in claude codex opencode; do
