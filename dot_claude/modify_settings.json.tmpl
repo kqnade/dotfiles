@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+base=$(cat <<'JSON'
+{{ includeTemplate ".chezmoitemplates/claude-settings.json.tmpl" . }}
+JSON
+)
+current=$(cat)
+
+{{ if eq .chezmoi.os "darwin" -}}
+if [[ -n "$current" ]]; then
+  printf '%s\n%s\n' "$base" "$current" | jq -s '
+    .[0] as $base | .[1] as $current |
+    $base |
+    .hooks = ($base.hooks + ($current.hooks // {})) |
+    if $current | has("tui") then .tui = $current.tui else . end
+  '
+  exit
+fi
+{{ end -}}
+printf '%s' "$base"

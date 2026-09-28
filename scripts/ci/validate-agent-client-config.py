@@ -90,7 +90,7 @@ try:
     rendered_settings = subprocess.check_output(
         [
             "chezmoi", "--source", str(ROOT), "execute-template", "--file",
-            str(ROOT / "dot_claude/settings.json.tmpl"),
+            str(ROOT / ".chezmoitemplates/claude-settings.json.tmpl"),
         ],
         text=True,
     )

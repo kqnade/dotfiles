@@ -102,8 +102,9 @@ shared development rules, workflow skills, global AGENTS files, or custom subage
   preserve unknown skills, credentials, and runtime state in their parent directories.
 - `dot_codex/modify_private_config.toml` applies stable Codex defaults while preserving
   Codex-managed runtime state and sibling settings. `dot_pi/agent/settings.json` deploys the
-  complete canonical Pi configuration. Claude Code's expected runtime edits to `settings.json`
-  should be folded back into `dot_claude/settings.json.tmpl` only when intentional.
+  complete canonical Pi configuration. Claude defaults live in
+  `.chezmoitemplates/claude-settings.json.tmpl`; the modifier preserves runtime hooks and `tui`
+  on macOS. Other intentional Claude settings changes should be folded into the template.
 - On Linux, Herdr integration is applied idempotently during bootstrap; macOS uses Orca
   instead. Claude automatic memory remains disabled; durable workflow state uses the
   repository model below.
