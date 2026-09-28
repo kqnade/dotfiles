@@ -20,6 +20,25 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class ValidateMiseTests(unittest.TestCase):
+    def test_mise_exec_uses_python_with_tomllib(self) -> None:
+        mise = shutil.which("mise")
+        self.assertIsNotNone(mise)
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            python3 = Path(temporary_directory) / "python3"
+            python3.write_text("#!/bin/sh\nexit 42\n")
+            python3.chmod(0o755)
+            result = subprocess.run(
+                [mise, "exec", "--", "python3", "-c", "import tomllib"],
+                cwd=ROOT,
+                env={**os.environ, "PATH": f"{temporary_directory}:{os.environ['PATH']}"},
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_ci_git_config_keeps_https_clone_urls(self) -> None:
         chezmoi = shutil.which("chezmoi")
         self.assertIsNotNone(chezmoi, "chezmoi must be installed to render git config")

@@ -194,13 +194,13 @@ if zsh_install not in static_job:
 if static_job.index(zsh_install) > static_job.index(repository_validator_commands[0]):
     fail("CI static validation must install zsh before running the repository validator")
 
-codex_config_tools_install = "mise install --locked chezmoi yq"
-if codex_config_tools_install not in static_job:
-    fail("CI static validation must install chezmoi and yq")
-if static_job.index(codex_config_tools_install) > static_job.index(
-    repository_validator_commands[2]
+static_tools_install = "mise install --locked chezmoi yq node python"
+if static_tools_install not in static_job:
+    fail("CI static validation must install chezmoi, yq, node, and Python")
+if static_job.index(static_tools_install) > static_job.index(
+    repository_validator_commands[0]
 ):
-    fail("CI static validation must install chezmoi and yq before the repository validator")
+    fail("CI static validation must install tools before the repository validators")
 
 mise_scoped_mise_tests = "mise exec -- python3 scripts/ci/test-validate-mise.py"
 if mise_scoped_mise_tests not in static_job:

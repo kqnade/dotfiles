@@ -45,6 +45,7 @@ EXPECTED_TOOLS = {
     "npm:pyright",
     "npm:typescript",
     "opencode",
+    "python",
     "ripgrep",
     "rust",
     "shellcheck",
@@ -176,6 +177,9 @@ for name, value in tools.items():
     version = configured_version(value)
     if version in {"latest", "stable", "lts"} or any(char in version for char in "*^~"):
         fail(f"{name} is not explicitly pinned: {version}")
+
+if tuple(map(int, configured_version(tools["python"]).split("."))) < (3, 11):
+    fail("Python must be at least 3.11 for tomllib-based validators")
 
 eza = tools["cargo:eza"]
 if not isinstance(eza, dict) or eza.get("features") != ["vendored-libgit2"]:
