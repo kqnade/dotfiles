@@ -68,7 +68,7 @@ uv = "0.12.17"
 # Agent and application CLIs
 1password-cli = "2.39.0"
 herdr = "v0.9.1"
-claude = "2.1.282"
+claude = "2.1.283"
 "aqua:openai/codex" = "0.155.1"
 opencode = "1.18.32"
 "npm:@earendil-works/pi-coding-agent" = { version = "0.87.1", depends = [
