@@ -13,7 +13,17 @@ if [[ -n "$current" ]]; then
   printf '%s\n%s\n' "$base" "$current" | jq -s '
     .[0] as $base | .[1] as $current |
     $base |
-    .hooks = ($base.hooks + ($current.hooks // {})) |
+    .hooks = (
+      reduce (($base.hooks + ($current.hooks // {})) | keys_unsorted[]) as $event ({};
+        ($base.hooks[$event] // []) as $managed |
+        ($managed | [.[].hooks[].command]) as $managed_commands |
+        .[$event] = ($managed + [
+          ($current.hooks[$event] // [])[] |
+          .hooks |= map(select(.command as $command | $managed_commands | index($command) | not)) |
+          select(.hooks | length > 0)
+        ])
+      )
+    ) |
     if $current | has("tui") then .tui = $current.tui else . end
   '
   exit

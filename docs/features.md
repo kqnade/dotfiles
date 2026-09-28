@@ -45,9 +45,15 @@ Claude Code、Codex、OpenCode、Piの設定・hooks・拡張をchezmoiで維持
 だけで利用でき、shell wrapperとauthorization hookが起動前、prompt送信前、tool実行前に
 それ以外を拒否します。
 
-開発workflowのglobal rules、skills、custom subagents、client間のルール共有symlinkは
-配置しません。Claudeの設定は他のclientから独立して管理します。
-Claudeのautomatic memoryは無効です。
+Piの管理対象launcherは、逆に同じ仕事用ownerのoriginを持つrepositoryでの起動を拒否します。
+telemetryを無効にしてもこの確認は残り、1Passwordへの問い合わせより先に実行します。
+
+repositoryの共通指示は`AGENTS.md`に置き、Claudeは`CLAUDE.md`も併せて読み込みます。
+開発・レビュー・引き継ぎの3つのSkillsと`sanitize-artifacts`を配備します。
+Piは`~/.agents/skills/`を読み、Claudeは同じ正本へのリンクを使います。global AGENTS、
+global開発ルール、独自のsubagentsやworkflow routerは配置しません。
+実行設定・認証・保護はclientごとに分離し、Claudeのautomatic memoryは無効です。
+詳細は[AI client運用](ai-clients.md)と[開発workflow](ai-workflows.md)を参照してください。
 
 LinuxではHerdrのターミナル設定、worktree操作、状態通知integrationも管理します。
 Herdr integrationはLinuxのbootstrap taskでidempotentに反映します。macOSではOrcaを使い、

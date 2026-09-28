@@ -38,12 +38,26 @@ class ClaudeSettingsTests(unittest.TestCase):
             home = Path(directory)
             target = home / ".claude/settings.json"
             target.parent.mkdir()
-            orca_hooks = {"Stop": [{"hooks": [{"command": "orca-hook"}]}]}
+            canonical = self.settings_for("darwin")
+            orca_hooks = {
+                event: [{"hooks": [{"type": "command", "command": f"orca-{event}"}]}]
+                for event in ("Stop", "SessionStart", "PreToolUse")
+            }
+            current_hooks = json.loads(json.dumps(orca_hooks))
+            current_hooks["PreToolUse"][0]["hooks"].append({
+                "type": "command",
+                "command": "~/.claude/hooks/authorize-repository.sh",
+                "timeout": 99,
+            })
+            current_hooks["UserPromptSubmit"] = []
             target.write_text(
                 json.dumps({
-                    "hooks": orca_hooks,
+                    "hooks": current_hooks,
                     "tui": "fullscreen",
                     "model": "opus[1m]",
+                    "pluginConfigs": {
+                        "agents-md@builtin": {"options": {"instructionFiles": "claude-md"}}
+                    },
                 })
             )
             command = [
@@ -65,7 +79,22 @@ class ClaudeSettingsTests(unittest.TestCase):
                 self.assertEqual(settings["tui"], "fullscreen")
                 self.assertEqual(settings["model"], "claude-opus-5-5[1m]")
                 self.assertEqual(settings["theme"], "dark-daltonize")
-                self.assertIn("PreToolUse", settings["hooks"])
+                expected_hooks = {
+                    event: canonical["hooks"].get(event, []) + orca_hooks.get(event, [])
+                    for event in canonical["hooks"] | orca_hooks
+                }
+                self.assertEqual(settings["hooks"], expected_hooks)
+                self.assertEqual(settings.get("pluginConfigs"), canonical.get("pluginConfigs"))
+
+    def test_claude_loads_shared_and_client_specific_instructions(self) -> None:
+        for os_name in ("darwin", "linux"):
+            with self.subTest(os_name=os_name):
+                settings = self.settings_for(os_name)
+                self.assertEqual(
+                    settings.get("pluginConfigs", {}).get("agents-md@builtin"),
+                    {"options": {"instructionFiles": "claude-md-and-agents-md"}},
+                )
+                self.assertIs(settings["autoMemoryEnabled"], False)
 
     def test_linux_modifier_keeps_canonical_herdr_hook(self) -> None:
         script = subprocess.check_output(

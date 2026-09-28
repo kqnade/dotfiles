@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Behavior tests for the Pi New Relic telemetry launcher."""
+"""Behavior tests for the guarded Pi New Relic telemetry launcher."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ ZSH_FUNCTION = ROOT / "dot_config/zsh/functions/pi.zsh"
 
 
 class PiTelemetryLauncherTests(unittest.TestCase):
-    def run_launcher(self, *, op_output=None, env_overrides=None, args=()):
+    def run_launcher(self, *, op_output=None, env_overrides=None, args=(), cwd=None):
         with tempfile.TemporaryDirectory() as temporary_directory:
             temporary_path = pathlib.Path(temporary_directory)
             fake_bin = temporary_path / "bin"
@@ -56,7 +56,7 @@ class PiTelemetryLauncherTests(unittest.TestCase):
 
             result = subprocess.run(
                 ["bash", str(LAUNCHER), *args],
-                cwd=ROOT,
+                cwd=cwd or temporary_path,
                 env=env,
                 capture_output=True,
                 text=True,
@@ -158,6 +158,106 @@ class PiTelemetryLauncherTests(unittest.TestCase):
         self.assertIn("New Relic license key", result.stderr)
         self.assertIsNone(captured)
         self.assertEqual(commands, ["op read op://Personal/j465rncuz4fcf2rc7aogcosypi/credential"])
+
+    def test_rejects_work_repositories_before_credentials_or_pi_start(self):
+        remotes = (
+            "git@github.com:livesense-inc/example.git",
+            "https://github.com/jobtalk/example.git",
+            "ssh://git@github.com/jobtalk/example.git",
+            "https://github.com/Livesense-Inc/example.git/",
+            "ssh://git@github.com:22/livesense-inc/example.git",
+            "https://test-user@github.com/jobtalk/example.git",
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            repository = pathlib.Path(directory)
+            subprocess.run(["git", "init", "-q", str(repository)], check=True)
+            nested = repository / "nested"
+            nested.mkdir()
+            for remote in remotes:
+                subprocess.run(
+                    ["git", "-C", str(repository), "config", "remote.origin.url", remote],
+                    check=True,
+                )
+                for env, args in (({}, ()), ({"PI_NEW_RELIC_ENABLE": "0"}, ()),
+                                  ({}, ("--help",)), ({}, ("list",))):
+                    with self.subTest(remote=remote, env=env, args=args):
+                        result, captured, commands = self.run_launcher(
+                            cwd=nested, op_output="must-not-be-used", env_overrides=env,
+                            args=args,
+                        )
+                        self.assertEqual(result.returncode, 2, result.stderr)
+                        self.assertIn("approved Claude account", result.stderr)
+                        self.assertIsNone(captured)
+                        self.assertEqual(commands, [])
+
+    def test_allows_personal_repositories_and_repositories_without_origin(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = pathlib.Path(directory)
+            subprocess.run(["git", "init", "-q", str(repository)], check=True)
+            for remote in (None, "git@github.com:kqnade/dotfiles.git",
+                           "https://github.com/jobtalk-personal/example.git",
+                           "https://github.com.example/jobtalk/example.git"):
+                if remote is not None:
+                    subprocess.run(
+                        ["git", "-C", str(repository), "config", "remote.origin.url", remote],
+                        check=True,
+                    )
+                with self.subTest(remote=remote):
+                    result, captured, commands = self.run_launcher(
+                        cwd=repository, env_overrides={"PI_NEW_RELIC_ENABLE": "0"},
+                    )
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertIsNotNone(captured)
+                    self.assertEqual(commands, [""])
+
+    def test_rejects_work_origin_in_linked_worktree_after_url_rewrite(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = pathlib.Path(directory) / "repository"
+            worktree = pathlib.Path(directory) / "worktree"
+            subprocess.run(["git", "init", "-q", str(repository)], check=True)
+            git = ["git", "-C", str(repository)]
+            subprocess.run(
+                [*git, "-c", "user.name=Test", "-c", "user.email=test@example.com",
+                 "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null",
+                 "commit", "-qm", "fixture", "--allow-empty"],
+                check=True,
+            )
+            subprocess.run([*git, "config", "remote.origin.url", "work:example.git"], check=True)
+            subprocess.run(
+                [*git, "config", "url.https://github.com/jobtalk/.insteadOf", "work:"],
+                check=True,
+            )
+            subprocess.run([*git, "worktree", "add", "-q", "--detach", str(worktree)], check=True)
+            result, captured, commands = self.run_launcher(cwd=worktree, op_output="unused")
+            self.assertEqual(result.returncode, 2, result.stderr)
+            self.assertIsNone(captured)
+            self.assertEqual(commands, [])
+
+    def test_checks_all_origin_urls(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = pathlib.Path(directory)
+            subprocess.run(["git", "init", "-q", str(repository)], check=True)
+            for remote in ("git@github.com:kqnade/example.git",
+                           "git@github.com:jobtalk/example.git"):
+                subprocess.run(
+                    ["git", "-C", str(repository), "config", "--add", "remote.origin.url", remote],
+                    check=True,
+                )
+            result, captured, commands = self.run_launcher(cwd=repository, op_output="unused")
+            self.assertEqual(result.returncode, 2, result.stderr)
+            self.assertIsNone(captured)
+            self.assertEqual(commands, [])
+
+    def test_repository_check_errors_do_not_start_pi(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = pathlib.Path(directory)
+            subprocess.run(["git", "init", "-q", str(repository)], check=True)
+            (repository / ".git/config").write_text("[invalid\n")
+            result, captured, commands = self.run_launcher(cwd=repository, op_output="unused")
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("repository", result.stderr)
+            self.assertIsNone(captured)
+            self.assertEqual(commands, [])
 
     def test_zsh_pi_function_routes_to_launcher(self):
         with tempfile.TemporaryDirectory() as temporary_directory:

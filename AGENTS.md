@@ -48,7 +48,10 @@ Arch Linux x64, and Fedora/Arch under WSL x64.
 | Generate and create a local commit | `git cc` |
 
 Run focused checks first, then the repository validator when the affected contract requires it.
-Always inspect the final diff and run `git diff --check` before handing work off.
+Always inspect the final diff and run `git diff --check` before handing work off. Report the commands
+run, their results, and anything left unverified. For complex or high-risk changes, use a fresh-context
+read-only review within the authorized client/account boundary. Isolate concurrent writers in separate
+worktrees; small changes do not require a multi-agent workflow.
 
 ## Where to make changes
 
@@ -62,7 +65,8 @@ Always inspect the final diff and run `git diff --check` before handing work off
 | OpenCode configuration | `dot_config/opencode/opencode.json` |
 | Codex settings adapter | `dot_codex/` |
 | Pi settings adapter or extension | `dot_pi/` |
-| Claude-specific rule, setting, or hook | `dot_claude/` |
+| Shared workflow skill | `dot_agents/skills/<name>/` |
+| Claude-specific rule, setting, hook, or skill link | `dot_claude/` |
 
 Chezmoi source names describe their deployed targets: `dot_` becomes a leading `.`,
 `dot_config/` deploys to `~/.config/`, and `private_*` enforces private permissions. SKK external
@@ -90,21 +94,29 @@ dictionary sources belong in `.chezmoiexternal.toml.tmpl`; removed managed targe
 
 ## Agent configuration model
 
-Claude configuration is independent of the other clients. This repository does not deploy
-shared development rules, workflow skills, global AGENTS files, or custom subagent instructions.
+Repository instructions use `AGENTS.md`; execution settings and authorization remain client-specific.
+Four on-demand skills live in `dot_agents/skills/`: `test-driven-development`, `evidence-review`,
+`context-handoff`, and `sanitize-artifacts`. Pi discovers their deployed `~/.agents/skills/` files;
+Claude uses the links in `dot_claude/skills/`. Development and review require the sanitizer check.
+Do not deploy global AGENTS files, shared global rules, custom subagent instructions, or a workflow
+router. See `docs/ai-clients.md` for client boundaries and `docs/ai-workflows.md` for the workflow.
 
 - Claude safety rules, settings, and hooks live in `dot_claude/`. Claude may run only in
   repositories whose GitHub remote owner is `livesense-inc` or `jobtalk`; the wrapper and hooks
   enforce that boundary using the approved account.
-- Codex settings live in `dot_codex/`, OpenCode settings in `dot_config/opencode/`, and Pi
-  settings and extensions in `dot_pi/`.
+- Codex CLI settings live in `dot_codex/`, OpenCode settings in `dot_config/opencode/`, and Pi
+  settings and extensions in `dot_pi/`. Pi's `openai-codex` provider does not use Codex CLI settings.
+- The managed Pi launcher rejects `livesense-inc` and `jobtalk` GitHub origins before credential
+  lookup or Pi startup, including when telemetry is disabled. This is an accidental-launch guard,
+  not a sandbox or an authorization check on later tool calls.
 - Removed managed targets belong in `.chezmoiremove`. Name specific files or managed symlinks;
   preserve unknown skills, credentials, and runtime state in their parent directories.
 - `dot_codex/modify_private_config.toml` applies stable Codex defaults while preserving
   Codex-managed runtime state and sibling settings. `dot_pi/agent/settings.json` deploys the
   complete canonical Pi configuration. Claude defaults live in
-  `.chezmoitemplates/claude-settings.json.tmpl`; the modifier preserves runtime hooks and `tui`
-  on macOS. Other intentional Claude settings changes should be folded into the template.
+  `.chezmoitemplates/claude-settings.json.tmpl`; Claude reads both `CLAUDE.md` and `AGENTS.md`.
+  The modifier preserves additional runtime hooks and `tui` on macOS without letting them replace
+  managed hooks. Other intentional Claude settings changes should be folded into the template.
 - On Linux, Herdr integration is applied idempotently during bootstrap; macOS uses Orca
   instead. Claude automatic memory remains disabled; durable workflow state uses the
   repository model below.
@@ -112,7 +124,9 @@ shared development rules, workflow skills, global AGENTS files, or custom subage
 ## Repository workflow state
 
 `.dev/` is the current worktree's repository-owned source of truth for AI workflow state, not
-automatic memory. Its detailed contract is in `.dev/designdoc/ai-assisted-development.md`.
+automatic memory. The active workflow contract is in `docs/ai-workflows.md`. Older `.dev/` designs
+and TODOs referring to absent routers or persistence helpers are historical evidence, not runtime
+prerequisites; reconcile them with current files before use.
 
 - Keep each linked worktree's `.dev/` independent. Never redirect, merge, or silently copy records
   into another worktree.

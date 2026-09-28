@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
-"""Verify that the managed workflow reset removes only known client targets."""
+"""Verify portable workflow skills and removal of retired managed targets."""
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+import re
 import subprocess
 import tempfile
 import tomllib
@@ -14,12 +16,19 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
+SKILLS = {"test-driven-development", "evidence-review", "context-handoff", "sanitize-artifacts"}
 
 
 class ClientWorkflowResetTests(unittest.TestCase):
-    def test_sources_have_no_shared_workflow_or_client_links(self) -> None:
-        self.assertFalse((ROOT / "dot_agents").exists())
-        self.assertFalse((ROOT / "dot_claude/skills").exists())
+    def test_sources_deploy_only_the_curated_skills(self) -> None:
+        shared = ROOT / "dot_agents/skills"
+        self.assertEqual({path.name for path in shared.glob("*")}, SKILLS)
+        self.assertEqual(
+            {path.name for path in (ROOT / "dot_claude/skills").glob("*")},
+            {f"symlink_{name}" for name in SKILLS},
+        )
+        self.assertFalse((ROOT / "dot_agents/rules").exists())
+        self.assertEqual(list(shared.glob("*/scripts")), [])
         self.assertFalse((ROOT / "dot_codex/agents").exists())
         self.assertFalse((ROOT / "dot_codex/symlink_AGENTS.md").exists())
         self.assertFalse((ROOT / "dot_config/opencode/symlink_AGENTS.md").exists())
@@ -29,6 +38,35 @@ class ClientWorkflowResetTests(unittest.TestCase):
             {path.name for path in (ROOT / "dot_claude/rules").iterdir()},
             {"operations.md"},
         )
+
+    def test_skill_metadata_and_references_are_portable(self) -> None:
+        for name in sorted(SKILLS):
+            with self.subTest(skill=name):
+                source = ROOT / "dot_agents/skills" / name / "SKILL.md"
+                content = source.read_text()
+                self.assertTrue(content.startswith("---\n"))
+                _, frontmatter, body = content.split("---\n", 2)
+                metadata = dict(line.split(": ", 1) for line in frontmatter.splitlines())
+                self.assertEqual(set(metadata), {"name", "description"})
+                self.assertEqual(metadata["name"], name)
+                self.assertTrue(0 < len(metadata["description"]) <= 1024)
+                for reference in re.findall(r"\]\(([^)]+)\)", body):
+                    self.assertTrue((source.parent / reference).is_file(), reference)
+                self.assertEqual(
+                    (ROOT / "dot_claude/skills" / f"symlink_{name}").read_text().strip(),
+                    f"../../.agents/skills/{name}",
+                )
+
+    def test_sanitize_artifacts_contract_is_unchanged_and_required(self) -> None:
+        content = (ROOT / "dot_agents/skills/sanitize-artifacts/SKILL.md").read_bytes()
+        self.assertEqual(
+            hashlib.sha256(content).hexdigest(),
+            "5360c17c724e2d443320a2faada7053b4d5ccd560452638d02283ec764a52166",
+        )
+        for name in ("test-driven-development", "evidence-review"):
+            content = (ROOT / "dot_agents/skills" / name / "SKILL.md").read_text()
+            self.assertIn("../sanitize-artifacts/SKILL.md", content)
+            self.assertIn("blocking", content)
 
     def test_reset_removes_known_targets_but_preserves_unknown_home_files(self) -> None:
         chezmoi = subprocess.check_output(
@@ -42,6 +80,10 @@ class ClientWorkflowResetTests(unittest.TestCase):
                 ".agents/rules/coding.md": "old shared rule\n",
                 ".agents/skills/assumption-pruning/SKILL.md": "old skill\n",
                 ".agents/skills/context-handoff/scripts/context-candidates": "old helper\n",
+                ".agents/skills/using-workflow-skills/SKILL.md": "old router\n",
+                ".agents/skills/todo-management/scripts/todo-obligation": "old ledger helper\n",
+                ".agents/skills/evidence-review/agents/openai.yaml": "old metadata\n",
+                ".claude/skills/using-workflow-skills": "old router link\n",
                 ".claude/skills/assumption-pruning": "old Claude link\n",
                 ".claude/rules/delivery.md": "old Claude rule\n",
                 ".codex/AGENTS.md": "old Codex rules\n",
@@ -59,6 +101,8 @@ class ClientWorkflowResetTests(unittest.TestCase):
                 ".agents/rules/user.md": "user rule\n",
                 ".agents/skills/user/SKILL.md": "user skill\n",
                 ".agents/skills/assumption-pruning/user.md": "user notes\n",
+                ".agents/skills/context-handoff/user.md": "user handoff notes\n",
+                ".pi/agent/AGENTS.md": "user Pi instructions\n",
                 ".claude/rules/user.md": "user Claude rule\n",
                 ".codex/agents/user.toml": "user Codex agent\n",
                 ".config/opencode/user.md": "user OpenCode file\n",
@@ -78,29 +122,47 @@ class ClientWorkflowResetTests(unittest.TestCase):
                     "XDG_DATA_HOME": str(temporary / "data"),
                 }
             )
-            result = subprocess.run(
-                [
-                    chezmoi,
-                    "--source",
-                    str(ROOT),
-                    "--destination",
-                    str(home),
-                    "--persistent-state",
-                    str(temporary / "state.boltdb"),
-                    "--no-tty",
-                    "apply",
-                ],
-                cwd=home,
-                env=environment,
-                text=True,
-                capture_output=True,
-                check=False,
-            )
-            self.assertEqual(result.returncode, 0, result.stderr)
-            for relative in old_targets:
-                self.assertFalse(os.path.lexists(home / relative), relative)
-            for relative, contents in preserved.items():
-                self.assertEqual((home / relative).read_text(), contents, relative)
+            for name in ("test-driven-development", "sanitize-artifacts"):
+                target = home / ".agents/skills" / name / "SKILL.md"
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("outdated managed skill\n")
+                link = home / ".claude/skills" / name
+                link.symlink_to(f"../../.agents/skills/{name}")
+
+            for _ in range(2):
+                result = subprocess.run(
+                    [
+                        chezmoi,
+                        "--source",
+                        str(ROOT),
+                        "--destination",
+                        str(home),
+                        "--persistent-state",
+                        str(temporary / "state.boltdb"),
+                        "--no-tty",
+                        "apply",
+                    ],
+                    cwd=home,
+                    env=environment,
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                for relative in old_targets:
+                    self.assertFalse(os.path.lexists(home / relative), relative)
+                for relative, contents in preserved.items():
+                    self.assertEqual((home / relative).read_text(), contents, relative)
+                for name in SKILLS:
+                    canonical = home / ".agents/skills" / name / "SKILL.md"
+                    source = ROOT / "dot_agents/skills" / name / "SKILL.md"
+                    self.assertEqual(canonical.read_bytes(), source.read_bytes())
+                    link = home / ".claude/skills" / name
+                    self.assertTrue(link.is_symlink())
+                    self.assertEqual((link / "SKILL.md").resolve(), canonical.resolve())
+                    for reference in re.findall(r"\]\(([^)]+)\)", canonical.read_text()):
+                        self.assertTrue((link / reference).is_file(), reference)
+                self.assertFalse((home / ".pi/agent/skills/test-driven-development").exists())
 
     def test_codex_migration_preserves_runtime_state(self) -> None:
         yq = subprocess.check_output(["mise", "which", "yq"], text=True).strip()

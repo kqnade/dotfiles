@@ -4,6 +4,35 @@ set -euo pipefail
 
 readonly NEW_RELIC_LICENSE_KEY_OP_REF_DEFAULT="op://Personal/j465rncuz4fcf2rc7aogcosypi/credential"
 
+authorize_repository() {
+  local remotes status remote_url
+  if git config --get-all remote.origin.url >/dev/null; then
+    if ! remotes="$(git remote get-url --all origin)"; then
+      printf '%s\n' 'Cannot resolve the Pi repository origin; refusing to start.' >&2
+      return 1
+    fi
+  else
+    status=$?
+    # No origin is normal for non-repository work and new personal repositories.
+    if [[ "$status" -eq 1 ]]; then
+      return 0
+    fi
+    printf '%s\n' 'Cannot check the Pi repository origin; refusing to start.' >&2
+    return 1
+  fi
+
+  while IFS= read -r remote_url; do
+    remote_url="$(printf '%s' "$remote_url" | tr '[:upper:]' '[:lower:]')"
+    if [[ "$remote_url" =~ ^((ssh|https?|git)://([^/@]+@)?github\.com(:[0-9]+)?/|([^/@:]+@)?github\.com:)(livesense-inc|jobtalk)/ ]]; then
+      printf '%s\n' 'Pi is not authorized for livesense-inc or jobtalk repositories; use the approved Claude account.' >&2
+      return 2
+    fi
+  done <<<"$remotes"
+}
+
+# Check before credential lookup, telemetry opt-out, and every Pi invocation.
+authorize_repository
+
 run_pi() {
   local pi_bin
   if ! pi_bin="$(command -v pi 2>/dev/null)"; then
