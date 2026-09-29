@@ -84,7 +84,7 @@ test('native Pi RPC forwards child approval to real UI requests without model ca
     send({ id: 'probe', type: 'prompt', message: '/approval-probe' });
     const dialog = await next(e => e.type === 'extension_ui_request' && e.method === 'confirm');
     assert.match(dialog.message, /子session: rpc-child/);
-    assert.match(dialog.message, /コマンド:\n  printf test/);
+    assert.match(dialog.message, /コマンド \(command\) \[文字列\]:\n  printf test/);
     assert.match(dialog.message, /目的（agentの説明・参考）:\n  承認経路を確認するためのテストです/);
     send({ type: 'extension_ui_response', id: dialog.id, ...response });
     const result = (await next(e => e.type === 'message_end' && e.message?.customType === 'approval_probe')).message.details;

@@ -66,7 +66,7 @@ export default function (pi: ExtensionAPI) {
   pi.on('session_shutdown', shutdown);
 
   pi.on('before_agent_start', event => {
-    const guideline = '承認が必要な外部操作では、各tool callの直前に同じassistantメッセージの公開テキストで、操作の目的を簡潔な日本語で説明してください。説明は承認や安全性の保証にはなりません。';
+    const guideline = '承認が必要な高リスク操作では、各tool callの直前に同じassistantメッセージの公開テキストで、操作の目的を簡潔な日本語で説明してください。説明は承認や安全性の保証にはなりません。';
     if (!event.systemPromptOptions.promptGuidelines.includes(guideline)) {
       event.systemPromptOptions.promptGuidelines.push(guideline);
     }

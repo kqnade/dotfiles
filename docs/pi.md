@@ -21,19 +21,21 @@ records and reports HTTP delivery status, queue sizes, errors, and dropped recor
 
 ## Execution approvals
 
-External-operation confirmations are **enabled by default**. Start a session with
-`PI_EXECUTION_GUARD=0 pi` to opt out; only the exact value `0` disables the guard.
+The default is an **Approve for me–style policy**: routine work proceeds automatically, while recognized
+high-risk operations require human confirmation. Start a session with `PI_EXECUTION_GUARD=0 pi` to opt out;
+only the exact value `0` disables the guard. This is a rule-based policy, not approval delegated to a model.
 When disabled, remote authorization remains an instruction policy, not a tool-level execution barrier.
 
 A parent session with a TUI or RPC dialog UI owns a private Unix socket. Native foreground and
 background children inherit its session-specific endpoint through `PI_EXECUTION_APPROVAL_CHANNEL`.
-Their detected external operations wait for the parent's confirmation dialog, showing the child session,
+Their detected high-risk operations wait for the parent's confirmation dialog, showing the child session,
 tool-call ID, working directory, and complete input. Supervisor/model replies cannot approve
 these calls. RPC clients must present confirmations to a person rather than automatically answer.
 
 Dialogs use Japanese labels for the operation, working directory, input, and confirmation reason rather
 than a JSON envelope. Commands and other multiline values retain their line breaks; terminal control and
-bidirectional formatting characters are shown as visible escapes. The complete input remains displayed.
+bidirectional formatting characters are shown as visible escapes. Raw parameter names and string type
+labels distinguish translated keys, strings, and non-string values. The complete input remains displayed.
 Below the input, the dialog shows a short purpose from the public assistant text immediately preceding
 that tool call in the same message. Private reasoning, user messages, and another call's explanation are
 not used. The guard requests this explanation through a Pi prompt guideline without an extra model call.
@@ -49,11 +51,16 @@ breaks the connection but may leave its private temporary directory. Children bo
 must be relaunched, not silently attached to its replacement. One interactive
 approval owner is supported per process; separate Pi processes own independent channels.
 
-Local reads, edits, writes, ordinary test commands, questions, and native subagent launch/control do not
-prompt. `execution-guard.ts` requests confirmation for `web_search`, `source_check`, `fetch_content`, and
-recognized shell commands that can contact external services or operate on shared state. These include
-Git remote operations, network clients such as curl/SSH, GitHub commands, package downloads/publication,
-and common cloud/deployment CLIs. A recognized CLI can prompt even for a local-only subcommand.
+| Automatic | Human confirmation |
+|---|---|
+| Local reads, edits, writes, tests, questions, native subagent launch/control | Privilege elevation and permission/ownership changes, such as sudo/chmod/chown |
+| Public Web search/fetch, Git fetch/pull/clone, GitHub view/list/diff | Git push, PR changes, publication, and recognized cloud/deployment changes |
+| Dependency installation and ordinary HTTP reads | Explicit HTTP data/authentication submission, authenticated fetch, remote execution/file-transfer tools |
+| Ordinary local development commands | Recursive deletion, destructive Git resets/cleaning, disk writes, and direct download-to-shell execution |
+
+These are command/tool recognizers, not a semantic guarantee. Opaque API and remote-management commands
+such as `gh api` or SSH/file-transfer clients can require confirmation even for a read-only use.
+Dependency installation is automatic even when packages execute install scripts; use only trusted sources.
 
 Each dialog approves one invocation in its working directory. Dialogs are serialized. Declines,
 unavailable approval channels, and UI errors fail closed for operations that require confirmation;
@@ -68,14 +75,15 @@ No request content is persisted by the channel, and it opens no TCP port or exte
 The argument check covers the wait for approval. Pi allows later `tool_call` handlers to mutate
 arguments after this guard returns; such changes are outside this check. Load only trusted extensions.
 
-This is a best-effort confirmation aid, not an OS sandbox or a complete network detector. Unmatched
-commands and tools are allowed; this does not prove they are local. Scripts, wrappers, unfamiliar shell
-syntax, custom tools, and extension-internal execution can contact external services without a prompt.
+This is a best-effort confirmation aid, not an OS sandbox or a complete side-effect detector. Unmatched
+commands and tools are allowed; this does not prove they are safe or local. Scripts, wrappers, unfamiliar
+shell syntax, custom tools, extension-internal execution, and apparently read-only HTTP requests can have
+external effects without a prompt.
 The instruction policy still requires explicit authorization before remote/shared mutations, including
 indirect operations. Native pi-subagents children receive the extension through `subagents.defaultExtensions`
 and inherit the guard environment. Headless sessions without a valid parent channel can perform local
-work but cannot obtain approval for detected external operations. A child or project configuration that replaces its extension
-list or environment can omit the guard. External CLI agent profiles remain
+work but cannot obtain approval for detected high-risk operations. A child or project configuration
+that replaces its extension list or environment can omit the guard. External CLI agent profiles remain
 disabled.
 
 ## New Relic

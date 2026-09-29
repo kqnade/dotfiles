@@ -1,25 +1,46 @@
 import { resolve } from 'node:path';
 
-const EXTERNAL_TOOLS = new Set(['web_search', 'source_check', 'fetch_content']);
 let confirmationQueue = Promise.resolve();
 const WORD = String.raw`(?:"[^"]*"|'[^']*'|[^\s;&|'"\x60]+)`;
 const GIT_OPTION = String.raw`(?:-[Cc]\s*${WORD}|--(?:git-dir|work-tree|namespace|config-env)(?:=|\s+)${WORD}|--(?:no-pager|paginate|bare|no-optional-locks|no-replace-objects))`;
 const GIT_COMMIT = new RegExp(String.raw`(?:^|[;&|\n])\s*git\s+(?:${GIT_OPTION}\s+)*commit\b`);
 
-const COMMAND_START = String.raw`(?:^|[;&|\n]|\$\(|\x60)\s*(?:(?:command|exec|sudo|env)\s+)*(?:[A-Za-z_]\w*=${WORD}\s+)*(?:[^\s;&|'"\x60]+/)?`;
-const REMOTE_GIT = new RegExp(`${COMMAND_START}git\\s+(?:${GIT_OPTION}\\s+)*(?:push|fetch|pull|clone|ls-remote|remote\\s+update)\\b`);
-const NETWORK_COMMAND = new RegExp(`${COMMAND_START}(?:curl|wget|ssh|scp|sftp|rsync|rclone|http|https|Invoke-WebRequest|Invoke-RestMethod|aws|gcloud|az|kubectl|terraform|vercel|netlify)(?=[\\s;&|)]|$)`, 'i');
-const REMOTE_MANAGER = new RegExp(`${COMMAND_START}(?:gh\\s+(?:(?:--repo|-R)\\s+${WORD}\\s+)*(?:api|pr|issue|repo|release|run|workflow|gist|secret|variable)|(?:npm|pnpm|yarn)\\s+(?:install|i|add|update|up|publish|unpublish|dlx)|npx|(?:uv|pip|pip3)\\s+(?:install|sync)|mise\\s+(?:install|upgrade|bootstrap))\\b`);
+const COMMAND_START = String.raw`(?:^|[;&|\n]|\$\(|\x60)\s*(?:(?:command|exec|env)\s+)*(?:[A-Za-z_]\w*=${WORD}\s+)*(?:[^\s;&|'"\x60]+/)?`;
+const END_WORD = String.raw`(?=[\s;&|)]|$)`;
+const ARGUMENTS = String.raw`(?:${WORD}\s+)*`;
+const GIT = `${COMMAND_START}git\\s+(?:${GIT_OPTION}\\s+)*`;
+const ELEVATED = new RegExp(`${COMMAND_START}(?:sudo|doas|pkexec|su|runas|chmod|chown)${END_WORD}`);
+const DESTRUCTIVE = new RegExp(`${COMMAND_START}(?:rm\\s+${ARGUMENTS}(?:--recursive|-[a-zA-Z]*[rR][a-zA-Z]*)${END_WORD}|(?:dd|shred|mkfs(?:\\.\\w+)?)${END_WORD}|diskutil\\s+erase\\w*${END_WORD})`);
+const DESTRUCTIVE_GIT = new RegExp(`${GIT}(?:reset\\s+${ARGUMENTS}--hard|clean\\s+${ARGUMENTS}(?:--force|-[a-zA-Z]*f[a-zA-Z]*))${END_WORD}`);
+const REMOTE_GIT = new RegExp(`${GIT}(?:push|send-email|lfs\\s+push)${END_WORD}`);
+const GH = `${COMMAND_START}gh\\s+(?:(?:--repo|-R|--hostname)\\s+${WORD}\\s+)*`;
+const REMOTE_GH = new RegExp(`${GH}(?:api${END_WORD}|(?:pr|issue|repo|release|run|workflow|gist|secret|variable|label)\\s+${ARGUMENTS}(?:create|edit|delete|merge|review|comment|close|reopen|ready|lock|unlock|upload|set|run|rerun|cancel|enable|disable|fork|rename|sync)${END_WORD})`);
+const PUBLISH = new RegExp(`${COMMAND_START}(?:npm|pnpm|yarn)\\s+(?:npm\\s+)?(?:publish|unpublish|deprecate|dist-tag)${END_WORD}`);
+const CLOUD_CHANGE = new RegExp(`${COMMAND_START}(?:aws|gcloud|az|kubectl|terraform)\\s+${ARGUMENTS}(?:create|delete|put|update|modify|set|add|remove|enable|disable|deploy|apply|destroy|start|stop|restart|terminate|reboot|attach|detach|grant|revoke|import|refresh|exec|run|patch|replace|scale|rollout|drain|cordon|uncordon|cp|mv|rm|sync)(?:-[\\w]+)*${END_WORD}`);
+const TERRAFORM_STATE_CHANGE = new RegExp(`${COMMAND_START}terraform\\s+${ARGUMENTS}state\\s+(?:mv|rm|push|replace-provider)${END_WORD}`);
+const READ_ONLY_HEADER = /(^|\s)(?:-H\s*|--header(?:=|\s+))(["'])(?:Accept:[ \t]*(?:application\/json|\*\/\*)|Content-Type:[ \t]*application\/json)\2(?=\s|$)/gi;
+const REMOTE_EXECUTION = new RegExp(`${COMMAND_START}(?:ssh|scp|sftp|rsync|rclone|http|https|vercel|netlify|Invoke-Command)${END_WORD}`, 'i');
+const HTTP_DATA = new RegExp(`${COMMAND_START}(?:curl|wget)\\s+${ARGUMENTS}(?:--(?:data(?:-ascii|-binary|-raw|-urlencode)?|json|form(?:-string)?|upload-file|post-data|post-file|body-data|body-file|user|password|proxy-user|oauth2-bearer|header)(?:[=\\s]|$)|-[fsSLIi]*[dFTuH])`);
+const HTTP_METHOD = new RegExp(`${COMMAND_START}(?:curl|wget)\\s+${ARGUMENTS}(?:-X\\s*|--(?:request|method)[=\\s]+)(?!["']?(?:GET|HEAD)["']?${END_WORD})${WORD}`, 'i');
+const POWERSHELL_HTTP_DATA = new RegExp(`${COMMAND_START}(?:Invoke-WebRequest|Invoke-RestMethod)\\s+${ARGUMENTS}(?:-(?:Body|InFile|Headers|Credential)${END_WORD}|-Method\\s+(?!["']?(?:GET|HEAD)["']?${END_WORD})${WORD})`, 'i');
+const DOWNLOADED_CODE = new RegExp(`${COMMAND_START}(?:curl|wget)\\s+${ARGUMENTS}(?:${WORD})?\\s*\\|\\s*(?:ba|z|fi)?sh${END_WORD}`);
 
 export function approvalReason({ toolName, input }) {
-  if (EXTERNAL_TOOLS.has(toolName)) return '外部サービスへの問い合わせ・データ送信を行うツールです。';
+  if (toolName === 'fetch_content' && input?.auth) return '認証情報を利用して外部にアクセスする操作です。';
   if (toolName !== 'bash' && toolName !== 'powershell') return undefined;
   const command = input?.command;
   if (typeof command !== 'string') return undefined;
-  if (REMOTE_GIT.test(command)) return 'Gitリモートへのアクセス・変更を含むコマンドです。';
-  if (NETWORK_COMMAND.test(command) || REMOTE_MANAGER.test(command)) {
-    return '外部通信・共有環境の操作を伴う可能性があるコマンドです。';
+  if (ELEVATED.test(command)) return '権限の昇格・権限や所有者の変更を含む操作です。';
+  if (DESTRUCTIVE.test(command) || DESTRUCTIVE_GIT.test(command)) return '広範囲の削除・復元困難な変更を含む操作です。';
+  if (REMOTE_GIT.test(command)) return 'Gitリモートへの変更の送信を含む操作です。';
+  if (REMOTE_GH.test(command) || PUBLISH.test(command) || CLOUD_CHANGE.test(command) || TERRAFORM_STATE_CHANGE.test(command)) {
+    return '公開・共有環境の変更、または影響を限定できないAPI操作です。';
   }
+  const withReadHeadersRemoved = command.replace(READ_ONLY_HEADER, '$1');
+  if (REMOTE_EXECUTION.test(command) || HTTP_DATA.test(withReadHeadersRemoved) || HTTP_METHOD.test(command) || POWERSHELL_HTTP_DATA.test(command)) {
+    return 'データ・認証情報の送信、または外部環境での実行を伴う可能性があります。';
+  }
+  if (DOWNLOADED_CODE.test(command)) return '外部から取得したコードを直接実行する操作です。';
 }
 
 export function isDirectGitCommit({ toolName, input }) {
@@ -71,19 +92,27 @@ function oneLine(value) {
   return visibleText(value).replace(/\n/g, '\\n');
 }
 
-function formatValue(value, indent = '') {
+function stringType(value) {
+  if (typeof value !== 'string') return '';
+  if (value === '') return ' [空文字列]';
+  return value === visibleText(value) ? ' [文字列]' : ' [文字列・制御文字あり]';
+}
+
+function formatValue(value, indent = '', annotated = false) {
   if (typeof value === 'string') {
-    const text = value === '' ? '（空文字列）' : visibleText(value);
-    return text.split('\n').map(line => `${indent}${line}`).join('\n');
+    const body = visibleText(value).split('\n').map(line => `${indent}${line}`).join('\n');
+    return annotated ? body : `${indent}${stringType(value).trim()}\n${body}`;
   }
   if (Array.isArray(value)) {
-    return value.length ? value.map((item, index) => `${indent}[${index + 1}]\n${formatValue(item, indent + '  ')}`).join('\n') : `${indent}（空の配列）`;
+    return value.length ? value.map((item, index) => `${indent}[${index + 1}]${stringType(item)}\n${formatValue(item, indent + '  ', true)}`).join('\n') : `${indent}（空の配列）`;
   }
   if (value && typeof value === 'object') {
     const entries = Object.entries(value);
     return entries.length ? entries.map(([key, item]) => {
-      const label = Object.hasOwn(FIELD_LABELS, key) ? FIELD_LABELS[key] : oneLine(key);
-      const body = formatValue(item);
+      const rawKey = /^[a-zA-Z_][\w-]*$/.test(key) ? key : visibleText(JSON.stringify(key));
+      const name = Object.hasOwn(FIELD_LABELS, key) ? `${FIELD_LABELS[key]} (${rawKey})` : rawKey;
+      const label = name + stringType(item);
+      const body = formatValue(item, '', true);
       return body.includes('\n') || key === 'command'
         ? `${indent}${label}:\n${body.split('\n').map(line => indent + '  ' + line).join('\n')}`
         : `${indent}${label}: ${body}`;
@@ -102,7 +131,7 @@ function formatApproval(invocation, cwd) {
     '', formatValue(invocation.input), '',
     `確認理由: ${approvalReason(invocation) ?? 'この操作の個別確認が要求されています。'}`,
     '目的（agentの説明・参考）:',
-    formatValue(invocation.purpose || '目的の説明は添えられていません。', '  '),
+    formatValue(invocation.purpose || '目的の説明は添えられていません。', '  ', true),
     '', '承認の対象はこの1回のみです。',
   ].join('\n');
 }
