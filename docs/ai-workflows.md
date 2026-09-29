@@ -55,9 +55,11 @@ Skillsは現在の利用者の依頼、repository規約、client/accountの制�
 Claudeでは認可された同accountの仕組みを使い、利用できないときに別CLIへ切り替えません。
 Piのexecution guardは既定で有効です。`PI_EXECUTION_GUARD=0 pi`でopt-outできます。
 無効時のremote認可は指示による制約です。native childrenにも`subagents.defaultExtensions`からextensionを配備し、
-有効時の編集・shell実行は親sessionの確認dialogへ転送します。子のsession・cwd・tool・引数を
-一件ごとに表示し、人間が承認するまで実行しません。親の終了、通信断、取消、期限切れは拒否です。
-親のないheadless sessionでは承認を得られません。Pi子agentの`permissions: ask`やsupervisorの
+ローカルの読み書き・テスト・子の起動では確認しません。既知の外部通信toolやGit remote操作などを
+検出したときだけ、子のsession・cwd・tool・引数を親の確認dialogへ転送します。承認対象の操作は
+親の終了、通信断、取消、期限切れで拒否します。親のないheadless sessionでもローカル作業はできます。
+未認識のコマンド・toolは許可されるため、script内部などの外部通信を完全には検出できません。
+間接的な操作も含むremote変更の事前認可は、引き続き指示として必須です。Pi子agentの`permissions: ask`やsupervisorの
 返答はLLM判断で、人間の許可ではありません。extension listや環境設定でguardを外した子、
 外部processにはこのguardが及びません。詳しい境界と制限は[Pi](pi.md#execution-approvals)を参照してください。
 OrcaやHerdrでのterminal操作は、その操作が必要な依頼に限ります。Skillにmodelやterminalを固定しません。

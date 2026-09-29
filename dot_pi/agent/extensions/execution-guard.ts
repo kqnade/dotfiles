@@ -1,6 +1,6 @@
 import type { ExtensionAPI, ToolCallEvent } from '@earendil-works/pi-coding-agent';
 import { APPROVAL_ENV, createApprovalServer, requestApproval } from './lib/approval-channel.mjs';
-import { confirmOneInvocation, isDirectGitCommit, isForbiddenCommitBypass, isReadOnlyTool } from './lib/execution-guard.mjs';
+import { approvalReason, confirmOneInvocation, isDirectGitCommit, isForbiddenCommitBypass } from './lib/execution-guard.mjs';
 
 function commitBlock(invocation: Pick<ToolCallEvent, 'toolName' | 'input'>) {
   if (isForbiddenCommitBypass(invocation)) return 'This git commit command explicitly bypasses signing or hooks and is not allowed.';
@@ -66,9 +66,9 @@ export default function (pi: ExtensionAPI) {
   pi.on('session_shutdown', shutdown);
 
   pi.on('tool_call', async (event, context) => {
-    if (isReadOnlyTool(event.toolName)) return;
     const reason = commitBlock(event);
     if (reason) return { block: true, reason };
+    if (!approvalReason(event)) return;
     if (!started) return { block: true, reason: startupError ?? 'Approval session is not initialized.' };
 
     const signal = context.signal

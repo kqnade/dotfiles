@@ -5,12 +5,12 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import { isReadOnlyTool, isDirectGitCommit, isForbiddenCommitBypass, confirmOneInvocation } from '../../dot_pi/agent/extensions/lib/execution-guard.mjs';
+import { approvalReason, isDirectGitCommit, isForbiddenCommitBypass, confirmOneInvocation } from '../../dot_pi/agent/extensions/lib/execution-guard.mjs';
 import executionGuard from '../../dot_pi/agent/extensions/execution-guard.ts';
 import { APPROVAL_ENV, createApprovalServer } from '../../dot_pi/agent/extensions/lib/approval-channel.mjs';
 import settings from '../../dot_pi/agent/settings.json' with { type: 'json' };
 
-const invocation = { toolName: 'bash', input: { command: 'make test' } };
+const invocation = { toolName: 'bash', input: { command: 'git push origin trunk' } };
 
 function guardHandlers(enabled) {
   const original = process.env.PI_EXECUTION_GUARD;
@@ -81,7 +81,7 @@ test('parent lifecycle routes a child call to the UI, then revokes its channel',
   assert.equal((await child.get('tool_call')(event, childContext)).block, true);
 });
 
-test('a separate headless extension requires parent consent by default', async t => {
+test('a separate headless extension gates a simulated external operation by default', async t => {
   const directory = await mkdtemp(join(tmpdir(), 'pi-guard-test-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
   const parent = guardHandlers();
@@ -97,9 +97,9 @@ test('a separate headless extension requires parent consent by default', async t
     guard({ on: (event, handler) => handlers.set(event, handler) });
     const context = { hasUI: false, cwd: process.cwd(), sessionManager: { getSessionId: () => 'child-' + process.pid } };
     await handlers.get('session_start')({}, context);
-    const event = { toolName: 'write', toolCallId: 'write-1', input: { path: process.env.TEST_TARGET, content: 'approved' } };
+    const event = { toolName: 'bash', toolCallId: 'external-1', input: { command: 'curl https://example.invalid' } };
     const result = await handlers.get('tool_call')(event, context);
-    if (!result?.block) await writeFile(event.input.path, event.input.content);
+    if (!result?.block) await writeFile(process.env.TEST_TARGET, 'approved');
     await handlers.get('session_shutdown')({}, context);
     console.log(JSON.stringify({ blocked: result?.block === true }));
   `;
@@ -156,18 +156,36 @@ test('configures the guard for native children and keeps external CLI profiles d
   }
 });
 
-test('intercepts mutating, shell, and custom tool calls while allowing builtin reads', async () => {
-  const handler = guardHandler('1');
-  const noUi = { cwd: '/tmp/work', hasUI: false };
-  assert.equal(await handler({ toolName: 'read', input: { path: 'file' } }, noUi), undefined);
-  assert.equal((await handler({ toolName: 'custom', input: {} }, noUi)).block, true);
-  assert.equal((await handler({ toolName: 'write', input: {} }, noUi)).block, true);
-  assert.equal((await handler({ toolName: 'bash', input: { command: 'git commit -m x' } }, noUi)).block, true);
+test('local operations need no approval UI or channel', async () => {
+  const handler = guardHandler();
+  const context = { cwd: '/tmp/work', hasUI: false };
+  for (const toolName of ['read', 'grep', 'find', 'ls', 'edit', 'write', 'lsp', 'ask_user', 'subagent', 'custom']) {
+    assert.equal(await handler({ toolName, input: {} }, context), undefined, toolName);
+  }
+  for (const command of ['git status --short', 'git diff', 'git cc', 'npm test', 'mise exec -- node --test', "printf '%s\\n' 'git push'"]) {
+    assert.equal(await handler({ toolName: 'bash', input: { command } }, context), undefined, command);
+  }
 });
 
-test('allows only the known read-only builtin tools without a prompt', () => {
-  for (const name of ['read', 'grep', 'find', 'ls']) assert.equal(isReadOnlyTool(name), true);
-  for (const name of ['bash', 'write', 'edit', 'powershell', 'unknown']) assert.equal(isReadOnlyTool(name), false);
+test('external operations still require approval and commit bypasses remain blocked', async () => {
+  const handler = guardHandler();
+  const context = { cwd: '/tmp/work', hasUI: false };
+  for (const toolName of ['web_search', 'source_check', 'fetch_content']) {
+    assert.equal((await handler({ toolName, input: {} }, context)).block, true, toolName);
+  }
+  for (const command of ['git push origin trunk', 'git -C "a b" fetch origin', 'curl https://example.invalid', 'gh pr create', 'npm publish', 'npm test && git push', 'git commit --no-verify']) {
+    assert.equal((await handler({ toolName: 'bash', input: { command } }, context)).block, true, command);
+  }
+});
+
+test('recognizes common external command forms without claiming to inspect scripts', () => {
+  for (const command of ['git --no-pager ls-remote origin', 'git remote update', 'sudo /usr/bin/curl https://example.invalid', 'TOKEN=x curl https://example.invalid', 'echo $(curl https://example.invalid)', 'gh -R owner/repo pr merge', 'pnpm install', 'mise install', 'kubectl apply -f deployment.yaml']) {
+    assert.equal(typeof approvalReason({ toolName: 'bash', input: { command } }), 'string', command);
+  }
+  for (const command of ['git log -1', 'python3 local-script.py', 'gh --version', 'ssh-keygen -l -f key.pub', 'ssh-add -l']) {
+    assert.equal(approvalReason({ toolName: 'bash', input: { command } }), undefined, command);
+  }
+  assert.equal(typeof approvalReason({ toolName: 'powershell', input: { command: 'Invoke-WebRequest https://example.invalid' } }), 'string');
 });
 
 test('blocks known git signing and hook bypasses instead of offering approval', () => {
@@ -189,7 +207,7 @@ test('requires the native UI and refuses cancellation for one exact tool call an
   });
   assert.equal(denied.allowed, false);
   assert.match(shown.message, /"cwd": "\/tmp\/work"/);
-  assert.match(shown.message, /"command": "make test"/);
+  assert.match(shown.message, /"command": "git push origin trunk"/);
 });
 
 test('requires an affirmative boolean approval, not a truthy RPC value', async () => {
