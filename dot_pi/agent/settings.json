@@ -35,7 +35,7 @@
   "subagents": {
     "defaultExtensions": ["~/.pi/agent/extensions/execution-guard.ts"],
     "defaultModel": "openai-codex/gpt-6-luna",
-    "defaultThinking": "medium",
+    "defaultThinking": "max",
     "modelScope": {
       "enforce": true,
       "strict": true,
@@ -44,9 +44,21 @@
       ]
     },
     "agentOverrides": {
+      "worker": {
+        "thinking": "max"
+      },
+      "delegate": {
+        "thinking": "max"
+      },
       "scout": {
         "model": "openai-codex/gpt-6-luna",
-        "thinking": "low"
+        "thinking": "max"
+      },
+      "researcher": {
+        "thinking": "max"
+      },
+      "evidence-auditor": {
+        "thinking": "max"
       },
       "reviewer": {
         "model": "openai-codex/gpt-6-sol",

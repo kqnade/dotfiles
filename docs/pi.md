@@ -11,7 +11,9 @@ canonical configuration for every machine, including packages, subagents, LSP, t
 `openai-codex/gpt-6-sol`, and `xhigh` thinking. `Ctrl+P` cycles through GPT-6 Astra,
 Sol, and Luna, with `medium`, `xhigh`, and `max` thinking respectively. `/model` remains
 available for explicit model selection. Subagents and commit-message generation use
-`openai-codex/gpt-6-luna`. The `pi` shell function starts Pi through
+`openai-codex/gpt-6-luna`. Luna builtins `worker`, `delegate`, `scout`, `researcher`, and
+`evidence-auditor` use `max` thinking; the Sol `reviewer` and `oracle` remain at `high`.
+The one-shot `git cc` message generator uses `medium`. The `pi` shell function starts Pi through
 `~/.local/bin/pi-telemetry`, reading the New Relic ingest key from 1Password.
 `PI_NEW_RELIC_ENABLE=0 pi` disables export. An explicit `PI_NEW_RELIC_API_KEY`
 can supply the ingest key without 1Password. `/telemetry-status` flushes pending

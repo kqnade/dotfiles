@@ -56,6 +56,16 @@ class ClientWorkflowResetTests(unittest.TestCase):
         ])
         self.assertEqual(settings["defaultModel"], "gpt-6-sol")
         self.assertEqual(settings["defaultThinkingLevel"], "xhigh")
+        self.assertEqual(settings["subagents"]["defaultThinking"], "max")
+        for name in ("worker", "delegate", "scout", "researcher", "evidence-auditor"):
+            self.assertEqual(settings["subagents"]["agentOverrides"][name]["thinking"], "max")
+        self.assertEqual(
+            settings["subagents"]["agentOverrides"]["scout"]["model"],
+            "openai-codex/gpt-6-luna",
+        )
+        for name in ("reviewer", "oracle"):
+            self.assertEqual(settings["subagents"]["agentOverrides"][name]["model"], "openai-codex/gpt-6-sol")
+            self.assertEqual(settings["subagents"]["agentOverrides"][name]["thinking"], "high")
         for model, thinking in (("astra", "medium"), ("sol", "xhigh"), ("luna", "max")):
             self.assertEqual(settings["modelThinkingLevels"][f"openai-codex/gpt-6-{model}"], thinking)
 
