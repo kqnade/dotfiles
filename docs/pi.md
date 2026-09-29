@@ -17,6 +17,25 @@ available for explicit model selection. Subagents and commit-message generation 
 can supply the ingest key without 1Password. `/telemetry-status` flushes pending
 records and reports HTTP delivery status, queue sizes, errors, and dropped records.
 
+## Execution approvals
+
+`execution-guard.ts` allows the builtin `read`, `grep`, `find`, and `ls` tools. Every other Pi tool call,
+including shell execution, writes, edits, and custom tools, requires the native UI to approve that exact
+invocation once in the current working directory. Dialogs are serialized. Declines, unavailable UI,
+and UI errors fail closed; no session-wide grants or model/chat-text approval are used. Direct `git commit`
+and detected explicit signing or hook bypasses are blocked; use `git cc` for commits.
+
+This is an execution guard, not an OS sandbox. Shell commands are not parsed as a security language:
+compound commands, substitutions, scripts, wrappers, mutable code, manually launched processes, and
+extensions that are not loaded can cross the boundary. The human sees and approves the complete shell
+invocation rather than relying on a command denylist. Native pi-subagents children receive the guard
+through `subagents.defaultExtensions`; a child or project configuration that explicitly replaces its
+extension list can omit it. External CLI agent profiles remain disabled.
+
+An existing regular `~/.pi/agent/AGENTS.md` must be compared with `dot_agents/AGENTS.md` before first
+apply. If different, reconcile and preserve its instructions first: applying the managed adapter replaces
+the file with a symlink. No automatic migration or backup is performed.
+
 ## New Relic
 
 The extension sends logs, dimensional metrics, and distributed traces using

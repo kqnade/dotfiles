@@ -47,6 +47,9 @@ Skillsは現在の利用者の依頼、repository規約、client/accountの制�
 
 委譲には現在のclientの認可された仕組みを使い、その実行規約に従います。Piでは`pi-subagents`、
 Claudeでは認可された同accountの仕組みを使い、利用できないときに別CLIへ切り替えません。
+Piのnative childrenはuser settingsの`subagents.defaultExtensions`からexecution guardを読み込みます。
+Pi子agentの`permissions: ask`はLLM判断であり、人間の許可ではありません。明示的なextension listで
+guardを置換した子、未ロードextension、外部processにはこのguardが及びません。
 OrcaやHerdrでのterminal操作は、その操作が必要な依頼に限ります。Skillにmodelやterminalを固定しません。
 
 ## このrepositoryの状態保存

@@ -235,10 +235,13 @@ with tempfile.TemporaryDirectory() as temp_dir:
         "openai-codex/gpt-6-sol"
     ) != "xhigh":
         fail("Canonical Pi settings did not pin GPT-6 Sol to xhigh thinking")
-    if rendered_pi_settings.get("subagents", {}).get("defaultModel") != (
-        "openai-codex/gpt-6-luna"
-    ):
+    rendered_subagents = rendered_pi_settings.get("subagents", {})
+    if rendered_subagents.get("defaultModel") != "openai-codex/gpt-6-luna":
         fail("Canonical Pi settings did not pin subagents to GPT-6 Luna")
+    if rendered_subagents.get("defaultExtensions") != [
+        "~/.pi/agent/extensions/execution-guard.ts"
+    ]:
+        fail("Canonical Pi settings did not load the execution guard in native children")
     configured_typescript_server = (
         rendered_pi_settings.get("lsp", {}).get("servers", {}).get("typescript")
     )

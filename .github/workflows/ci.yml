@@ -45,7 +45,7 @@ jobs:
           mise exec -- python3 scripts/ci/test-codex-usage-exporter.py
           mise exec -- python3 scripts/ci/test-pi-telemetry.py
           mise exec -- python3 scripts/ci/test-git-cc.py
-          mise exec -- node --test scripts/ci/test-pi-telemetry-events.mjs scripts/ci/test-pi-new-relic-exporter.mjs scripts/ci/test-pi-new-relic-extension.mjs scripts/ci/test-pi-ask-user.mjs scripts/ci/test-pi-otlp.mjs
+          mise exec -- node --experimental-strip-types --test scripts/ci/test-pi-telemetry-events.mjs scripts/ci/test-pi-new-relic-exporter.mjs scripts/ci/test-pi-new-relic-extension.mjs scripts/ci/test-pi-ask-user.mjs scripts/ci/test-pi-execution-guard.mjs scripts/ci/test-pi-otlp.mjs
           mise exec -- python3 scripts/ci/test-claude-settings.py
           mise exec -- python3 scripts/ci/test-client-workflow-reset.py
           mise exec -- python3 scripts/ci/test-herdr-worktree.py
