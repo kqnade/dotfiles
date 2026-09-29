@@ -18,7 +18,9 @@
   },
   "steeringMode": "one-at-a-time",
   "enabledModels": [
-    "openai-codex/*"
+    "openai-codex/gpt-6-astra",
+    "openai-codex/gpt-6-sol",
+    "openai-codex/gpt-6-luna"
   ],
   "showHardwareCursor": true,
   "defaultTools": [
@@ -77,9 +79,7 @@
   "modelThinkingLevels": {
     "openai-codex/gpt-6-astra": "medium",
     "openai-codex/gpt-6-sol": "xhigh",
-    "openai-codex/gpt-6-luna": "max",
-    "openai-codex/gpt-5.3-codex-spark": "medium",
-    "openai-codex/gpt-5.6-terra": "high"
+    "openai-codex/gpt-6-luna": "max"
   },
   "warnings": {
     "anthropicExtraUsage": true

@@ -39,6 +39,18 @@ class ClientWorkflowResetTests(unittest.TestCase):
             {"operations.md"},
         )
 
+    def test_pi_model_cycle_contains_the_three_primary_models(self) -> None:
+        settings = json.loads((ROOT / "dot_pi/agent/settings.json").read_text())
+        self.assertEqual(settings["enabledModels"], [
+            "openai-codex/gpt-6-astra",
+            "openai-codex/gpt-6-sol",
+            "openai-codex/gpt-6-luna",
+        ])
+        self.assertEqual(settings["defaultModel"], "gpt-6-sol")
+        self.assertEqual(settings["defaultThinkingLevel"], "xhigh")
+        for model, thinking in (("astra", "medium"), ("sol", "xhigh"), ("luna", "max")):
+            self.assertEqual(settings["modelThinkingLevels"][f"openai-codex/gpt-6-{model}"], thinking)
+
     def test_skill_metadata_and_references_are_portable(self) -> None:
         for name in sorted(SKILLS):
             with self.subTest(skill=name):
@@ -89,6 +101,11 @@ class ClientWorkflowResetTests(unittest.TestCase):
                 ".codex/AGENTS.md": "old Codex rules\n",
                 ".codex/agents/luna-parallelizer.toml": "old Codex agent\n",
                 ".config/opencode/AGENTS.md": "old OpenCode rules\n",
+                ".pi/agent/extensions/btw.ts": "old side conversation entry\n",
+                ".pi/agent/extensions/lib/btw-session.mjs": "old side session factory\n",
+                ".pi/agent/extensions/lib/vendor/pi-btw.ts": "old side conversation implementation\n",
+                ".pi/agent/extensions/lib/vendor/pi-btw.LICENSE": "old vendor license\n",
+                ".pi/agent/extensions/lib/vendor/README.md": "old vendor documentation\n",
             }
             for relative, contents in old_targets.items():
                 target = home / relative
@@ -103,6 +120,10 @@ class ClientWorkflowResetTests(unittest.TestCase):
                 ".agents/skills/assumption-pruning/user.md": "user notes\n",
                 ".agents/skills/context-handoff/user.md": "user handoff notes\n",
                 ".pi/agent/AGENTS.md": "user Pi instructions\n",
+                ".pi/agent/auth.json": '{"test": "runtime credential placeholder"}\n',
+                ".pi/agent/sessions/example.jsonl": '{"type": "session"}\n',
+                ".pi/agent/extensions/user.ts": "user extension\n",
+                ".pi/agent/extensions/lib/vendor/user.ts": "user vendor file\n",
                 ".claude/rules/user.md": "user Claude rule\n",
                 ".codex/agents/user.toml": "user Codex agent\n",
                 ".config/opencode/user.md": "user OpenCode file\n",

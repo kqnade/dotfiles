@@ -3,7 +3,9 @@
 Pi uses the ChatGPT OAuth provider (`openai-codex`). Its local settings and OAuth
 credentials live under `~/.pi/agent/`. The complete global settings file is managed as the
 canonical configuration for every machine, including packages, subagents, LSP, the startup model
-`openai-codex/gpt-6-sol`, and `xhigh` thinking. Subagents and commit-message generation use
+`openai-codex/gpt-6-sol`, and `xhigh` thinking. `Ctrl+P` cycles through GPT-6 Astra,
+Sol, and Luna, with `medium`, `xhigh`, and `max` thinking respectively. `/model` remains
+available for explicit model selection. Subagents and commit-message generation use
 `openai-codex/gpt-6-luna`. The `pi` shell function starts Pi through
 `~/.local/bin/pi-telemetry`, reading the New Relic ingest key from 1Password.
 `PI_NEW_RELIC_ENABLE=0 pi` disables export. An explicit `PI_NEW_RELIC_API_KEY`
@@ -49,9 +51,9 @@ accepted the request, not that a subsequent query has verified ingestion.
 | Context use and compaction size | `pi.context.{tokens,window,percent}`, `pi.compaction.tokens_before` |
 | Process memory and CPU since previous turn sample | `pi.process.{rss.bytes,heap.bytes,cpu.user.us,cpu.system.us}` |
 
-Metrics carry `provider`, `model`, `thinking`, execution `mode`, and `conversation`
-(`main`, `btw`, or `btw_summary`). Spans relate
-sessions, agent runs, turns, model responses, and tools using generated trace IDs.
+Metrics carry `provider`, `model`, `thinking`, execution `mode`, and
+`conversation = main`. Spans relate sessions, agent runs, turns, model responses,
+and tools using generated trace IDs.
 An agent run may contain multiple model turns and tool executions.
 
 Reasoning tokens are a subset of output tokens and are omitted when unavailable;
@@ -103,21 +105,14 @@ The local UI uses a quiet startup, collapsed thinking, and a two-line footer for
 model, thinking level, context use, directory, Git state, and cost. The footer,
 subagent, web-access, and LSP packages are configured in Pi's local settings.
 
-## Side conversations
+## Interactive questions
 
-The managed `btw.ts` extension includes pi-btw 0.4.1 with telemetry-enabled
-side sessions. Do not also enable the npm pi-btw extension: both register the
-same commands. The upstream license and source information accompany the copy
-under `extensions/lib/vendor/`.
+The `ask_user` tool presents a single decision through Pi's built-in selector,
+with two to five choices and an `Other (type your own)` input option. It can also
+ask for free text without offering choices. The agent uses it when an unresolved
+decision blocks progress, not for routine status updates.
 
-- `/btw question` opens or continues a side conversation with the main context.
-- `/btw:tangent question` uses an independent context.
-- `Alt+/` switches focus; `Esc` dismisses the overlay.
-- `/btw:inject` sends the side thread to the main agent.
-- `/btw:summarize` sends a summary instead.
-
-Side conversations inherit the main model unless `/btw:model` overrides it.
-Both side and summary sessions load the same metadata-only telemetry extension;
-their session shutdown waits for export. Query `conversation = 'btw'` or
-`conversation = 'btw_summary'` to isolate their usage. Each session has its own
-trace and export queue; the main `/telemetry-status` reports its own queue.
+Questions work in the terminal UI and clients supporting Pi's RPC dialog protocol.
+They have no automatic timeout or default answer. Cancelling or submitting empty
+text stops the current agent operation without giving an answer or authorization.
+Headless calls fail explicitly; the agent must ask in the conversation instead.

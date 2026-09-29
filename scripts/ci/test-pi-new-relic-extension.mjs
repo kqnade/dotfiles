@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import extension from '../../dot_pi/agent/extensions/new-relic.ts';
 
-test('Pi hooks deliver metadata through both New Relic APIs', async () => {
+test('Pi hooks deliver metadata through New Relic OTLP', async () => {
   const savedFetch = globalThis.fetch;
   const savedKey = process.env.PI_NEW_RELIC_API_KEY;
   const savedEnable = process.env.PI_NEW_RELIC_ENABLE;
@@ -14,7 +14,7 @@ test('Pi hooks deliver metadata through both New Relic APIs', async () => {
     return { status: 202, json: async () => ({}) };
   };
   try {
-    extension({ on: (name, handler) => handlers.set(name, handler), registerCommand() {}, getThinkingLevel: () => 'high' }, { conversation: 'btw' });
+    extension({ on: (name, handler) => handlers.set(name, handler), registerCommand() {}, getThinkingLevel: () => 'high' });
     const ctx = { cwd: '/tmp', mode: 'print', model: { provider: 'openai-codex', id: 'test' }, getContextUsage: () => ({ tokens: 10, contextWindow: 100, percent: 10 }) };
     for (const type of ['session_start', 'agent_start', 'turn_start']) await handlers.get(type)({ type }, ctx);
     await handlers.get('input')({ type: 'input', text: 'PRIVATE_PROMPT' }, ctx);
@@ -31,7 +31,7 @@ test('Pi hooks deliver metadata through both New Relic APIs', async () => {
       if (b.body.resourceSpans) return b.body.resourceSpans[0].scopeSpans[0].spans;
       return b.body.resourceLogs[0].scopeLogs[0].logRecords;
     });
-    assert(records.every(r => r.attributes.some(a => a.key === 'conversation' && a.value.stringValue === 'btw')));
+    assert(records.every(r => r.attributes.some(a => a.key === 'conversation' && a.value.stringValue === 'main')));
   } finally {
     globalThis.fetch = savedFetch;
     if (savedKey === undefined) delete process.env.PI_NEW_RELIC_API_KEY; else process.env.PI_NEW_RELIC_API_KEY = savedKey;

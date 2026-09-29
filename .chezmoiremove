@@ -138,3 +138,8 @@ Library/LaunchAgents/com.user.yaskkserv2.plist
 .codex/agents/spark-worker.toml
 .codex/AGENTS.md
 .config/opencode/AGENTS.md
+.pi/agent/extensions/btw.ts
+.pi/agent/extensions/lib/btw-session.mjs
+.pi/agent/extensions/lib/vendor/pi-btw.ts
+.pi/agent/extensions/lib/vendor/pi-btw.LICENSE
+.pi/agent/extensions/lib/vendor/README.md
