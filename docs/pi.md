@@ -21,9 +21,9 @@ records and reports HTTP delivery status, queue sizes, errors, and dropped recor
 
 ## Execution approvals
 
-Strict execution approval is **opt-in**, not enabled by default. Start a session with
-`PI_EXECUTION_GUARD=1 pi` to enable it. Without this opt-in, remote authorization is an
-instruction policy, not a tool-level execution barrier.
+Strict execution approval is **enabled by default**. Start a session with
+`PI_EXECUTION_GUARD=0 pi` to opt out; only the exact value `0` disables the guard.
+When disabled, remote authorization remains an instruction policy, not a tool-level execution barrier.
 
 A parent session with a TUI or RPC dialog UI owns a private Unix socket. Native foreground and
 background children inherit its session-specific endpoint through `PI_EXECUTION_APPROVAL_CHANNEL`.

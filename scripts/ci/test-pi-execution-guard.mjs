@@ -81,10 +81,10 @@ test('parent lifecycle routes a child call to the UI, then revokes its channel',
   assert.equal((await child.get('tool_call')(event, childContext)).block, true);
 });
 
-test('a separate headless extension executes a write only after parent consent', async t => {
+test('a separate headless extension requires parent consent by default', async t => {
   const directory = await mkdtemp(join(tmpdir(), 'pi-guard-test-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
-  const parent = guardHandlers('1');
+  const parent = guardHandlers();
   let approve = true;
   let prompts = 0;
   const context = { hasUI: true, cwd: directory, ui: { confirm: async () => { prompts++; return approve; } } };
@@ -106,9 +106,10 @@ test('a separate headless extension executes a write only after parent consent',
   for (const allowed of [true, false]) {
     approve = allowed;
     const target = join(directory, allowed ? 'approved' : 'denied');
+    const env = { ...process.env, TEST_TARGET: target };
+    delete env.PI_EXECUTION_GUARD;
     const { stdout } = await promisify(execFile)(process.execPath, ['--input-type=module', '-e', script], {
-      cwd: directory, timeout: 5000,
-      env: { ...process.env, PI_EXECUTION_GUARD: '1', TEST_TARGET: target },
+      cwd: directory, timeout: 5000, env,
     });
     assert.equal(JSON.parse(stdout).blocked, !allowed);
     if (allowed) assert.equal(await readFile(target, 'utf8'), 'approved');
@@ -141,10 +142,11 @@ test('changing a displayed invocation invalidates approval', async () => {
   assert.equal(result.allowed, false);
 });
 
-test('strict approval is opt-in so ordinary native workers remain usable', () => {
-  assert.equal(guardHandler(undefined), undefined);
-  assert.equal(guardHandler('0'), undefined);
-  assert.equal(typeof guardHandler('1'), 'function');
+test('strict approval is enabled unless explicitly opted out with 0', () => {
+  for (const value of [undefined, '', '1', 'false', 'typo']) {
+    assert.deepEqual([...guardHandlers(value).keys()], ['session_start', 'session_shutdown', 'tool_call']);
+  }
+  assert.equal(guardHandlers('0').size, 0);
 });
 
 test('configures the guard for native children and keeps external CLI profiles disabled', () => {

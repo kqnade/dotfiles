@@ -14,7 +14,7 @@ function parseChannel(value: string | undefined) {
 }
 
 export default function (pi: ExtensionAPI) {
-  if (process.env.PI_EXECUTION_GUARD !== '1') return;
+  if (process.env.PI_EXECUTION_GUARD === '0') return;
 
   const inherited = process.env[APPROVAL_ENV];
   let lifetime = new AbortController();
