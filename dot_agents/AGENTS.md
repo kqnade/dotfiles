@@ -15,6 +15,16 @@
 - Handle failures explicitly. Do not swallow errors, disguise failure as success, or claim a
   fallback worked without verifying it.
 
+# Delegation
+
+- Delegate one independently verifiable change or focused question per assignment. Specify its
+  scope, completion criteria, relevant checks, and the evidence to return.
+- Split independent changes and dependent phases before dispatch. Inspect each result before
+  assigning work that depends on it; do not give one worker a multi-change implementation and
+  delivery plan.
+- Keep small changes local when delegation would add more overhead than value. Report blockers
+  and unfinished work; inspect partial results before retrying, without silently expanding scope.
+
 # Local commits
 
 - Finish completed implementation, fixes, and repository configuration changes with a local
@@ -22,12 +32,13 @@
   the user explicitly requests no commit, or when repository rules prohibit it or require approval.
 - Inspect Git status first. Preserve pre-existing and concurrent changes, including staged work.
   Stage only this task's paths or hunks, run appropriate checks and `git diff --check`, and inspect
-  the staged diff. Commit only cohesive, verified changes. If safe isolation or verification is
-  blocked, leave the changes intact and report the blocker instead of claiming completion.
+  the staged diff. Split independent changes into separate, verified commits so each remains
+  useful for bisect. If safe isolation or verification is blocked, leave the changes intact and
+  report the blocker instead of claiming completion.
 - Follow the repository's approved commit workflow; otherwise use `git cc` when available.
   If no helper is available, use `git commit` with the same message style. A helper failure is a
   blocker, not permission to bypass its checks or switch clients/accounts.
-- Every commit message must use `git cc` style: `<gitmoji> <type>: <imperative English summary>`,
+- Every commit message must use `git cc` style: `<gitmoji> <type>[(scope)]: <imperative English summary>`,
   under 72 characters, following the repository's recent commit conventions. Use these mappings:
   feat ✨, fix 🐛, refactor ♻️, docs 📝, test ✅, chore 🔧, perf ⚡️, ci 👷, style 🎨,
   revert ⏪️, build 📦.

@@ -98,8 +98,10 @@ Repository instructions use `AGENTS.md`; execution settings and authorization re
 Four on-demand skills live in `dot_agents/skills/`: `test-driven-development`, `evidence-review`,
 `context-handoff`, and `sanitize-artifacts`. Pi discovers their deployed `~/.agents/skills/` files;
 Claude uses the links in `dot_claude/skills/`. Development and review require the sanitizer check.
-Do not deploy global AGENTS files, shared global rules, custom subagent instructions, or a workflow
-router. See `docs/ai-clients.md` for client boundaries and `docs/ai-workflows.md` for the workflow.
+Common user instructions live in `dot_agents/AGENTS.md`; Pi loads them through
+`dot_pi/agent/symlink_AGENTS.md`. Keep client-specific execution settings in their adapters.
+Do not deploy custom subagent instructions or a workflow router. See `docs/ai-clients.md` for
+client boundaries and `docs/ai-workflows.md` for the workflow.
 
 - Claude safety rules, settings, and hooks live in `dot_claude/`. Claude may run only in
   repositories whose GitHub remote owner is `livesense-inc` or `jobtalk`; the wrapper and hooks

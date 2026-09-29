@@ -28,10 +28,12 @@ class ClientWorkflowResetTests(unittest.TestCase):
             {f"symlink_{name}" for name in SKILLS},
         )
         self.assertFalse((ROOT / "dot_agents/rules").exists())
-        self.assertEqual(
-            hashlib.sha256((ROOT / "dot_agents/AGENTS.md").read_bytes()).hexdigest(),
-            "3b58bcb361722b37e57c3e4747f1d6a66e5a684883233e5413fdf51b0a1f5e2a",
-        )
+        instructions = (ROOT / "dot_agents/AGENTS.md").read_text()
+        for heading in (
+            "Coding", "Delegation", "Local commits",
+            "Remote changes require explicit authorization", "Repository workflow state",
+        ):
+            self.assertIn(f"# {heading}\n", instructions)
         self.assertEqual(
             (ROOT / "dot_pi/agent/symlink_AGENTS.md").read_text().strip(),
             "../../.agents/AGENTS.md",

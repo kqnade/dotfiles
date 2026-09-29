@@ -50,8 +50,9 @@ telemetryを無効にしてもこの確認は残り、1Passwordへの問い合�
 
 repositoryの共通指示は`AGENTS.md`に置き、Claudeは`CLAUDE.md`も併せて読み込みます。
 開発・レビュー・引き継ぎの3つのSkillsと`sanitize-artifacts`を配備します。
-Piは`~/.agents/skills/`を読み、Claudeは同じ正本へのリンクを使います。global AGENTS、
-global開発ルール、独自のsubagentsやworkflow routerは配置しません。
+Piは`~/.agents/skills/`を読み、Claudeは同じ正本へのリンクを使います。共通のuser instructionsは
+`dot_agents/AGENTS.md`を正本とし、Piの`~/.pi/agent/AGENTS.md`からリンクして読み込みます。
+独自のsubagent指示やworkflow routerは配置しません。
 実行設定・認証・保護はclientごとに分離し、Claudeのautomatic memoryは無効です。
 詳細は[AI client運用](ai-clients.md)と[開発workflow](ai-workflows.md)を参照してください。
 
