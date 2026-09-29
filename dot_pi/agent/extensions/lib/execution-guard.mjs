@@ -25,20 +25,34 @@ export function isForbiddenCommitBypass({ toolName, input }) {
   )) || /\bGIT_CONFIG_(?:COUNT|KEY_[0-9]+|VALUE_[0-9]+)=/.test(command);
 }
 
-export function confirmOneInvocation(invocation, context) {
+export function confirmOneInvocation(invocation, context, { signal = context.signal } = {}) {
   const showDialog = async () => {
+    if (signal?.aborted) return { allowed: false, reason: 'Approval request cancelled.' };
     if (!context.hasUI) {
       return { allowed: false, reason: 'No interactive approval UI is available.' };
     }
     const cwd = resolve(context.cwd);
     const details = JSON.stringify(invocation.input, null, 2);
-    const approved = await context.ui.confirm(
-      `Approve one ${invocation.toolName} call?`,
-      `This approves this exact invocation once. It does not grant future permission.\ncwd: ${cwd}\ntool: ${invocation.toolName}\ninput:\n${details}`,
-    );
-    return approved === true
-      ? { allowed: true }
-      : { allowed: false, reason: 'The user did not approve this invocation.' };
+    let cancel;
+    const cancelled = new Promise(resolve => {
+      cancel = () => resolve(false);
+      signal?.addEventListener('abort', cancel, { once: true });
+    });
+    try {
+      const approved = await Promise.race([
+        context.ui.confirm(
+          `Approve one ${invocation.toolName} call?`,
+          `This approves this exact invocation once. It does not grant future permission.\ncwd: ${cwd}\ntool: ${invocation.toolName}\ninput:\n${details}`,
+          { signal },
+        ),
+        cancelled,
+      ]);
+      return approved === true && !signal?.aborted
+        ? { allowed: true }
+        : { allowed: false, reason: 'The user did not approve this invocation.' };
+    } finally {
+      signal?.removeEventListener('abort', cancel);
+    }
   };
 
   const result = confirmationQueue.then(showDialog, showDialog);

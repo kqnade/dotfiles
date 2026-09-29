@@ -85,6 +85,37 @@ test('propagates UI failures rather than treating them as approval', async () =>
   }), /RPC cancelled/);
 });
 
+test('an already cancelled invocation opens no approval dialog', async () => {
+  const controller = new AbortController();
+  controller.abort();
+  const result = await confirmOneInvocation(invocation, {
+    cwd: '/tmp/work', hasUI: true, signal: controller.signal,
+    ui: { confirm: async () => { assert.fail('cancelled dialog opened'); } },
+  });
+  assert.equal(result.allowed, false);
+});
+
+test('cancellation releases the queue and a late approval cannot authorize execution', async () => {
+  const controller = new AbortController();
+  let answer;
+  const opened = Promise.withResolvers();
+  const pending = confirmOneInvocation(invocation, {
+    cwd: '/tmp/work', hasUI: true, signal: controller.signal,
+    ui: { confirm: (_title, _message, options) => {
+      assert.equal(options.signal, controller.signal);
+      opened.resolve();
+      return new Promise(resolve => { answer = resolve; });
+    } },
+  });
+  await opened.promise;
+  controller.abort();
+  assert.equal((await pending).allowed, false);
+  assert.equal((await confirmOneInvocation(invocation, {
+    cwd: '/tmp/work', hasUI: true, ui: { confirm: async () => true },
+  })).allowed, true);
+  answer(true);
+});
+
 test('serializes overlapping approval dialogs', async () => {
   let active = 0;
   let maximum = 0;
