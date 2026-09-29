@@ -8,7 +8,7 @@ import { createApprovalServer, requestApproval } from '../../dot_pi/agent/extens
 
 const invocation = {
   toolName: 'bash', toolCallId: 'tool-1', cwd: '/tmp/child-work',
-  input: { command: 'printf approved' }, childSessionId: 'child-session',
+  input: { command: 'printf approved' }, childSessionId: 'child-session', purpose: '承認経路のテストです。',
 };
 const run = promisify(execFile);
 
@@ -117,5 +117,7 @@ test('oversized or malformed invocations cannot open a dialog', async t => {
   const server = await serve(t, () => { assert.fail('invalid prompt'); });
   await assert.rejects(requestApproval(server.endpoint, { ...invocation, cwd: 'relative' }), /400/);
   await assert.rejects(requestApproval(server.endpoint, { ...invocation, input: 'not an object' }), /400/);
+  await assert.rejects(requestApproval(server.endpoint, { ...invocation, purpose: {} }), /400/);
+  await assert.rejects(requestApproval(server.endpoint, { ...invocation, purpose: 'x'.repeat(1025) }), /400/);
   await assert.rejects(requestApproval(server.endpoint, { ...invocation, input: { command: 'x'.repeat(65536) } }), /too large/);
 });

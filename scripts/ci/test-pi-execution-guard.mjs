@@ -5,7 +5,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import { approvalReason, isDirectGitCommit, isForbiddenCommitBypass, confirmOneInvocation } from '../../dot_pi/agent/extensions/lib/execution-guard.mjs';
+import { approvalReason, isDirectGitCommit, isForbiddenCommitBypass, confirmOneInvocation, toolCallPurpose, MAX_PURPOSE_LENGTH } from '../../dot_pi/agent/extensions/lib/execution-guard.mjs';
 import executionGuard from '../../dot_pi/agent/extensions/execution-guard.ts';
 import { APPROVAL_ENV, createApprovalServer } from '../../dot_pi/agent/extensions/lib/approval-channel.mjs';
 import settings from '../../dot_pi/agent/settings.json' with { type: 'json' };
@@ -41,7 +41,7 @@ test('a headless tool waits for its parent approval channel', async t => {
   });
   process.env[APPROVAL_ENV] = JSON.stringify(server.endpoint);
   const handlers = guardHandlers('1');
-  const context = { hasUI: false, cwd: '/tmp/child', sessionManager: { getSessionId: () => 'child-session' } };
+  const context = { hasUI: false, cwd: '/tmp/child', sessionManager: { getSessionId: () => 'child-session', getBranch: () => [] } };
   await handlers.get('session_start')?.({}, context);
   t.after(() => handlers.get('session_shutdown')?.({}, context));
   const event = { ...invocation, toolCallId: 'tool-1' };
@@ -62,14 +62,20 @@ test('parent lifecycle routes a child call to the UI, then revokes its channel',
   const firstChannel = process.env[APPROVAL_ENV];
   const child = guardHandlers('1');
   const childContext = {
-    hasUI: false, cwd: '/tmp/child', sessionManager: { getSessionId: () => 'child-session' },
+    hasUI: false, cwd: '/tmp/child', sessionManager: {
+      getSessionId: () => 'child-session',
+      getBranch: () => [{ type: 'message', message: { role: 'assistant', content: [
+        { type: 'text', text: '子の操作目的です。' }, { type: 'toolCall', id: 'tool-1' },
+      ] } }],
+    },
   };
   await child.get('session_start')({}, childContext);
   t.after(() => child.get('session_shutdown')({}, childContext));
   const event = { ...invocation, toolCallId: 'tool-1' };
   assert.equal(await child.get('tool_call')(event, childContext), undefined);
-  assert.match(displayed, /"cwd": "\/tmp\/child"/);
-  assert.match(displayed, /"childSessionId": "child-session"/);
+  assert.match(displayed, /作業場所: \/tmp\/child/);
+  assert.match(displayed, /子session: child-session/);
+  assert.match(displayed, /子の操作目的です/);
   approve = false;
   assert.equal((await child.get('tool_call')(event, childContext)).block, true);
   await parent.get('session_shutdown')({}, parentContext);
@@ -95,7 +101,7 @@ test('a separate headless extension gates a simulated external operation by defa
     import { writeFile } from 'node:fs/promises';
     const handlers = new Map();
     guard({ on: (event, handler) => handlers.set(event, handler) });
-    const context = { hasUI: false, cwd: process.cwd(), sessionManager: { getSessionId: () => 'child-' + process.pid } };
+    const context = { hasUI: false, cwd: process.cwd(), sessionManager: { getSessionId: () => 'child-' + process.pid, getBranch: () => [] } };
     await handlers.get('session_start')({}, context);
     const event = { toolName: 'bash', toolCallId: 'external-1', input: { command: 'curl https://example.invalid' } };
     const result = await handlers.get('tool_call')(event, context);
@@ -142,11 +148,118 @@ test('changing a displayed invocation invalidates approval', async () => {
   assert.equal(result.allowed, false);
 });
 
-test('strict approval is enabled unless explicitly opted out with 0', () => {
+test('external-operation approval is enabled unless explicitly opted out with 0', () => {
   for (const value of [undefined, '', '1', 'false', 'typo']) {
-    assert.deepEqual([...guardHandlers(value).keys()], ['session_start', 'session_shutdown', 'tool_call']);
+    assert.deepEqual([...guardHandlers(value).keys()], ['session_start', 'session_shutdown', 'before_agent_start', 'tool_call']);
   }
   assert.equal(guardHandlers('0').size, 0);
+});
+
+test('approval shows readable multiline input followed by the purpose instead of JSON', async () => {
+  let shown;
+  await confirmOneInvocation({
+    toolName: 'bash', toolCallId: 'call-1', childSessionId: 'child-1',
+    input: { command: 'git status --short\ngit push origin trunk', timeout: 10 },
+    purpose: '検証済みの変更をリモートへ送信します。',
+  }, { hasUI: true, cwd: '/tmp/work', ui: { confirm: async (_title, message) => { shown = message; return false; } } });
+  assert.match(shown, /操作: シェルコマンドを実行 \(bash\)/);
+  assert.match(shown, /作業場所: \/tmp\/work/);
+  assert.match(shown, /子session: child-1/);
+  assert.ok(shown.includes('  git status --short\n  git push origin trunk'));
+  assert.match(shown, /timeout: 10/);
+  assert.match(shown, /確認理由: Gitリモート/);
+  assert.match(shown, /目的（agentの説明・参考）:\n  検証済みの変更をリモートへ送信します/);
+  assert.ok(shown.indexOf('目的（') > shown.indexOf('コマンド:'));
+  assert.doesNotMatch(shown, /"(?:input|command|cwd)":/);
+});
+
+test('changing only the displayed purpose invalidates approval', async () => {
+  const mutable = { ...invocation, purpose: 'Original purpose' };
+  const result = await confirmOneInvocation(mutable, {
+    hasUI: true, cwd: '/tmp/work', ui: { confirm: async () => {
+      mutable.purpose = 'Different purpose';
+      return true;
+    } },
+  });
+  assert.equal(result.allowed, false);
+});
+
+test('purpose comes only from public text immediately preceding this tool call', async t => {
+  const handlers = guardHandlers();
+  let shown;
+  const context = {
+    hasUI: true, cwd: '/tmp/work', ui: { confirm: async (_title, message) => { shown = message; return false; } },
+    sessionManager: { getBranch: () => [
+      { type: 'message', message: { role: 'assistant', content: [
+        { type: 'text', text: 'Unrelated old explanation' }, { type: 'toolCall', id: 'old' },
+      ] } },
+      { type: 'message', message: { role: 'assistant', content: [
+        { type: 'thinking', thinking: 'Private reasoning' },
+        { type: 'text', text: '検証済みの変更をリモートへ送信します。' },
+        { type: 'toolCall', id: 'current' }, { type: 'toolCall', id: 'no-purpose' },
+        { type: 'text', text: 'Unrelated later explanation' },
+      ] } },
+    ] },
+  };
+  await handlers.get('session_start')({}, context);
+  t.after(() => handlers.get('session_shutdown')({}, context));
+  await handlers.get('tool_call')({ ...invocation, toolCallId: 'current' }, context);
+  assert.match(shown, /検証済みの変更をリモートへ送信/);
+  assert.doesNotMatch(shown, /Unrelated|Private reasoning/);
+  for (const toolCallId of ['no-purpose', 'absent']) {
+    await handlers.get('tool_call')({ ...invocation, toolCallId }, context);
+    assert.match(shown, /目的の説明は添えられていません/);
+    assert.doesNotMatch(shown, /検証済みの変更/);
+  }
+});
+
+test('the purpose guideline preserves existing prompt rules without duplication', () => {
+  const handler = guardHandlers().get('before_agent_start');
+  assert.equal(typeof handler, 'function');
+  const event = { systemPromptOptions: { promptGuidelines: ['Existing rule'] } };
+  handler(event);
+  handler(event);
+  assert.equal(event.systemPromptOptions.promptGuidelines.length, 2);
+  assert.equal(event.systemPromptOptions.promptGuidelines[0], 'Existing rule');
+  assert.match(event.systemPromptOptions.promptGuidelines[1], /目的.*日本語/);
+});
+
+test('purpose text is bounded without splitting Unicode characters', () => {
+  const branch = [{ type: 'message', message: { role: 'assistant', content: [
+    { type: 'text', text: '😀'.repeat(600) }, { type: 'toolCall', id: 'current' },
+  ] } }];
+  const purpose = toolCallPurpose(branch, 'current');
+  assert.ok(purpose.length <= MAX_PURPOSE_LENGTH);
+  assert.equal(purpose, '😀'.repeat(500) + '…（以下省略）');
+});
+
+test('readable approval preserves nested fields and escapes terminal controls', async () => {
+  let shown;
+  await confirmOneInvocation({ toolName: 'custom', toolCallId: 'id\nspoof', input: {
+    path: 'example.txt', edits: [{ oldText: 'before\nline', newText: 'after\nline' }],
+    options: { enabled: false, missing: null, emptyList: [], emptyObject: {} },
+    text: '\x1b[2J\rhidden\u202e',
+  }, purpose: '\x1b[8mexample' }, {
+    hasUI: true, cwd: '/tmp/work', ui: { confirm: async (_title, message) => { shown = message; return false; } },
+  });
+  assert.match(shown, /対象ファイル: example.txt/);
+  assert.match(shown, /変更前:\n\s+before\n\s+line/);
+  assert.match(shown, /変更後:\n\s+after\n\s+line/);
+  assert.match(shown, /enabled: false/);
+  assert.match(shown, /missing: null/);
+  assert.match(shown, /emptyList: （空の配列）/);
+  assert.match(shown, /emptyObject: （空のオブジェクト）/);
+  assert.doesNotMatch(shown, /[\x1b\r\u202e]/);
+  assert.ok(shown.includes('\\u001b[2J\\u000dhidden\\u202e'));
+  assert.ok(shown.includes('呼出ID: id\\nspoof'));
+});
+
+test('readable display does not weaken the exact argument comparison', async () => {
+  const mutable = { toolName: 'custom', input: { value: true } };
+  const result = await confirmOneInvocation(mutable, {
+    hasUI: true, cwd: '/tmp/work', ui: { confirm: async () => { mutable.input.value = 'true'; return true; } },
+  });
+  assert.equal(result.allowed, false);
 });
 
 test('configures the guard for native children and keeps external CLI profiles disabled', () => {
@@ -206,8 +319,8 @@ test('requires the native UI and refuses cancellation for one exact tool call an
     ui: { confirm: async (title, message) => { shown = { title, message }; return false; } },
   });
   assert.equal(denied.allowed, false);
-  assert.match(shown.message, /"cwd": "\/tmp\/work"/);
-  assert.match(shown.message, /"command": "git push origin trunk"/);
+  assert.match(shown.message, /作業場所: \/tmp\/work/);
+  assert.match(shown.message, /コマンド:\n  git push origin trunk/);
 });
 
 test('requires an affirmative boolean approval, not a truthy RPC value', async () => {

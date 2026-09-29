@@ -37,6 +37,76 @@ export function isForbiddenCommitBypass({ toolName, input }) {
   )) || /\bGIT_CONFIG_(?:COUNT|KEY_[0-9]+|VALUE_[0-9]+)=/.test(command);
 }
 
+export const MAX_PURPOSE_LENGTH = 1024;
+
+export function toolCallPurpose(branch, toolCallId) {
+  if (!toolCallId) return undefined;
+  for (const entry of branch.slice().reverse()) {
+    const message = entry.message;
+    if (entry.type !== 'message' || message?.role !== 'assistant' || !Array.isArray(message.content)) continue;
+    const index = message.content.findIndex(block => block.type === 'toolCall' && block.id === toolCallId);
+    if (index < 0) continue;
+    const preceding = message.content.slice(0, index);
+    const previousCall = preceding.findLastIndex(block => block.type === 'toolCall');
+    const text = preceding.slice(previousCall + 1).filter(block => block.type === 'text')
+      .map(block => block.text).join('\n').trim();
+    if (!text) return undefined;
+    const characters = Array.from(text);
+    return characters.slice(0, 500).join('') + (characters.length > 500 ? '…（以下省略）' : '');
+  }
+}
+
+const ACTIONS = {
+  bash: 'シェルコマンドを実行', powershell: 'PowerShellコマンドを実行',
+  web_search: '外部サービスで検索', source_check: '外部情報で主張を確認', fetch_content: '指定先から内容を取得',
+};
+const FIELD_LABELS = { command: 'コマンド', path: '対象ファイル', content: '内容', edits: '変更箇所', oldText: '変更前', newText: '変更後', query: '検索語', queries: '検索語', url: '取得先', urls: '取得先' };
+
+function visibleText(value) {
+  return String(value).replace(/[\u0000-\u0009\u000b-\u001f\u007f-\u009f\u061c\u200e\u200f\u2028-\u202e\u2066-\u2069]/g,
+    character => `\\u${character.charCodeAt(0).toString(16).padStart(4, '0')}`);
+}
+
+function oneLine(value) {
+  return visibleText(value).replace(/\n/g, '\\n');
+}
+
+function formatValue(value, indent = '') {
+  if (typeof value === 'string') {
+    const text = value === '' ? '（空文字列）' : visibleText(value);
+    return text.split('\n').map(line => `${indent}${line}`).join('\n');
+  }
+  if (Array.isArray(value)) {
+    return value.length ? value.map((item, index) => `${indent}[${index + 1}]\n${formatValue(item, indent + '  ')}`).join('\n') : `${indent}（空の配列）`;
+  }
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value);
+    return entries.length ? entries.map(([key, item]) => {
+      const label = Object.hasOwn(FIELD_LABELS, key) ? FIELD_LABELS[key] : oneLine(key);
+      const body = formatValue(item);
+      return body.includes('\n') || key === 'command'
+        ? `${indent}${label}:\n${body.split('\n').map(line => indent + '  ' + line).join('\n')}`
+        : `${indent}${label}: ${body}`;
+    }).join('\n') : `${indent}（空のオブジェクト）`;
+  }
+  return `${indent}${String(value)}`;
+}
+
+function formatApproval(invocation, cwd) {
+  const action = Object.hasOwn(ACTIONS, invocation.toolName) ? ACTIONS[invocation.toolName] : 'ツールを実行';
+  return [
+    `操作: ${action} (${oneLine(invocation.toolName)})`,
+    `作業場所: ${oneLine(resolve(cwd))}`,
+    ...(invocation.childSessionId ? [`子session: ${oneLine(invocation.childSessionId)}`] : []),
+    ...(invocation.toolCallId ? [`呼出ID: ${oneLine(invocation.toolCallId)}`] : []),
+    '', formatValue(invocation.input), '',
+    `確認理由: ${approvalReason(invocation) ?? 'この操作の個別確認が要求されています。'}`,
+    '目的（agentの説明・参考）:',
+    formatValue(invocation.purpose || '目的の説明は添えられていません。', '  '),
+    '', '承認の対象はこの1回のみです。',
+  ].join('\n');
+}
+
 export function confirmOneInvocation(invocation, context, { signal = context.signal } = {}) {
   const showDialog = async () => {
     if (signal?.aborted) return { allowed: false, reason: 'Approval request cancelled.' };
@@ -45,8 +115,8 @@ export function confirmOneInvocation(invocation, context, { signal = context.sig
     }
     const describe = () => JSON.stringify({
       cwd: resolve(context.cwd), childSessionId: invocation.childSessionId,
-      toolCallId: invocation.toolCallId, tool: invocation.toolName, input: invocation.input,
-    }, null, 2);
+      toolCallId: invocation.toolCallId, tool: invocation.toolName, input: invocation.input, purpose: invocation.purpose,
+    });
     const details = describe();
     let cancel;
     const cancelled = new Promise(resolve => {
@@ -56,8 +126,8 @@ export function confirmOneInvocation(invocation, context, { signal = context.sig
     try {
       const approved = await Promise.race([
         context.ui.confirm(
-          'Approve one tool call?',
-          `This approves this exact invocation once. It does not grant future permission.\n${details}`,
+          'この操作を許可しますか？',
+          formatApproval(invocation, context.cwd),
           { signal },
         ),
         cancelled,

@@ -1,6 +1,6 @@
 import type { ExtensionAPI, ToolCallEvent } from '@earendil-works/pi-coding-agent';
 import { APPROVAL_ENV, createApprovalServer, requestApproval } from './lib/approval-channel.mjs';
-import { approvalReason, confirmOneInvocation, isDirectGitCommit, isForbiddenCommitBypass } from './lib/execution-guard.mjs';
+import { approvalReason, confirmOneInvocation, isDirectGitCommit, isForbiddenCommitBypass, toolCallPurpose } from './lib/execution-guard.mjs';
 
 function commitBlock(invocation: Pick<ToolCallEvent, 'toolName' | 'input'>) {
   if (isForbiddenCommitBypass(invocation)) return 'This git commit command explicitly bypasses signing or hooks and is not allowed.';
@@ -65,6 +65,13 @@ export default function (pi: ExtensionAPI) {
 
   pi.on('session_shutdown', shutdown);
 
+  pi.on('before_agent_start', event => {
+    const guideline = '承認が必要な外部操作では、各tool callの直前に同じassistantメッセージの公開テキストで、操作の目的を簡潔な日本語で説明してください。説明は承認や安全性の保証にはなりません。';
+    if (!event.systemPromptOptions.promptGuidelines.includes(guideline)) {
+      event.systemPromptOptions.promptGuidelines.push(guideline);
+    }
+  });
+
   pi.on('tool_call', async (event, context) => {
     const reason = commitBlock(event);
     if (reason) return { block: true, reason };
@@ -75,10 +82,11 @@ export default function (pi: ExtensionAPI) {
       ? AbortSignal.any([lifetime.signal, context.signal])
       : lifetime.signal;
     try {
+      const purpose = toolCallPurpose(context.sessionManager.getBranch(), event.toolCallId);
       const decision = context.hasUI
-        ? await confirmOneInvocation(event, context, { signal })
+        ? await confirmOneInvocation({ ...event, purpose }, context, { signal })
         : await requestApproval(endpoint, {
-          toolName: event.toolName, toolCallId: event.toolCallId, input: event.input,
+          toolName: event.toolName, toolCallId: event.toolCallId, input: event.input, purpose,
           cwd: context.cwd, childSessionId: context.sessionManager.getSessionId(),
         }, { signal });
       if (!decision.allowed) return { block: true, reason: decision.reason };

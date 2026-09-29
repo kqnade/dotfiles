@@ -31,6 +31,16 @@ Their detected external operations wait for the parent's confirmation dialog, sh
 tool-call ID, working directory, and complete input. Supervisor/model replies cannot approve
 these calls. RPC clients must present confirmations to a person rather than automatically answer.
 
+Dialogs use Japanese labels for the operation, working directory, input, and confirmation reason rather
+than a JSON envelope. Commands and other multiline values retain their line breaks; terminal control and
+bidirectional formatting characters are shown as visible escapes. The complete input remains displayed.
+Below the input, the dialog shows a short purpose from the public assistant text immediately preceding
+that tool call in the same message. Private reasoning, user messages, and another call's explanation are
+not used. The guard requests this explanation through a Pi prompt guideline without an extra model call.
+A missing explanation is reported explicitly; a long one is clipped at 500 Unicode characters with a marker.
+The purpose is agent-authored reference text, not proof of safety or permission. Child purposes are forwarded
+to the parent with the invocation; changed purposes or arguments invalidate pending approval.
+
 Each forwarded request uses a fresh ID and waits at most five minutes, including queue time. Cancellation,
 UI failure, disconnection, unavailable parents, or arguments changed while waiting deny execution.
 Forwarded messages are limited to 64 KiB and at most 16 child requests may be pending; exceeding either limit

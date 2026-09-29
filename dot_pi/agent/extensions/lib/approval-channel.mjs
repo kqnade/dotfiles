@@ -3,6 +3,7 @@ import { chmod, mkdtemp, rm } from 'node:fs/promises';
 import { createServer, request } from 'node:http';
 import { tmpdir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
+import { MAX_PURPOSE_LENGTH } from './execution-guard.mjs';
 
 export const APPROVAL_ENV = 'PI_EXECUTION_APPROVAL_CHANNEL';
 const MAX_BYTES = 64 * 1024;
@@ -25,6 +26,7 @@ function validInvocation(value) {
     && typeof value.toolCallId === 'string' && value.toolCallId.length > 0 && value.toolCallId.length <= 256
     && typeof value.childSessionId === 'string' && value.childSessionId.length > 0 && value.childSessionId.length <= 256
     && typeof value.cwd === 'string' && isAbsolute(value.cwd)
+    && (value.purpose === undefined || (typeof value.purpose === 'string' && value.purpose.length <= MAX_PURPOSE_LENGTH))
     && value.input && typeof value.input === 'object' && !Array.isArray(value.input);
 }
 
