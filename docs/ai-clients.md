@@ -12,12 +12,14 @@
 | Claudeの設定・保護 | `.chezmoitemplates/claude-settings.json.tmpl`、`dot_claude/` |
 | Piの設定・拡張 | `dot_pi/agent/` |
 | Codex CLIの設定 | `dot_codex/`（Piには適用されない） |
+| 共通のagent instructions | `dot_agents/AGENTS.md`、Pi adapterは`dot_pi/agent/` |
 | 共通のworkflow Skills | `dot_agents/skills/`、Claude用リンクは`dot_claude/skills/` |
 
-`AGENTS.md`は、コードから推測しにくい制約、実際に必要なコマンド、詳細資料への参照に絞ります。
-一般論や手順の大量追加は避け、手順は必要時に読み込む[workflow Skills](ai-workflows.md)へ分けます。
-このrepositoryはglobalな開発ルールやAGENTSファイルを配備しません。
-未管理の`~/.pi/agent/AGENTS.md`なども変更・削除しません。
+`dot_agents/AGENTS.md`はPiのuser-level instructionsとして`~/.pi/agent/AGENTS.md`へsymlink配備します。
+Pi以外のclientへの配備は行いません。既存のregular fileがある場合、初回適用前に内容を比較します。
+同一内容ならmanaged symlinkへの置換を確認して適用でき、異なる内容なら必要な指示を統合して保存するまで
+適用してはいけません。`chezmoi apply`は既存targetを置換するため、unknown home filesの保持規則は
+このmanaged targetには適用されません。既存ファイルの自動移行やbackupは行いません。
 
 ### ClaudeのAGENTS.md読み込み
 

@@ -1,7 +1,12 @@
 # Pi
 
 Pi uses the ChatGPT OAuth provider (`openai-codex`). Its local settings and OAuth
-credentials live under `~/.pi/agent/`. The complete global settings file is managed as the
+credentials live under `~/.pi/agent/`. The generic user instructions are sourced from
+`dot_agents/AGENTS.md` and deployed through the Pi adapter `dot_pi/agent/symlink_AGENTS.md`.
+Before first apply on a machine with an existing `~/.pi/agent/AGENTS.md`, compare the file with
+that source: identical content may be replaced by its symlink; differing content must first be
+reconciled and preserved. Apply replaces this managed target; there is no automatic migration.
+The complete global settings file is managed as the
 canonical configuration for every machine, including packages, subagents, LSP, the startup model
 `openai-codex/gpt-6-sol`, and `xhigh` thinking. `Ctrl+P` cycles through GPT-6 Astra,
 Sol, and Luna, with `medium`, `xhigh`, and `max` thinking respectively. `/model` remains

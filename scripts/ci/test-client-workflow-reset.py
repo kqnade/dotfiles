@@ -28,6 +28,14 @@ class ClientWorkflowResetTests(unittest.TestCase):
             {f"symlink_{name}" for name in SKILLS},
         )
         self.assertFalse((ROOT / "dot_agents/rules").exists())
+        self.assertEqual(
+            hashlib.sha256((ROOT / "dot_agents/AGENTS.md").read_bytes()).hexdigest(),
+            "3b58bcb361722b37e57c3e4747f1d6a66e5a684883233e5413fdf51b0a1f5e2a",
+        )
+        self.assertEqual(
+            (ROOT / "dot_pi/agent/symlink_AGENTS.md").read_text().strip(),
+            "../../.agents/AGENTS.md",
+        )
         self.assertEqual(list(shared.glob("*/scripts")), [])
         self.assertFalse((ROOT / "dot_codex/agents").exists())
         self.assertFalse((ROOT / "dot_codex/symlink_AGENTS.md").exists())
@@ -119,7 +127,6 @@ class ClientWorkflowResetTests(unittest.TestCase):
                 ".agents/skills/user/SKILL.md": "user skill\n",
                 ".agents/skills/assumption-pruning/user.md": "user notes\n",
                 ".agents/skills/context-handoff/user.md": "user handoff notes\n",
-                ".pi/agent/AGENTS.md": "user Pi instructions\n",
                 ".pi/agent/auth.json": '{"test": "runtime credential placeholder"}\n',
                 ".pi/agent/sessions/example.jsonl": '{"type": "session"}\n',
                 ".pi/agent/extensions/user.ts": "user extension\n",
@@ -133,6 +140,9 @@ class ClientWorkflowResetTests(unittest.TestCase):
                 target = home / relative
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text(contents)
+            existing_pi_instructions = home / ".pi/agent/AGENTS.md"
+            existing_pi_instructions.parent.mkdir(parents=True, exist_ok=True)
+            existing_pi_instructions.write_text("pre-existing Pi instructions\n")
 
             environment = os.environ.copy()
             environment.update(
@@ -174,6 +184,12 @@ class ClientWorkflowResetTests(unittest.TestCase):
                     self.assertFalse(os.path.lexists(home / relative), relative)
                 for relative, contents in preserved.items():
                     self.assertEqual((home / relative).read_text(), contents, relative)
+                pi_instructions = home / ".pi/agent/AGENTS.md"
+                self.assertTrue(pi_instructions.is_symlink())
+                self.assertEqual(
+                    pi_instructions.resolve(), (home / ".agents/AGENTS.md").resolve()
+                )
+                self.assertEqual(pi_instructions.read_bytes(), (ROOT / "dot_agents/AGENTS.md").read_bytes())
                 for name in SKILLS:
                     canonical = home / ".agents/skills" / name / "SKILL.md"
                     source = ROOT / "dot_agents/skills" / name / "SKILL.md"
