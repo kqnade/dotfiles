@@ -202,6 +202,13 @@ class ClientWorkflowResetTests(unittest.TestCase):
                     pi_instructions.resolve(), (home / ".agents/AGENTS.md").resolve()
                 )
                 self.assertEqual(pi_instructions.read_bytes(), (ROOT / "dot_agents/AGENTS.md").read_bytes())
+                for relative in (
+                    "execution-guard.ts", "lib/execution-guard.mjs", "lib/approval-channel.mjs",
+                ):
+                    self.assertEqual(
+                        (home / ".pi/agent/extensions" / relative).read_bytes(),
+                        (ROOT / "dot_pi/agent/extensions" / relative).read_bytes(),
+                    )
                 for name in SKILLS:
                     canonical = home / ".agents/skills" / name / "SKILL.md"
                     source = ROOT / "dot_agents/skills" / name / "SKILL.md"

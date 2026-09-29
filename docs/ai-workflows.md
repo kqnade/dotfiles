@@ -54,10 +54,12 @@ Skillsは現在の利用者の依頼、repository規約、client/accountの制�
 委譲には現在のclientの認可された仕組みを使い、その実行規約に従います。Piでは`pi-subagents`、
 Claudeでは認可された同accountの仕組みを使い、利用できないときに別CLIへ切り替えません。
 Piのexecution guardは`PI_EXECUTION_GUARD=1`で有効にするopt-inです。通常起動ではremote認可は
-指示による制約です。native childrenにも`subagents.defaultExtensions`からextensionを配備しますが、
-有効時は対話UIのない子の編集・shell実行を拒否します。子の人間向け承認経路は未実装であり、
-通常の委譲実装にはまだ使えません。Pi子agentの`permissions: ask`はLLM判断で、人間の許可では
-ありません。extension listや環境設定でguardを外した子、外部processにはこのguardが及びません。
+指示による制約です。native childrenにも`subagents.defaultExtensions`からextensionを配備し、
+有効時の編集・shell実行は親sessionの確認dialogへ転送します。子のsession・cwd・tool・引数を
+一件ごとに表示し、人間が承認するまで実行しません。親の終了、通信断、取消、期限切れは拒否です。
+親のないheadless sessionでは承認を得られません。Pi子agentの`permissions: ask`やsupervisorの
+返答はLLM判断で、人間の許可ではありません。extension listや環境設定でguardを外した子、
+外部processにはこのguardが及びません。詳しい境界と制限は[Pi](pi.md#execution-approvals)を参照してください。
 OrcaやHerdrでのterminal操作は、その操作が必要な依頼に限ります。Skillにmodelやterminalを固定しません。
 
 ## このrepositoryの状態保存

@@ -31,8 +31,11 @@ export function confirmOneInvocation(invocation, context, { signal = context.sig
     if (!context.hasUI) {
       return { allowed: false, reason: 'No interactive approval UI is available.' };
     }
-    const cwd = resolve(context.cwd);
-    const details = JSON.stringify(invocation.input, null, 2);
+    const describe = () => JSON.stringify({
+      cwd: resolve(context.cwd), childSessionId: invocation.childSessionId,
+      toolCallId: invocation.toolCallId, tool: invocation.toolName, input: invocation.input,
+    }, null, 2);
+    const details = describe();
     let cancel;
     const cancelled = new Promise(resolve => {
       cancel = () => resolve(false);
@@ -41,12 +44,13 @@ export function confirmOneInvocation(invocation, context, { signal = context.sig
     try {
       const approved = await Promise.race([
         context.ui.confirm(
-          `Approve one ${invocation.toolName} call?`,
-          `This approves this exact invocation once. It does not grant future permission.\ncwd: ${cwd}\ntool: ${invocation.toolName}\ninput:\n${details}`,
+          'Approve one tool call?',
+          `This approves this exact invocation once. It does not grant future permission.\n${details}`,
           { signal },
         ),
         cancelled,
       ]);
+      if (details !== describe()) return { allowed: false, reason: 'Invocation changed while awaiting approval.' };
       return approved === true && !signal?.aborted
         ? { allowed: true }
         : { allowed: false, reason: 'The user did not approve this invocation.' };

@@ -22,12 +22,22 @@ records and reports HTTP delivery status, queue sizes, errors, and dropped recor
 ## Execution approvals
 
 Strict execution approval is **opt-in**, not enabled by default. Start a session with
-`PI_EXECUTION_GUARD=1 pi` to enable it. Unattended writer support is incomplete: native children
-have no interactive approval UI, so strict mode permits only their read-only tools. They cannot
-edit, run tests, or commit. A human approval channel for child operations is required before
-strict mode can be enabled for normal delegated implementation; supervisor model replies are
-not a substitute. Without this opt-in, remote authorization is an instruction policy, not a
-tool-level execution barrier.
+`PI_EXECUTION_GUARD=1 pi` to enable it. Without this opt-in, remote authorization is an
+instruction policy, not a tool-level execution barrier.
+
+A parent session with a TUI or RPC dialog UI owns a private Unix socket. Native foreground and
+background children inherit its session-specific endpoint through `PI_EXECUTION_APPROVAL_CHANNEL`.
+Their guarded tool calls wait for the parent's confirmation dialog, showing the child session,
+tool-call ID, working directory, and complete input. Supervisor/model replies cannot approve
+these calls. RPC clients must present confirmations to a person rather than automatically answer.
+
+Each forwarded request uses a fresh ID and waits at most five minutes, including queue time. Cancellation,
+UI failure, disconnection, unavailable parents, or arguments changed while waiting deny execution.
+Forwarded messages are limited to 64 KiB and at most 16 child requests may be pending; exceeding either limit
+fails explicitly. Orderly parent shutdown or session replacement removes the channel. A crash also
+breaks the connection but may leave its private temporary directory. Children bound to an old session
+must be relaunched, not silently attached to its replacement. One interactive
+approval owner is supported per process; separate Pi processes own independent channels.
 
 When enabled, `execution-guard.ts` allows the builtin `read`, `grep`, `find`, and `ls` tools. Every other Pi tool call,
 including shell execution, writes, edits, and custom tools, requires the native UI to approve that exact
@@ -36,12 +46,20 @@ and UI errors fail closed; no session-wide grants or model/chat-text approval ar
 `git commit` forms, including common global options such as `-C`, and detected signing or hook bypasses
 are blocked; use `git cc` for commits. These checks do not interpret every possible shell spelling.
 
+The socket directory is private to the current OS user, and connections require an ephemeral token.
+This prevents accidental cross-session approval, not access by hostile code running as the same user.
+No request content is persisted by the channel, and it opens no TCP port or external service.
+
+The argument check covers the wait for approval. Pi allows later `tool_call` handlers to mutate
+arguments after this guard returns; such changes are outside this check. Load only trusted extensions.
+
 This is an execution guard, not an OS sandbox. Shell commands are not parsed as a security language:
 compound commands, substitutions, scripts, wrappers, mutable code, manually launched processes, and
 extensions that are not loaded can cross the boundary. The human sees and approves the complete shell
 invocation rather than relying on a command denylist. Native pi-subagents children receive the extension
-through `subagents.defaultExtensions` and inherit `PI_EXECUTION_GUARD`; a child or project configuration
-that replaces its extension list or environment can omit the guard. External CLI agent profiles remain
+through `subagents.defaultExtensions` and inherit the guard environment. Headless sessions without a
+valid parent channel cannot obtain approval. A child or project configuration that replaces its extension
+list or environment can omit the guard. External CLI agent profiles remain
 disabled.
 
 ## New Relic

@@ -1,22 +1,89 @@
-import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
+import type { ExtensionAPI, ToolCallEvent } from '@earendil-works/pi-coding-agent';
+import { APPROVAL_ENV, createApprovalServer, requestApproval } from './lib/approval-channel.mjs';
 import { confirmOneInvocation, isDirectGitCommit, isForbiddenCommitBypass, isReadOnlyTool } from './lib/execution-guard.mjs';
+
+function commitBlock(invocation: Pick<ToolCallEvent, 'toolName' | 'input'>) {
+  if (isForbiddenCommitBypass(invocation)) return 'This git commit command explicitly bypasses signing or hooks and is not allowed.';
+  if (isDirectGitCommit(invocation)) return 'Use the repository git cc helper for commits.';
+}
+
+function parseChannel(value: string | undefined) {
+  if (!value) return undefined;
+  try { return JSON.parse(value); }
+  catch { throw new Error('Invalid parent approval channel metadata.'); }
+}
 
 export default function (pi: ExtensionAPI) {
   if (process.env.PI_EXECUTION_GUARD !== '1') return;
 
+  const inherited = process.env[APPROVAL_ENV];
+  let lifetime = new AbortController();
+  let server: Awaited<ReturnType<typeof createApprovalServer>> | undefined;
+  let endpoint;
+  let published: string | undefined;
+  let started = false;
+  let startupError: string | undefined;
+
+  async function shutdown() {
+    started = false;
+    lifetime.abort();
+    if (published && process.env[APPROVAL_ENV] === published) delete process.env[APPROVAL_ENV];
+    published = undefined;
+    const owned = server;
+    server = undefined;
+    endpoint = undefined;
+    await owned?.close();
+  }
+
+  pi.on('session_start', async (_event, context) => {
+    await shutdown();
+    lifetime = new AbortController();
+    startupError = undefined;
+    try {
+      if (context.hasUI) {
+        if (parseChannel(process.env[APPROVAL_ENV])?.ownerPid === process.pid) {
+          throw new Error('An approval UI already owns this process; use a separate Pi process.');
+        }
+        server = await createApprovalServer((invocation, signal) => {
+          const reason = commitBlock(invocation);
+          if (reason) return { allowed: false, reason };
+          return confirmOneInvocation(invocation, {
+            hasUI: context.hasUI, ui: context.ui, cwd: invocation.cwd,
+          }, { signal });
+        });
+        published = JSON.stringify(server.endpoint);
+        process.env[APPROVAL_ENV] = published;
+      } else {
+        endpoint = parseChannel(inherited);
+      }
+      started = true;
+    } catch (error) {
+      startupError = error instanceof Error ? error.message : String(error);
+      throw error;
+    }
+  });
+
+  pi.on('session_shutdown', shutdown);
+
   pi.on('tool_call', async (event, context) => {
     if (isReadOnlyTool(event.toolName)) return;
-    if (isForbiddenCommitBypass(event)) {
-      return {
-        block: true,
-        reason: 'This git commit command explicitly bypasses signing or hooks and is not allowed.',
-      };
-    }
-    if (isDirectGitCommit(event)) {
-      return { block: true, reason: 'Use the repository git cc helper for commits.' };
-    }
+    const reason = commitBlock(event);
+    if (reason) return { block: true, reason };
+    if (!started) return { block: true, reason: startupError ?? 'Approval session is not initialized.' };
 
-    const decision = await confirmOneInvocation(event, context);
-    if (!decision.allowed) return { block: true, reason: decision.reason };
+    const signal = context.signal
+      ? AbortSignal.any([lifetime.signal, context.signal])
+      : lifetime.signal;
+    try {
+      const decision = context.hasUI
+        ? await confirmOneInvocation(event, context, { signal })
+        : await requestApproval(endpoint, {
+          toolName: event.toolName, toolCallId: event.toolCallId, input: event.input,
+          cwd: context.cwd, childSessionId: context.sessionManager.getSessionId(),
+        }, { signal });
+      if (!decision.allowed) return { block: true, reason: decision.reason };
+    } catch (error) {
+      return { block: true, reason: `Approval failed: ${error instanceof Error ? error.message : String(error)}` };
+    }
   });
 }
