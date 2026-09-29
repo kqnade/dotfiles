@@ -21,22 +21,28 @@ records and reports HTTP delivery status, queue sizes, errors, and dropped recor
 
 ## Execution approvals
 
-`execution-guard.ts` allows the builtin `read`, `grep`, `find`, and `ls` tools. Every other Pi tool call,
+Strict execution approval is **opt-in**, not enabled by default. Start a session with
+`PI_EXECUTION_GUARD=1 pi` to enable it. Unattended writer support is incomplete: native children
+have no interactive approval UI, so strict mode permits only their read-only tools. They cannot
+edit, run tests, or commit. A human approval channel for child operations is required before
+strict mode can be enabled for normal delegated implementation; supervisor model replies are
+not a substitute. Without this opt-in, remote authorization is an instruction policy, not a
+tool-level execution barrier.
+
+When enabled, `execution-guard.ts` allows the builtin `read`, `grep`, `find`, and `ls` tools. Every other Pi tool call,
 including shell execution, writes, edits, and custom tools, requires the native UI to approve that exact
 invocation once in the current working directory. Dialogs are serialized. Declines, unavailable UI,
-and UI errors fail closed; no session-wide grants or model/chat-text approval are used. Direct `git commit`
-and detected explicit signing or hook bypasses are blocked; use `git cc` for commits.
+and UI errors fail closed; no session-wide grants or model/chat-text approval are used. Recognized literal
+`git commit` forms, including common global options such as `-C`, and detected signing or hook bypasses
+are blocked; use `git cc` for commits. These checks do not interpret every possible shell spelling.
 
 This is an execution guard, not an OS sandbox. Shell commands are not parsed as a security language:
 compound commands, substitutions, scripts, wrappers, mutable code, manually launched processes, and
 extensions that are not loaded can cross the boundary. The human sees and approves the complete shell
-invocation rather than relying on a command denylist. Native pi-subagents children receive the guard
-through `subagents.defaultExtensions`; a child or project configuration that explicitly replaces its
-extension list can omit it. External CLI agent profiles remain disabled.
-
-An existing regular `~/.pi/agent/AGENTS.md` must be compared with `dot_agents/AGENTS.md` before first
-apply. If different, reconcile and preserve its instructions first: applying the managed adapter replaces
-the file with a symlink. No automatic migration or backup is performed.
+invocation rather than relying on a command denylist. Native pi-subagents children receive the extension
+through `subagents.defaultExtensions` and inherit `PI_EXECUTION_GUARD`; a child or project configuration
+that replaces its extension list or environment can omit the guard. External CLI agent profiles remain
+disabled.
 
 ## New Relic
 

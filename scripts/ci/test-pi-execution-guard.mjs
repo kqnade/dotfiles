@@ -6,7 +6,27 @@ import settings from '../../dot_pi/agent/settings.json' with { type: 'json' };
 
 const invocation = { toolName: 'bash', input: { command: 'make test' } };
 
-test('loads the guard in native children and keeps external CLI profiles disabled', () => {
+function guardHandler(enabled) {
+  const original = process.env.PI_EXECUTION_GUARD;
+  let handler;
+  try {
+    if (enabled === undefined) delete process.env.PI_EXECUTION_GUARD;
+    else process.env.PI_EXECUTION_GUARD = enabled;
+    executionGuard({ on: (event, callback) => { assert.equal(event, 'tool_call'); handler = callback; } });
+  } finally {
+    if (original === undefined) delete process.env.PI_EXECUTION_GUARD;
+    else process.env.PI_EXECUTION_GUARD = original;
+  }
+  return handler;
+}
+
+test('strict approval is opt-in so ordinary native workers remain usable', () => {
+  assert.equal(guardHandler(undefined), undefined);
+  assert.equal(guardHandler('0'), undefined);
+  assert.equal(typeof guardHandler('1'), 'function');
+});
+
+test('configures the guard for native children and keeps external CLI profiles disabled', () => {
   assert.deepEqual(settings.subagents.defaultExtensions, ['~/.pi/agent/extensions/execution-guard.ts']);
   for (const name of ['claude-code', 'claude-code-writer', 'cursor-agent', 'cursor-agent-writer', 'codex-exec', 'codex-exec-writer']) {
     assert.equal(settings.subagents.agentOverrides[name].disabled, true, name);
@@ -14,8 +34,7 @@ test('loads the guard in native children and keeps external CLI profiles disable
 });
 
 test('intercepts mutating, shell, and custom tool calls while allowing builtin reads', async () => {
-  let handler;
-  executionGuard({ on: (event, callback) => { assert.equal(event, 'tool_call'); handler = callback; } });
+  const handler = guardHandler('1');
   const noUi = { cwd: '/tmp/work', hasUI: false };
   assert.equal(await handler({ toolName: 'read', input: { path: 'file' } }, noUi), undefined);
   assert.equal((await handler({ toolName: 'custom', input: {} }, noUi)).block, true);
@@ -29,7 +48,7 @@ test('allows only the known read-only builtin tools without a prompt', () => {
 });
 
 test('blocks known git signing and hook bypasses instead of offering approval', () => {
-  for (const command of ['git commit --no-gpg-sign -m x', 'git -c commit.gpgsign=false commit -m x', 'git commit --no-verify -m x', 'git -c core.hooksPath=/dev/null commit -m x']) {
+  for (const command of ['git commit --no-gpg-sign -m x', 'git -c commit.gpgsign=false commit -m x', 'git commit --no-verify -m x', 'git -c core.hooksPath=/dev/null commit -m x', 'git -C . commit --no-verify -m x', 'git --no-pager -C "a b" commit --no-gpg-sign -m x']) {
     assert.equal(isForbiddenCommitBypass({ toolName: 'bash', input: { command } }), true, command);
   }
   assert.equal(isForbiddenCommitBypass(invocation), false);
@@ -48,6 +67,15 @@ test('requires the native UI and refuses cancellation for one exact tool call an
   assert.equal(denied.allowed, false);
   assert.match(shown.message, /cwd: \/tmp\/work/);
   assert.match(shown.message, /"command": "make test"/);
+});
+
+test('requires an affirmative boolean approval, not a truthy RPC value', async () => {
+  for (const approved of [undefined, null, 'false', 1, {}]) {
+    const result = await confirmOneInvocation(invocation, {
+      cwd: '/tmp/work', hasUI: true, ui: { confirm: async () => approved },
+    });
+    assert.equal(result.allowed, false);
+  }
 });
 
 test('propagates UI failures rather than treating them as approval', async () => {

@@ -2,6 +2,8 @@ import type { ExtensionAPI } from '@earendil-works/pi-coding-agent';
 import { confirmOneInvocation, isDirectGitCommit, isForbiddenCommitBypass, isReadOnlyTool } from './lib/execution-guard.mjs';
 
 export default function (pi: ExtensionAPI) {
+  if (process.env.PI_EXECUTION_GUARD !== '1') return;
+
   pi.on('tool_call', async (event, context) => {
     if (isReadOnlyTool(event.toolName)) return;
     if (isForbiddenCommitBypass(event)) {
