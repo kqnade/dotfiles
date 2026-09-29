@@ -1,12 +1,19 @@
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
+import time
 import unittest
 
 
 SOURCE = Path(__file__).resolve().parents[2] / "dot_config/zsh/functions/cc.zsh"
+REPOSITORY_SIGNER_PATHS = (
+    "/Applications/1Password.app/Contents/MacOS/op-ssh-sign",
+    "/mnt/c/Users/Yuzuki Kana/AppData/Local/Microsoft/WindowsApps/op-ssh-sign-wsl.exe",
+    "/opt/1Password/op-ssh-sign",
+)
 
 
 class GitCommitMessageTests(unittest.TestCase):
@@ -14,11 +21,62 @@ class GitCommitMessageTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        self.env = dict(os.environ, HOME=str(self.root), GIT_CONFIG_NOSYSTEM="1")
+        self.env = dict(
+            os.environ,
+            HOME=str(self.root),
+            GIT_CONFIG_GLOBAL=os.devnull,
+            GIT_CONFIG_NOSYSTEM="1",
+        )
         self.git("init", "-q")
         self.git("config", "user.name", "Test")
         self.git("config", "user.email", "test@example.invalid")
-        self.git("config", "commit.gpgsign", "false")
+        subprocess.run(
+            [
+                "ssh-keygen",
+                "-q",
+                "-t",
+                "ed25519",
+                "-N",
+                "",
+                "-f",
+                str(self.root / "signing-key"),
+            ],
+            check=True,
+        )
+        self.git("config", "commit.gpgsign", "true")
+        self.git("config", "gpg.format", "ssh")
+        self.git("config", "user.signingkey", str(self.root / "signing-key.pub"))
+        self.git(
+            "config", "gpg.ssh.allowedSignersFile", str(self.root / "allowed_signers")
+        )
+        (self.root / "allowed_signers").write_text(
+            f'test@example.invalid namespaces="git" {(self.root / "signing-key.pub").read_text().strip()}\n'
+        )
+        agent_dir = self.root / ".1password"
+        agent_dir.mkdir()
+        self.agent_socket = agent_dir / "agent.sock"
+        self.agent = subprocess.Popen(
+            ["ssh-agent", "-D", "-a", str(self.agent_socket)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        self.addCleanup(self.stop_agent)
+        for _ in range(100):
+            if self.agent_socket.exists():
+                break
+            if self.agent.poll() is not None:
+                self.fail("temporary SSH agent exited before creating its socket")
+            time.sleep(0.01)
+        else:
+            self.fail("temporary SSH agent did not create its socket")
+        self.env["SSH_AUTH_SOCK"] = str(self.agent_socket)
+        subprocess.run(
+            ["ssh-add", str(self.root / "signing-key")],
+            env=self.env,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
         self.git("commit", "--allow-empty", "-qm", "initial style reference")
         (self.root / "example.txt").write_text("staged content\n")
         self.git("add", "example.txt")
@@ -39,22 +97,76 @@ class GitCommitMessageTests(unittest.TestCase):
         blocker.chmod(0o755)
         self.env["PATH"] = str(launcher.parent) + os.pathsep + self.env["PATH"]
 
+    def stop_agent(self):
+        if self.agent.poll() is None:
+            self.agent.terminate()
+            self.agent.wait(timeout=5)
+
     def git(self, *args):
         return subprocess.run(
-            ["git", *args], cwd=self.root, env=self.env,
-            text=True, capture_output=True, check=True,
+            ["git", *args],
+            cwd=self.root,
+            env=self.env,
+            text=True,
+            capture_output=True,
+            check=True,
         ).stdout.strip()
 
-    def run_cc(self):
+    def run_cc(self, env=None):
         return subprocess.run(
             ["zsh", "-f", "-c", 'source "$1"; git-cc', "zsh", str(SOURCE)],
-            cwd=self.root, env=self.env, text=True, capture_output=True,
+            cwd=self.root,
+            env=env or self.env,
+            text=True,
+            capture_output=True,
         )
 
-    def test_commits_pi_message_from_staged_diff(self):
+    def known_signer_path(self, path):
+        return subprocess.run(
+            [
+                "zsh",
+                "-f",
+                "-c",
+                'source "$1"; _git_cc_is_repository_1password_signer_path "$2"',
+                "zsh",
+                str(SOURCE),
+                path,
+            ],
+            cwd=self.root,
+            env=self.env,
+            text=True,
+            capture_output=True,
+        )
+
+    def known_agent_path(self, path):
+        return subprocess.run(
+            [
+                "zsh",
+                "-f",
+                "-c",
+                'source "$1"; _git_cc_is_repository_1password_agent_path "$2"',
+                "zsh",
+                str(SOURCE),
+                path,
+            ],
+            cwd=self.root,
+            env=self.env,
+            text=True,
+            capture_output=True,
+        )
+
+    @staticmethod
+    def has_ssh_signature_header(commit):
+        headers = commit.split("\n\n", 1)[0]
+        return "gpgsig -----BEGIN SSH SIGNATURE-----" in headers.splitlines()
+
+    def test_commits_pi_message_from_staged_diff_with_real_ssh_signature(self):
         result = self.run_cc()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.git("log", "-1", "--format=%s"), "✨ feat: add example")
+        commit = self.git("cat-file", "commit", "HEAD")
+        self.assertTrue(self.has_ssh_signature_header(commit))
+        self.git("verify-commit", "HEAD")
         prompt = (self.root / "prompt.txt").read_text()
         self.assertIn("+staged content", prompt)
         self.assertIn("initial style reference", prompt)
@@ -69,13 +181,158 @@ class GitCommitMessageTests(unittest.TestCase):
         self.env["TEST_EXIT"] = "1"
         result = self.run_cc()
         self.assertNotEqual(result.returncode, 0)
-        self.assertEqual(self.git("log", "-1", "--format=%s"), "initial style reference")
+        self.assertIn(
+            "Failed to generate commit message", result.stdout + result.stderr
+        )
+        self.assertEqual(
+            self.git("log", "-1", "--format=%s"), "initial style reference"
+        )
         self.assertEqual(self.git("diff", "--cached", "--name-only"), "example.txt")
 
-    def test_empty_message_does_not_commit(self):
-        self.env["TEST_MESSAGE"] = ""
-        self.assertNotEqual(self.run_cc().returncode, 0)
-        self.assertEqual(self.git("log", "-1", "--format=%s"), "initial style reference")
+    def test_optional_scope_matches_repository_commit_style(self):
+        self.env["TEST_MESSAGE"] = "✨ feat(pi): add example"
+        result = self.run_cc()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(
+            self.git("log", "-1", "--format=%s"), "✨ feat(pi): add example"
+        )
+        self.assertTrue(
+            self.has_ssh_signature_header(self.git("cat-file", "commit", "HEAD"))
+        )
+        self.git("verify-commit", "HEAD")
+
+    def test_invalid_message_formats_do_not_commit(self):
+        initial_commit = self.git("rev-parse", "HEAD")
+        for message in (
+            "",
+            "🐛 feat: mismatch emoji and type",
+            "🌟 feat: unsupported gitmoji",
+            "✨ feat: " + "x" * 70,
+            "✨ feat: add first line\nsecond line",
+            "✨ feat(): empty scope",
+            "✨ featpi): missing opening parenthesis",
+            "✨ feat(UPPER): invalid scope",
+        ):
+            with self.subTest(message=message):
+                self.env["TEST_MESSAGE"] = message
+                result = self.run_cc()
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(self.git("rev-parse", "HEAD"), initial_commit)
+                self.assertEqual(
+                    self.git("diff", "--cached", "--name-only"), "example.txt"
+                )
+
+    def test_signing_configuration_is_required(self):
+        invalid_configs = (
+            ("commit.gpgsign", "false"),
+            ("gpg.format", "openpgp"),
+            ("gpg.ssh.program", str(self.root / "missing-signer")),
+        )
+        initial_commit = self.git("rev-parse", "HEAD")
+        for key, value in invalid_configs:
+            with self.subTest(key=key):
+                self.git("config", key, value)
+                result = self.run_cc()
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("sign", result.stdout.lower() + result.stderr.lower())
+                self.assertEqual(self.git("rev-parse", "HEAD"), initial_commit)
+                if key == "gpg.ssh.program":
+                    self.git("config", "--unset", key)
+                else:
+                    self.git("config", key, {
+                        "commit.gpgsign": "true",
+                        "gpg.format": "ssh",
+                    }[key])
+
+    def test_arbitrary_op_ssh_sign_program_is_not_trusted_by_name(self):
+        signer = self.root / "op-ssh-sign"
+        signer.write_text('#!/bin/sh\nexec ssh-keygen "$@"\n')
+        signer.chmod(0o755)
+        self.git("config", "gpg.ssh.program", str(signer))
+        initial_commit = self.git("rev-parse", "HEAD")
+        result = self.run_cc()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("repository-configured", result.stdout + result.stderr)
+        self.assertEqual(self.git("rev-parse", "HEAD"), initial_commit)
+        self.assertEqual(self.git("diff", "--cached", "--name-only"), "example.txt")
+
+    def test_repository_signer_paths_include_wsl_signer_and_reject_lookalikes(self):
+        for path in REPOSITORY_SIGNER_PATHS:
+            with self.subTest(path=path):
+                self.assertEqual(self.known_signer_path(path).returncode, 0)
+        for path in (
+            str(self.root / "op-ssh-sign"),
+            str(self.root / "op-ssh-sign-wsl.exe"),
+            "/opt/not-1password/op-ssh-sign",
+        ):
+            with self.subTest(path=path):
+                self.assertNotEqual(self.known_signer_path(path).returncode, 0)
+
+    def test_repository_agent_paths_match_shell_configuration(self):
+        for path in (
+            self.root / "Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock",
+            self.root / ".1password/agent.sock",
+        ):
+            with self.subTest(path=path):
+                self.assertEqual(self.known_agent_path(str(path)).returncode, 0)
+        for path in (
+            self.root / "agents/1password/agent.sock",
+            self.root / ".1password/other.sock",
+        ):
+            with self.subTest(path=path):
+                self.assertNotEqual(self.known_agent_path(str(path)).returncode, 0)
+
+    def test_signer_failure_keeps_changes_staged(self):
+        subprocess.run(["ssh-add", "-D"], env=self.env, check=True, capture_output=True)
+        (self.root / "signing-key").unlink()
+        result = self.run_cc()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Commit failed", result.stdout + result.stderr)
+        self.assertEqual(
+            self.git("log", "-1", "--format=%s"), "initial style reference"
+        )
+        self.assertEqual(self.git("diff", "--cached", "--name-only"), "example.txt")
+
+    def test_post_commit_verification_failure_keeps_signed_commit(self):
+        initial_commit = self.git("rev-parse", "HEAD")
+        hook = self.root / ".git/hooks/post-commit"
+        hook.write_text('#!/bin/sh\n: > "$HOME/allowed_signers"\n')
+        hook.chmod(0o755)
+        result = self.run_cc()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("could not be verified", result.stdout + result.stderr)
+        self.assertNotEqual(self.git("rev-parse", "HEAD"), initial_commit)
+        self.assertTrue(
+            self.has_ssh_signature_header(self.git("cat-file", "commit", "HEAD"))
+        )
+        self.assertEqual(self.git("diff", "--cached", "--name-only"), "")
+
+    def test_unsigned_commit_is_rejected_even_if_verifier_returns_success(self):
+        real_git = shutil.which("git")
+        self.assertIsNotNone(real_git)
+        wrapper_dir = self.root / "git-wrapper"
+        wrapper_dir.mkdir()
+        verified = self.root / "verify-was-called"
+        wrapper = wrapper_dir / "git"
+        wrapper.write_text(
+            "#!/bin/sh\n"
+            'case "$1" in\n'
+            f'  commit) exec "{real_git}" -c commit.gpgsign=false "$@" ;;\n'
+            f'  verify-commit) : > "{verified}"; exit 0 ;;\n'
+            "esac\n"
+            f'exec "{real_git}" "$@"\n'
+        )
+        wrapper.chmod(0o755)
+        env = dict(self.env, PATH=str(wrapper_dir) + os.pathsep + self.env["PATH"])
+        env["TEST_MESSAGE"] = "✨ feat: gpgsig -----BEGIN SSH SIGNATURE-----"
+        result = self.run_cc(env)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("without an SSH signature", result.stdout + result.stderr)
+        self.assertFalse(verified.exists())
+        self.assertFalse(
+            self.has_ssh_signature_header(self.git("cat-file", "commit", "HEAD"))
+        )
+        self.assertEqual(self.git("diff", "--cached", "--name-only"), "")
 
     def test_no_staged_changes_does_not_invoke_pi(self):
         self.git("reset", "-q", "HEAD", "--", "example.txt")
