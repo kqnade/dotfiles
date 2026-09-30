@@ -8,11 +8,11 @@ that source: identical content may be replaced by its symlink; differing content
 reconciled and preserved. Apply replaces this managed target; there is no automatic migration.
 The complete global settings file is managed as the
 canonical configuration for every machine, including packages, subagents, LSP, the startup model
-`openai-codex/gpt-6-sol`, and `xhigh` thinking. `Ctrl+P` cycles through GPT-6 Astra,
-Sol, and Luna, with `medium`, `xhigh`, and `max` thinking respectively. `/model` remains
+`openai-codex/gpt-6.1-sol`, and `xhigh` thinking. `Ctrl+P` cycles through GPT-6 Astra,
+GPT-6.1 Sol, and GPT-6 Luna, with `medium`, `xhigh`, and `max` thinking respectively. `/model` remains
 available for explicit model selection. Subagents and commit-message generation use
 `openai-codex/gpt-6-luna`. Luna builtins `worker`, `delegate`, `scout`, `researcher`, and
-`evidence-auditor` use `max` thinking; the Sol `reviewer` and `oracle` remain at `high`.
+`evidence-auditor` use `max` thinking; the GPT-6 Sol `reviewer` and `oracle` use `high`.
 The one-shot `git cc` message generator uses `medium`. The `pi` shell function starts Pi through
 `~/.local/bin/pi-telemetry`, reading the New Relic ingest key from 1Password.
 `PI_NEW_RELIC_ENABLE=0 pi` disables export. An explicit `PI_NEW_RELIC_API_KEY`

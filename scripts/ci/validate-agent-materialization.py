@@ -215,7 +215,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
     rendered_pi_settings = json.loads(pi_settings.read_text())
     expected_pi_defaults = {
         "defaultProvider": "openai-codex",
-        "defaultModel": "gpt-6-sol",
+        "defaultModel": "gpt-6.1-sol",
         "defaultThinkingLevel": "xhigh",
     }
     for key, expected_value in expected_pi_defaults.items():
@@ -232,9 +232,9 @@ with tempfile.TemporaryDirectory() as temp_dir:
     if "runtimeMarker" in rendered_pi_settings:
         fail("Canonical Pi settings preserved machine-local runtime state")
     if rendered_pi_settings.get("modelThinkingLevels", {}).get(
-        "openai-codex/gpt-6-sol"
+        "openai-codex/gpt-6.1-sol"
     ) != "xhigh":
-        fail("Canonical Pi settings did not pin GPT-6 Sol to xhigh thinking")
+        fail("Canonical Pi settings did not pin GPT-6.1 Sol to xhigh thinking")
     rendered_subagents = rendered_pi_settings.get("subagents", {})
     if rendered_subagents.get("defaultModel") != "openai-codex/gpt-6-luna":
         fail("Canonical Pi settings did not pin subagents to GPT-6 Luna")

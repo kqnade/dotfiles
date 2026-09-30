@@ -53,10 +53,12 @@ class ClientWorkflowResetTests(unittest.TestCase):
         settings = json.loads((ROOT / "dot_pi/agent/settings.json").read_text())
         self.assertEqual(settings["enabledModels"], [
             "openai-codex/gpt-6-astra",
-            "openai-codex/gpt-6-sol",
+            "openai-codex/gpt-6.1-sol",
             "openai-codex/gpt-6-luna",
         ])
-        self.assertEqual(settings["defaultModel"], "gpt-6-sol")
+        self.assertEqual(settings["defaultModel"], "gpt-6.1-sol")
+        self.assertIn(f'{settings["defaultProvider"]}/{settings["defaultModel"]}', settings["enabledModels"])
+        self.assertEqual(settings["modelThinkingLevels"]["openai-codex/gpt-6.1-sol"], "xhigh")
         self.assertEqual(settings["defaultThinkingLevel"], "xhigh")
         self.assertEqual(settings["subagents"]["defaultThinking"], "max")
         for name in ("worker", "delegate", "scout", "researcher", "evidence-auditor"):

@@ -2,7 +2,7 @@
   "lastChangelogVersion": "0.87.1",
   "theme": "dark/dark",
   "defaultProvider": "openai-codex",
-  "defaultModel": "gpt-6-sol",
+  "defaultModel": "gpt-6.1-sol",
   "defaultThinkingLevel": "xhigh",
   "quietStartup": true,
   "hideThinkingBlock": true,
@@ -19,7 +19,7 @@
   "steeringMode": "one-at-a-time",
   "enabledModels": [
     "openai-codex/gpt-6-astra",
-    "openai-codex/gpt-6-sol",
+    "openai-codex/gpt-6.1-sol",
     "openai-codex/gpt-6-luna"
   ],
   "showHardwareCursor": true,
@@ -92,6 +92,7 @@
   "modelThinkingLevels": {
     "openai-codex/gpt-6-astra": "medium",
     "openai-codex/gpt-6-sol": "xhigh",
+    "openai-codex/gpt-6.1-sol": "xhigh",
     "openai-codex/gpt-6-luna": "max"
   },
   "warnings": {
