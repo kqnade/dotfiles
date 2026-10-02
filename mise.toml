@@ -63,7 +63,7 @@ rust = "1.98.1"
 python = "3.14.7"
 node = "26.9.0"
 bun = "1.4.2"
-"github:pnpm/pnpm" = "v12.8.2"
+"github:pnpm/pnpm" = "12.8.2"
 uv = "0.12.20"
 
 # Agent and application CLIs
