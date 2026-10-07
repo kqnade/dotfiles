@@ -2,8 +2,6 @@
 
 set -euo pipefail
 
-readonly NEW_RELIC_LICENSE_KEY_OP_REF_DEFAULT="op://Personal/j465rncuz4fcf2rc7aogcosypi/credential"
-
 authorize_repository() {
   local remotes status remote_url
   if git config --get-all remote.origin.url >/dev/null; then
@@ -32,6 +30,15 @@ authorize_repository() {
 
 # Check before credential lookup, telemetry opt-out, and every Pi invocation.
 authorize_repository
+
+runtime_config="$HOME/.config/dotfiles/client-runtime.sh"
+if [[ ! -r "$runtime_config" ]]; then
+  printf '%s\n' 'Client runtime configuration is missing; apply the managed dotfiles first.' >&2
+  exit 1
+fi
+# shellcheck source=/dev/null
+source "$runtime_config"
+dotfiles_client_environment
 
 run_pi() {
   local pi_bin
@@ -66,7 +73,11 @@ if [[ -z "$license_key" ]]; then
     printf '%s\n' 'Pi telemetry requires 1Password CLI or PI_NEW_RELIC_API_KEY.' >&2
     exit 1
   fi
-  op_ref="${NEW_RELIC_LICENSE_KEY_OP_REF:-$NEW_RELIC_LICENSE_KEY_OP_REF_DEFAULT}"
+  op_ref="$NEW_RELIC_LICENSE_KEY_OP_REF"
+  [[ "$op_ref" == op://* ]] || {
+    printf '%s\n' 'New Relic 1Password reference is missing or invalid.' >&2
+    exit 1
+  }
   if ! license_key="$("$op_bin" read "$op_ref")"; then
     printf '%s\n' 'Failed to read the New Relic license key from 1Password.' >&2
     exit 1

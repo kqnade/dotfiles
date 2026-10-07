@@ -65,6 +65,7 @@ worktrees; small changes do not require a multi-agent workflow.
 | OpenCode configuration | `dot_config/opencode/opencode.json` |
 | Codex settings adapter | `dot_codex/` |
 | Pi settings adapter or extension | `dot_pi/` |
+| Client runtime paths and 1Password references | `.chezmoidata.toml` |
 | Shared workflow skill | `dot_agents/skills/<name>/` |
 | Claude-specific rule, setting, hook, or skill link | `dot_claude/` |
 
@@ -117,7 +118,7 @@ client boundaries and `docs/ai-workflows.md` for the workflow.
 - Removed managed targets belong in `.chezmoiremove`. Name specific files or managed symlinks;
   preserve unknown skills, credentials, and runtime state in their parent directories.
 - `dot_codex/modify_private_config.toml` applies stable Codex defaults while preserving
-  Codex-managed runtime state and sibling settings. `dot_pi/agent/settings.json` deploys the
+  Codex-managed runtime state and sibling settings. `dot_pi/agent/settings.json.tmpl` deploys the
   complete canonical Pi configuration. Claude defaults live in
   `.chezmoitemplates/claude-settings.json.tmpl`; Claude reads both `CLAUDE.md` and `AGENTS.md`.
   The modifier preserves additional runtime hooks and `tui` on macOS without letting them replace

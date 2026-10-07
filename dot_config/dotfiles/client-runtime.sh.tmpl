@@ -1,0 +1,34 @@
+dotfiles_expand_home() {
+  case "$1" in
+    '~') printf '%s\n' "$HOME" ;;
+    '~/'*) printf '%s/%s\n' "$HOME" "${1#\~/}" ;;
+    *) printf '%s\n' "$1" ;;
+  esac
+}
+
+DOTFILES_PI_AGENT_DIR='{{ .client_runtime.pi.agent_dir | replace "'" "'\\''" }}'
+DOTFILES_OP_NEW_RELIC_REF='{{ .client_runtime.onepassword.references.new_relic | replace "'" "'\\''" }}'
+DOTFILES_OP_DECISION_API_REF='{{ .client_runtime.onepassword.references.decision_api | replace "'" "'\\''" }}'
+DOTFILES_OP_GITHUB_REF='{{ .client_runtime.onepassword.references.github | replace "'" "'\\''" }}'
+DOTFILES_OP_SIGNER_DARWIN='{{ .client_runtime.onepassword.signers.darwin | replace "'" "'\\''" }}'
+DOTFILES_OP_SIGNER_LINUX='{{ .client_runtime.onepassword.signers.linux | replace "'" "'\\''" }}'
+DOTFILES_OP_SIGNER_WSL='{{ .client_runtime.onepassword.signers.wsl | replace "'" "'\\''" }}'
+DOTFILES_OP_SOCKET_DARWIN=$(dotfiles_expand_home '{{ .client_runtime.onepassword.sockets.darwin | replace "'" "'\\''" }}')
+DOTFILES_OP_SOCKET_LINUX=$(dotfiles_expand_home '{{ .client_runtime.onepassword.sockets.linux | replace "'" "'\\''" }}')
+
+dotfiles_pi_agent_dir() {
+  local directory
+  directory=$(dotfiles_expand_home "${PI_CODING_AGENT_DIR-$DOTFILES_PI_AGENT_DIR}")
+  case "$directory" in
+    /*) printf '%s\n' "$directory" ;;
+    *) printf '%s\n' 'PI_CODING_AGENT_DIR must be an absolute path or start with ~/.' >&2; return 1 ;;
+  esac
+}
+
+dotfiles_client_environment() {
+  PI_CODING_AGENT_DIR=$(dotfiles_pi_agent_dir) || return 1
+  export PI_CODING_AGENT_DIR
+  export NEW_RELIC_LICENSE_KEY_OP_REF="${NEW_RELIC_LICENSE_KEY_OP_REF-$DOTFILES_OP_NEW_RELIC_REF}"
+  export PI_DECISION_API_KEY_OP_REF="${PI_DECISION_API_KEY_OP_REF-$DOTFILES_OP_DECISION_API_REF}"
+  export GITHUB_PAT_OP_REF="${GITHUB_PAT_OP_REF-$DOTFILES_OP_GITHUB_REF}"
+}

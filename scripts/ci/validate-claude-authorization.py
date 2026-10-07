@@ -14,6 +14,7 @@ import tempfile
 import tomllib
 from pathlib import Path
 
+from client_runtime_fixture import deploy_client_runtime
 from validate_common import ROOT, fail, strip_json_comments, tracked_files
 
 
@@ -239,6 +240,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
         fail("Claude repository authorization must reject malformed hook input")
 
     launcher_home = test_root / "launcher-home"
+    deploy_client_runtime(launcher_home)
     launcher_hooks = launcher_home / ".claude/hooks"
     launcher_hooks.mkdir(parents=True)
     launcher_guard = launcher_hooks / "authorize-repository.sh"

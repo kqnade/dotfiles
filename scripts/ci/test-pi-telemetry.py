@@ -8,18 +8,28 @@ import os
 import pathlib
 import subprocess
 import tempfile
+import tomllib
 import unittest
+
+from client_runtime_fixture import deploy_client_runtime
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 LAUNCHER = ROOT / "dot_local/bin/executable_pi-telemetry"
 ZSH_FUNCTION = ROOT / "dot_config/zsh/functions/pi.zsh"
+DEFAULT_REFERENCE = tomllib.loads((ROOT / ".chezmoidata.toml").read_text())["client_runtime"]["onepassword"]["references"]["new_relic"]
 
 
 class PiTelemetryLauncherTests(unittest.TestCase):
-    def run_launcher(self, *, op_output=None, env_overrides=None, args=(), cwd=None):
+    def run_launcher(self, *, op_output=None, env_overrides=None, args=(), cwd=None, reference=None, missing_config=False):
         with tempfile.TemporaryDirectory() as temporary_directory:
             temporary_path = pathlib.Path(temporary_directory)
+            overrides = {} if reference is None else {
+                "client_runtime": {"onepassword": {"references": {"new_relic": reference}}},
+            }
+            config = deploy_client_runtime(temporary_path, overrides)
+            if missing_config:
+                config.unlink()
             fake_bin = temporary_path / "bin"
             fake_bin.mkdir()
             command_log = temporary_path / "commands.log"
@@ -43,9 +53,10 @@ class PiTelemetryLauncherTests(unittest.TestCase):
 
             env = dict(os.environ)
             for name in tuple(env):
-                if name.startswith(("PI_NEW_RELIC_", "PI_OTEL_", "OTEL_", "NEW_RELIC_")):
+                if name.startswith(("PI_NEW_RELIC_", "PI_OTEL_", "OTEL_", "NEW_RELIC_")) or name == "PI_CODING_AGENT_DIR":
                     env.pop(name)
             env.update(
+                HOME=str(temporary_path),
                 PATH=f"{fake_bin}:/usr/bin:/bin",
                 PI_TEST_COMMAND_LOG=str(command_log),
                 PI_TEST_ENV_CAPTURE=str(env_capture),
@@ -66,6 +77,26 @@ class PiTelemetryLauncherTests(unittest.TestCase):
             commands = command_log.read_text().splitlines() if command_log.exists() else []
             return result, captured, commands
 
+    def test_uses_configured_reference_and_honors_an_explicit_override(self):
+        for overrides, expected in [(None, "op://Tests/NewRelic/key"),
+                                    ({"NEW_RELIC_LICENSE_KEY_OP_REF": "op://Override/NR/key"}, "op://Override/NR/key")]:
+            result, captured, commands = self.run_launcher(
+                op_output="test-license-key", reference="op://Tests/NewRelic/key", env_overrides=overrides,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(commands[0], f"op read {expected}")
+            self.assertEqual(captured["PI_NEW_RELIC_API_KEY"], "test-license-key")
+
+    def test_missing_configuration_or_reference_never_starts_pi(self):
+        for options, message in [({"missing_config": True}, "configuration is missing"),
+                                 ({"reference": ""}, "reference is missing or invalid"),
+                                 ({"env_overrides": {"NEW_RELIC_LICENSE_KEY_OP_REF": ""}}, "reference is missing or invalid")]:
+            result, captured, commands = self.run_launcher(op_output="unused-key", **options)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(message, result.stderr)
+            self.assertIsNone(captured)
+            self.assertEqual(commands, [])
+
     def test_loads_key_from_existing_op_reference(self):
         result, captured, commands = self.run_launcher(
             op_output="test-license-key",
@@ -74,7 +105,7 @@ class PiTelemetryLauncherTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(commands, [
-            "op read op://Personal/j465rncuz4fcf2rc7aogcosypi/credential",
+            f"op read {DEFAULT_REFERENCE}",
             "--print hello world",
         ])
         self.assertIsNotNone(captured)
@@ -157,7 +188,7 @@ class PiTelemetryLauncherTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("New Relic license key", result.stderr)
         self.assertIsNone(captured)
-        self.assertEqual(commands, ["op read op://Personal/j465rncuz4fcf2rc7aogcosypi/credential"])
+        self.assertEqual(commands, [f"op read {DEFAULT_REFERENCE}"])
 
     def test_rejects_work_repositories_before_credentials_or_pi_start(self):
         remotes = (

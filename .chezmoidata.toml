@@ -1,0 +1,16 @@
+[client_runtime.pi]
+agent_dir = "~/.pi/agent"
+
+[client_runtime.onepassword.references]
+new_relic = "op://Personal/j465rncuz4fcf2rc7aogcosypi/credential"
+decision_api = "op://Private/DecisionAPI/api key"
+github = "op://Personal/GitHub/token"
+
+[client_runtime.onepassword.signers]
+darwin = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign"
+linux = "/opt/1Password/op-ssh-sign"
+wsl = "/mnt/c/Users/Yuzuki Kana/AppData/Local/Microsoft/WindowsApps/op-ssh-sign-wsl.exe"
+
+[client_runtime.onepassword.sockets]
+darwin = "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+linux = "~/.1password/agent.sock"

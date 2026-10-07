@@ -5,14 +5,15 @@ import shutil
 import subprocess
 import tempfile
 import time
+import tomllib
 import unittest
+
+from client_runtime_fixture import ROOT, deploy_client_runtime
 
 
 SOURCE = Path(__file__).resolve().parents[2] / "dot_config/zsh/functions/cc.zsh"
-REPOSITORY_SIGNER_PATHS = (
-    "/Applications/1Password.app/Contents/MacOS/op-ssh-sign",
-    "/mnt/c/Users/Yuzuki Kana/AppData/Local/Microsoft/WindowsApps/op-ssh-sign-wsl.exe",
-    "/opt/1Password/op-ssh-sign",
+REPOSITORY_SIGNER_PATHS = tuple(
+    tomllib.loads((ROOT / ".chezmoidata.toml").read_text())["client_runtime"]["onepassword"]["signers"].values()
 )
 
 
@@ -21,12 +22,17 @@ class GitCommitMessageTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
+        deploy_client_runtime(self.root, {"client_runtime": {"onepassword": {"sockets": {
+            "darwin": "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock",
+            "linux": "~/.1password/agent.sock",
+        }}}})
         self.env = dict(
             os.environ,
             HOME=str(self.root),
             GIT_CONFIG_GLOBAL=os.devnull,
             GIT_CONFIG_NOSYSTEM="1",
         )
+        self.env.pop("PI_CODING_AGENT_DIR", None)
         self.git("init", "-q")
         self.git("config", "user.name", "Test")
         self.git("config", "user.email", "test@example.invalid")
@@ -178,6 +184,16 @@ class GitCommitMessageTests(unittest.TestCase):
         self.assertIn("--no-session", args)
         self.assertEqual(args[args.index("--provider") + 1], "openai-codex")
         self.assertEqual(args[args.index("--model") + 1], "gpt-6-luna")
+
+    def test_pi_extension_respects_agent_directory(self):
+        self.env["PI_CODING_AGENT_DIR"] = str(self.root / "pi config")
+        result = self.run_cc()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        args = json.loads((self.root / "args.json").read_text())
+        self.assertEqual(
+            args[args.index("--extension") + 1],
+            str(self.root / "pi config/extensions/new-relic.ts"),
+        )
 
     def test_generation_failure_keeps_changes_staged(self):
         self.env["TEST_EXIT"] = "1"

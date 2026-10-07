@@ -26,7 +26,14 @@ load_new_relic_license_key() {
   op_bin="$(command -v op)" ||
     dotfiles_die "1Password CLI is required to load the New Relic key"
 
-  local op_ref="${NEW_RELIC_LICENSE_KEY_OP_REF:-op://Personal/j465rncuz4fcf2rc7aogcosypi/credential}"
+  local op_ref
+  if [[ ${NEW_RELIC_LICENSE_KEY_OP_REF+x} ]]; then
+    op_ref="$NEW_RELIC_LICENSE_KEY_OP_REF"
+  else
+    op_ref="$(chezmoi --source "$DOTFILES_ROOT" execute-template '{{ .client_runtime.onepassword.references.new_relic }}')" ||
+      dotfiles_die "failed to read the New Relic reference from client runtime settings"
+  fi
+  [[ "$op_ref" == op://* ]] || dotfiles_die "New Relic 1Password reference is missing or invalid"
   NEW_RELIC_LICENSE_KEY="$("$op_bin" read "$op_ref")" ||
     dotfiles_die "failed to load the New Relic key from 1Password"
   [[ -n "$NEW_RELIC_LICENSE_KEY" ]] ||

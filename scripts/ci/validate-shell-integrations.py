@@ -145,6 +145,11 @@ with tempfile.TemporaryDirectory() as temp_dir:
     chezmoi_stub = fake_bin / "chezmoi"
     chezmoi_stub.write_text(
         "#!/bin/sh\n"
+        'if test "$3" = execute-template; then\n'
+        '  printf \'chezmoi %s\\n\' "$*" >>"$COMMAND_LOG"\n'
+        "  printf 'op://Tests/NewRelic/key\\n'\n"
+        "  exit 0\n"
+        "fi\n"
         'if test "${EXPECT_NEW_RELIC_KEY:-}" = 1; then\n'
         '  test "$NEW_RELIC_LICENSE_KEY" = test-new-relic-key || exit 23\n'
         "fi\n"
@@ -180,6 +185,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
     )
     apply_env.pop("CI", None)
     apply_env.pop("NEW_RELIC_LICENSE_KEY", None)
+    apply_env.pop("NEW_RELIC_LICENSE_KEY_OP_REF", None)
     apply_result = subprocess.run(
         ["bash", str(fake_scripts / "apply.sh")],
         cwd=fake_checkout,
@@ -191,7 +197,8 @@ with tempfile.TemporaryDirectory() as temp_dir:
     if apply_result.returncode != 0:
         fail("dotfile apply must refresh the zsh initialization cache")
     expected_apply_commands = [
-        "op read op://Personal/j465rncuz4fcf2rc7aogcosypi/credential",
+        f"chezmoi --source {fake_checkout.resolve()} execute-template {{{{ .client_runtime.onepassword.references.new_relic }}}}",
+        "op read op://Tests/NewRelic/key",
         f"chezmoi init --source {fake_checkout.resolve()}",
         f"chezmoi --source {fake_checkout.resolve()} apply",
         "zsh-cache",
@@ -226,7 +233,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
             f"stderr={existing_key_result.stderr.strip()!r} "
             f"commands={command_log.read_text().splitlines()}"
         )
-    if command_log.read_text().splitlines() != expected_apply_commands[1:]:
+    if command_log.read_text().splitlines() != expected_apply_commands[2:]:
         fail("dotfile apply must not query 1Password when the key is already set")
 
     command_log.write_text("")
@@ -259,7 +266,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
     )
     if ci_result.returncode != 0:
         fail("dotfile apply must remain usable without 1Password in CI")
-    if command_log.read_text().splitlines() != expected_apply_commands[1:]:
+    if command_log.read_text().splitlines() != expected_apply_commands[2:]:
         fail("dotfile apply must not query 1Password in CI")
 
 

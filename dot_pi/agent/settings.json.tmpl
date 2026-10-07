@@ -33,7 +33,7 @@
     "ls"
   ],
   "subagents": {
-    "defaultExtensions": ["~/.pi/agent/extensions/execution-guard.ts"],
+    "defaultExtensions": [{{ printf "%s/extensions/execution-guard.ts" (env "PI_CODING_AGENT_DIR" | default .client_runtime.pi.agent_dir) | toJson }}],
     "defaultModel": "openai-codex/gpt-6-luna",
     "defaultThinking": "max",
     "modelScope": {

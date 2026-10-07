@@ -5,16 +5,17 @@ export VISUAL="vim"
 export GPG_TTY="${TTY:-$(tty)}"
 export PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:$HOME/.bun/bin:$PATH"
 
-# 1Password SSH agent (native socket on macOS / Linux desktop). WSL uses
-# ssh.exe via git's core.sshCommand instead — see dot_gitconfig.tmpl.
-# macOS launchd presets SSH_AUTH_SOCK to its own agent, so we override
-# unconditionally when the 1Password socket exists.
-case "$OSTYPE" in
-  darwin*) _op_sock="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock" ;;
-  linux*)  _op_sock="$HOME/.1password/agent.sock" ;;
-esac
-[[ -n "${_op_sock-}" && -S "$_op_sock" ]] && export SSH_AUTH_SOCK="$_op_sock"
-unset _op_sock
+if [[ -r "$HOME/.config/dotfiles/client-runtime.sh" ]]; then
+  source "$HOME/.config/dotfiles/client-runtime.sh" || return 1
+  case "$OSTYPE" in
+    darwin*) _op_sock="$DOTFILES_OP_SOCKET_DARWIN" ;;
+    linux*) _op_sock="$DOTFILES_OP_SOCKET_LINUX" ;;
+  esac
+  [[ -n "${_op_sock-}" && -S "$_op_sock" ]] && export SSH_AUTH_SOCK="$_op_sock"
+  unset _op_sock
+else
+  printf '%s\n' 'Client runtime configuration is missing; apply the managed dotfiles first.' >&2
+fi
 
 # 1Password CLI plugin alias.
 # Skip in WSL: 1Password shell plugins are not supported there.

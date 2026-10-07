@@ -144,7 +144,7 @@ for key, expected_value in preserved_codex_runtime_state.items():
     if codex_modified_config.get(key) != expected_value:
         fail(f"Codex config modifier changed runtime-owned {key}")
 
-pi_settings_source = ROOT / "dot_pi/agent/settings.json"
+pi_settings_source = ROOT / "dot_pi/agent/settings.json.tmpl"
 if not pi_settings_source.is_file():
     fail("Canonical Pi settings source is missing")
 
@@ -238,8 +238,10 @@ with tempfile.TemporaryDirectory() as temp_dir:
     rendered_subagents = rendered_pi_settings.get("subagents", {})
     if rendered_subagents.get("defaultModel") != "openai-codex/gpt-6-luna":
         fail("Canonical Pi settings did not pin subagents to GPT-6 Luna")
+    runtime_defaults = tomllib.loads((ROOT / ".chezmoidata.toml").read_text())["client_runtime"]
+    agent_dir = os.environ.get("PI_CODING_AGENT_DIR") or runtime_defaults["pi"]["agent_dir"]
     if rendered_subagents.get("defaultExtensions") != [
-        "~/.pi/agent/extensions/execution-guard.ts"
+        f"{agent_dir}/extensions/execution-guard.ts"
     ]:
         fail("Canonical Pi settings did not load the execution guard in native children")
     configured_typescript_server = (

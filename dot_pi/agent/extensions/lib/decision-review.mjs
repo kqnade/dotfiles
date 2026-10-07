@@ -3,7 +3,6 @@ import { promisify } from 'node:util';
 
 export const DECISION_EVENT = 'pi:decision-review';
 const URL = 'https://api.openai.com/v1/decisions';
-const OP_REF = 'op://Private/DecisionAPI/api key';
 const MAX_INPUT_BYTES = 64 * 1024;
 const MAX_RESPONSE_BYTES = 16 * 1024;
 const POLICY = `Review the exact proposed invocation as a security reviewer. Return low only when it is narrowly scoped, low risk, and consistent with the user's requests and applicable context-file instructions. Otherwise return high. This is an execution gate, not a predictive review of future actions.
@@ -69,7 +68,7 @@ async function readAnswer(response, observation) {
 export function createDecisionReviewer({ env = process.env, readKey = readOnePasswordKey,
   fetchImpl = fetch, signal: lifetime, timeoutMs = 10_000, observe, now = Date.now } = {}) {
   const supplied = env.PI_DECISION_API_KEY;
-  const reference = env.PI_DECISION_API_KEY_OP_REF ?? OP_REF;
+  const reference = env.PI_DECISION_API_KEY_OP_REF;
   let key;
   return async (invocation, { branch = [], contextFiles, signal } = {}) => {
     const observation = { type: 'decision_review', startedAt: now(), requested: false,
@@ -93,6 +92,7 @@ export function createDecisionReviewer({ env = process.env, readKey = readOnePas
       if (observation.requestBytes > MAX_INPUT_BYTES) return denied('判定入力が64 KiBの上限を超えています。', 'input_limit');
       key ??= Promise.resolve().then(async () => {
         try {
+          if (supplied === undefined && (typeof reference !== 'string' || !reference.startsWith('op://'))) return undefined;
           const value = supplied ?? await readKey(reference, lifetime ?? signal);
           if (typeof value !== 'string' || !value.trim() || /[\r\n]/.test(value.trim())) return undefined;
           return value.trim();

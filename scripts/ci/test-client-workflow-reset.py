@@ -15,6 +15,8 @@ import tomllib
 import unittest
 from pathlib import Path
 
+from client_runtime_fixture import render_pi_settings
+
 
 ROOT = Path(__file__).resolve().parents[2]
 SKILLS = {
@@ -41,7 +43,7 @@ class ClientWorkflowResetTests(unittest.TestCase):
             (ROOT / "dot_pi/agent/symlink_AGENTS.md").read_text().strip(),
             "../../.agents/AGENTS.md",
         )
-        self.assertIn("skills/yomiyasu/SKILL.md", instructions)
+        self.assertIn("検出された `yomiyasu` スキル", instructions)
         self.assertEqual(set(shared.glob("*/scripts")), {shared / "yomiyasu/scripts"})
         self.assertFalse((ROOT / "dot_codex/agents").exists())
         self.assertFalse((ROOT / "dot_codex/symlink_AGENTS.md").exists())
@@ -54,7 +56,7 @@ class ClientWorkflowResetTests(unittest.TestCase):
         )
 
     def test_pi_model_cycle_contains_the_three_primary_models(self) -> None:
-        settings = json.loads((ROOT / "dot_pi/agent/settings.json").read_text())
+        settings = render_pi_settings()
         self.assertEqual(settings["enabledModels"], [
             "openai-codex/gpt-6-astra",
             "openai-codex/gpt-6.1-sol",
@@ -228,6 +230,7 @@ class ClientWorkflowResetTests(unittest.TestCase):
                     self.assertEqual((link / "SKILL.md").resolve(), canonical.resolve())
                     for reference in re.findall(r"\]\(([^)]+)\)", canonical.read_text()):
                         self.assertTrue((link / reference).is_file(), reference)
+                self.assertTrue((home / ".config/dotfiles/client-runtime.sh").is_file())
                 self.assertFalse((home / ".pi/agent/skills/test-driven-development").exists())
                 source = ROOT / "dot_agents/skills/yomiyasu"
                 deployed = home / ".agents/skills/yomiyasu"

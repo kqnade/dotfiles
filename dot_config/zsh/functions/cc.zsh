@@ -1,6 +1,12 @@
+if [[ ! -r "$HOME/.config/dotfiles/client-runtime.sh" ]]; then
+  echo "Client runtime configuration is missing; apply the managed dotfiles first." >&2
+  return 1
+fi
+source "$HOME/.config/dotfiles/client-runtime.sh" || return 1
+
 function _git_cc_is_repository_1password_signer_path() {
   case "$1" in
-  "/Applications/1Password.app/Contents/MacOS/op-ssh-sign" | "/mnt/c/Users/Yuzuki Kana/AppData/Local/Microsoft/WindowsApps/op-ssh-sign-wsl.exe" | "/opt/1Password/op-ssh-sign")
+  "$DOTFILES_OP_SIGNER_DARWIN" | "$DOTFILES_OP_SIGNER_WSL" | "$DOTFILES_OP_SIGNER_LINUX")
     return 0
     ;;
   esac
@@ -9,7 +15,7 @@ function _git_cc_is_repository_1password_signer_path() {
 
 function _git_cc_is_repository_1password_agent_path() {
   case "$1" in
-  "$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"|"$HOME/.1password/agent.sock")
+  "$DOTFILES_OP_SOCKET_DARWIN" | "$DOTFILES_OP_SOCKET_LINUX")
     return 0
     ;;
   esac
@@ -24,6 +30,9 @@ function git-cc() {
     echo "No staged changes. Run 'git add' first."
     return 1
   fi
+
+  local pi_agent_dir
+  pi_agent_dir=$(dotfiles_pi_agent_dir) || return 1
 
   local log
   log=$(git log --oneline -50)
@@ -66,12 +75,12 @@ Rules:
 
 == Git diff ==
 %s
-' "$log" "$diff" | PI_EXECUTION_SOURCE=git_cc "$HOME/.local/bin/pi-telemetry" \
+' "$log" "$diff" | PI_CODING_AGENT_DIR="$pi_agent_dir" PI_EXECUTION_SOURCE=git_cc "$HOME/.local/bin/pi-telemetry" \
     --provider openai-codex \
     --model gpt-6-luna \
     --thinking medium \
     --offline --print --no-session --no-tools \
-    --no-extensions --extension "$HOME/.pi/agent/extensions/new-relic.ts" \
+    --no-extensions --extension "$pi_agent_dir/extensions/new-relic.ts" \
     --no-skills --no-prompt-templates --no-context-files >"$output"; then
     msg=$(<"$output")
   else

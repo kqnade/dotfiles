@@ -23,6 +23,40 @@ Telemetry metrics, logs, and spans carry `execution_source`: `git_cc` for the co
 Pi launched by `git cc`, or `pi` otherwise. The helper sets `PI_EXECUTION_SOURCE=git_cc` only
 for that invocation. Unknown values map to `pi`; the attribute is for filtering, not authorization.
 
+## Runtime configuration
+
+`.chezmoidata.toml` owns the non-secret client runtime defaults: Pi's agent directory,
+1Password item references, and platform-specific signing programs and agent sockets.
+Chezmoi renders them into `~/.config/dotfiles/client-runtime.sh`, Git configuration, and
+Pi settings. Edit the source data rather than the generated shell file, then use
+`mise run apply` to deploy it. Secret values remain in 1Password or Pi's `auth.json`.
+
+The managed launchers load the shell configuration themselves, including non-interactive
+`git cc` invocations. Shell startup uses it for the native SSH agent socket but does not
+export credential-reference defaults into the caller's environment. Restart Pi after applying
+runtime-default changes; `/reload` does not refresh its process environment. An explicit
+environment variable takes precedence over a configured reference:
+
+| Setting | Override |
+| --- | --- |
+| Pi agent directory | `PI_CODING_AGENT_DIR` |
+| New Relic 1Password reference | `NEW_RELIC_LICENSE_KEY_OP_REF` |
+| Decisions 1Password reference | `PI_DECISION_API_KEY_OP_REF` |
+| Claude GitHub token reference | `GITHUB_PAT_OP_REF` |
+
+Pi's directory must be absolute or start with `~/`. Chezmoi owns the adapter under
+`~/.pi/agent`; selecting a different runtime directory does not move its settings,
+extensions, credentials, or sessions. Prepare that directory separately and render
+its settings with the same `PI_CODING_AGENT_DIR` used at launch. The child extension
+path is resolved when settings are rendered, so changing the variable at launch alone
+does not rewrite a pre-existing settings file.
+
+Missing runtime configuration blocks the managed launchers. Empty or invalid references
+block credential lookup rather than selecting another vault. Direct Pi SDK or CLI launches
+outside the managed wrapper must supply the Decisions reference or key themselves.
+Signing helpers and sockets are trusted only at the exact paths in the managed configuration;
+matching a filename or an arbitrary environment variable is insufficient.
+
 ## Execution approvals
 
 The default is **Decision API review** (`PI_APPROVAL_REVIEWER=decision`). Every agent `bash` and
@@ -49,12 +83,12 @@ Commands and context can contain sensitive information: do not place secrets in 
 
 ### API credentials
 
-Pi lazily reads `op://Private/DecisionAPI/api key` on the first review and caches the result only in
-its parent extension's process memory. Concurrent requests and native children share that lookup;
-session replacement reuses it. No credential file is written and the retrieved key is not exported
+Pi lazily reads the configured Decisions 1Password reference on the first review and caches the
+result only in its parent extension's process memory. Concurrent requests and native children
+share that lookup; session replacement reuses it. No credential file is written and the retrieved key is not exported
 to child environments or logs. `/reload` or process restart discards the cache. A failed lookup is
-also cached to avoid repeated unlock prompts; unlock 1Password or correct the reference and reload
-or restart to retry. The CLI lookup is bounded to one minute; API requests are bounded to ten seconds
+also cached to avoid repeated unlock prompts; unlock 1Password and reload or restart to retry.
+Reference changes require a process restart. The CLI lookup is bounded to one minute; API requests are bounded to ten seconds
 and responses to 16 KiB. Each command incurs a separate API call and API billing, independent of
 ChatGPT OAuth subscription usage.
 

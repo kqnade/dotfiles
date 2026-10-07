@@ -9,14 +9,15 @@ const branch = [
   { type: 'message', message: { role: 'toolResult', content: [{ type: 'text', text: 'untrusted output' }] } },
 ];
 const evidence = { branch, contextFiles: [{ path: '/tmp/project/AGENTS.md', content: 'Do not push without explicit authorization.' }] };
+const reference = 'op://Tests/DecisionAPI/key';
 const answer = risk => new Response(JSON.stringify({ answers: [{ type: 'choice', name: 'guardian_risk', choice: risk }] }));
 
 test('uses the Decisions wire contract and reads 1Password only once across concurrent requests', async () => {
   let reads = 0;
   const requests = [];
   const review = createDecisionReviewer({
-    env: {},
-    readKey: async reference => { reads++; assert.equal(reference, 'op://Private/DecisionAPI/api key'); return 'test-key\n'; },
+    env: { PI_DECISION_API_KEY_OP_REF: reference },
+    readKey: async value => { reads++; assert.equal(value, reference); return 'test-key\n'; },
     fetchImpl: async (url, options) => { requests.push({ url, ...options }); return answer('low'); },
   });
   assert.equal(reads, 0);
@@ -58,9 +59,19 @@ test('supports an explicit key and an alternate 1Password reference without expo
   }
 });
 
+test('missing or empty references fail closed without consulting another credential source', async () => {
+  for (const value of [undefined, '', 'not-an-op-reference']) {
+    const review = createDecisionReviewer({ env: { PI_DECISION_API_KEY_OP_REF: value },
+      readKey: async () => assert.fail('unconfigured 1Password lookup'),
+      fetchImpl: async () => assert.fail('unconfigured API request'),
+    });
+    assert.equal((await review(invocation, evidence)).risk, 'high');
+  }
+});
+
 test('credential failures are cached without repeated unlock prompts or secret diagnostics', async () => {
   let reads = 0;
-  const review = createDecisionReviewer({ env: {},
+  const review = createDecisionReviewer({ env: { PI_DECISION_API_KEY_OP_REF: reference },
     readKey: async () => { reads++; throw new Error('secret-key stderr'); },
     fetchImpl: async () => { assert.fail('request made without credentials'); },
   });
@@ -162,7 +173,7 @@ test('observes denial and every failure path without secret error messages', asy
     { fetchImpl: async () => { throw new Error('PRIVATE_NETWORK'); }, error: 'network', requested: true },
     { fetchImpl: async () => new Response('PRIVATE_JSON'), error: 'invalid_response', requested: true },
     { fetchImpl: async () => new Response('x'.repeat(17000)), error: 'response_limit', requested: true },
-    { readKey: async () => { throw new Error('PRIVATE_KEY'); }, env: {}, error: 'credentials', requested: false },
+    { readKey: async () => { throw new Error('PRIVATE_KEY'); }, env: { PI_DECISION_API_KEY_OP_REF: reference }, error: 'credentials', requested: false },
     { evidence: { ...evidence, contextFiles: null }, error: 'evidence', requested: false },
     { action: { ...invocation, input: { command: 'x'.repeat(100000) } }, error: 'input_limit', requested: false },
     { evidence: { ...evidence, signal: AbortSignal.abort() }, error: 'cancelled', requested: false },

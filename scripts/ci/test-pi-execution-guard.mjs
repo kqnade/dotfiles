@@ -5,10 +5,17 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
+import { fileURLToPath } from 'node:url';
 import { approvalReason, isDirectGitCommit, isForbiddenCommitBypass, confirmOneInvocation, toolCallPurpose, MAX_PURPOSE_LENGTH } from '../../dot_pi/agent/extensions/lib/execution-guard.mjs';
 import executionGuard from '../../dot_pi/agent/extensions/execution-guard.ts';
 import { APPROVAL_ENV, createApprovalServer } from '../../dot_pi/agent/extensions/lib/approval-channel.mjs';
-import settings from '../../dot_pi/agent/settings.json' with { type: 'json' };
+const settingsEnv = { ...process.env };
+delete settingsEnv.PI_CODING_AGENT_DIR;
+const settings = JSON.parse((await promisify(execFile)('chezmoi', [
+  '--source', fileURLToPath(new URL('../../', import.meta.url)),
+  '--override-data', JSON.stringify({ client_runtime: { pi: { agent_dir: '~/.pi/agent' } } }),
+  'execute-template', '--file', fileURLToPath(new URL('../../dot_pi/agent/settings.json.tmpl', import.meta.url)),
+], { env: settingsEnv })).stdout);
 
 const invocation = { toolName: 'bash', input: { command: 'git push origin trunk' }, purpose: '検証済みの変更をリモートへ送信します。' };
 

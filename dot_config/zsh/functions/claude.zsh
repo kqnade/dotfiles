@@ -7,10 +7,24 @@ claude() {
     fi
     "$repository_guard" </dev/null || return 1
 
-    local pat=""
-    local ref="${GITHUB_PAT_OP_REF:-op://Personal/GitHub/token}"
-    if [[ -z "$GITHUB_PERSONAL_ACCESS_TOKEN" ]] && command -v op >/dev/null 2>&1; then
-        pat=$(op read "$ref" 2>/dev/null) || pat=""
+    if [[ ! -r "$HOME/.config/dotfiles/client-runtime.sh" ]]; then
+        echo "Client runtime configuration is missing; apply the managed dotfiles first." >&2
+        return 1
     fi
-    GITHUB_PERSONAL_ACCESS_TOKEN="${GITHUB_PERSONAL_ACCESS_TOKEN:-$pat}" command claude "$@"
+    source "$HOME/.config/dotfiles/client-runtime.sh" || return 1
+
+    local ref="${GITHUB_PAT_OP_REF-$DOTFILES_OP_GITHUB_REF}"
+    local pat="${GITHUB_PERSONAL_ACCESS_TOKEN:-}"
+    if [[ -z "$pat" ]]; then
+        [[ "$ref" == op://* ]] || {
+            echo "GitHub 1Password reference is missing or invalid." >&2
+            return 1
+        }
+        pat=$(op read "$ref") || return 1
+        [[ -n "$pat" ]] || {
+            echo "GitHub token is empty." >&2
+            return 1
+        }
+    fi
+    GITHUB_PERSONAL_ACCESS_TOKEN="$pat" command claude "$@"
 }
