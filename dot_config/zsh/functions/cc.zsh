@@ -66,7 +66,7 @@ Rules:
 
 == Git diff ==
 %s
-' "$log" "$diff" | "$HOME/.local/bin/pi-telemetry" \
+' "$log" "$diff" | PI_EXECUTION_SOURCE=git_cc "$HOME/.local/bin/pi-telemetry" \
     --provider openai-codex \
     --model gpt-6-luna \
     --thinking medium \

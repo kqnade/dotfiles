@@ -6,6 +6,7 @@ import { DECISION_EVENT } from './lib/decision-review.mjs';
 
 export default function (pi, { conversation = 'main' } = {}) {
   const apiKey = process.env.PI_NEW_RELIC_API_KEY;
+  const executionSource = process.env.PI_EXECUTION_SOURCE === 'git_cc' ? 'git_cc' : 'pi';
   const enabled = process.env.PI_NEW_RELIC_ENABLE === '1' && !!apiKey;
   const exporter = enabled ? createExporter({ apiKey }) : undefined;
   const collector = exporter ? createCollector(exporter) : undefined;
@@ -79,7 +80,7 @@ export default function (pi, { conversation = 'main' } = {}) {
     const model = event.message?.role === 'assistant' ? event.message : event.model ?? ctx.model;
     collector.handle(event, {
       provider: model?.provider ?? 'unknown', model: model?.model ?? model?.id ?? 'unknown',
-      thinking: pi.getThinkingLevel(), mode: ctx.mode, conversation,
+      thinking: pi.getThinkingLevel(), mode: ctx.mode, conversation, execution_source: executionSource,
     }, observation);
     if (name === 'agent_end') void exporter.flush();
     if (name === 'session_shutdown') {

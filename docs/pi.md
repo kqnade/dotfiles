@@ -19,6 +19,10 @@ The one-shot `git cc` message generator uses `medium`. The `pi` shell function s
 can supply the ingest key without 1Password. `/telemetry-status` flushes pending
 records and reports HTTP delivery status, queue sizes, errors, and dropped records.
 
+Telemetry metrics, logs, and spans carry `execution_source`: `git_cc` for the commit-message
+Pi launched by `git cc`, or `pi` otherwise. The helper sets `PI_EXECUTION_SOURCE=git_cc` only
+for that invocation. Unknown values map to `pi`; the attribute is for filtering, not authorization.
+
 ## Execution approvals
 
 The default is **Decision API review** (`PI_APPROVAL_REVIEWER=decision`). Every agent `bash` and

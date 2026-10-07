@@ -87,6 +87,7 @@ class GitCommitMessageTests(unittest.TestCase):
             "import json, os, pathlib, sys\n"
             "root = pathlib.Path.home()\n"
             "(root / 'args.json').write_text(json.dumps(sys.argv[1:]))\n"
+            "(root / 'source.txt').write_text(os.environ.get('PI_EXECUTION_SOURCE', ''))\n"
             "(root / 'prompt.txt').write_text(sys.stdin.read())\n"
             "print(os.environ.get('TEST_MESSAGE', '✨ feat: add example'))\n"
             "sys.exit(int(os.environ.get('TEST_EXIT', '0')))\n"
@@ -171,6 +172,7 @@ class GitCommitMessageTests(unittest.TestCase):
         self.assertIn("+staged content", prompt)
         self.assertIn("initial style reference", prompt)
         args = json.loads((self.root / "args.json").read_text())
+        self.assertEqual((self.root / "source.txt").read_text(), "git_cc")
         self.assertIn("--no-tools", args)
         self.assertIn("--print", args)
         self.assertIn("--no-session", args)

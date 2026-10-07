@@ -4,10 +4,14 @@ import { EventEmitter } from 'node:events';
 import { createDecisionReviewer, DECISION_EVENT } from '../../dot_pi/agent/extensions/lib/decision-review.mjs';
 import extension from '../../dot_pi/agent/extensions/new-relic.ts';
 
-test('Pi hooks deliver metadata through New Relic OTLP', async () => {
+for (const source of [undefined, 'git_cc', 'PRIVATE_UNKNOWN_SOURCE']) {
+test(`Pi hooks deliver metadata through New Relic OTLP (${source ?? 'default'})`, async () => {
   const savedFetch = globalThis.fetch;
   const savedKey = process.env.PI_NEW_RELIC_API_KEY;
   const savedEnable = process.env.PI_NEW_RELIC_ENABLE;
+  const savedSource = process.env.PI_EXECUTION_SOURCE;
+  if (source === undefined) delete process.env.PI_EXECUTION_SOURCE;
+  else process.env.PI_EXECUTION_SOURCE = source;
   const bodies = [], handlers = new Map();
   const emitter = new EventEmitter();
   const events = { emit: (name, event) => emitter.emit(name, event), on: (name, handler) => {
@@ -53,9 +57,12 @@ test('Pi hooks deliver metadata through New Relic OTLP', async () => {
       return b.body.resourceLogs[0].scopeLogs[0].logRecords;
     });
     assert(records.every(r => r.attributes.some(a => a.key === 'conversation' && a.value.stringValue === 'main')));
+    assert(records.every(r => r.attributes.some(a => a.key === 'execution_source' && a.value.stringValue === (source === 'git_cc' ? 'git_cc' : 'pi'))));
   } finally {
     globalThis.fetch = savedFetch;
     if (savedKey === undefined) delete process.env.PI_NEW_RELIC_API_KEY; else process.env.PI_NEW_RELIC_API_KEY = savedKey;
     if (savedEnable === undefined) delete process.env.PI_NEW_RELIC_ENABLE; else process.env.PI_NEW_RELIC_ENABLE = savedEnable;
+    if (savedSource === undefined) delete process.env.PI_EXECUTION_SOURCE; else process.env.PI_EXECUTION_SOURCE = savedSource;
   }
 });
+}
