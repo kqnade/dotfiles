@@ -53,16 +53,15 @@ Skillsは現在の利用者の依頼、repository規約、client/accountの制�
 
 委譲には現在のclientの認可された仕組みを使い、その実行規約に従います。Piでは`pi-subagents`、
 Claudeでは認可された同accountの仕組みを使い、利用できないときに別CLIへ切り替えません。
-Piのexecution guardはApprove for me相当の動作が既定です。`PI_EXECUTION_GUARD=0 pi`でopt-outできます。
-無効時のremote認可は指示による制約です。native childrenにも`subagents.defaultExtensions`からextensionを配備し、
-ローカルの読み書き・テスト・子の起動・通常のWeb/GitHub読み取りは自動許可します。権限昇格、
-pushや公開・共有環境変更、明示的なデータ送信、広範囲削除などの既知の高リスク操作を検出したときだけ、
-子のsession・cwd・tool・引数・目的説明を親の確認dialogへ転送します。承認対象の操作は
-親の終了、通信断、取消、期限切れで拒否します。親のないheadless sessionでもローカル作業はできます。
-未認識のコマンド・toolは許可されるため、script内部などの外部通信を完全には検出できません。
-間接的な操作も含むremote変更の事前認可は、引き続き指示として必須です。Pi子agentの`permissions: ask`やsupervisorの
-返答はLLM判断で、人間の許可ではありません。extension listや環境設定でguardを外した子、
-外部processにはこのguardが及びません。詳しい境界と制限は[Pi](pi.md#execution-approvals)を参照してください。
+Piのexecution guardはDecision APIで全agentシェルコマンドを精査し、低リスク判定の1回だけを許可します。
+高リスク・判定不能・通信失敗・取消は拒否し、確認dialogによる自動fallbackは行いません。
+native childrenにも`subagents.defaultExtensions`からextensionを配備し、子のsession・cwd・tool・引数を
+親のAPI判定へ転送します。鍵は親Piのメモリで共有し、1Passwordの取得を繰り返しません。
+親のないheadless sessionではシェルコマンドを実行できません。file toolや子の起動などはAPI判定の対象外です。
+`PI_APPROVAL_REVIEWER=user pi`ではルールベースの人間確認を使い、`PI_EXECUTION_GUARD=0 pi`ではguardを無効にします。
+間接的な操作も含むremote変更の明示的な事前認可は、どのmodeでも必要です。API判定や子agentの`permissions: ask`、
+supervisorの返答は人間の許可ではありません。extension内部の実行や、extension list・環境設定でguardを外した子、
+外部processにはこのguardが及びません。詳しい境界・鍵・費用は[Pi](pi.md#execution-approvals)を参照してください。
 OrcaやHerdrでのterminal操作は、その操作が必要な依頼に限ります。Skillにmodelやterminalを固定しません。
 
 ## このrepositoryの状態保存

@@ -39,7 +39,7 @@ test('native Pi RPC forwards child approval to real UI requests without model ca
     }
   `);
   const executable = execFileSync('mise', ['which', 'pi'], { encoding: 'utf8' }).trim();
-  const env = { ...process.env, PI_CODING_AGENT_DIR: agentDir, HOME: temporary };
+  const env = { ...process.env, PI_CODING_AGENT_DIR: agentDir, HOME: temporary, PI_APPROVAL_REVIEWER: 'user' };
   delete env.PI_EXECUTION_GUARD;
   delete env.PI_EXECUTION_APPROVAL_CHANNEL;
   const child = spawn(executable, [

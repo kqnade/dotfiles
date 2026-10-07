@@ -21,26 +21,63 @@ records and reports HTTP delivery status, queue sizes, errors, and dropped recor
 
 ## Execution approvals
 
-The default is an **Approve for me–style policy**: routine work proceeds automatically, while recognized
-high-risk operations require human confirmation. Start a session with `PI_EXECUTION_GUARD=0 pi` to opt out;
-only the exact value `0` disables the guard. This is a rule-based policy, not approval delegated to a model.
-When disabled, remote authorization remains an instruction policy, not a tool-level execution barrier.
+The default is **Decision API review** (`PI_APPROVAL_REVIEWER=decision`). Every agent `bash` and
+`powershell` invocation, including reads and tests, is reviewed by
+`POST https://api.openai.com/v1/decisions` using `gpt-6-luna`. Only an exact `low` risk answer permits
+that one invocation. High risk, refusal, malformed replies, missing evidence, credential errors,
+HTTP errors, timeout, and cancellation deny execution without a confirmation dialog.
+Recognized authenticated `fetch_content` operations also require review. Other tools, including
+file reads/edits and native subagent launch/control, do not use this API.
+
+The reviewer receives the exact invocation and working directory, text user messages from the
+parent's active branch, and the parent's loaded context files. Agent explanations cannot establish
+authorization. Private reasoning, assistant messages, tool outputs, images, and credentials used for
+API authentication are not included as evidence. Non-text user messages or requests larger than
+64 KiB fail closed rather than silently dropping evidence. Unknown script contents, variables or
+runtime state are not inspected by the reviewer; the rubric requires a high-risk answer when these
+prevent establishing effects. Remote/shared mutations still require explicit user authorization for
+the concrete action and target. Model judgment is not authorization or a security guarantee.
+Commands and context can contain sensitive information: do not place secrets in command arguments.
+
+### API credentials
+
+Pi lazily reads `op://Private/DecisionAPI/api key` on the first review and caches the result only in
+its parent extension's process memory. Concurrent requests and native children share that lookup;
+session replacement reuses it. No credential file is written and the retrieved key is not exported
+to child environments or logs. `/reload` or process restart discards the cache. A failed lookup is
+also cached to avoid repeated unlock prompts; unlock 1Password or correct the reference and reload
+or restart to retry. The CLI lookup is bounded to one minute; API requests are bounded to ten seconds
+and responses to 16 KiB. Each command incurs a separate API call and API billing, independent of
+ChatGPT OAuth subscription usage.
+
+`PI_DECISION_API_KEY_OP_REF` overrides the 1Password reference. `PI_DECISION_API_KEY` supplies a key
+directly without invoking `op`; an environment key supplied by the caller remains subject to ordinary
+process environment inheritance. ChatGPT OAuth credentials are not used for Decisions.
+
+### Manual policy and opt-out
+
+`PI_APPROVAL_REVIEWER=user pi` selects the rule-based policy: routine operations proceed automatically
+and recognized high-risk operations require human confirmation. This mode never reads the Decisions
+key or calls the API. Unknown reviewer values fail closed.
+`PI_EXECUTION_GUARD=0 pi` disables the entire guard; only the exact value `0` does so.
+When disabled, remote authorization remains an instruction policy, not a tool-level barrier.
 
 A parent session with a TUI or RPC dialog UI owns a private Unix socket. Native foreground and
 background children inherit its session-specific endpoint through `PI_EXECUTION_APPROVAL_CHANNEL`.
-Their detected high-risk operations wait for the parent's confirmation dialog, showing the child session,
-tool-call ID, working directory, and complete input. Supervisor/model replies cannot approve
-these calls. RPC clients must present confirmations to a person rather than automatically answer.
+In Decision mode all child shell commands wait for the parent's API judgment with their own invocation,
+child session, tool-call ID, and working directory. Children do not independently retrieve keys.
+In manual mode detected high-risk operations wait for the parent's confirmation dialog. Supervisor/model
+replies cannot replace these confirmations; RPC clients must present them to a person.
 
-Dialogs use Japanese labels for the operation, working directory, input, and confirmation reason rather
+Manual dialogs use Japanese labels for the operation, working directory, input, and confirmation reason rather
 than a JSON envelope. Commands and other multiline values retain their line breaks; terminal control and
 bidirectional formatting characters are shown as visible escapes. Raw parameter names and string type
 labels distinguish translated keys, strings, and non-string values. The complete input remains displayed.
 Below the input, the dialog shows a short purpose from the public assistant text immediately preceding
 that tool call in the same message. Private reasoning, user messages, and another call's explanation are
-not used. The guard requires this explanation through a Pi prompt guideline and the shared user
-instructions, without an extra model call. A missing or whitespace-only explanation blocks the call
-before opening a dialog or forwarding a child request, with instructions to explain the purpose and
+not used as its purpose. In both modes recognized high-risk operations require this explanation
+through a Pi prompt guideline and the shared user instructions, without a separate purpose-generation call. A missing or whitespace-only explanation blocks the call
+before review, opening a dialog, or forwarding a child request, with instructions to explain the purpose and
 target in Japanese before retrying. Each call needs its own explanation, including calls in a batch.
 A long explanation is clipped at 500 Unicode characters with a marker.
 The purpose is agent-authored reference text, not proof of safety or permission. Child purposes are forwarded
@@ -54,6 +91,8 @@ breaks the connection but may leave its private temporary directory. Children bo
 must be relaunched, not silently attached to its replacement. One interactive
 approval owner is supported per process; separate Pi processes own independent channels.
 
+In manual mode the command recognizers use this policy:
+
 | Automatic | Human confirmation |
 |---|---|
 | Local reads, edits, writes, tests, questions, native subagent launch/control | Privilege elevation and permission/ownership changes, such as sudo/chmod/chown |
@@ -65,9 +104,9 @@ These are command/tool recognizers, not a semantic guarantee. Opaque API and rem
 such as `gh api` or SSH/file-transfer clients can require confirmation even for a read-only use.
 Dependency installation is automatic even when packages execute install scripts; use only trusted sources.
 
-Each dialog approves one invocation in its working directory. Dialogs are serialized. Declines,
-unavailable approval channels, and UI errors fail closed for operations that require confirmation;
-no session-wide grants or model/chat-text approval are used. Recognized literal `git commit` forms,
+Reviews and dialogs are serialized and authorize one unchanged invocation in its working directory.
+Unavailable parent channels and UI errors fail closed; there are no session-wide grants.
+Manual declines deny execution. Recognized literal `git commit` forms,
 including common global options such as `-C`, and detected signing or hook bypasses remain blocked;
 use `git cc` for commits.
 
@@ -78,14 +117,14 @@ No request content is persisted by the channel, and it opens no TCP port or exte
 The argument check covers the wait for approval. Pi allows later `tool_call` handlers to mutate
 arguments after this guard returns; such changes are outside this check. Load only trusted extensions.
 
-This is a best-effort confirmation aid, not an OS sandbox or a complete side-effect detector. Unmatched
-commands and tools are allowed; this does not prove they are safe or local. Scripts, wrappers, unfamiliar
-shell syntax, custom tools, extension-internal execution, and apparently read-only HTTP requests can have
-external effects without a prompt.
+This is a best-effort execution gate, not an OS sandbox or a complete side-effect detector.
+Decision mode reviews every agent shell command, but tools outside its coverage remain allowed;
+manual mode also allows unrecognized commands. Extensions' internal execution, wrappers, custom tools,
+and apparently read-only HTTP requests can have external effects beyond the review evidence.
 The instruction policy still requires explicit authorization before remote/shared mutations, including
 indirect operations. Native pi-subagents children receive the extension through `subagents.defaultExtensions`
-and inherit the guard environment. Headless sessions without a valid parent channel can perform local
-work but cannot obtain approval for detected high-risk operations. A child or project configuration
+and inherit the guard environment. In Decision mode headless sessions without a valid parent channel cannot execute shell commands.
+In manual mode they can perform routine local work but cannot obtain high-risk approvals. A child or project configuration
 that replaces its extension list or environment can omit the guard. External CLI agent profiles remain
 disabled.
 

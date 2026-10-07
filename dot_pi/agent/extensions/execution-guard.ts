@@ -1,5 +1,6 @@
-import type { ExtensionAPI, ToolCallEvent } from '@earendil-works/pi-coding-agent';
+import type { ExtensionAPI, ExtensionContext, ToolCallEvent } from '@earendil-works/pi-coding-agent';
 import { APPROVAL_ENV, createApprovalServer, requestApproval } from './lib/approval-channel.mjs';
+import { createDecisionReviewer } from './lib/decision-review.mjs';
 import { approvalReason, confirmOneInvocation, isDirectGitCommit, isForbiddenCommitBypass, missingPurposeReason, toolCallPurpose } from './lib/execution-guard.mjs';
 
 function commitBlock(invocation: Pick<ToolCallEvent, 'toolName' | 'input'>) {
@@ -17,12 +18,22 @@ export default function (pi: ExtensionAPI) {
   if (process.env.PI_EXECUTION_GUARD === '0') return;
 
   const inherited = process.env[APPROVAL_ENV];
+  const reviewerMode = process.env.PI_APPROVAL_REVIEWER ?? 'decision';
+  const reviewer = reviewerMode === 'decision' ? createDecisionReviewer() : undefined;
   let lifetime = new AbortController();
   let server: Awaited<ReturnType<typeof createApprovalServer>> | undefined;
   let endpoint;
   let published: string | undefined;
   let started = false;
   let startupError: string | undefined;
+
+  function reviewFor(context: ExtensionContext) {
+    const owned = reviewer;
+    return owned && ((invocation, signal) => owned({ ...invocation, cwd: invocation.cwd ?? context.cwd }, {
+      branch: context.sessionManager?.getBranch() ?? [],
+      contextFiles: context.getSystemPromptOptions?.().contextFiles, signal,
+    }));
+  }
 
   async function shutdown() {
     started = false;
@@ -40,6 +51,7 @@ export default function (pi: ExtensionAPI) {
     lifetime = new AbortController();
     startupError = undefined;
     try {
+      if (!['decision', 'user'].includes(reviewerMode)) throw new Error('PI_APPROVAL_REVIEWER must be decision or user.');
       if (context.hasUI) {
         if (parseChannel(process.env[APPROVAL_ENV])?.ownerPid === process.pid) {
           throw new Error('An approval UI already owns this process; use a separate Pi process.');
@@ -49,7 +61,7 @@ export default function (pi: ExtensionAPI) {
           if (reason) return { allowed: false, reason };
           return confirmOneInvocation(invocation, {
             hasUI: context.hasUI, ui: context.ui, cwd: invocation.cwd,
-          }, { signal });
+          }, { signal, review: reviewFor(context) });
         });
         published = JSON.stringify(server.endpoint);
         process.env[APPROVAL_ENV] = published;
@@ -75,7 +87,9 @@ export default function (pi: ExtensionAPI) {
   pi.on('tool_call', async (event, context) => {
     const reason = commitBlock(event);
     if (reason) return { block: true, reason };
-    if (!approvalReason(event)) return;
+    if (reviewerMode === 'user' || !['bash', 'powershell'].includes(event.toolName)) {
+      if (!approvalReason(event)) return;
+    }
     if (!started) return { block: true, reason: startupError ?? 'Approval session is not initialized.' };
 
     const signal = context.signal
@@ -83,10 +97,12 @@ export default function (pi: ExtensionAPI) {
       : lifetime.signal;
     try {
       const purpose = toolCallPurpose(context.sessionManager.getBranch(), event.toolCallId);
-      const purposeReason = missingPurposeReason(purpose);
-      if (purposeReason) return { block: true, reason: purposeReason };
+      if (approvalReason(event)) {
+        const purposeReason = missingPurposeReason(purpose);
+        if (purposeReason) return { block: true, reason: purposeReason };
+      }
       const decision = context.hasUI
-        ? await confirmOneInvocation({ ...event, purpose }, context, { signal })
+        ? await confirmOneInvocation({ ...event, purpose }, context, { signal, review: reviewFor(context) })
         : await requestApproval(endpoint, {
           toolName: event.toolName, toolCallId: event.toolCallId, input: event.input, purpose,
           cwd: context.cwd, childSessionId: context.sessionManager.getSessionId(),

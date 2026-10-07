@@ -12,16 +12,21 @@ import settings from '../../dot_pi/agent/settings.json' with { type: 'json' };
 
 const invocation = { toolName: 'bash', input: { command: 'git push origin trunk' }, purpose: '検証済みの変更をリモートへ送信します。' };
 
-function guardHandlers(enabled) {
+function guardHandlers(enabled, reviewer = 'user') {
   const original = process.env.PI_EXECUTION_GUARD;
+  const originalReviewer = process.env.PI_APPROVAL_REVIEWER;
   const handlers = new Map();
   try {
     if (enabled === undefined) delete process.env.PI_EXECUTION_GUARD;
     else process.env.PI_EXECUTION_GUARD = enabled;
+    if (reviewer === null) delete process.env.PI_APPROVAL_REVIEWER;
+    else process.env.PI_APPROVAL_REVIEWER = reviewer;
     executionGuard({ on: (event, callback) => { handlers.set(event, callback); } });
   } finally {
     if (original === undefined) delete process.env.PI_EXECUTION_GUARD;
     else process.env.PI_EXECUTION_GUARD = original;
+    if (originalReviewer === undefined) delete process.env.PI_APPROVAL_REVIEWER;
+    else process.env.PI_APPROVAL_REVIEWER = originalReviewer;
   }
   return handlers;
 }
@@ -122,6 +127,7 @@ test('a separate headless extension gates a simulated external operation by defa
     const target = join(directory, allowed ? 'approved' : 'denied');
     const env = { ...process.env, TEST_TARGET: target };
     delete env.PI_EXECUTION_GUARD;
+    env.PI_APPROVAL_REVIEWER = 'user';
     const { stdout } = await promisify(execFile)(process.execPath, ['--input-type=module', '-e', script], {
       cwd: directory, timeout: 5000, env,
     });
@@ -487,6 +493,133 @@ test('cancellation releases the queue and a late approval cannot authorize execu
     cwd: '/tmp/work', hasUI: true, ui: { confirm: async () => true },
   })).allowed, true);
   answer(true);
+});
+
+test('decision mode reviews every parent and child shell command, not just recognized risks', async t => {
+  const originalFetch = globalThis.fetch;
+  const originalKey = process.env.PI_DECISION_API_KEY;
+  const originalChannel = process.env[APPROVAL_ENV];
+  let risk = 'low';
+  const requests = [];
+  process.env.PI_DECISION_API_KEY = 'fixture-key';
+  globalThis.fetch = async (_url, options) => {
+    requests.push(JSON.parse(JSON.parse(options.body).input[0].content[0].text));
+    return new Response(JSON.stringify({ answers: [{ type: 'choice', name: 'guardian_risk', choice: risk }] }));
+  };
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.PI_DECISION_API_KEY;
+    else process.env.PI_DECISION_API_KEY = originalKey;
+    if (originalChannel === undefined) delete process.env[APPROVAL_ENV];
+    else process.env[APPROVAL_ENV] = originalChannel;
+  });
+  const parent = guardHandlers('1', 'decision');
+  const context = {
+    hasUI: true, cwd: '/tmp/parent',
+    ui: { confirm: async () => { assert.fail('decision mode opened a human confirmation'); } },
+    sessionManager: { getBranch: () => [{ type: 'message', message: { role: 'user', content: 'Inspect the checkout and run tests.' } }] },
+    getSystemPromptOptions: () => ({ contextFiles: [{ path: 'AGENTS.md', content: 'Keep changes local.' }] }),
+  };
+  await parent.get('session_start')({}, context);
+  t.after(() => parent.get('session_shutdown')({}, context));
+  for (const [toolName, command] of [['bash', 'git status'], ['bash', 'python3 unknown.py'], ['powershell', 'Get-ChildItem']]) {
+    assert.equal(await parent.get('tool_call')({ toolName, toolCallId: 'routine', input: { command } }, context), undefined);
+  }
+  assert.equal(requests.length, 3);
+  assert.equal(await parent.get('tool_call')({ toolName: 'read', input: { path: 'file' } }, context), undefined);
+  assert.equal(requests.length, 3);
+  risk = 'high';
+  assert.equal((await parent.get('tool_call')({ toolName: 'bash', toolCallId: 'denied', input: { command: 'python3 unknown.py' } }, context)).block, true);
+  const child = guardHandlers('1', 'decision');
+  const childContext = { hasUI: false, cwd: '/tmp/child', sessionManager: { getBranch: () => [], getSessionId: () => 'child-1' } };
+  await child.get('session_start')({}, childContext);
+  t.after(() => child.get('session_shutdown')({}, childContext));
+  assert.equal((await child.get('tool_call')({ toolName: 'bash', toolCallId: 'child-command', input: { command: 'echo child' } }, childContext)).block, true);
+  risk = 'low';
+  assert.equal(await child.get('tool_call')({ toolName: 'bash', toolCallId: 'child-command', input: { command: 'echo child' } }, childContext), undefined);
+  assert.equal(requests.at(-1).invocation.cwd, '/tmp/child');
+  assert.equal(requests.at(-1).invocation.childSessionId, 'child-1');
+  assert.deepEqual(requests.at(-1).user_requests, ['Inspect the checkout and run tests.']);
+  assert.deepEqual(requests.at(-1).context_files, context.getSystemPromptOptions().contextFiles);
+  const sent = requests.length;
+  for (const getSystemPromptOptions of [undefined, () => ({}), () => ({ contextFiles: null })]) {
+    const result = await parent.get('tool_call')({ toolName: 'bash', toolCallId: 'no-context', input: { command: 'git status' } }, { ...context, getSystemPromptOptions });
+    assert.equal(result.block, true);
+    assert.equal(requests.length, sent);
+  }
+});
+
+test('decision review is the default and headless commands cannot run without an owner', async t => {
+  const handlers = guardHandlers('1', null);
+  const originalChannel = process.env[APPROVAL_ENV];
+  delete process.env[APPROVAL_ENV];
+  const context = { hasUI: false, cwd: '/tmp/headless', sessionManager: { getBranch: () => [], getSessionId: () => 'headless' } };
+  const isolated = guardHandlers('1', null);
+  await isolated.get('session_start')({}, context);
+  t.after(async () => {
+    await isolated.get('session_shutdown')({}, context);
+    if (originalChannel === undefined) delete process.env[APPROVAL_ENV];
+    else process.env[APPROVAL_ENV] = originalChannel;
+  });
+  for (const owner of [handlers, isolated]) {
+    assert.equal((await owner.get('tool_call')({ toolName: 'bash', toolCallId: 'routine', input: { command: 'git status' } }, context)).block, true);
+  }
+});
+
+test('unknown reviewer modes cannot silently allow shell commands', async () => {
+  const handlers = guardHandlers('1', 'typo');
+  const context = { hasUI: false, cwd: '/tmp/work' };
+  await assert.rejects(handlers.get('session_start')({}, context), /PI_APPROVAL_REVIEWER/);
+  assert.equal((await handlers.get('tool_call')({ toolName: 'bash', input: { command: 'git status' } }, context))?.block, true);
+});
+
+test('a low-risk API review approves only the unchanged invocation without a dialog', async () => {
+  let reviews = 0;
+  const result = await confirmOneInvocation(invocation, {
+    cwd: '/tmp/work', hasUI: true,
+    ui: { confirm: async () => { assert.fail('low-risk review opened a dialog'); } },
+  }, { review: async () => { reviews++; return { risk: 'low' }; } });
+  assert.equal(reviews, 1);
+  assert.equal(result.allowed, true);
+});
+
+test('a high-risk API review refuses execution without opening a dialog', async () => {
+  let reviews = 0;
+  let dialogs = 0;
+  const result = await confirmOneInvocation(invocation, {
+    cwd: '/tmp/work', hasUI: true,
+    ui: { confirm: async () => { dialogs++; return false; } },
+  }, { review: async () => { reviews++; return { risk: 'high' }; } });
+  assert.equal(reviews, 1);
+  assert.equal(dialogs, 0);
+  assert.equal(result.allowed, false);
+  assert.match(result.reason, /Decision API/);
+});
+
+test('API review accepts routine commands without a high-risk purpose explanation', async () => {
+  const result = await confirmOneInvocation({ toolName: 'bash', input: { command: 'git status' } }, {
+    cwd: '/tmp/work', hasUI: true,
+    ui: { confirm: async () => { assert.fail('routine command opened a dialog'); } },
+  }, { review: async () => ({ risk: 'low' }) });
+  assert.equal(result.allowed, true);
+});
+
+test('API review cannot authorize mutated inputs or cancelled calls', async () => {
+  const changed = structuredClone(invocation);
+  const result = await confirmOneInvocation(changed, {
+    cwd: '/tmp/work', hasUI: true,
+    ui: { confirm: async () => { assert.fail('changed invocation opened a dialog'); } },
+  }, { review: async () => { changed.input.command = 'other'; return { risk: 'low' }; } });
+  assert.equal(result.allowed, false);
+  const controller = new AbortController();
+  const opened = Promise.withResolvers();
+  const pending = confirmOneInvocation(invocation, {
+    cwd: '/tmp/work', hasUI: true, signal: controller.signal,
+    ui: { confirm: async () => { assert.fail('cancelled review opened a dialog'); } },
+  }, { review: () => { opened.resolve(); return new Promise(() => {}); } });
+  await opened.promise;
+  controller.abort();
+  assert.equal((await pending).allowed, false);
 });
 
 test('serializes overlapping approval dialogs', async () => {
