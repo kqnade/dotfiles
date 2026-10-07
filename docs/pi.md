@@ -24,8 +24,10 @@ records and reports HTTP delivery status, queue sizes, errors, and dropped recor
 The default is **Decision API review** (`PI_APPROVAL_REVIEWER=decision`). Every agent `bash` and
 `powershell` invocation, including reads and tests, is reviewed by
 `POST https://api.openai.com/v1/decisions` using `gpt-6-luna`. Only an exact `low` risk answer permits
-that one invocation. High risk, refusal, malformed replies, missing evidence, credential errors,
-HTTP errors, timeout, and cancellation deny execution without a confirmation dialog.
+that one invocation automatically. A valid high-risk answer opens a confirmation dialog with the
+exact operation; only explicit human approval permits execution. The warning title uses the theme's
+warning color in the TUI and plain text in RPC. Refusal, malformed replies, missing evidence,
+credential errors, HTTP errors, timeout, and cancellation deny execution without a confirmation dialog.
 Recognized authenticated `fetch_content` operations also require review. Other tools, including
 file reads/edits and native subagent launch/control, do not use this API.
 
@@ -66,8 +68,8 @@ When disabled, remote authorization remains an instruction policy, not a tool-le
 
 A parent session with a TUI or RPC dialog UI owns a private Unix socket. Native foreground and
 background children inherit its session-specific endpoint through `PI_EXECUTION_APPROVAL_CHANNEL`.
-In Decision mode all child shell commands wait for the parent's API judgment with their own invocation,
-child session, tool-call ID, and working directory. Children do not independently retrieve keys.
+In Decision mode all child shell commands wait for the parent's API judgment and, for high risk,
+human confirmation with their own invocation, child session, tool-call ID, and working directory. Children do not independently retrieve keys.
 In manual mode detected high-risk operations wait for the parent's confirmation dialog. Supervisor/model
 replies cannot replace these confirmations; RPC clients must present them to a person.
 
@@ -202,8 +204,8 @@ New Relic collector; this measurement does not depend on Pi provider-request hoo
 Records include `decision_model`, `decision_provider`, `decision_source` (parent/child),
 `decision_outcome` (allow/deny/error), `decision_risk`, `tool`, `key_cache_hit`, HTTP status when
 available, and a bounded `error_type`. A high-risk answer is a successful review with outcome
-`deny`; credential, evidence, HTTP, timeout, transport, and response-validation failures have
-outcome `error`. Request counts exclude reviews that never reached HTTP. Byte counts and usage
+`deny` regardless of subsequent human confirmation; credential, evidence, HTTP, timeout, transport,
+and response-validation failures have outcome `error`. Request counts exclude reviews that never reached HTTP. Byte counts and usage
 are included on the log/span when known; error response bodies are not consumed for telemetry.
 Decision tokens are separate from `pi.token.usage` and are not added to Pi turn totals or estimated
 model cost. Missing API usage remains absent, not zero; actual API charges are not calculated here.

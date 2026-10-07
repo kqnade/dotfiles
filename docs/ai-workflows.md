@@ -53,8 +53,9 @@ Skillsは現在の利用者の依頼、repository規約、client/accountの制�
 
 委譲には現在のclientの認可された仕組みを使い、その実行規約に従います。Piでは`pi-subagents`、
 Claudeでは認可された同accountの仕組みを使い、利用できないときに別CLIへ切り替えません。
-Piのexecution guardはDecision APIで全agentシェルコマンドを精査し、低リスク判定の1回だけを許可します。
-高リスク・判定不能・通信失敗・取消は拒否し、確認dialogによる自動fallbackは行いません。
+Piのexecution guardはDecision APIで全agentシェルコマンドを精査し、低リスク判定なら自動許可します。
+正常な高リスク判定では操作内容を確認dialogに表示し、人間が明示的に承認した1回だけを許可します。
+判定不能・通信失敗・取消は拒否し、確認dialogへのfallbackは行いません。
 native childrenにも`subagents.defaultExtensions`からextensionを配備し、子のsession・cwd・tool・引数を
 親のAPI判定へ転送します。鍵は親Piのメモリで共有し、1Passwordの取得を繰り返しません。
 親のないheadless sessionではシェルコマンドを実行できません。file toolや子の起動などはAPI判定の対象外です。

@@ -500,6 +500,7 @@ test('decision mode reviews every parent and child shell command, not just recog
   const originalKey = process.env.PI_DECISION_API_KEY;
   const originalChannel = process.env[APPROVAL_ENV];
   let risk = 'low';
+  let approve = false;
   const requests = [];
   process.env.PI_DECISION_API_KEY = 'fixture-key';
   globalThis.fetch = async (_url, options) => {
@@ -517,7 +518,7 @@ test('decision mode reviews every parent and child shell command, not just recog
   const parent = guardHandlers('1', 'decision', event => observations.push(event));
   const context = {
     hasUI: true, cwd: '/tmp/parent',
-    ui: { confirm: async () => { assert.fail('decision mode opened a human confirmation'); } },
+    ui: { confirm: async () => { assert.equal(risk, 'high'); return approve; } },
     sessionManager: { getBranch: () => [{ type: 'message', message: { role: 'user', content: 'Inspect the checkout and run tests.' } }] },
   };
   const contextFiles = [{ path: 'AGENTS.md', content: 'Keep changes local.' }];
@@ -539,6 +540,8 @@ test('decision mode reviews every parent and child shell command, not just recog
   await child.get('session_start')({}, childContext);
   t.after(() => child.get('session_shutdown')({}, childContext));
   assert.equal((await child.get('tool_call')({ toolName: 'bash', toolCallId: 'child-command', input: { command: 'echo child' } }, childContext)).block, true);
+  approve = true;
+  assert.equal(await child.get('tool_call')({ toolName: 'bash', toolCallId: 'child-command', input: { command: 'echo child' } }, childContext), undefined);
   risk = 'low';
   assert.equal(await child.get('tool_call')({ toolName: 'bash', toolCallId: 'child-command', input: { command: 'echo child' } }, childContext), undefined);
   assert.equal(requests.at(-1).invocation.cwd, '/tmp/child');
@@ -626,7 +629,7 @@ test('a low-risk API review approves only the unchanged invocation without a dia
   assert.equal(result.allowed, true);
 });
 
-test('a high-risk API review refuses execution without opening a dialog', async () => {
+test('a high-risk API review asks for individual approval and respects denial', async () => {
   let reviews = 0;
   let dialogs = 0;
   const result = await confirmOneInvocation(invocation, {
@@ -634,9 +637,58 @@ test('a high-risk API review refuses execution without opening a dialog', async 
     ui: { confirm: async () => { dialogs++; return false; } },
   }, { review: async () => { reviews++; return { risk: 'high' }; } });
   assert.equal(reviews, 1);
-  assert.equal(dialogs, 0);
+  assert.equal(dialogs, 1);
   assert.equal(result.allowed, false);
-  assert.match(result.reason, /Decision API/);
+  assert.match(result.reason, /did not approve/);
+});
+
+test('only an affirmative response can override a valid high-risk review', async () => {
+  for (const answer of [true, false, undefined, 'true']) {
+    let shown;
+    const result = await confirmOneInvocation(invocation, {
+      cwd: '/tmp/work', hasUI: true, ui: { confirm: async (title, message) => { shown = { title, message }; return answer; } },
+    }, { review: async () => ({ risk: 'high' }) });
+    assert.equal(result.allowed, answer === true);
+    assert.match(shown.title, /高リスク.*承認/);
+    assert.match(shown.message, /git push origin trunk/);
+    assert.doesNotMatch(shown.message, /この1回/);
+  }
+});
+
+test('high-risk confirmation uses the warning theme only in the TUI', async () => {
+  for (const mode of ['tui', 'rpc']) {
+    let shown;
+    const result = await confirmOneInvocation(invocation, {
+      cwd: '/tmp/work', mode, hasUI: true, ui: {
+        theme: { fg: (color, text) => { assert.equal(color, 'warning'); return `colored:${text}`; } },
+        confirm: async title => { shown = title; return true; },
+      },
+    }, { review: async () => ({ risk: 'high' }) });
+    assert.equal(result.allowed, true);
+    assert.equal(shown.startsWith('colored:'), mode === 'tui');
+    assert.match(shown, /⚠ 高リスク：承認しますか？/);
+  }
+});
+
+test('failed or unknown API reviews never offer human approval', async () => {
+  for (const assessment of [{ risk: 'high', reason: 'Evidence unavailable' }, { risk: 'unknown' }, undefined]) {
+    const result = await confirmOneInvocation(invocation, {
+      cwd: '/tmp/work', hasUI: true, ui: { confirm: async () => { assert.fail('failure opened approval'); } },
+    }, { review: async () => assessment });
+    assert.equal(result.allowed, false);
+  }
+});
+
+test('high-risk overrides still reject changed invocations and cancelled dialogs', async () => {
+  const changed = structuredClone(invocation);
+  const controller = new AbortController();
+  for (const cancel of [false, true]) {
+    const result = await confirmOneInvocation(changed, {
+      cwd: '/tmp/work', hasUI: true, signal: controller.signal,
+      ui: { confirm: async () => { if (cancel) controller.abort(); else changed.input.command += ' changed'; return true; } },
+    }, { review: async () => ({ risk: 'high' }) });
+    assert.equal(result.allowed, false);
+  }
 });
 
 test('API review accepts routine commands without a high-risk purpose explanation', async () => {

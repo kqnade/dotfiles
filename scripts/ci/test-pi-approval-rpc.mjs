@@ -36,7 +36,7 @@ test('native Pi event contexts review Decision commands using before-agent evide
   const manager = SessionManager.inMemory(process.cwd());
   manager.appendMessage({ role: 'user', content: [{ type: 'text', text: 'Inspect the checkout.' }], timestamp: Date.now() });
   const runner = new ExtensionRunner([{ path: guard, handlers }], createExtensionRuntime(), process.cwd(), manager);
-  runner.setUIContext({ confirm: async () => { assert.fail('unexpected approval dialog'); } }, 'rpc');
+  runner.setUIContext({ confirm: async title => { assert.equal(risk, 'high'); assert.match(title, /高リスク/); return false; } }, 'rpc');
   t.after(async () => {
     await runner.emit({ type: 'session_shutdown' });
     globalThis.fetch = originalFetch;

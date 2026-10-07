@@ -138,7 +138,6 @@ function formatApproval(invocation, cwd) {
     `確認理由: ${approvalReason(invocation) ?? 'この操作の個別確認が要求されています。'}`,
     '目的（agentの説明・参考）:',
     formatValue(invocation.purpose, '  ', true),
-    '', '承認の対象はこの1回のみです。',
   ].join('\n');
 }
 
@@ -167,13 +166,15 @@ export function confirmOneInvocation(invocation, context, { signal = context.sig
         const assessment = await Promise.race([review(invocation, signal), cancelled]);
         if (signal?.aborted) return { allowed: false, reason: 'Approval request cancelled.' };
         if (details !== describe()) return { allowed: false, reason: 'Invocation changed while awaiting review.' };
-        return assessment?.risk === 'low'
-          ? { allowed: true }
-          : { allowed: false, reason: `Decision API: ${assessment?.reason ?? '高リスクと判定されたため、この操作を拒否しました。'}` };
+        if (assessment?.reason !== undefined || !['low', 'high'].includes(assessment?.risk)) {
+          return { allowed: false, reason: `Decision API: ${assessment?.reason ?? '有効な判定結果を取得できません。'}` };
+        }
+        if (assessment.risk === 'low') return { allowed: true };
       }
+      const title = review ? '⚠ 高リスク：承認しますか？' : 'この操作を許可しますか？';
       const approved = await Promise.race([
         context.ui.confirm(
-          'この操作を許可しますか？',
+          review && context.mode === 'tui' ? context.ui.theme.fg('warning', title) : title,
           formatApproval(invocation, context.cwd),
           { signal },
         ),

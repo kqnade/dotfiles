@@ -64,7 +64,7 @@ export default function (pi: ExtensionAPI) {
           const reason = commitBlock(invocation);
           if (reason) return { allowed: false, reason };
           return confirmOneInvocation(invocation, {
-            hasUI: context.hasUI, ui: context.ui, cwd: invocation.cwd,
+            hasUI: context.hasUI, mode: context.mode, ui: context.ui, cwd: invocation.cwd,
           }, { signal, review: reviewFor(context) });
         });
         published = JSON.stringify(server.endpoint);
