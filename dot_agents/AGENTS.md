@@ -25,6 +25,17 @@
 - Keep small changes local when delegation would add more overhead than value. Report blockers
   and unfinished work; inspect partial results before retrying, without silently expanding scope.
 
+# Worktrees
+
+- Create new linked Git worktrees with `wt new <branch> --no-ai`, keeping its sibling
+  `<repo>@<branch>` directory layout. Do not use `orca worktree create`, direct
+  `git worktree add`, or agent launchers that create another worktree. If `wt` is unavailable,
+  stop and report the blocker rather than switching creation methods.
+- `wt` is a shell function; load the configured shell environment before invoking it.
+- When using Orca, enable the repository's external worktree visibility if needed and verify
+  that Orca recognizes the exact checkout path before starting terminals or handing off work.
+  Launch agents in that existing checkout without creating another worktree.
+
 # Tool approval explanations
 
 - Before each tool call that requires human approval, explain its purpose and concrete target in
