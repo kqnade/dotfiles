@@ -50,7 +50,7 @@ show_all_files = true
 show_pathbar = true
 show_status_bar = true
 show_extensions_warning = false
-preferred_view_style = "icon"
+preferred_view_style = "list"
 
 [bootstrap.macos.keyboard]
 key_repeat = 2
