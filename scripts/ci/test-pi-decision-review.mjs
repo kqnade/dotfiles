@@ -124,6 +124,63 @@ test('HTTP, transport, invalid JSON and oversized responses fail closed without 
   }
 });
 
+test('observes each HTTP review with bounded metadata and optional API usage, never payloads', async () => {
+  const observations = [];
+  let now = 1000;
+  const response = JSON.stringify({ answers: [{ type: 'choice', name: 'guardian_risk', choice: 'low' }],
+    usage: { input_tokens: 12, output_tokens: 3, total_tokens: 15,
+      input_tokens_details: { cached_tokens: 2, cache_write_tokens: 0 },
+      output_tokens_details: { reasoning_tokens: 1 }, secret: 'PRIVATE_USAGE' }, secret: 'PRIVATE_RESPONSE' });
+  const review = createDecisionReviewer({ env: { PI_DECISION_API_KEY: 'PRIVATE_KEY' }, now: () => now,
+    observe: event => observations.push(event),
+    fetchImpl: async () => { now += 25; return new Response(response); },
+  });
+  await review({ ...invocation, childSessionId: 'PRIVATE_CHILD', input: { command: 'PRIVATE_COMMAND' } }, evidence);
+  await review(invocation, evidence);
+  assert.equal(observations.length, 2);
+  const event = observations[0];
+  assert.equal(event.type, 'decision_review');
+  assert.equal(event.startedAt, 1000);
+  assert.equal(event.durationMs, 25);
+  assert.equal(event.requestDurationMs, 25);
+  assert.equal(event.requested, true);
+  assert.equal(event.status, 200);
+  assert.equal(event.risk, 'low');
+  assert.equal(event.source, 'child');
+  assert.equal(event.keyCacheHit, false);
+  assert.equal(observations[1].keyCacheHit, true);
+  assert(event.requestBytes > 0);
+  assert.equal(event.responseBytes, Buffer.byteLength(response));
+  assert.deepEqual(event.usage, { input: 12, output: 3, total: 15, cacheRead: 2, cacheWrite: 0, reasoning: 1 });
+  assert.doesNotMatch(JSON.stringify(observations), /PRIVATE|Inspect|AGENTS|\/tmp/);
+});
+
+test('observes denial and every failure path without secret error messages', async () => {
+  const cases = [
+    { fetchImpl: async () => answer('high'), error: undefined, requested: true },
+    { fetchImpl: async () => new Response('PRIVATE_BODY', { status: 429 }), error: 'http', requested: true },
+    { fetchImpl: async () => { throw new Error('PRIVATE_NETWORK'); }, error: 'network', requested: true },
+    { fetchImpl: async () => new Response('PRIVATE_JSON'), error: 'invalid_response', requested: true },
+    { fetchImpl: async () => new Response('x'.repeat(17000)), error: 'response_limit', requested: true },
+    { readKey: async () => { throw new Error('PRIVATE_KEY'); }, env: {}, error: 'credentials', requested: false },
+    { evidence: { ...evidence, contextFiles: null }, error: 'evidence', requested: false },
+    { action: { ...invocation, input: { command: 'x'.repeat(100000) } }, error: 'input_limit', requested: false },
+    { evidence: { ...evidence, signal: AbortSignal.abort() }, error: 'cancelled', requested: false },
+  ];
+  for (const fixture of cases) {
+    const observations = [];
+    const review = createDecisionReviewer({ env: fixture.env ?? { PI_DECISION_API_KEY: 'PRIVATE_KEY' },
+      readKey: fixture.readKey, fetchImpl: fixture.fetchImpl ?? (async () => { assert.fail('unexpected HTTP request'); }),
+      observe: event => observations.push(event),
+    });
+    assert.equal((await review(fixture.action ?? invocation, fixture.evidence ?? evidence)).risk, 'high');
+    assert.equal(observations.length, 1);
+    assert.equal(observations[0].error, fixture.error);
+    assert.equal(observations[0].requested, fixture.requested);
+    assert.doesNotMatch(JSON.stringify(observations), /PRIVATE/);
+  }
+});
+
 test('cancellation and HTTP deadlines cannot produce approval', async () => {
   const controller = new AbortController();
   controller.abort();

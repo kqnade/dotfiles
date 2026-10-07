@@ -1,6 +1,6 @@
 import type { ExtensionAPI, ExtensionContext, ToolCallEvent } from '@earendil-works/pi-coding-agent';
 import { APPROVAL_ENV, createApprovalServer, requestApproval } from './lib/approval-channel.mjs';
-import { createDecisionReviewer } from './lib/decision-review.mjs';
+import { createDecisionReviewer, DECISION_EVENT } from './lib/decision-review.mjs';
 import { approvalReason, confirmOneInvocation, isDirectGitCommit, isForbiddenCommitBypass, missingPurposeReason, toolCallPurpose } from './lib/execution-guard.mjs';
 
 function commitBlock(invocation: Pick<ToolCallEvent, 'toolName' | 'input'>) {
@@ -19,7 +19,9 @@ export default function (pi: ExtensionAPI) {
 
   const inherited = process.env[APPROVAL_ENV];
   const reviewerMode = process.env.PI_APPROVAL_REVIEWER ?? 'decision';
-  const reviewer = reviewerMode === 'decision' ? createDecisionReviewer() : undefined;
+  const reviewer = reviewerMode === 'decision'
+    ? createDecisionReviewer({ observe: event => pi.events.emit(DECISION_EVENT, event) })
+    : undefined;
   let lifetime = new AbortController();
   let server: Awaited<ReturnType<typeof createApprovalServer>> | undefined;
   let endpoint;

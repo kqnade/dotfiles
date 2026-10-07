@@ -17,7 +17,46 @@ export function createCollector({ addMetric, addSpan, now = Date.now }) {
     metric(`${name}.duration`, duration, attributes);
     addSpan({ id: state.id, 'trace.id': trace, timestamp: state.time, attributes: { ...state.attributes, ...attributes, name, 'duration.ms': duration } });
   };
+  function handleDecision(event) {
+    const risk = event.risk === 'low' ? 'low' : 'high';
+    const errors = ['credentials', 'evidence', 'input_limit', 'http', 'network', 'timeout', 'cancelled', 'invalid_response', 'response_limit'];
+    const attributes = { decision_model: 'gpt-6-luna', decision_provider: 'openai',
+      decision_outcome: event.error ? 'error' : risk === 'low' ? 'allow' : 'deny', decision_risk: risk,
+      decision_source: ['parent', 'child'].includes(event.source) ? event.source : 'unknown',
+      tool: ['bash', 'powershell', 'fetch_content'].includes(event.tool) ? event.tool : 'unknown',
+      requested: event.requested === true, success: !event.error };
+    if (event.error) attributes.error_type = errors.includes(event.error) ? event.error : 'unknown';
+    if (typeof event.keyCacheHit === 'boolean') attributes.key_cache_hit = event.keyCacheHit;
+    if (Number.isInteger(event.status) && event.status >= 100 && event.status <= 599) attributes.http_status = event.status;
+    metric('pi.decision.review.count', 1, attributes);
+    metric('pi.decision.review.duration', event.durationMs, attributes);
+    if (event.requested === true) {
+      metric('pi.decision.request.count', 1, attributes);
+      metric('pi.decision.request.duration', event.requestDurationMs, attributes);
+      metric('pi.decision.request.bytes', event.requestBytes, attributes);
+      metric('pi.decision.response.bytes', event.responseBytes, attributes);
+    }
+    const spanAttributes = { ...attributes };
+    for (const [field, value] of Object.entries({ request_bytes: event.requestBytes, response_bytes: event.responseBytes,
+      request_duration_ms: event.requestDurationMs })) {
+      if (finite(value)) spanAttributes[field] = value;
+    }
+    const tokenNames = { input: 'input_token_count', output: 'output_token_count', total: 'total_token_count',
+      cacheRead: 'cached_token_count', cacheWrite: 'cache_write_token_count', reasoning: 'reasoning_token_count' };
+    for (const [type, field] of Object.entries(tokenNames)) {
+      const value = event.usage?.[type];
+      if (Number.isSafeInteger(value) && value >= 0) {
+        spanAttributes[field] = value;
+        metric('pi.decision.token.usage', value, { ...attributes, type });
+      }
+    }
+    const parent = turn ?? agent ?? session;
+    addSpan({ id: id(8), 'trace.id': trace, timestamp: finite(event.startedAt) ? event.startedAt : now(),
+      attributes: { ...base, ...spanAttributes, name: 'pi.decision.review',
+        'duration.ms': finite(event.durationMs) ? event.durationMs : 0, ...(parent ? { 'parent.id': parent.id } : {}) } });
+  }
   function handle(event, metadata = {}, observation = {}) {
+    if (event.type === 'decision_review') { handleDecision(event); return; }
     base = { ...base, ...metadata };
     metric('pi.event.count', 1, { event: event.type });
     const attributes = { ...base, name: `pi.event.${event.type}`, 'duration.ms': 0 };

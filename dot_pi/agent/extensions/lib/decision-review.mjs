@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
+export const DECISION_EVENT = 'pi:decision-review';
 const URL = 'https://api.openai.com/v1/decisions';
 const OP_REF = 'op://Private/DecisionAPI/api key';
 const MAX_INPUT_BYTES = 64 * 1024;
@@ -40,15 +41,22 @@ function requestBody(invocation, branch, contextFiles) {
   });
 }
 
-async function readAnswer(response) {
-  let bytes = 0;
+async function readAnswer(response, observation) {
   const chunks = [];
+  observation.responseBytes = 0;
   for await (const chunk of response.body) {
-    bytes += chunk.length;
-    if (bytes > MAX_RESPONSE_BYTES) throw new Error('oversized');
+    observation.responseBytes += chunk.length;
+    if (observation.responseBytes > MAX_RESPONSE_BYTES) throw new RangeError('response limit');
     chunks.push(chunk);
   }
   const body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  const usage = body?.usage;
+  observation.usage = {};
+  for (const [name, value] of Object.entries({ input: usage?.input_tokens, output: usage?.output_tokens,
+    total: usage?.total_tokens, cacheRead: usage?.input_tokens_details?.cached_tokens,
+    cacheWrite: usage?.input_tokens_details?.cache_write_tokens, reasoning: usage?.output_tokens_details?.reasoning_tokens })) {
+    if (Number.isSafeInteger(value) && value >= 0) observation.usage[name] = value;
+  }
   const answers = body?.answers;
   const answer = answers?.[0];
   if (!Array.isArray(answers) || answers.length !== 1 || answer?.type !== 'choice'
@@ -59,45 +67,68 @@ async function readAnswer(response) {
 }
 
 export function createDecisionReviewer({ env = process.env, readKey = readOnePasswordKey,
-  fetchImpl = fetch, signal: lifetime, timeoutMs = 10_000 } = {}) {
+  fetchImpl = fetch, signal: lifetime, timeoutMs = 10_000, observe, now = Date.now } = {}) {
   const supplied = env.PI_DECISION_API_KEY;
   const reference = env.PI_DECISION_API_KEY_OP_REF ?? OP_REF;
   let key;
   return async (invocation, { branch = [], contextFiles, signal } = {}) => {
+    const observation = { type: 'decision_review', startedAt: now(), requested: false,
+      source: invocation.childSessionId ? 'child' : 'parent',
+      tool: ['bash', 'powershell', 'fetch_content'].includes(invocation.toolName) ? invocation.toolName : 'unknown',
+      keyCacheHit: key !== undefined };
     const cancelled = () => signal?.aborted || lifetime?.aborted;
-    const denied = reason => ({ risk: 'high', reason });
-    if (cancelled()) return denied('判定が取り消されました。');
-    let body;
-    try { body = requestBody(invocation, branch, contextFiles); }
-    catch { return denied('ユーザー指示またはcontext fileの証拠を取得できません。'); }
-    if (Buffer.byteLength(body) > MAX_INPUT_BYTES) return denied('判定入力が64 KiBの上限を超えています。');
-    key ??= Promise.resolve().then(async () => {
-      try {
-        const value = supplied ?? await readKey(reference, lifetime ?? signal);
-        if (typeof value !== 'string' || !value.trim() || /[\r\n]/.test(value.trim())) return undefined;
-        return value.trim();
-      } catch { return undefined; }
-    });
-    const apiKey = await key;
-    if (cancelled()) return denied('判定が取り消されました。');
-    if (!apiKey) return denied('APIキーを取得できません。1Passwordの解錠・参照先を確認し、Piを再起動してください。');
-    const signals = [AbortSignal.timeout(timeoutMs), signal, lifetime].filter(Boolean);
-    const cancellation = AbortSignal.any(signals);
-    let response;
-    try {
-      response = await fetchImpl(URL, {
-        method: 'POST', redirect: 'error', signal: cancellation,
-        headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' }, body,
-      });
-      if (!response.ok) {
-        await response.body?.cancel();
-        return denied(`APIがHTTP ${response.status}を返しました。`);
-      }
-      const result = await readAnswer(response);
-      cancellation.throwIfAborted();
+    const finish = (result, error) => {
+      observation.risk = result.risk;
+      if (error) observation.error = error;
       return result;
-    } catch {
-      return denied(cancellation.aborted ? '判定が取り消されたか、期限を超えました。' : 'API通信または応答の検証に失敗しました。');
+    };
+    const denied = (reason, error) => finish({ risk: 'high', reason }, error);
+    let requestStarted;
+    try {
+      if (cancelled()) return denied('判定が取り消されました。', 'cancelled');
+      let body;
+      try { body = requestBody(invocation, branch, contextFiles); }
+      catch { return denied('ユーザー指示またはcontext fileの証拠を取得できません。', 'evidence'); }
+      observation.requestBytes = Buffer.byteLength(body);
+      if (observation.requestBytes > MAX_INPUT_BYTES) return denied('判定入力が64 KiBの上限を超えています。', 'input_limit');
+      key ??= Promise.resolve().then(async () => {
+        try {
+          const value = supplied ?? await readKey(reference, lifetime ?? signal);
+          if (typeof value !== 'string' || !value.trim() || /[\r\n]/.test(value.trim())) return undefined;
+          return value.trim();
+        } catch { return undefined; }
+      });
+      const apiKey = await key;
+      if (cancelled()) return denied('判定が取り消されました。', 'cancelled');
+      if (!apiKey) return denied('APIキーを取得できません。1Passwordの解錠・参照先を確認し、Piを再起動してください。', 'credentials');
+      const signals = [AbortSignal.timeout(timeoutMs), signal, lifetime].filter(Boolean);
+      const cancellation = AbortSignal.any(signals);
+      let readingResponse = false;
+      requestStarted = now();
+      observation.requested = true;
+      try {
+        const response = await fetchImpl(URL, {
+          method: 'POST', redirect: 'error', signal: cancellation,
+          headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' }, body,
+        });
+        observation.status = response.status;
+        if (!response.ok) {
+          await response.body?.cancel();
+          return denied(`APIがHTTP ${response.status}を返しました。`, 'http');
+        }
+        readingResponse = true;
+        const result = await readAnswer(response, observation);
+        cancellation.throwIfAborted();
+        return finish(result);
+      } catch (error) {
+        const type = cancelled() ? 'cancelled' : cancellation.aborted ? 'timeout'
+          : readingResponse ? (error instanceof RangeError ? 'response_limit' : 'invalid_response') : 'network';
+        return denied(cancellation.aborted ? '判定が取り消されたか、期限を超えました。' : 'API通信または応答の検証に失敗しました。', type);
+      }
+    } finally {
+      observation.durationMs = Math.max(0, now() - observation.startedAt);
+      if (requestStarted !== undefined) observation.requestDurationMs = Math.max(0, now() - requestStarted);
+      observe?.(observation);
     }
   };
 }

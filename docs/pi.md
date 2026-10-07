@@ -183,6 +183,35 @@ text, not a minimal diff. Write replacements include the prior file size when it
 can be read. Shell commands and external tool mutations are not measured as edits.
 Skill reads describe observed loads, not proof that every instruction was followed.
 
+### Decision API telemetry
+
+Decision reviews emit `pi.decision.review` logs and spans on the active Pi trace, parented to the
+active turn, agent run, or session. An extension event carries only bounded metadata into the
+New Relic collector; this measurement does not depend on Pi provider-request hooks.
+
+| Measurement | Metric |
+| --- | --- |
+| All reviews, including rejection before HTTP | `pi.decision.review.count` |
+| Total review time, including credential lookup | `pi.decision.review.duration` |
+| HTTP attempts and full request/response time | `pi.decision.request.count`, `pi.decision.request.duration` |
+| Request and response byte counts | `pi.decision.request.bytes`, `pi.decision.response.bytes` |
+| API-reported input, output, total, cache read/write, optional reasoning tokens | `pi.decision.token.usage`, facet `type` |
+
+Records include `decision_model`, `decision_provider`, `decision_source` (parent/child),
+`decision_outcome` (allow/deny/error), `decision_risk`, `tool`, `key_cache_hit`, HTTP status when
+available, and a bounded `error_type`. A high-risk answer is a successful review with outcome
+`deny`; credential, evidence, HTTP, timeout, transport, and response-validation failures have
+outcome `error`. Request counts exclude reviews that never reached HTTP. Byte counts and usage
+are included on the log/span when known; error response bodies are not consumed for telemetry.
+Decision tokens are separate from `pi.token.usage` and are not added to Pi turn totals or estimated
+model cost. Missing API usage remains absent, not zero; actual API charges are not calculated here.
+
+```sql
+FROM Log_Pi SELECT count(*), average(request_duration_ms)
+WHERE event.name = 'pi.decision.review'
+FACET decision_outcome, http_status SINCE 1 hour ago
+```
+
 No prompt text, response text, thinking text, source code, file paths, tool
 arguments/results, HTTP headers, credentials, raw error messages, or stack traces
 are exported. HTTP status, success flags, and model stop categories provide

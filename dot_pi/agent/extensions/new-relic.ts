@@ -2,6 +2,7 @@ import { stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { createExporter } from './lib/new-relic-exporter.mjs';
 import { createCollector } from './lib/telemetry-events.mjs';
+import { DECISION_EVENT } from './lib/decision-review.mjs';
 
 export default function (pi, { conversation = 'main' } = {}) {
   const apiKey = process.env.PI_NEW_RELIC_API_KEY;
@@ -12,7 +13,11 @@ export default function (pi, { conversation = 'main' } = {}) {
   let cpu = process.cpuUsage();
   const timer = exporter ? setInterval(() => { void exporter.flush(); }, 1000) : undefined;
   timer?.unref();
+  const removeDecisionListener = collector
+    ? pi.events.on(DECISION_EVENT, event => collector.handle({ ...event, type: 'decision_review' }))
+    : undefined;
   const dispose = async () => {
+    removeDecisionListener?.();
     clearInterval(timer);
     await exporter?.shutdown();
   };

@@ -54,6 +54,55 @@ test('lifecycle events form a trace and optional reasoning stays absent', () => 
   assert(!JSON.stringify({metrics, spans}).includes('SECRET'));
 });
 
+test('Decision API observations produce correlated request metrics and spans without raw fields', () => {
+  const metrics = [], spans = [];
+  let now = 1000;
+  const c = createCollector({ addMetric: m => metrics.push(m), addSpan: s => spans.push(s), now: () => now });
+  c.handle({ type: 'session_start' }, { provider: 'openai-codex', model: 'parent-model', conversation: 'main' });
+  c.handle({ type: 'agent_start' });
+  c.handle({ type: 'turn_start' });
+  now = 1100;
+  c.handle({ type: 'decision_review', startedAt: 1020, durationMs: 80, requestDurationMs: 30,
+    requested: true, status: 200, risk: 'low', source: 'child', tool: 'bash', keyCacheHit: true,
+    requestBytes: 512, responseBytes: 128, usage: { input: 10, output: 2, total: 12, cacheRead: 0, reasoning: 1, secret: 'PRIVATE' },
+    body: 'PRIVATE', headers: { authorization: 'PRIVATE' }, command: 'PRIVATE', cwd: 'PRIVATE', errorMessage: 'PRIVATE' });
+  now = 1200;
+  c.handle({ type: 'turn_end' });
+  const decision = spans.find(s => s.attributes.name === 'pi.decision.review');
+  assert(decision);
+  assert.equal(decision.timestamp, 1020);
+  assert.equal(decision.attributes['duration.ms'], 80);
+  assert.equal(decision.attributes.decision_model, 'gpt-6-luna');
+  assert.equal(decision.attributes.decision_source, 'child');
+  assert.equal(decision.attributes.decision_outcome, 'allow');
+  assert.equal(decision.attributes.http_status, 200);
+  assert.equal(decision.attributes.input_token_count, 10);
+  assert.equal(decision.attributes['parent.id'], spans.find(s => s.attributes.name === 'pi.turn').id);
+  assert.equal(metrics.find(m => m.name === 'pi.decision.request.count').value, 1);
+  assert.equal(metrics.find(m => m.name === 'pi.decision.request.duration').value, 30);
+  assert.equal(metrics.find(m => m.name === 'pi.decision.token.usage' && m.attributes.type === 'reasoning').value, 1);
+  assert(!metrics.some(m => m.name === 'pi.token.usage'));
+  assert.equal(new Set(spans.map(s => s['trace.id'])).size, 1);
+  assert.doesNotMatch(JSON.stringify({ metrics, spans }), /PRIVATE/);
+});
+
+test('Decision API errors and non-HTTP denials remain distinct and sanitized', () => {
+  const metrics = [], spans = [];
+  const c = createCollector({ addMetric: m => metrics.push(m), addSpan: s => spans.push(s) });
+  c.handle({ type: 'decision_review', startedAt: Date.now(), durationMs: 5, requested: false,
+    risk: 'high', error: 'credentials', tool: 'bash', source: 'parent' });
+  c.handle({ type: 'decision_review', startedAt: Date.now(), durationMs: 5, requested: true,
+    risk: 'high', error: 'PRIVATE_ERROR', tool: 'PRIVATE_TOOL', source: 'PRIVATE_SOURCE', status: 'PRIVATE_STATUS',
+    requestBytes: -1, usage: { input: 'PRIVATE_TOKENS', output: -1, reasoning: Infinity } });
+  assert.equal(metrics.filter(m => m.name === 'pi.decision.review.count').length, 2);
+  assert.equal(metrics.filter(m => m.name === 'pi.decision.request.count').length, 1);
+  assert.equal(spans[0].attributes.decision_outcome, 'error');
+  assert.equal(spans[0].attributes.error_type, 'credentials');
+  assert.equal(spans[1].attributes.error_type, 'unknown');
+  assert(!metrics.some(m => m.name === 'pi.decision.token.usage'));
+  assert.doesNotMatch(JSON.stringify({ metrics, spans }), /PRIVATE/);
+});
+
 test('each stream event is recorded and tool usage remains separate from model usage', () => {
   const metrics = [], spans = [];
   const c = createCollector({ addMetric: m => metrics.push(m), addSpan: s => spans.push(s) });

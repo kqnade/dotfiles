@@ -12,7 +12,7 @@ import settings from '../../dot_pi/agent/settings.json' with { type: 'json' };
 
 const invocation = { toolName: 'bash', input: { command: 'git push origin trunk' }, purpose: '検証済みの変更をリモートへ送信します。' };
 
-function guardHandlers(enabled, reviewer = 'user') {
+function guardHandlers(enabled, reviewer = 'user', observe = () => {}) {
   const original = process.env.PI_EXECUTION_GUARD;
   const originalReviewer = process.env.PI_APPROVAL_REVIEWER;
   const handlers = new Map();
@@ -21,7 +21,7 @@ function guardHandlers(enabled, reviewer = 'user') {
     else process.env.PI_EXECUTION_GUARD = enabled;
     if (reviewer === null) delete process.env.PI_APPROVAL_REVIEWER;
     else process.env.PI_APPROVAL_REVIEWER = reviewer;
-    executionGuard({ on: (event, callback) => { handlers.set(event, callback); } });
+    executionGuard({ on: (event, callback) => { handlers.set(event, callback); }, events: { emit: (_channel, event) => observe(event) } });
   } finally {
     if (original === undefined) delete process.env.PI_EXECUTION_GUARD;
     else process.env.PI_EXECUTION_GUARD = original;
@@ -513,7 +513,8 @@ test('decision mode reviews every parent and child shell command, not just recog
     if (originalChannel === undefined) delete process.env[APPROVAL_ENV];
     else process.env[APPROVAL_ENV] = originalChannel;
   });
-  const parent = guardHandlers('1', 'decision');
+  const observations = [];
+  const parent = guardHandlers('1', 'decision', event => observations.push(event));
   const context = {
     hasUI: true, cwd: '/tmp/parent',
     ui: { confirm: async () => { assert.fail('decision mode opened a human confirmation'); } },
@@ -526,6 +527,8 @@ test('decision mode reviews every parent and child shell command, not just recog
     assert.equal(await parent.get('tool_call')({ toolName, toolCallId: 'routine', input: { command } }, context), undefined);
   }
   assert.equal(requests.length, 3);
+  assert.equal(observations.length, 3);
+  assert(observations.every(event => event.type === 'decision_review' && event.requested === true));
   assert.equal(await parent.get('tool_call')({ toolName: 'read', input: { path: 'file' } }, context), undefined);
   assert.equal(requests.length, 3);
   risk = 'high';
