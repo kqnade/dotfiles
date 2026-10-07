@@ -8,9 +8,15 @@
 | 差分・依存更新のレビュー | `evidence-review` | 根拠付きの指摘、検証範囲、不確実性を返す。sanitizerも確認する |
 | 保存・再開 | `context-handoff` | 必要な状態だけ保存、または現在のコードと照合して再開する |
 | 成果物の文章点検 | `sanitize-artifacts` | 会話・編集過程に依存した不要な記述を残さない |
+| 日本語の作文・推敲 | `yomiyasu` | 意味や条件を保ち、不自然な表現や不要な装飾を整える |
 
 通常は各Skillのdescriptionから選択します。全Skillを読むルーターや起動時の手順注入はありません。
 依存更新の詳細チェックは、そのレビューでだけ読み込みます。
+
+Piの普段の日本語の返答には、`dot_agents/AGENTS.md` の会話方針が適用されます。
+自然で簡潔な言葉を使い、事実、条件、不確実性は保ちます。作文・推敲や長い説明を見直すときは
+`yomiyasu` を読み、短い会話のたびに全文を読み込んだり検査ツールを実行したりはしません。
+通常の会話や進捗報告には推敲レポートを付けません。
 
 `sanitize-artifacts`は単独でも使え、開発・レビューでは必須です。未解消の問題があれば完了や
 承認を止めます。review-onlyの依頼では指摘だけ返し、勝手に修正しません。
@@ -38,6 +44,10 @@ Piはこの場所を直接検出します。Claudeは`~/.claude/skills/<name>`�
 | レビュー | `/skill:evidence-review` | `/evidence-review` |
 | 引き継ぎ | `/skill:context-handoff` | `/context-handoff` |
 | 成果物の点検 | `/skill:sanitize-artifacts` | `/sanitize-artifacts` |
+| 日本語の推敲 | `/skill:yomiyasu` | `/yomiyasu` |
+
+`yomiyasu` の収録版とライセンスは `dot_agents/skills/yomiyasu/README.md` に記載しています。
+日本語の検査ツールはPython標準ライブラリだけで動作し、検出結果は見直し候補として扱います。
 
 コマンドの後ろに対象と依頼内容を付けます。たとえば引き継ぎでは「この作業を指定ファイルへ保存」
 か「このファイルから再開」かを指定します。名前だけの呼び出しは保存先や保存権限の指定ではありません。
@@ -83,4 +93,5 @@ OrcaやHerdrでのterminal操作は、その操作が必要な依頼に限りま
   routerは実行前提にせず、必要な保存先を黙って変えたりignore規則を変更したりしません。
 
 配備と保護の回帰検証は`mise exec -- python3 scripts/ci/test-client-workflow-reset.py`で行います。
-一時homeへの反復適用、Claudeのリンク、参照ファイル、未管理ファイルの保持、sanitizerの内容を確認します。
+一時homeへの反復適用、Claudeのリンク、参照ファイル、未管理ファイルの保持、sanitizerの内容、
+`yomiyasu` の検査ツールの動作を確認します。

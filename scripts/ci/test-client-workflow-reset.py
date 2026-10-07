@@ -9,6 +9,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 import tempfile
 import tomllib
 import unittest
@@ -16,7 +17,9 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-SKILLS = {"test-driven-development", "evidence-review", "context-handoff", "sanitize-artifacts"}
+SKILLS = {
+    "test-driven-development", "evidence-review", "context-handoff", "sanitize-artifacts", "yomiyasu",
+}
 
 
 class ClientWorkflowResetTests(unittest.TestCase):
@@ -30,7 +33,7 @@ class ClientWorkflowResetTests(unittest.TestCase):
         self.assertFalse((ROOT / "dot_agents/rules").exists())
         instructions = (ROOT / "dot_agents/AGENTS.md").read_text()
         for heading in (
-            "Coding", "Delegation", "Local commits",
+            "Communication", "Coding", "Delegation", "Local commits",
             "Remote changes require explicit authorization", "Repository workflow state",
         ):
             self.assertIn(f"# {heading}\n", instructions)
@@ -38,7 +41,8 @@ class ClientWorkflowResetTests(unittest.TestCase):
             (ROOT / "dot_pi/agent/symlink_AGENTS.md").read_text().strip(),
             "../../.agents/AGENTS.md",
         )
-        self.assertEqual(list(shared.glob("*/scripts")), [])
+        self.assertIn("skills/yomiyasu/SKILL.md", instructions)
+        self.assertEqual(set(shared.glob("*/scripts")), {shared / "yomiyasu/scripts"})
         self.assertFalse((ROOT / "dot_codex/agents").exists())
         self.assertFalse((ROOT / "dot_codex/symlink_AGENTS.md").exists())
         self.assertFalse((ROOT / "dot_config/opencode/symlink_AGENTS.md").exists())
@@ -81,7 +85,11 @@ class ClientWorkflowResetTests(unittest.TestCase):
                 self.assertTrue(content.startswith("---\n"))
                 _, frontmatter, body = content.split("---\n", 2)
                 metadata = dict(line.split(": ", 1) for line in frontmatter.splitlines())
-                self.assertEqual(set(metadata), {"name", "description"})
+                expected_fields = {"name", "description"}
+                if name == "yomiyasu":
+                    expected_fields.add("license")
+                    self.assertEqual(metadata["license"], "MIT")
+                self.assertEqual(set(metadata), expected_fields)
                 self.assertEqual(metadata["name"], name)
                 self.assertTrue(0 < len(metadata["description"]) <= 1024)
                 for reference in re.findall(r"\]\(([^)]+)\)", body):
@@ -221,6 +229,46 @@ class ClientWorkflowResetTests(unittest.TestCase):
                     for reference in re.findall(r"\]\(([^)]+)\)", canonical.read_text()):
                         self.assertTrue((link / reference).is_file(), reference)
                 self.assertFalse((home / ".pi/agent/skills/test-driven-development").exists())
+                source = ROOT / "dot_agents/skills/yomiyasu"
+                deployed = home / ".agents/skills/yomiyasu"
+                for relative in (
+                    "SKILL.md", "LICENSE", "UNICODE-LICENSE.txt", "README.md",
+                    "references/gemini-syntax.md", "references/slop-catalog.md",
+                    "references/domains/tech.md", "references/domains/business.md",
+                    "references/domains/essay.md", "scripts/markdown_visibility.py",
+                    "scripts/yomiyasu_lint.py", "scripts/yomiyasu_diff.py",
+                ):
+                    self.assertEqual((deployed / relative).read_bytes(), (source / relative).read_bytes())
+
+            scripts = home / ".claude/skills/yomiyasu/scripts"
+            lint = subprocess.run(
+                [sys.executable, "-B", str(scripts / "yomiyasu_lint.py"), "--json", "--strict"],
+                input="設定を保存しました。\n", cwd=home, text=True, capture_output=True, check=False,
+            )
+            self.assertEqual(lint.returncode, 0, lint.stderr)
+            self.assertTrue(json.loads(lint.stdout)["is_clean"])
+            lint = subprocess.run(
+                [sys.executable, "-B", str(scripts / "yomiyasu_lint.py"), "--json", "--strict"],
+                input="時間を溶かしました。\n", cwd=home, text=True, capture_output=True, check=False,
+            )
+            self.assertEqual(lint.returncode, 1, lint.stderr)
+            self.assertIn("metaphor_verb", {item["rule"] for item in json.loads(lint.stdout)["findings"]})
+            original = temporary / "original.txt"
+            rewritten = temporary / "rewritten.txt"
+            original.write_text("設定を保存しました。\n")
+            rewritten.write_text("設定を保存しました。\n")
+            diff = subprocess.run(
+                [
+                    sys.executable, "-B", str(scripts / "yomiyasu_diff.py"),
+                    str(original), str(rewritten), "--json", "--stance=説明",
+                ],
+                cwd=home, text=True, capture_output=True, check=False,
+            )
+            self.assertEqual(diff.returncode, 0, diff.stderr)
+            result = json.loads(diff.stdout)
+            for key in ("markers", "new_words", "lost_words", "structure", "spans", "bold"):
+                self.assertEqual(result[key], [], key)
+            self.assertEqual(result["endings"]["changes"], [])
 
     def test_codex_migration_preserves_runtime_state(self) -> None:
         yq = subprocess.check_output(["mise", "which", "yq"], text=True).strip()
