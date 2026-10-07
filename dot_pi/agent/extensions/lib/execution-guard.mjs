@@ -60,6 +60,12 @@ export function isForbiddenCommitBypass({ toolName, input }) {
 
 export const MAX_PURPOSE_LENGTH = 1024;
 
+export function missingPurposeReason(purpose) {
+  if (typeof purpose !== 'string' || !purpose.trim()) {
+    return '承認が必要な操作の目的がありません。同じassistantメッセージで、このtool callの直前に目的・対象を簡潔な日本語で説明してから再試行してください。';
+  }
+}
+
 export function toolCallPurpose(branch, toolCallId) {
   if (!toolCallId) return undefined;
   for (const entry of branch.slice().reverse()) {
@@ -131,7 +137,7 @@ function formatApproval(invocation, cwd) {
     '', formatValue(invocation.input), '',
     `確認理由: ${approvalReason(invocation) ?? 'この操作の個別確認が要求されています。'}`,
     '目的（agentの説明・参考）:',
-    formatValue(invocation.purpose || '目的の説明は添えられていません。', '  ', true),
+    formatValue(invocation.purpose, '  ', true),
     '', '承認の対象はこの1回のみです。',
   ].join('\n');
 }
@@ -139,6 +145,8 @@ function formatApproval(invocation, cwd) {
 export function confirmOneInvocation(invocation, context, { signal = context.signal } = {}) {
   const showDialog = async () => {
     if (signal?.aborted) return { allowed: false, reason: 'Approval request cancelled.' };
+    const reason = missingPurposeReason(invocation.purpose);
+    if (reason) return { allowed: false, reason };
     if (!context.hasUI) {
       return { allowed: false, reason: 'No interactive approval UI is available.' };
     }

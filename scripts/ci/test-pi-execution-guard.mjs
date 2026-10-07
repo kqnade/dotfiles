@@ -10,7 +10,7 @@ import executionGuard from '../../dot_pi/agent/extensions/execution-guard.ts';
 import { APPROVAL_ENV, createApprovalServer } from '../../dot_pi/agent/extensions/lib/approval-channel.mjs';
 import settings from '../../dot_pi/agent/settings.json' with { type: 'json' };
 
-const invocation = { toolName: 'bash', input: { command: 'git push origin trunk' } };
+const invocation = { toolName: 'bash', input: { command: 'git push origin trunk' }, purpose: '検証済みの変更をリモートへ送信します。' };
 
 function guardHandlers(enabled) {
   const original = process.env.PI_EXECUTION_GUARD;
@@ -41,7 +41,11 @@ test('a headless tool waits for its parent approval channel', async t => {
   });
   process.env[APPROVAL_ENV] = JSON.stringify(server.endpoint);
   const handlers = guardHandlers('1');
-  const context = { hasUI: false, cwd: '/tmp/child', sessionManager: { getSessionId: () => 'child-session', getBranch: () => [] } };
+  const context = { hasUI: false, cwd: '/tmp/child', sessionManager: {
+    getSessionId: () => 'child-session', getBranch: () => [{ type: 'message', message: { role: 'assistant', content: [
+      { type: 'text', text: invocation.purpose }, { type: 'toolCall', id: 'tool-1' },
+    ] } }],
+  } };
   await handlers.get('session_start')?.({}, context);
   t.after(() => handlers.get('session_shutdown')?.({}, context));
   const event = { ...invocation, toolCallId: 'tool-1' };
@@ -101,7 +105,11 @@ test('a separate headless extension gates a simulated external operation by defa
     import { writeFile } from 'node:fs/promises';
     const handlers = new Map();
     guard({ on: (event, handler) => handlers.set(event, handler) });
-    const context = { hasUI: false, cwd: process.cwd(), sessionManager: { getSessionId: () => 'child-' + process.pid, getBranch: () => [] } };
+    const context = { hasUI: false, cwd: process.cwd(), sessionManager: {
+      getSessionId: () => 'child-' + process.pid, getBranch: () => [{ type: 'message', message: { role: 'assistant', content: [
+        { type: 'text', text: '外部への送信操作を検証します。' }, { type: 'toolCall', id: 'external-1' },
+      ] } }],
+    } };
     await handlers.get('session_start')({}, context);
     const event = { toolName: 'bash', toolCallId: 'external-1', input: { command: 'curl -X POST https://example.invalid' } };
     const result = await handlers.get('tool_call')(event, context);
@@ -146,6 +154,48 @@ test('changing a displayed invocation invalidates approval', async () => {
     } },
   });
   assert.equal(result.allowed, false);
+});
+
+test('missing or blank purposes block approval without opening a dialog', async () => {
+  for (const purpose of [undefined, null, '', ' \n\t　', {}, 1]) {
+    const result = await confirmOneInvocation({ ...invocation, purpose }, {
+      hasUI: true, cwd: '/tmp/work', ui: { confirm: async () => { assert.fail('missing-purpose dialog opened'); } },
+    });
+    assert.equal(result.allowed, false);
+    assert.match(result.reason, /目的.*直前.*日本語/);
+  }
+});
+
+test('headless risky calls without public purpose never reach the parent channel', async t => {
+  const server = await createApprovalServer(() => { assert.fail('missing-purpose request forwarded'); });
+  const original = process.env[APPROVAL_ENV];
+  t.after(async () => {
+    await server.close();
+    if (original === undefined) delete process.env[APPROVAL_ENV];
+    else process.env[APPROVAL_ENV] = original;
+  });
+  process.env[APPROVAL_ENV] = JSON.stringify(server.endpoint);
+  const handlers = guardHandlers();
+  const context = { hasUI: false, cwd: '/tmp/child', sessionManager: { getSessionId: () => 'child-session', getBranch: () => [] } };
+  await handlers.get('session_start')({}, context);
+  t.after(() => handlers.get('session_shutdown')({}, context));
+  const result = await handlers.get('tool_call')({ ...invocation, toolCallId: 'missing' }, context);
+  assert.equal(result.block, true);
+  assert.match(result.reason, /目的.*直前.*日本語/);
+});
+
+test('parent rejects forwarded calls without a purpose before opening a dialog', async t => {
+  const parent = guardHandlers();
+  const context = { hasUI: true, cwd: '/tmp/parent', ui: { confirm: async () => { assert.fail('missing-purpose dialog opened'); } } };
+  await parent.get('session_start')({}, context);
+  t.after(() => parent.get('session_shutdown')({}, context));
+  const { requestApproval } = await import('../../dot_pi/agent/extensions/lib/approval-channel.mjs');
+  const result = await requestApproval(JSON.parse(process.env[APPROVAL_ENV]), {
+    toolName: invocation.toolName, input: invocation.input, toolCallId: 'missing',
+    cwd: '/tmp/child', childSessionId: 'child-session',
+  });
+  assert.equal(result.allowed, false);
+  assert.match(result.reason, /目的.*直前.*日本語/);
 });
 
 test('approval guard is enabled unless explicitly opted out with 0', () => {
@@ -208,9 +258,11 @@ test('purpose comes only from public text immediately preceding this tool call',
   assert.match(shown, /検証済みの変更をリモートへ送信/);
   assert.doesNotMatch(shown, /Unrelated|Private reasoning/);
   for (const toolCallId of ['no-purpose', 'absent']) {
-    await handlers.get('tool_call')({ ...invocation, toolCallId }, context);
-    assert.match(shown, /目的の説明は添えられていません/);
-    assert.doesNotMatch(shown, /検証済みの変更/);
+    shown = undefined;
+    const result = await handlers.get('tool_call')({ ...invocation, toolCallId }, context);
+    assert.equal(result.block, true);
+    assert.match(result.reason, /目的.*直前.*日本語/);
+    assert.equal(shown, undefined);
   }
 });
 
@@ -256,7 +308,7 @@ test('readable approval preserves nested fields and escapes terminal controls', 
 });
 
 test('readable display does not weaken the exact argument comparison', async () => {
-  const mutable = { toolName: 'custom', input: { value: true } };
+  const mutable = { toolName: 'custom', input: { value: true }, purpose: '入力型の確認です。' };
   const result = await confirmOneInvocation(mutable, {
     hasUI: true, cwd: '/tmp/work', ui: { confirm: async () => { mutable.input.value = 'true'; return true; } },
   });
@@ -359,7 +411,7 @@ test('read-only headers and state inspection remain automatic', () => {
 test('approval text distinguishes string values and raw keys from translated labels', async () => {
   const shown = [];
   for (const input of [{ value: true }, { value: 'true' }, { path: 'file' }, { '対象ファイル': 'file' }, { '対象ファイル (path)': 'file' }]) {
-    await confirmOneInvocation({ toolName: 'custom', input }, {
+    await confirmOneInvocation({ toolName: 'custom', input, purpose: '入力値の表示確認です。' }, {
       cwd: '/tmp/work', hasUI: true, ui: { confirm: async (_title, message) => { shown.push(message); return false; } },
     });
   }
@@ -449,8 +501,8 @@ test('serializes overlapping approval dialogs', async () => {
   };
   const ui = { cwd: '/tmp/work', hasUI: true, ui: { confirm } };
   const results = await Promise.all([
-    confirmOneInvocation({ toolName: 'bash', input: { command: 'one' } }, ui),
-    confirmOneInvocation({ toolName: 'bash', input: { command: 'two' } }, ui),
+    confirmOneInvocation({ toolName: 'bash', input: { command: 'one' }, purpose: '最初の操作です。' }, ui),
+    confirmOneInvocation({ toolName: 'bash', input: { command: 'two' }, purpose: '次の操作です。' }, ui),
   ]);
   assert.deepEqual(results.map(result => result.allowed), [true, true]);
   assert.equal(maximum, 1);

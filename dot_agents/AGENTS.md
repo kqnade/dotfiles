@@ -25,6 +25,15 @@
 - Keep small changes local when delegation would add more overhead than value. Report blockers
   and unfinished work; inspect partial results before retrying, without silently expanding scope.
 
+# Tool approval explanations
+
+- Before each tool call that requires human approval, explain its purpose and concrete target in
+  concise Japanese public text immediately preceding that call in the same assistant message.
+  Provide a separate explanation for each call; private reasoning or another call's explanation
+  does not satisfy this requirement. An explanation is not authorization or proof of safety.
+- If a call is blocked for a missing explanation, provide it before retrying. Do not bypass the
+  approval mechanism or treat the explanation as consent.
+
 # Local commits
 
 - Finish completed implementation, fixes, and repository configuration changes with a local

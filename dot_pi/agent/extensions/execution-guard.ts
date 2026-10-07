@@ -1,6 +1,6 @@
 import type { ExtensionAPI, ToolCallEvent } from '@earendil-works/pi-coding-agent';
 import { APPROVAL_ENV, createApprovalServer, requestApproval } from './lib/approval-channel.mjs';
-import { approvalReason, confirmOneInvocation, isDirectGitCommit, isForbiddenCommitBypass, toolCallPurpose } from './lib/execution-guard.mjs';
+import { approvalReason, confirmOneInvocation, isDirectGitCommit, isForbiddenCommitBypass, missingPurposeReason, toolCallPurpose } from './lib/execution-guard.mjs';
 
 function commitBlock(invocation: Pick<ToolCallEvent, 'toolName' | 'input'>) {
   if (isForbiddenCommitBypass(invocation)) return 'This git commit command explicitly bypasses signing or hooks and is not allowed.';
@@ -66,7 +66,7 @@ export default function (pi: ExtensionAPI) {
   pi.on('session_shutdown', shutdown);
 
   pi.on('before_agent_start', event => {
-    const guideline = '承認が必要な高リスク操作では、各tool callの直前に同じassistantメッセージの公開テキストで、操作の目的を簡潔な日本語で説明してください。説明は承認や安全性の保証にはなりません。';
+    const guideline = '承認が必要な高リスク操作では、各tool callの直前に同じassistantメッセージの公開テキストで、操作の目的・対象を簡潔な日本語で必ず説明してください。説明がない呼び出しは確認画面を出さずに拒否されます。複数のtool callにもそれぞれ説明を添えてください。説明は承認や安全性の保証にはなりません。';
     if (!event.systemPromptOptions.promptGuidelines.includes(guideline)) {
       event.systemPromptOptions.promptGuidelines.push(guideline);
     }
@@ -83,6 +83,8 @@ export default function (pi: ExtensionAPI) {
       : lifetime.signal;
     try {
       const purpose = toolCallPurpose(context.sessionManager.getBranch(), event.toolCallId);
+      const purposeReason = missingPurposeReason(purpose);
+      if (purposeReason) return { block: true, reason: purposeReason };
       const decision = context.hasUI
         ? await confirmOneInvocation({ ...event, purpose }, context, { signal })
         : await requestApproval(endpoint, {

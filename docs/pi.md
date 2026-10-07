@@ -38,8 +38,11 @@ bidirectional formatting characters are shown as visible escapes. Raw parameter 
 labels distinguish translated keys, strings, and non-string values. The complete input remains displayed.
 Below the input, the dialog shows a short purpose from the public assistant text immediately preceding
 that tool call in the same message. Private reasoning, user messages, and another call's explanation are
-not used. The guard requests this explanation through a Pi prompt guideline without an extra model call.
-A missing explanation is reported explicitly; a long one is clipped at 500 Unicode characters with a marker.
+not used. The guard requires this explanation through a Pi prompt guideline and the shared user
+instructions, without an extra model call. A missing or whitespace-only explanation blocks the call
+before opening a dialog or forwarding a child request, with instructions to explain the purpose and
+target in Japanese before retrying. Each call needs its own explanation, including calls in a batch.
+A long explanation is clipped at 500 Unicode characters with a marker.
 The purpose is agent-authored reference text, not proof of safety or permission. Child purposes are forwarded
 to the parent with the invocation; changed purposes or arguments invalidate pending approval.
 
