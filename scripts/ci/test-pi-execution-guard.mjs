@@ -519,10 +519,11 @@ test('decision mode reviews every parent and child shell command, not just recog
     hasUI: true, cwd: '/tmp/parent',
     ui: { confirm: async () => { assert.fail('decision mode opened a human confirmation'); } },
     sessionManager: { getBranch: () => [{ type: 'message', message: { role: 'user', content: 'Inspect the checkout and run tests.' } }] },
-    getSystemPromptOptions: () => ({ contextFiles: [{ path: 'AGENTS.md', content: 'Keep changes local.' }] }),
   };
+  const contextFiles = [{ path: 'AGENTS.md', content: 'Keep changes local.' }];
   await parent.get('session_start')({}, context);
   t.after(() => parent.get('session_shutdown')({}, context));
+  await parent.get('before_agent_start')({ systemPromptOptions: { contextFiles, promptGuidelines: [] } }, context);
   for (const [toolName, command] of [['bash', 'git status'], ['bash', 'python3 unknown.py'], ['powershell', 'Get-ChildItem']]) {
     assert.equal(await parent.get('tool_call')({ toolName, toolCallId: 'routine', input: { command } }, context), undefined);
   }
@@ -543,13 +544,52 @@ test('decision mode reviews every parent and child shell command, not just recog
   assert.equal(requests.at(-1).invocation.cwd, '/tmp/child');
   assert.equal(requests.at(-1).invocation.childSessionId, 'child-1');
   assert.deepEqual(requests.at(-1).user_requests, ['Inspect the checkout and run tests.']);
-  assert.deepEqual(requests.at(-1).context_files, context.getSystemPromptOptions().contextFiles);
+  assert.deepEqual(requests.at(-1).context_files, contextFiles);
+});
+
+test('decision evidence refreshes per run and is cleared on session replacement', async t => {
+  const originalFetch = globalThis.fetch;
+  const originalKey = process.env.PI_DECISION_API_KEY;
+  const originalChannel = process.env[APPROVAL_ENV];
+  const requests = [];
+  process.env.PI_DECISION_API_KEY = 'fixture-key';
+  globalThis.fetch = async (_url, options) => {
+    requests.push(JSON.parse(JSON.parse(options.body).input[0].content[0].text));
+    return new Response(JSON.stringify({ answers: [{ type: 'choice', name: 'guardian_risk', choice: 'low' }] }));
+  };
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.PI_DECISION_API_KEY;
+    else process.env.PI_DECISION_API_KEY = originalKey;
+    if (originalChannel === undefined) delete process.env[APPROVAL_ENV];
+    else process.env[APPROVAL_ENV] = originalChannel;
+  });
+  const parent = guardHandlers('1', 'decision');
+  const context = { hasUI: true, cwd: '/tmp/parent', ui: { confirm: async () => { assert.fail('unexpected dialog'); } },
+    sessionManager: { getBranch: () => [{ type: 'message', message: { role: 'user', content: 'Inspect the checkout.' } }] } };
+  const call = () => parent.get('tool_call')({ toolName: 'bash', toolCallId: 'status', input: { command: 'git status' } }, context);
+  const startRun = contextFiles => parent.get('before_agent_start')({ systemPromptOptions: { contextFiles, promptGuidelines: [] } }, context);
+  await parent.get('session_start')({}, context);
+  t.after(() => parent.get('session_shutdown')({}, context));
+  assert.equal((await call()).block, true);
+  assert.equal(requests.length, 0);
+  for (const contextFiles of [[{ path: 'AGENTS.md', content: 'Keep changes local.' }], [{ path: 'AGENTS.md', content: 'Read only.' }], []]) {
+    await startRun(contextFiles);
+    assert.equal(await call(), undefined);
+    assert.deepEqual(requests.at(-1).context_files, contextFiles);
+  }
   const sent = requests.length;
-  for (const getSystemPromptOptions of [undefined, () => ({}), () => ({ contextFiles: null })]) {
-    const result = await parent.get('tool_call')({ toolName: 'bash', toolCallId: 'no-context', input: { command: 'git status' } }, { ...context, getSystemPromptOptions });
-    assert.equal(result.block, true);
+  for (const contextFiles of [undefined, null, [{ path: 'AGENTS.md' }]]) {
+    await startRun(contextFiles);
+    assert.equal((await call()).block, true);
     assert.equal(requests.length, sent);
   }
+  await startRun([]);
+  assert.equal(await call(), undefined);
+  await parent.get('session_shutdown')({}, context);
+  await parent.get('session_start')({}, context);
+  assert.equal((await call()).block, true);
+  assert.equal(requests.length, sent + 1);
 });
 
 test('decision review is the default and headless commands cannot run without an owner', async t => {

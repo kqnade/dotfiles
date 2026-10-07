@@ -28,17 +28,19 @@ export default function (pi: ExtensionAPI) {
   let published: string | undefined;
   let started = false;
   let startupError: string | undefined;
+  let contextFiles: Array<{ path: string; content: string }> | undefined;
 
   function reviewFor(context: ExtensionContext) {
     const owned = reviewer;
     return owned && ((invocation, signal) => owned({ ...invocation, cwd: invocation.cwd ?? context.cwd }, {
       branch: context.sessionManager?.getBranch() ?? [],
-      contextFiles: context.getSystemPromptOptions?.().contextFiles, signal,
+      contextFiles, signal,
     }));
   }
 
   async function shutdown() {
     started = false;
+    contextFiles = undefined;
     lifetime.abort();
     if (published && process.env[APPROVAL_ENV] === published) delete process.env[APPROVAL_ENV];
     published = undefined;
@@ -80,6 +82,7 @@ export default function (pi: ExtensionAPI) {
   pi.on('session_shutdown', shutdown);
 
   pi.on('before_agent_start', event => {
+    contextFiles = event.systemPromptOptions.contextFiles;
     const guideline = '承認が必要な高リスク操作では、各tool callの直前に同じassistantメッセージの公開テキストで、操作の目的・対象を簡潔な日本語で必ず説明してください。説明がない呼び出しは確認画面を出さずに拒否されます。複数のtool callにもそれぞれ説明を添えてください。説明は承認や安全性の保証にはなりません。';
     if (!event.systemPromptOptions.promptGuidelines.includes(guideline)) {
       event.systemPromptOptions.promptGuidelines.push(guideline);

@@ -30,8 +30,10 @@ Recognized authenticated `fetch_content` operations also require review. Other t
 file reads/edits and native subagent launch/control, do not use this API.
 
 The reviewer receives the exact invocation and working directory, text user messages from the
-parent's active branch, and the parent's loaded context files. Agent explanations cannot establish
-authorization. Private reasoning, assistant messages, tool outputs, images, and credentials used for
+parent's active branch, and the parent's loaded context files. Context files are captured from
+`before_agent_start.systemPromptOptions` and cleared on session shutdown/replacement. Before that
+evidence is available, reviews fail closed; an explicitly loaded empty file list is valid.
+Agent explanations cannot establish authorization. Private reasoning, assistant messages, tool outputs, images, and credentials used for
 API authentication are not included as evidence. Non-text user messages or requests larger than
 64 KiB fail closed rather than silently dropping evidence. Unknown script contents, variables or
 runtime state are not inspected by the reviewer; the rubric requires a high-risk answer when these
