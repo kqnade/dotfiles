@@ -68,7 +68,7 @@ uv = "0.12.20"
 
 # Agent and application CLIs
 1password-cli = "2.39.0"
-herdr = { version = "v0.9.1", os = ["linux"] }
+herdr = { version = "v0.9.3", os = ["linux"] }
 claude = "2.1.289"
 "aqua:openai/codex" = "0.160.0"
 opencode = "1.18.32"
