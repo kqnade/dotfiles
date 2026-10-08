@@ -14,23 +14,23 @@ url = "https://cache.agilebits.com/dist/1P/op2/pkg/v2.39.0/op_darwin_arm64_v2.39
 url = "https://cache.agilebits.com/dist/1P/op2/pkg/v2.39.0/op_darwin_amd64_v2.39.0.zip"
 
 [[tools."aqua:babarot/gomi"]]
-version = "1.6.4"
+version = "1.6.5"
 backend = "aqua:babarot/gomi"
 
 [tools."aqua:babarot/gomi"."platforms.linux-x64"]
-checksum = "sha256:d6a8edcdafbd63923e1bdf76f0ad8d06fb4394087e20a5f70979e81bf5a7cce8"
-url = "https://github.com/babarot/gomi/releases/download/v1.6.4/gomi_Linux_x86_64.tar.gz"
-url_api = "https://api.github.com/repos/babarot/gomi/releases/assets/440758868"
+checksum = "sha256:d7b520838d1cec6a5bccf1b03be0f7de5e7ed16d5202d7d3c8bd17fb79252154"
+url = "https://github.com/babarot/gomi/releases/download/v1.6.5/gomi_Linux_x86_64.tar.gz"
+url_api = "https://api.github.com/repos/babarot/gomi/releases/assets/601173880"
 
 [tools."aqua:babarot/gomi"."platforms.macos-arm64"]
-checksum = "sha256:1b33045f11844b7dae4af105f6ce7f62d6e25927423cb91b2044760e6b208897"
-url = "https://github.com/babarot/gomi/releases/download/v1.6.4/gomi_Darwin_arm64.tar.gz"
-url_api = "https://api.github.com/repos/babarot/gomi/releases/assets/440758884"
+checksum = "sha256:acf663e29884bee6432841d89feb8c6dba0979befa2da93e200f732bee2727f1"
+url = "https://github.com/babarot/gomi/releases/download/v1.6.5/gomi_Darwin_arm64.tar.gz"
+url_api = "https://api.github.com/repos/babarot/gomi/releases/assets/601173944"
 
 [tools."aqua:babarot/gomi"."platforms.macos-x64"]
-checksum = "sha256:f6582f4603d1be4fc8f56d7c02387a9bca8edf204297ab8682a0955761c901dc"
-url = "https://github.com/babarot/gomi/releases/download/v1.6.4/gomi_Darwin_x86_64.tar.gz"
-url_api = "https://api.github.com/repos/babarot/gomi/releases/assets/440758870"
+checksum = "sha256:11dbd3fa2e8d6d6d124ad0af7e3e0d73ef275937d44c20dd3342f1f06a6f5df7"
+url = "https://github.com/babarot/gomi/releases/download/v1.6.5/gomi_Darwin_x86_64.tar.gz"
+url_api = "https://api.github.com/repos/babarot/gomi/releases/assets/601173953"
 
 [[tools."aqua:openai/codex"]]
 version = "0.160.0"
