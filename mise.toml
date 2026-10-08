@@ -44,7 +44,7 @@ jq = "1.8.2"
 yq = "4.53.6"
 just = "1.58.0"
 "github:atuinsh/atuin" = "18.23.0"
-"aqua:babarot/gomi" = "1.6.4"
+"aqua:babarot/gomi" = "1.6.5"
 btop = { version = "1.4.7", os = ["linux"] }
 
 # Editor and source validation
