@@ -279,6 +279,7 @@ checksum = "sha256:c988be1cde19cd7295ce64bc8b955d42fb1855e5227cb640c87fc09c8408c
 url = "https://github.com/atuinsh/atuin/releases/download/v18.23.0/atuin-aarch64-apple-darwin.tar.gz"
 url_api = "https://api.github.com/repos/atuinsh/atuin/releases/assets/580134148"
 provenance = "github-attestations"
+provenance_verified = true
 
 [tools."github:atuinsh/atuin"."platforms.macos-x64"]
 checksum = "sha256:f87ff4bef3f818f81474713dfc964008793a77ade12f8076f9a82237695a587a"
@@ -301,6 +302,7 @@ checksum = "sha256:abdace06607e8bcdcd72517a6b4bf01f711627e5979a65c828eccd69e71e9
 url = "https://github.com/pnpm/pnpm/releases/download/v12.8.2/pnpm-darwin-arm64.tar.gz"
 url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/599659862"
 provenance = "github-attestations"
+provenance_verified = true
 
 [tools."github:pnpm/pnpm"."platforms.macos-x64"]
 checksum = "sha256:162b2c91754a673195cce92a48b9a5ce82b2be379bdb0e67078717b9503b3bcc"
