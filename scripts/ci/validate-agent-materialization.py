@@ -229,6 +229,8 @@ with tempfile.TemporaryDirectory() as temp_dir:
     ]
     if rendered_pi_settings.get("packages") != expected_pi_packages:
         fail("Canonical Pi settings did not deploy the complete package set")
+    if rendered_pi_settings.get("skills") != ["!skills/herdr/**"]:
+        fail("Canonical Pi settings must exclude the Herdr checkout from skill discovery")
     if "runtimeMarker" in rendered_pi_settings:
         fail("Canonical Pi settings preserved machine-local runtime state")
     if rendered_pi_settings.get("modelThinkingLevels", {}).get(
