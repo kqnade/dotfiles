@@ -59,5 +59,10 @@ apply_managed_services() {
 load_new_relic_license_key
 chezmoi init --source "$DOTFILES_ROOT"
 chezmoi --source "$DOTFILES_ROOT" apply
+# shellcheck source=/dev/null
+source "$HOME/.config/dotfiles/client-runtime.sh"
+PI_AGENT_DIR="$(dotfiles_pi_agent_dir)"
+readonly PI_AGENT_DIR
+python3 "$SCRIPT_DIR/repair-pi-lsp-package.py" "$PI_AGENT_DIR"
 bash "$SCRIPT_DIR/build-zsh-init-cache.sh"
 apply_managed_services

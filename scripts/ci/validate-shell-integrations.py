@@ -14,6 +14,7 @@ import tempfile
 import tomllib
 from pathlib import Path
 
+from client_runtime_fixture import deploy_client_runtime
 from validate_common import ROOT, fail, strip_json_comments, tracked_files
 
 
@@ -131,6 +132,10 @@ with tempfile.TemporaryDirectory() as temp_dir:
     fake_lib.mkdir(parents=True)
     fake_bin.mkdir()
     fake_home.mkdir()
+    deploy_client_runtime(fake_home)
+    (fake_scripts / "repair-pi-lsp-package.py").write_text(
+        (ROOT / "scripts/repair-pi-lsp-package.py").read_text()
+    )
     (fake_checkout / "mise.toml").write_text("")
     (fake_scripts / "apply.sh").write_text(
         (ROOT / "scripts/apply.sh").read_text()
@@ -184,6 +189,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
         EXPECT_NEW_RELIC_KEY="1",
     )
     apply_env.pop("CI", None)
+    apply_env.pop("PI_CODING_AGENT_DIR", None)
     apply_env.pop("NEW_RELIC_LICENSE_KEY", None)
     apply_env.pop("NEW_RELIC_LICENSE_KEY_OP_REF", None)
     apply_result = subprocess.run(
