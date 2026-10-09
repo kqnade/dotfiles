@@ -232,7 +232,7 @@ for fragment in (
     "mise run doctor",
     "mise bootstrap --yes",
     "mise bootstrap packages apply --yes",
-    "format --check --stdin-filepath mise.lock - < mise.lock",
+    "format --check --stdin-filepath=mise.lock - < mise.lock",
     "cargo:sheldon",
     "cargo:git-delta",
     "github:sharkdp/fd",
