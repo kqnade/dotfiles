@@ -119,7 +119,7 @@ backend = "cargo:eza"
 features = "vendored-libgit2"
 
 [[tools."cargo:git-delta"]]
-version = "0.19.2"
+version = "0.20.1"
 backend = "cargo:git-delta"
 
 [[tools."cargo:https://github.com/wachikun/yaskkserv2"]]
