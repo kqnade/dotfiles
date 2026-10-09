@@ -20,6 +20,16 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class ValidateMiseTests(unittest.TestCase):
+    def test_ci_validates_lockfile_before_mise_can_refresh_it(self) -> None:
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text()
+        static_job = workflow.split("  static:", 1)[1].split(
+            "  package-bootstrap:", 1
+        )[0]
+        validation = "          python3 scripts/ci/validate-mise.py\n"
+        self.assertIn(validation, static_job)
+        for command in ("mise trust mise.toml", "mise install", "mise exec"):
+            self.assertLess(static_job.index(validation), static_job.index(command))
+
     def test_mise_exec_uses_python_with_tomllib(self) -> None:
         mise = shutil.which("mise")
         self.assertIsNotNone(mise)

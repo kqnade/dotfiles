@@ -70,6 +70,7 @@ jobs:
 
       - name: validate manifest and repository invariants
         run: |
+          python3 scripts/ci/validate-mise.py
           mise trust mise.toml
           mise install --locked chezmoi yq node python
           mise exec -- python3 scripts/ci/test-validate-mise.py
@@ -86,7 +87,6 @@ jobs:
           mise exec -- python3 scripts/ci/test-claude-settings.py
           mise exec -- python3 scripts/ci/test-client-workflow-reset.py
           mise exec -- python3 scripts/ci/test-herdr-worktree.py
-          mise exec -- python3 scripts/ci/validate-mise.py
           mise exec -- python3 scripts/ci/validate-shell-integrations.py
           mise exec -- python3 scripts/ci/validate-claude-authorization.py
           mise exec -- python3 scripts/ci/validate-agent-materialization.py
