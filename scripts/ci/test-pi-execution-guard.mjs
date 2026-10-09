@@ -346,6 +346,48 @@ test('local operations need no approval UI or channel', async () => {
   }
 });
 
+test('MCP calls require a public purpose and individual approval', async t => {
+  const handlers = guardHandlers();
+  let approve = false;
+  let prompts = 0;
+  const context = {
+    hasUI: true, cwd: '/tmp/work',
+    ui: { confirm: async () => { prompts++; return approve; } },
+    sessionManager: { getBranch: () => [{ type: 'message', message: { role: 'assistant', content: [
+      { type: 'text', text: '指定したMCPツールの操作内容を確認します。' },
+      { type: 'toolCall', id: 'mcp-call' },
+    ] } }] },
+  };
+  await handlers.get('session_start')({}, context);
+  t.after(() => handlers.get('session_shutdown')({}, context));
+  const event = { toolName: 'mcp__fixture__action', toolCallId: 'mcp-call', input: {} };
+  assert.equal((await handlers.get('tool_call')(event, context))?.block, true);
+  approve = true;
+  assert.equal(await handlers.get('tool_call')(event, context), undefined);
+  assert.equal(prompts, 2);
+  assert.equal((await handlers.get('tool_call')({ ...event, toolCallId: 'missing' }, context))?.block, true);
+  assert.equal(prompts, 2);
+  assert.equal((await guardHandler()(event, { hasUI: false }))?.block, true);
+});
+
+test('nested risky calls cannot borrow the parent purpose or open approval dialogs', async t => {
+  const handlers = guardHandlers();
+  const context = {
+    hasUI: true, cwd: '/tmp/work',
+    ui: { confirm: async () => { assert.fail('nested risky call opened a dialog'); } },
+    sessionManager: { getBranch: () => [{ type: 'message', message: { role: 'assistant', content: [
+      { type: 'text', text: '親のスクリプトを実行します。' }, { type: 'toolCall', id: 'parent' },
+    ] } }] },
+  };
+  await handlers.get('session_start')({}, context);
+  t.after(() => handlers.get('session_shutdown')({}, context));
+  for (const call of [invocation, { toolName: 'mcp__fixture__action', input: {} }]) {
+    const result = await handlers.get('tool_call')({ ...call, toolCallId: 'parent/1', parentToolCallId: 'parent' }, context);
+    assert.equal(result?.block, true);
+    assert.match(result.reason, /直接/);
+  }
+});
+
 test('risky operations still require approval and commit bypasses remain blocked', async () => {
   const handler = guardHandler();
   const context = { cwd: '/tmp/work', hasUI: false };

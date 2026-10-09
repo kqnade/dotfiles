@@ -59,6 +59,23 @@ test('native Pi event contexts review Decision commands using before-agent evide
   risk = 'high';
   assert.equal((await runner.emitToolCall(event)).block, true);
   assert.equal(requests.length, 2);
+  manager.appendMessage({ role: 'assistant', content: [
+    { type: 'text', text: '指定したMCPツールの操作内容を確認します。' },
+    { type: 'toolCall', id: 'mcp-call', name: 'mcp__fixture__action', arguments: {} },
+  ], timestamp: Date.now() });
+  const mcp = { type: 'tool_call', toolName: 'mcp__fixture__action', toolCallId: 'mcp-call', input: {} };
+  assert.equal((await runner.emitToolCall(mcp)).block, true);
+  assert.equal(requests.length, 3);
+  assert.equal(requests.at(-1).invocation.toolName, mcp.toolName);
+  risk = 'low';
+  assert.equal(await runner.emitToolCall(mcp), undefined);
+  assert.equal(requests.length, 4);
+  for (const call of [mcp, { ...event, input: { command: 'git push origin trunk' } }]) {
+    const result = await runner.emitToolCall({ ...call, toolCallId: 'mcp-call/1', parentToolCallId: 'mcp-call' });
+    assert.equal(result.block, true);
+    assert.match(result.reason, /直接/);
+  }
+  assert.equal(requests.length, 4);
 });
 
 test('native Pi RPC forwards child approval to real UI requests without model calls', { timeout: 30000 }, async t => {

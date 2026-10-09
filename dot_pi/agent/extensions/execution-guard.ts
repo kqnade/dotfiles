@@ -96,6 +96,9 @@ export default function (pi: ExtensionAPI) {
       if (!approvalReason(event)) return;
     }
     if (!started) return { block: true, reason: startupError ?? 'Approval session is not initialized.' };
+    if (event.parentToolCallId && approvalReason(event)) {
+      return { block: true, reason: 'この操作はcodemodeなどの入れ子呼び出しでは承認できません。目的・対象を説明し、ツールを直接呼び出してください。' };
+    }
 
     const signal = context.signal
       ? AbortSignal.any([lifetime.signal, context.signal])

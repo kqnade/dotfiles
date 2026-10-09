@@ -66,8 +66,9 @@ that one invocation automatically. A valid high-risk answer opens a confirmation
 exact operation; only explicit human approval permits execution. The warning title uses the theme's
 warning color in the TUI and plain text in RPC. Refusal, malformed replies, missing evidence,
 credential errors, HTTP errors, timeout, and cancellation deny execution without a confirmation dialog.
-Recognized authenticated `fetch_content` operations also require review. Other tools, including
-file reads/edits and native subagent launch/control, do not use this API.
+MCP tools and recognized authenticated `fetch_content` operations also require review and a public
+purpose for each invocation. MCP annotation hints do not exempt tools from review. Other tools,
+including file reads/edits and native subagent launch/control, do not use this API.
 
 The reviewer receives the exact invocation and working directory, text user messages from the
 parent's active branch, and the parent's loaded context files. Context files are captured from
@@ -122,6 +123,9 @@ through a Pi prompt guideline and the shared user instructions, without a separa
 before review, opening a dialog, or forwarding a child request, with instructions to explain the purpose and
 target in Japanese before retrying. Each call needs its own explanation, including calls in a batch.
 A long explanation is clipped at 500 Unicode characters with a marker.
+Recognized high-risk operations and MCP calls made through codemode or another tool are blocked:
+their nested call IDs have no assistant transcript entry from which to obtain a purpose. Call these
+tools directly with a separate public explanation; a parent script's explanation does not cover them.
 The purpose is agent-authored reference text, not proof of safety or permission. Child purposes are forwarded
 to the parent with the invocation; changed purposes or arguments invalidate pending approval.
 
@@ -139,7 +143,7 @@ In manual mode the command recognizers use this policy:
 |---|---|
 | Local reads, edits, writes, tests, questions, native subagent launch/control | Privilege elevation and permission/ownership changes, such as sudo/chmod/chown |
 | Public Web search/fetch, Git fetch/pull/clone, GitHub view/list/diff | Git push, PR changes, publication, and recognized cloud/deployment changes |
-| Dependency installation and ordinary HTTP reads | Explicit HTTP data/authentication submission, authenticated fetch, remote execution/file-transfer tools |
+| Dependency installation and ordinary HTTP reads | Explicit HTTP data/authentication submission, authenticated fetch, MCP tools, remote execution/file-transfer tools |
 | Ordinary local development commands | Recursive deletion, destructive Git resets/cleaning, disk writes, and direct download-to-shell execution |
 
 These are command/tool recognizers, not a semantic guarantee. Opaque API and remote-management commands

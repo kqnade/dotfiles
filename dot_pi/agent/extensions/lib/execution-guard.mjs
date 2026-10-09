@@ -26,6 +26,7 @@ const POWERSHELL_HTTP_DATA = new RegExp(`${COMMAND_START}(?:Invoke-WebRequest|In
 const DOWNLOADED_CODE = new RegExp(`${COMMAND_START}(?:curl|wget)\\s+${ARGUMENTS}(?:${WORD})?\\s*\\|\\s*(?:ba|z|fi)?sh${END_WORD}`);
 
 export function approvalReason({ toolName, input }) {
+  if (toolName.startsWith('mcp__')) return 'MCPサーバーのツール呼び出しは、操作内容の個別確認が必要です。';
   if (toolName === 'fetch_content' && input?.auth) return '認証情報を利用して外部にアクセスする操作です。';
   if (toolName !== 'bash' && toolName !== 'powershell') return undefined;
   const command = input?.command;

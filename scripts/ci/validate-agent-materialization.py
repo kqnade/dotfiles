@@ -223,8 +223,8 @@ with tempfile.TemporaryDirectory() as temp_dir:
             fail(f"Canonical Pi settings did not enforce {key}")
     expected_pi_packages = [
         "npm:pi-footer@0.5.1",
-        "npm:pi-subagents@0.67.0",
-        "npm:pi-web-access@0.28.0",
+        "npm:pi-subagents@0.76.1",
+        "npm:pi-web-access@0.37.0",
         "git:github.com/trotsky1997/pi-lsp-extension@39d56f0cdaf4b5e77ee038f0670de14cd19e228d",
     ]
     if rendered_pi_settings.get("packages") != expected_pi_packages:
