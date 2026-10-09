@@ -76,9 +76,20 @@
         "claude",
         "aqua:openai/codex",
         "herdr",
-        "opencode"
+        "opencode",
+        "npm:@earendil-works/pi-coding-agent"
       ],
       "minimumReleaseAge": null
+    },
+    {
+      "description": "Prioritize Pi update PRs.",
+      "matchManagers": [
+        "mise"
+      ],
+      "matchDepNames": [
+        "npm:@earendil-works/pi-coding-agent"
+      ],
+      "prPriority": 10
     },
     {
       "description": "Create security PRs immediately, bypassing the default 1-day release age.",

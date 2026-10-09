@@ -67,12 +67,26 @@ if not any(
 if not any(
     rule.get("matchManagers") == ["mise"]
     and rule.get("matchDepNames")
-    == ["claude", "aqua:openai/codex", "herdr", "opencode"]
+    == [
+        "claude",
+        "aqua:openai/codex",
+        "herdr",
+        "opencode",
+        "npm:@earendil-works/pi-coding-agent",
+    ]
     and rule.get("minimumReleaseAge") is None
     and rule.get("enabled") is not False
     for rule in renovate.get("packageRules", [])
 ):
     fail("Renovate must track AI tools without the default release cooldown")
+if not any(
+    rule.get("matchManagers") == ["mise"]
+    and rule.get("matchDepNames") == ["npm:@earendil-works/pi-coding-agent"]
+    and rule.get("prPriority") == 10
+    and rule.get("enabled") is not False
+    for rule in renovate.get("packageRules", [])
+):
+    fail("Renovate must prioritize Pi update PRs")
 
 if (ROOT / "scripts/update.sh").exists():
     fail("dependency updates must be owned by Renovate, not scripts/update.sh")
