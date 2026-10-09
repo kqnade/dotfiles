@@ -1,0 +1,46 @@
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/**'
+          - 'scripts/ci/**'
+
+shell:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'dot_zshrc'
+          - 'dot_bash*'
+          - 'dot_config/zsh/**'
+          - 'dot_config/sheldon/**'
+          - 'dot_local/bin/**'
+          - 'scripts/**/*.sh'
+          - 'install.sh'
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'mise.toml'
+          - 'mise.lock'
+          - 'mise/config.toml'
+          - 'renovate.jsonc'
+          - '.chezmoiexternal.toml.tmpl'
+          - 'dot_config/nvim/lazy-lock.json'
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.md'
+
+agents:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'dot_agents/**'
+          - 'dot_claude/**'
+          - 'dot_codex/**'
+          - 'dot_pi/**'
+          - 'dot_config/opencode/**'
+          - '.chezmoitemplates/claude-*'
+
+neovim:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'dot_config/nvim/**'

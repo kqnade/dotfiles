@@ -24,6 +24,21 @@ bootstrapの各ジョブは、変更判定と静的検証が成功してから�
 選択したbootstrapジョブの成功を確認します。省略を許すのは判定で不要としたジョブだけです。
 GitHub側の必須チェック設定は、workflowファイルの変更だけでは更新されません。
 
+## PRの自動ラベル
+
+`.github/workflows/pr-labels.yml` は変更ファイルに応じて、`ci`、`shell`、
+`dependencies`、`documentation`、`agents`、`neovim` をPRに付与します。
+分類ルールは `.github/labeler.yml` にあります。複数カテゴリに一致すれば複数付与し、
+既存ラベルの自動削除は無効にしています。ラベルはCIジョブの実行条件には使いません。
+
+このworkflowはラベル付与だけを行い、テストを再実行しません。
+`pull_request_target` でbase側の設定を読み、PRのcheckoutやコード実行を行わない構成です。
+PRへの付与に必要な `pull-requests: write` と、未作成ラベルの作成に必要な
+`issues: write` は、このジョブだけに付与します。通常のテストCIは読み取り権限だけで動作します。
+
+ラベル用workflowはbase側に導入されてから有効になります。
+設定を追加するPR自体では、そのPR内の設定を使ったラベル付与は実行されません。
+
 ## 実行するもの
 
 ### 静的検証と mise の導入
