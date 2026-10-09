@@ -23,7 +23,7 @@ gh = "2.101.0"
 ghq = "1.10.1"
 git-lfs = "3.8.0"
 delta = { version = "0.19.2", os = ["linux", "macos/arm64"] }
-"cargo:git-delta" = { version = "0.19.2", os = [
+"cargo:git-delta" = { version = "0.20.1", os = [
   "macos/x64",
 ], depends = [
   "rust",
