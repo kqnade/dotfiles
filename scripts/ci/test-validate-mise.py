@@ -30,6 +30,30 @@ class ValidateMiseTests(unittest.TestCase):
         for command in ("mise trust mise.toml", "mise install", "mise exec"):
             self.assertLess(static_job.index(validation), static_job.index(command))
 
+    def test_1password_uses_aqua_backend(self) -> None:
+        mise = shutil.which("mise")
+        self.assertIsNotNone(mise)
+        result = subprocess.run(
+            [mise, "tool", "1password-cli", "--json"],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        tool = json.loads(result.stdout)
+        self.assertEqual(tool["backend"], "aqua:1password/cli")
+        lock = tomllib.loads((ROOT / "mise.lock").read_text())
+        version = tool["requested_versions"][0]
+        entries = [
+            entry
+            for entry in lock["tools"]["1password-cli"]
+            if entry["version"] == version
+        ]
+        self.assertTrue(entries)
+        for entry in entries:
+            self.assertEqual(entry["backend"], "aqua:1password/cli")
+
     def test_mise_exec_uses_python_with_tomllib(self) -> None:
         mise = shutil.which("mise")
         self.assertIsNotNone(mise)
@@ -369,8 +393,9 @@ class ValidateMiseTests(unittest.TestCase):
                 shutil.copyfile(source, destination)
 
             manifest = fixture_root / "mise.toml"
+            version = tomllib.loads(manifest.read_text())["tools"]["1password-cli"]
             manifest_text, replacement_count = re.subn(
-                r'(?m)^1password-cli = "[^"]+"$',
+                rf'(?m)^1password-cli = "{re.escape(version)}"$',
                 '1password-cli = "999.0.0"',
                 manifest.read_text(),
             )
@@ -381,7 +406,7 @@ class ValidateMiseTests(unittest.TestCase):
             lockfile.write_text(
                 lockfile.read_text()
                 + '\n[[tools.1password-cli]]\nversion = "999.0.0"\n'
-                + 'backend = "vfox:1password-cli"\n'
+                + 'backend = "aqua:1password/cli"\n'
             )
 
             result = subprocess.run(

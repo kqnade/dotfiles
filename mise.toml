@@ -13,6 +13,9 @@ npm.package_manager = "auto"
 system_packages.managers = ["dnf", "pacman", "brew-cask"]
 task.run_auto_install = false
 
+[tool_alias]
+1password-cli = "aqua:1password/cli"
+
 [tools]
 # Bootstrap and shell
 chezmoi = "2.72.2"
@@ -67,7 +70,7 @@ bun = "1.4.2"
 uv = "0.12.23"
 
 # Agent and application CLIs
-1password-cli = "2.39.0"
+1password-cli = "2.40.0"
 herdr = { version = "v0.9.3", os = ["linux"] }
 claude = "2.1.295"
 "aqua:openai/codex" = "0.162.0"
