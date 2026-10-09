@@ -42,6 +42,7 @@ jobs:
           mise trust mise.toml
           mise install --locked chezmoi yq node python
           mise exec -- python3 scripts/ci/test-validate-mise.py
+          mise exec -- python3 scripts/ci/test-runtime.py
           mise exec -- python3 scripts/ci/test-codex-usage-exporter.py
           mise exec -- python3 scripts/ci/test-pi-telemetry.py
           mise exec -- python3 scripts/ci/test-pi-lsp-package.py

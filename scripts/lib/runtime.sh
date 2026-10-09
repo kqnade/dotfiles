@@ -75,7 +75,7 @@ dotfiles_port_open() {
   local host="${1:?host is required}"
   local port="${2:?port is required}"
   (
-    exec 3<>"/dev/tcp/${host}/${port}"
+    exec 3<>"/dev/tcp/${host}/${port}" || exit 1
     exec 3>&-
     exec 3<&-
   ) >/dev/null 2>&1
