@@ -172,8 +172,14 @@ for fragment in (
 workflow = (ROOT / ".github/workflows/ci.yml").read_text()
 with (ROOT / "mise.toml").open("rb") as stream:
     mise_min_version = tomllib.load(stream).get("min_version")
-if f"  MISE_VERSION: v{mise_min_version}\n" not in workflow:
-    fail("CI mise version must match min_version")
+if f'readonly MISE_MIN_VERSION="{mise_min_version}"\n' not in installer:
+    fail("installer mise version must match min_version")
+if "https://mise.run" in workflow:
+    fail("CI must use the checksum-verified repository installer")
+if workflow.count("bash install.sh --mise-only\n") != 2:
+    fail("static and package CI must install mise without bootstrapping dotfiles")
+if "mise exec -- python3 scripts/ci/test-install.py\n" not in workflow:
+    fail("CI must run the offline installer tests")
 if "--dry-" + "run" in workflow:
     fail("CI must execute bootstrap interfaces instead of previewing them")
 for formatted_manifest in ("mise.toml", "mise/config.toml"):

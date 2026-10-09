@@ -206,6 +206,13 @@ checkout_dotfiles() {
 main() {
   local bootstrap_args=(bootstrap --yes)
 
+  if (($# > 0)); then
+    [[ $# -eq 1 && "$1" == --mise-only ]] ||
+      die "Usage: bash install.sh [--mise-only]"
+    install_mise
+    return
+  fi
+
   ensure_platform_prerequisites
   configure_wsl_mise
   install_mise

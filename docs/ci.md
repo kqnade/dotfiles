@@ -5,6 +5,17 @@
 
 ## 実行するもの
 
+### 静的検証と mise の導入
+
+静的検証とパッケージ導入のjobでは、`bash install.sh --mise-only` でmiseだけを導入します。
+このモードはOSパッケージの導入、checkout、設定のtrust、bootstrapを行いません。
+`curl` とSHA-256検証用の `sha256sum` または `shasum` が必要です。
+全jobが `install.sh` に固定したバージョンとSHA-256でダウンロードを検証します。
+最低バージョンを満たすmiseが導入済みなら、その実行ファイルを再利用します。
+
+静的検証には、ダウンロード失敗・チェックサム不一致で既存のmiseを保持するテストと、
+サービスの待受ポートに接続できない場合の回帰テストも含まれます。
+
 ### macOS arm64
 
 GitHub-hosted runnerのlogin shellを、対象macOSと同じ標準`/bin/zsh`へ揃えた上で

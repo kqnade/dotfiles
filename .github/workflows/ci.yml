@@ -14,7 +14,6 @@ concurrency:
 
 env:
   GITHUB_TOKEN: ${{ github.token }}
-  MISE_VERSION: v2026.8.9
 
 jobs:
   static:
@@ -34,7 +33,7 @@ jobs:
       - name: install mise
         run: |
           echo "MISE_CONFIG_DIR=$RUNNER_TEMP/mise-config" >> "$GITHUB_ENV"
-          curl -fsSL https://mise.run | sh
+          bash install.sh --mise-only
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: validate manifest and repository invariants
@@ -43,6 +42,7 @@ jobs:
           mise install --locked chezmoi yq node python
           mise exec -- python3 scripts/ci/test-validate-mise.py
           mise exec -- python3 scripts/ci/test-runtime.py
+          mise exec -- python3 scripts/ci/test-install.py
           mise exec -- python3 scripts/ci/test-codex-usage-exporter.py
           mise exec -- python3 scripts/ci/test-pi-telemetry.py
           mise exec -- python3 scripts/ci/test-pi-lsp-package.py
@@ -117,7 +117,7 @@ jobs:
       - name: install mise
         run: |
           echo "MISE_CONFIG_DIR=$RUNNER_TEMP/mise-config" >> "$GITHUB_ENV"
-          curl -fsSL https://mise.run | sh
+          bash install.sh --mise-only
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: apply packages twice and verify state
