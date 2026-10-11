@@ -67,7 +67,7 @@ python = "3.14.8"
 node = "26.9.0"
 bun = "1.4.2"
 "github:pnpm/pnpm" = "12.8.2"
-uv = "0.12.23"
+uv = "0.13.0"
 
 # Agent and application CLIs
 1password-cli = "2.40.0"
