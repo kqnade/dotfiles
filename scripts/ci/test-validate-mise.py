@@ -15,6 +15,8 @@ import tomllib
 import unittest
 from pathlib import Path
 
+from validate_common import strip_json_comments
+
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -29,6 +31,30 @@ class ValidateMiseTests(unittest.TestCase):
         self.assertIn(validation, static_job)
         for command in ("mise trust mise.toml", "mise install", "mise exec"):
             self.assertLess(static_job.index(validation), static_job.index(command))
+
+    def test_pnpm_release_tags_use_lockfile_version_format(self) -> None:
+        config = json.loads(
+            strip_json_comments((ROOT / "renovate.jsonc").read_text())
+        )
+        rules = [
+            rule
+            for rule in config["packageRules"]
+            if rule.get("matchManagers") == ["mise"]
+            and rule.get("matchDatasources") == ["github-releases"]
+            and rule.get("matchPackageNames") == ["pnpm/pnpm"]
+        ]
+        self.assertEqual(len(rules), 1)
+        rule = rules[0]
+        self.assertEqual(rule.get("versioning"), "semver")
+        pattern = re.compile(
+            rule["extractVersion"].replace("(?<version>", "(?P<version>")
+        )
+        for tag in ("v12.12.1", "12.12.1"):
+            with self.subTest(tag=tag):
+                match = pattern.fullmatch(tag)
+                self.assertIsNotNone(match)
+                self.assertEqual(match.group("version"), "12.12.1")
+        self.assertIsNone(pattern.fullmatch("v12.12.1-rc.1"))
 
     def test_1password_uses_aqua_backend(self) -> None:
         mise = shutil.which("mise")

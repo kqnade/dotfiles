@@ -68,6 +68,20 @@
       "versioning": "semver"
     },
     {
+      "description": "Keep pnpm versions consistent with mise's unprefixed lockfile entries.",
+      "matchManagers": [
+        "mise"
+      ],
+      "matchDatasources": [
+        "github-releases"
+      ],
+      "matchPackageNames": [
+        "pnpm/pnpm"
+      ],
+      "extractVersion": "^v?(?<version>\\d+\\.\\d+\\.\\d+)$",
+      "versioning": "semver"
+    },
+    {
       "description": "Track AI coding tool releases without the default release cooldown.",
       "matchManagers": [
         "mise"
