@@ -25,6 +25,7 @@ function validInvocation(value) {
     && typeof value.toolName === 'string' && value.toolName.length > 0 && value.toolName.length <= 128
     && typeof value.toolCallId === 'string' && value.toolCallId.length > 0 && value.toolCallId.length <= 256
     && typeof value.childSessionId === 'string' && value.childSessionId.length > 0 && value.childSessionId.length <= 256
+    && (value.parentToolCallId === undefined || (typeof value.parentToolCallId === 'string' && value.parentToolCallId.length > 0 && value.parentToolCallId.length <= 256))
     && typeof value.cwd === 'string' && isAbsolute(value.cwd)
     && (value.purpose === undefined || (typeof value.purpose === 'string' && value.purpose.length <= MAX_PURPOSE_LENGTH))
     && value.input && typeof value.input === 'object' && !Array.isArray(value.input);

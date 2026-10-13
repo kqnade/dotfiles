@@ -81,7 +81,10 @@ native childrenにも`subagents.defaultExtensions`からextensionを配備し、
 指示違反を示す根拠がある場合だけ高リスクとするAPI判定を使います。通常操作は自動実行し、高リスク判定後に
 操作の目的・対象の説明と人間の承認を求めます。判定不能や通信失敗では実行せず、署名やhookの迂回禁止も
 維持します。未知のscriptやruntime情報だけでは高リスクとしないため、判定に見えない副作用への注意が必要です。
-既定は`decision`のままで、起動時の環境変数で選びます。
+既定は`decision`のままで、起動時の環境変数で選びます。起動後は`/approval-mode`で選択画面を開き、
+`/approval-mode allowall`・`decision`・`user`で切り替え、`/approval-mode status`で現在のmodeを確認できます。
+変更はこのPi process内だけで有効です。親の実行中や子を含む承認待ちには切り替えを拒否します。
+起動済みの子も親のmodeに従います。guardの無効化やremote操作の認可を与えるcommandではありません。
 `PI_APPROVAL_REVIEWER=user pi`ではルールベースの人間確認を使い、`PI_EXECUTION_GUARD=0 pi`ではguardを無効にします。
 間接的な操作も含むremote変更の明示的な事前認可は、どのmodeでも必要です。API判定や子agentの`permissions: ask`、
 supervisorの返答は人間の許可ではありません。extension内部の実行や、extension list・環境設定でguardを外した子、

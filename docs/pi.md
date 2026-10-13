@@ -115,7 +115,26 @@ still deny execution. Direct `git commit` commands and detected signing/hook byp
 Selecting AllowAll does not authorize remote changes. Configured managed telemetry, including New Relic,
 remains enabled and does not require per-export approval; ad hoc uploads and collector changes do.
 Both API-backed modes use the same credentials, request limits, billing, and telemetry. The default
-remains `decision`; select the mode in the environment before starting Pi.
+remains `decision`; the environment variable selects the startup mode.
+
+During a running Pi process, `/approval-mode` opens a mode selector. Arguments can select a mode
+or show the current value without opening a dialog:
+
+| Command | Effect |
+| --- | --- |
+| `/approval-mode allowall` | Select the permissive API rubric |
+| `/approval-mode decision` | Select the default API rubric |
+| `/approval-mode user` | Select the rule-based human-confirmation policy |
+| `/approval-mode status` | Show the current mode |
+
+Changes apply only to the current Pi process, including subsequent sessions and `/reload`.
+They do not write settings or persist in session history; a new process uses its startup environment.
+Only the parent with a TUI or RPC UI can change the mode. Switching requires an idle parent with
+no reviews or confirmations pending, including child requests; otherwise retry after they finish.
+The mode is checked again after a selector closes. Existing children follow the parent's active policy,
+and newly launched children inherit it. Switching API rubrics reuses the credential cache.
+The command cannot disable the guard and is unavailable when `PI_EXECUTION_GUARD=0`.
+Selecting a mode grants no remote authorization and does not change signing requirements or telemetry.
 
 `PI_APPROVAL_REVIEWER=user pi` selects the rule-based policy: routine operations proceed automatically
 and recognized high-risk operations require human confirmation. This mode never reads the Decisions
@@ -127,7 +146,9 @@ A parent session with a TUI or RPC dialog UI owns a private Unix socket. Native 
 background children inherit its session-specific endpoint through `PI_EXECUTION_APPROVAL_CHANNEL`.
 In Decision and AllowAll modes all child shell commands wait for the parent's API judgment and, for high risk,
 human confirmation with their own invocation, child session, tool-call ID, and working directory. Children do not independently retrieve keys.
-In manual mode detected high-risk operations wait for the parent's confirmation dialog. Supervisor/model
+All covered child shell, MCP, and authenticated-fetch calls go to the parent, even in manual mode,
+so a child's startup mode cannot override a later parent-mode change. Routine manual-mode calls are
+allowed without an API call or dialog; detected high-risk operations wait for confirmation. Supervisor/model
 replies cannot replace these confirmations; RPC clients must present them to a person.
 
 Manual dialogs use Japanese labels for the operation, working directory, input, and confirmation reason rather
@@ -137,7 +158,8 @@ labels distinguish translated keys, strings, and non-string values. The complete
 Below the input, the dialog shows a short purpose from the public assistant text immediately preceding
 that tool call in the same message. Private reasoning, user messages, and another call's explanation are
 not used as its purpose. Recognized high-risk operations in Decision and manual modes require this
-explanation before review or forwarding. AllowAll reviews first and requires the explanation for every
+explanation before review or confirmation. The parent enforces this on forwarded child requests.
+AllowAll reviews first and requires the explanation for every
 high-risk verdict before opening a dialog. A missing or whitespace-only explanation blocks the call,
 with instructions to explain the purpose and target in Japanese before retrying. Each call that needs
 approval requires its own explanation, including calls in a batch.

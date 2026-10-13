@@ -118,6 +118,9 @@ test('oversized or malformed invocations cannot open a dialog', async t => {
   await assert.rejects(requestApproval(server.endpoint, { ...invocation, cwd: 'relative' }), /400/);
   await assert.rejects(requestApproval(server.endpoint, { ...invocation, input: 'not an object' }), /400/);
   await assert.rejects(requestApproval(server.endpoint, { ...invocation, purpose: {} }), /400/);
+  for (const parentToolCallId of [null, 1, '', 'x'.repeat(257)]) {
+    await assert.rejects(requestApproval(server.endpoint, { ...invocation, parentToolCallId }), /400/);
+  }
   await assert.rejects(requestApproval(server.endpoint, { ...invocation, purpose: 'x'.repeat(1025) }), /400/);
   await assert.rejects(requestApproval(server.endpoint, { ...invocation, input: { command: 'x'.repeat(65536) } }), /too large/);
 });

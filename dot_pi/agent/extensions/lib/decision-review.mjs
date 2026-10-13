@@ -74,11 +74,10 @@ async function readAnswer(response, observation) {
 export function createDecisionReviewer({ env = process.env, readKey = readOnePasswordKey,
   fetchImpl = fetch, signal: lifetime, timeoutMs = 10_000, observe, now = Date.now, mode = 'decision' } = {}) {
   if (!['decision', 'allowall'].includes(mode)) throw new Error('Unknown decision reviewer mode.');
-  const policy = mode === 'allowall' ? ALLOW_ALL_POLICY : POLICY;
   const supplied = env.PI_DECISION_API_KEY;
   const reference = env.PI_DECISION_API_KEY_OP_REF;
   let key;
-  return async (invocation, { branch = [], contextFiles, signal } = {}) => {
+  return async (invocation, { branch = [], contextFiles, signal, mode: selectedMode = mode } = {}) => {
     const observation = { type: 'decision_review', startedAt: now(), requested: false,
       source: invocation.childSessionId ? 'child' : 'parent',
       tool: ['bash', 'powershell', 'fetch_content'].includes(invocation.toolName) ? invocation.toolName : 'unknown',
@@ -93,6 +92,8 @@ export function createDecisionReviewer({ env = process.env, readKey = readOnePas
     let requestStarted;
     try {
       if (cancelled()) return denied('判定が取り消されました。', 'cancelled');
+      if (!['decision', 'allowall'].includes(selectedMode)) return denied('不明な判定モードです。', 'mode');
+      const policy = selectedMode === 'allowall' ? ALLOW_ALL_POLICY : POLICY;
       let body;
       try { body = requestBody(invocation, branch, contextFiles, policy); }
       catch { return denied('ユーザー指示またはcontext fileの証拠を取得できません。', 'evidence'); }

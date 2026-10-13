@@ -28,7 +28,7 @@ function guardHandlers(enabled, reviewer = 'user', observe = () => {}) {
     else process.env.PI_EXECUTION_GUARD = enabled;
     if (reviewer === null) delete process.env.PI_APPROVAL_REVIEWER;
     else process.env.PI_APPROVAL_REVIEWER = reviewer;
-    executionGuard({ on: (event, callback) => { handlers.set(event, callback); }, events: { emit: (_channel, event) => observe(event) } });
+    executionGuard({ on: (event, callback) => { handlers.set(event, callback); }, registerCommand() {}, events: { emit: (_channel, event) => observe(event) } });
   } finally {
     if (original === undefined) delete process.env.PI_EXECUTION_GUARD;
     else process.env.PI_EXECUTION_GUARD = original;
@@ -116,7 +116,7 @@ test('a separate headless extension gates a simulated external operation by defa
     import guard from ${JSON.stringify(new URL('../../dot_pi/agent/extensions/execution-guard.ts', import.meta.url).href)};
     import { writeFile } from 'node:fs/promises';
     const handlers = new Map();
-    guard({ on: (event, handler) => handlers.set(event, handler) });
+    guard({ on: (event, handler) => handlers.set(event, handler), registerCommand() {} });
     const context = { hasUI: false, cwd: process.cwd(), sessionManager: {
       getSessionId: () => 'child-' + process.pid, getBranch: () => [{ type: 'message', message: { role: 'assistant', content: [
         { type: 'text', text: '外部への送信操作を検証します。' }, { type: 'toolCall', id: 'external-1' },
@@ -179,15 +179,11 @@ test('missing or blank purposes block approval without opening a dialog', async 
   }
 });
 
-test('headless risky calls without public purpose never reach the parent channel', async t => {
-  const server = await createApprovalServer(() => { assert.fail('missing-purpose request forwarded'); });
-  const original = process.env[APPROVAL_ENV];
-  t.after(async () => {
-    await server.close();
-    if (original === undefined) delete process.env[APPROVAL_ENV];
-    else process.env[APPROVAL_ENV] = original;
-  });
-  process.env[APPROVAL_ENV] = JSON.stringify(server.endpoint);
+test('headless risky calls without public purpose are rejected by the parent before a dialog', async t => {
+  const parent = guardHandlers();
+  const parentContext = { hasUI: true, cwd: '/tmp/parent', ui: { confirm: async () => assert.fail('missing-purpose dialog opened') } };
+  await parent.get('session_start')({}, parentContext);
+  t.after(() => parent.get('session_shutdown')({}, parentContext));
   const handlers = guardHandlers();
   const context = { hasUI: false, cwd: '/tmp/child', sessionManager: { getSessionId: () => 'child-session', getBranch: () => [] } };
   await handlers.get('session_start')({}, context);

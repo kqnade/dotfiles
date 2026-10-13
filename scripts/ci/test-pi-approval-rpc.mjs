@@ -32,7 +32,7 @@ for (const mode of ['decision', 'allowall']) test(`native Pi event contexts revi
     requests.push(JSON.parse(JSON.parse(options.body).input[0].content[0].text));
     return new Response(JSON.stringify({ answers: [{ type: 'choice', name: 'guardian_risk', choice: risk }] }));
   };
-  executionGuard({ on: (event, handler) => handlers.set(event, [handler]), events: createEventBus() });
+  executionGuard({ on: (event, handler) => handlers.set(event, [handler]), registerCommand() {}, events: createEventBus() });
   const manager = SessionManager.inMemory(process.cwd());
   manager.appendMessage({ role: 'user', content: [{ type: 'text', text: 'Inspect the checkout.' }], timestamp: Date.now() });
   const runner = new ExtensionRunner([{ path: guard, handlers }], createExtensionRuntime(), process.cwd(), manager);
@@ -82,7 +82,7 @@ for (const mode of ['decision', 'allowall']) test(`native Pi event contexts revi
   assert.equal(requests.length, mode === 'decision' ? 4 : 6);
 });
 
-test('native Pi RPC forwards child approval to real UI requests without model calls', { timeout: 30000 }, async t => {
+test('native Pi RPC switches approval mode and forwards child approval without model calls', { timeout: 30000 }, async t => {
   const temporary = await mkdtemp(join(tmpdir(), 'pi-rpc-approval-'));
   const agentDir = join(temporary, 'agent');
   await mkdir(agentDir);
@@ -91,7 +91,7 @@ test('native Pi RPC forwards child approval to real UI requests without model ca
     import {requestApproval, APPROVAL_ENV} from ${JSON.stringify(channel)};
     const decision = await requestApproval(JSON.parse(process.env[APPROVAL_ENV]), {
       toolName:'bash', toolCallId:'rpc-probe', childSessionId:'rpc-child',
-      cwd:process.cwd(), input:{command:'printf test'}, purpose:'承認経路を確認するためのテストです。',
+      cwd:process.cwd(), input:{command:'git push origin trunk'}, purpose:'承認経路を確認するためのテストです。',
     });
     console.log(JSON.stringify(decision));
   `;
@@ -151,12 +151,29 @@ test('native Pi RPC forwards child approval to real UI requests without model ca
   const commands = await next(e => e.id === 'commands' && e.type === 'response');
   assert.equal(commands.success, true);
   assert.ok(commands.data.commands.some(command => command.name === 'approval-probe' && command.source === 'extension'));
+  assert.ok(commands.data.commands.some(command => command.name === 'approval-mode' && command.source === 'extension'));
+  for (const mode of ['allowall', 'decision']) {
+    send({ id: 'mode', type: 'prompt', message: `/approval-mode ${mode}` });
+    const notice = await next(e => e.type === 'extension_ui_request' && e.method === 'notify');
+    assert.ok(notice.message.includes(mode));
+    assert.equal((await next(e => e.id === 'mode' && e.type === 'response')).success, true);
+  }
+  send({ id: 'mode', type: 'prompt', message: '/approval-mode' });
+  const picker = await next(e => e.type === 'extension_ui_request' && e.method === 'select');
+  assert.deepEqual(picker.options, ['decision', 'allowall', 'user']);
+  assert.match(picker.title, /decision/);
+  send({ type: 'extension_ui_response', id: picker.id, value: 'user' });
+  assert.match((await next(e => e.type === 'extension_ui_request' && e.method === 'notify')).message, /user/);
+  assert.equal((await next(e => e.id === 'mode' && e.type === 'response')).success, true);
+  send({ id: 'mode', type: 'prompt', message: '/approval-mode status' });
+  assert.match((await next(e => e.type === 'extension_ui_request' && e.method === 'notify')).message, /user/);
+  assert.equal((await next(e => e.id === 'mode' && e.type === 'response')).success, true);
   let socketPath;
   for (const response of [{ confirmed: true }, { confirmed: false }, { cancelled: true }]) {
     send({ id: 'probe', type: 'prompt', message: '/approval-probe' });
     const dialog = await next(e => e.type === 'extension_ui_request' && e.method === 'confirm');
     assert.match(dialog.message, /子session: rpc-child/);
-    assert.match(dialog.message, /コマンド \(command\) \[文字列\]:\n  printf test/);
+    assert.match(dialog.message, /コマンド \(command\) \[文字列\]:\n  git push origin trunk/);
     assert.match(dialog.message, /目的（agentの説明・参考）:\n  承認経路を確認するためのテストです/);
     send({ type: 'extension_ui_response', id: dialog.id, ...response });
     const result = (await next(e => e.type === 'message_end' && e.message?.customType === 'approval_probe')).message.details;

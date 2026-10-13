@@ -18,11 +18,10 @@ export default function (pi: ExtensionAPI) {
   if (process.env.PI_EXECUTION_GUARD === '0') return;
 
   const inherited = process.env[APPROVAL_ENV];
-  const reviewerMode = process.env.PI_APPROVAL_REVIEWER ?? 'decision';
-  const reviewFirst = reviewerMode === 'allowall';
-  const reviewer = ['decision', 'allowall'].includes(reviewerMode)
-    ? createDecisionReviewer({ mode: reviewerMode, observe: event => pi.events.emit(DECISION_EVENT, event) })
-    : undefined;
+  const modes = ['decision', 'allowall', 'user'];
+  let reviewerMode = process.env.PI_APPROVAL_REVIEWER ?? 'decision';
+  const reviewer = createDecisionReviewer({ observe: event => pi.events.emit(DECISION_EVENT, event) });
+  let pendingApprovals = 0;
   let lifetime = new AbortController();
   let server: Awaited<ReturnType<typeof createApprovalServer>> | undefined;
   let endpoint;
@@ -31,13 +30,63 @@ export default function (pi: ExtensionAPI) {
   let startupError: string | undefined;
   let contextFiles: Array<{ path: string; content: string }> | undefined;
 
-  function reviewFor(context: ExtensionContext) {
-    const owned = reviewer;
-    return owned && ((invocation, signal) => owned({ ...invocation, cwd: invocation.cwd ?? context.cwd }, {
+  function reviewFor(context: ExtensionContext, mode: string) {
+    return mode === 'user' ? undefined : ((invocation, signal) => reviewer({ ...invocation, cwd: invocation.cwd ?? context.cwd }, {
       branch: context.sessionManager?.getBranch() ?? [],
-      contextFiles, signal,
+      contextFiles, signal, mode,
     }));
   }
+
+  async function decide(invocation, context: ExtensionContext, signal: AbortSignal) {
+    const reason = commitBlock(invocation);
+    if (reason) return { allowed: false, reason };
+    const mode = reviewerMode;
+    const risk = approvalReason(invocation);
+    if (!risk && (mode === 'user' || !['bash', 'powershell'].includes(invocation.toolName))) return { allowed: true };
+    pendingApprovals++;
+    try {
+      if (mode !== 'allowall' && risk) {
+        if (invocation.parentToolCallId) {
+          return { allowed: false, reason: 'この操作はcodemodeなどの入れ子呼び出しでは承認できません。目的・対象を説明し、ツールを直接呼び出してください。' };
+        }
+        const purposeReason = missingPurposeReason(invocation.purpose);
+        if (purposeReason) return { allowed: false, reason: purposeReason };
+      }
+      const prepared = invocation.parentToolCallId ? { ...invocation, purpose: undefined } : invocation;
+      if (!context.hasUI) return { allowed: false, reason: 'No valid parent approval channel.' };
+      return await confirmOneInvocation(prepared, context, { signal, review: reviewFor(context, mode), reviewFirst: mode === 'allowall' });
+    } finally { pendingApprovals--; }
+  }
+
+  pi.registerCommand('approval-mode', {
+    description: 'Select execution approval mode: decision, allowall or user',
+    getArgumentCompletions: prefix => [...modes, 'status'].filter(value => value.startsWith(prefix)).map(value => ({ value, label: value })),
+    handler: async (args, context) => {
+      if (!started) throw new Error(startupError ?? 'Approval session is not initialized.');
+      if (!context.hasUI || endpoint) throw new Error('/approval-mode はUIを持つ親セッションで実行してください。');
+      let selected = args.trim();
+      if (selected === 'status') {
+        context.ui.notify(`実行承認モード: ${reviewerMode}`, 'info');
+        return;
+      }
+      const busy = () => !context.isIdle() || pendingApprovals > 0;
+      const warnBusy = () => context.ui.notify('実行または承認判定が進行中です。完了後にモードを切り替えてください。', 'warning');
+      if (busy()) { warnBusy(); return; }
+      if (!selected) {
+        const choice = await context.ui.select(`実行承認モード（現在: ${reviewerMode}）`, modes);
+        if (choice === undefined) return;
+        selected = choice;
+      }
+      if (!modes.includes(selected)) {
+        context.ui.notify('decision、allowall、user のいずれかを指定してください。', 'error');
+        return;
+      }
+      if (busy()) { warnBusy(); return; }
+      reviewerMode = selected;
+      process.env.PI_APPROVAL_REVIEWER = selected;
+      context.ui.notify(`実行承認モード: ${selected}（このPiプロセス内で有効）`, 'info');
+    },
+  });
 
   async function shutdown() {
     started = false;
@@ -56,18 +105,13 @@ export default function (pi: ExtensionAPI) {
     lifetime = new AbortController();
     startupError = undefined;
     try {
-      if (!['decision', 'allowall', 'user'].includes(reviewerMode)) throw new Error('PI_APPROVAL_REVIEWER must be decision, allowall or user.');
+      if (!modes.includes(reviewerMode)) throw new Error('PI_APPROVAL_REVIEWER must be decision, allowall or user.');
       if (context.hasUI) {
         if (parseChannel(process.env[APPROVAL_ENV])?.ownerPid === process.pid) {
           throw new Error('An approval UI already owns this process; use a separate Pi process.');
         }
-        server = await createApprovalServer((invocation, signal) => {
-          const reason = commitBlock(invocation);
-          if (reason) return { allowed: false, reason };
-          return confirmOneInvocation(invocation, {
-            hasUI: context.hasUI, mode: context.mode, ui: context.ui, cwd: invocation.cwd,
-          }, { signal, review: reviewFor(context), reviewFirst });
-        });
+        server = await createApprovalServer((invocation, signal) => decide(invocation,
+          { ...context, cwd: invocation.cwd }, AbortSignal.any([lifetime.signal, signal])));
         published = JSON.stringify(server.endpoint);
         process.env[APPROVAL_ENV] = published;
       } else {
@@ -93,29 +137,22 @@ export default function (pi: ExtensionAPI) {
   pi.on('tool_call', async (event, context) => {
     const reason = commitBlock(event);
     if (reason) return { block: true, reason };
-    if (reviewerMode === 'user' || !['bash', 'powershell'].includes(event.toolName)) {
-      if (!approvalReason(event)) return;
-    }
+    if (!approvalReason(event) && (!['bash', 'powershell'].includes(event.toolName) || (reviewerMode === 'user' && !endpoint))) return;
     if (!started) return { block: true, reason: startupError ?? 'Approval session is not initialized.' };
-    if (!reviewFirst && event.parentToolCallId && approvalReason(event)) {
-      return { block: true, reason: 'この操作はcodemodeなどの入れ子呼び出しでは承認できません。目的・対象を説明し、ツールを直接呼び出してください。' };
-    }
 
     const signal = context.signal
       ? AbortSignal.any([lifetime.signal, context.signal])
       : lifetime.signal;
     try {
       const purpose = event.parentToolCallId ? undefined : toolCallPurpose(context.sessionManager.getBranch(), event.toolCallId);
-      if (!reviewFirst && approvalReason(event)) {
-        const purposeReason = missingPurposeReason(purpose);
-        if (purposeReason) return { block: true, reason: purposeReason };
-      }
+      const invocation = { ...event, purpose, cwd: context.cwd };
       const decision = context.hasUI
-        ? await confirmOneInvocation({ ...event, purpose }, context, { signal, review: reviewFor(context), reviewFirst })
-        : await requestApproval(endpoint, {
+        ? await decide(invocation, context, signal)
+        : endpoint ? await requestApproval(endpoint, {
           toolName: event.toolName, toolCallId: event.toolCallId, input: event.input, purpose,
+          parentToolCallId: event.parentToolCallId,
           cwd: context.cwd, childSessionId: context.sessionManager.getSessionId(),
-        }, { signal });
+        }, { signal }) : await decide(invocation, context, signal);
       if (!decision.allowed) return { block: true, reason: decision.reason };
     } catch (error) {
       return { block: true, reason: `Approval failed: ${error instanceof Error ? error.message : String(error)}` };

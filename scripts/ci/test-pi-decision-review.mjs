@@ -71,6 +71,34 @@ test('unknown decision rubric modes fail without sending a request', () => {
   }), /mode/);
 });
 
+test('per-invocation policy changes share the credential cache without changing evidence', async () => {
+  let reads = 0;
+  const requests = [];
+  const review = createDecisionReviewer({ env: { PI_DECISION_API_KEY_OP_REF: reference },
+    readKey: async () => { reads++; return 'fixture-key'; },
+    fetchImpl: async (_url, options) => { requests.push(JSON.parse(options.body)); return answer('low'); },
+  });
+  for (const mode of ['decision', 'allowall', 'decision']) {
+    assert.deepEqual(await review(invocation, { ...evidence, mode }), { risk: 'low' });
+  }
+  assert.equal(reads, 1);
+  assert.match(requests[1].questions[0].instructions, /AllowAll/);
+  assert.equal(requests[0].questions[0].instructions, requests[2].questions[0].instructions);
+  assert.deepEqual(requests[0].input, requests[1].input);
+  assert.deepEqual(requests[1].input, requests[2].input);
+});
+
+test('an invalid per-invocation mode denies before credentials or API access', async () => {
+  let reads = 0, requests = 0;
+  const review = createDecisionReviewer({ env: { PI_DECISION_API_KEY_OP_REF: reference },
+    readKey: async () => { reads++; return 'fixture-key'; },
+    fetchImpl: async () => { requests++; return answer('low'); },
+  });
+  assert.equal((await review(invocation, { ...evidence, mode: 'off' })).risk, 'high');
+  assert.equal(reads, 0);
+  assert.equal(requests, 0);
+});
+
 test('supports an explicit key and an alternate 1Password reference without exporting credentials', async () => {
   for (const env of [{ PI_DECISION_API_KEY: 'explicit-key' }, { PI_DECISION_API_KEY_OP_REF: 'op://Other/Item/secret' }]) {
     const before = structuredClone(env);
