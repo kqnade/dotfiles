@@ -306,7 +306,8 @@ class ValidateMiseTests(unittest.TestCase):
             )
 
         self.assertEqual(node.returncode, 0, node.stderr)
-        self.assertEqual(node.stdout.strip(), "26.9.0")
+        manifest = tomllib.loads((ROOT / "mise.toml").read_text())
+        self.assertEqual(node.stdout.strip(), manifest["tools"]["node"])
         self.assertEqual(login_shell.returncode, 0, login_shell.stderr)
         self.assertEqual(login_shell.stdout.strip(), "/bin/zsh")
         self.assertEqual(tasks.returncode, 0, tasks.stderr)
