@@ -19,7 +19,6 @@ from validate_common import ROOT, fail, strip_json_comments, tracked_files
 
 removals = (ROOT / ".chezmoiremove").read_text().splitlines()
 for target in (
-    ".claude/CLAUDE.md",
     ".claude/agents/frontend-designer.md",
     ".claude/hooks/auto-test.sh",
     ".claude/hooks/herdr-review-notify.sh",

@@ -39,15 +39,21 @@ class ClientWorkflowResetTests(unittest.TestCase):
             "Remote changes require explicit authorization", "Repository workflow state",
         ):
             self.assertIn(f"# {heading}\n", instructions)
-        self.assertEqual(
-            (ROOT / "dot_pi/agent/symlink_AGENTS.md").read_text().strip(),
-            "../../.agents/AGENTS.md",
-        )
+        for source, target in (
+            ("dot_pi/agent/symlink_AGENTS.md", "../../.agents/AGENTS.md"),
+            ("dot_claude/symlink_CLAUDE.md", "../.agents/AGENTS.md"),
+            ("dot_codex/symlink_AGENTS.md", "../.agents/AGENTS.md"),
+            ("dot_config/opencode/symlink_AGENTS.md", "../../.agents/AGENTS.md"),
+        ):
+            with self.subTest(source=source):
+                self.assertTrue((ROOT / source).is_file())
+                self.assertEqual((ROOT / source).read_text().strip(), target)
+        removals = (ROOT / ".chezmoiremove").read_text().splitlines()
+        for target in (".claude/CLAUDE.md", ".codex/AGENTS.md", ".config/opencode/AGENTS.md"):
+            self.assertNotIn(target, removals)
         self.assertIn("検出された `yomiyasu` スキル", instructions)
         self.assertEqual(set(shared.glob("*/scripts")), {shared / "yomiyasu/scripts"})
         self.assertFalse((ROOT / "dot_codex/agents").exists())
-        self.assertFalse((ROOT / "dot_codex/symlink_AGENTS.md").exists())
-        self.assertFalse((ROOT / "dot_config/opencode/symlink_AGENTS.md").exists())
         codex_modifier = (ROOT / "dot_codex/modify_private_config.toml").read_text()
         self.assertNotIn(".agents.default_subagent_model =", codex_modifier)
         self.assertEqual(
@@ -130,9 +136,7 @@ class ClientWorkflowResetTests(unittest.TestCase):
                 ".claude/skills/using-workflow-skills": "old router link\n",
                 ".claude/skills/assumption-pruning": "old Claude link\n",
                 ".claude/rules/delivery.md": "old Claude rule\n",
-                ".codex/AGENTS.md": "old Codex rules\n",
                 ".codex/agents/luna-parallelizer.toml": "old Codex agent\n",
-                ".config/opencode/AGENTS.md": "old OpenCode rules\n",
                 ".pi/agent/extensions/btw.ts": "old side conversation entry\n",
                 ".pi/agent/extensions/lib/btw-session.mjs": "old side session factory\n",
                 ".pi/agent/extensions/lib/vendor/pi-btw.ts": "old side conversation implementation\n",
@@ -164,9 +168,14 @@ class ClientWorkflowResetTests(unittest.TestCase):
                 target = home / relative
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text(contents)
-            existing_pi_instructions = home / ".pi/agent/AGENTS.md"
-            existing_pi_instructions.parent.mkdir(parents=True, exist_ok=True)
-            existing_pi_instructions.write_text("pre-existing Pi instructions\n")
+            instruction_targets = (
+                ".pi/agent/AGENTS.md", ".claude/CLAUDE.md",
+                ".codex/AGENTS.md", ".config/opencode/AGENTS.md",
+            )
+            for relative in instruction_targets:
+                target = home / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("outdated managed instructions\n")
 
             environment = os.environ.copy()
             environment.update(
@@ -208,12 +217,11 @@ class ClientWorkflowResetTests(unittest.TestCase):
                     self.assertFalse(os.path.lexists(home / relative), relative)
                 for relative, contents in preserved.items():
                     self.assertEqual((home / relative).read_text(), contents, relative)
-                pi_instructions = home / ".pi/agent/AGENTS.md"
-                self.assertTrue(pi_instructions.is_symlink())
-                self.assertEqual(
-                    pi_instructions.resolve(), (home / ".agents/AGENTS.md").resolve()
-                )
-                self.assertEqual(pi_instructions.read_bytes(), (ROOT / "dot_agents/AGENTS.md").read_bytes())
+                for relative in instruction_targets:
+                    instructions = home / relative
+                    self.assertTrue(instructions.is_symlink(), relative)
+                    self.assertEqual(instructions.resolve(), (home / ".agents/AGENTS.md").resolve())
+                    self.assertEqual(instructions.read_bytes(), (ROOT / "dot_agents/AGENTS.md").read_bytes())
                 for relative in (
                     "execution-guard.ts", "lib/execution-guard.mjs", "lib/approval-channel.mjs",
                 ):

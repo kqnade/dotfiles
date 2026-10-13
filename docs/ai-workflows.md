@@ -13,7 +13,7 @@
 通常は各Skillのdescriptionから選択します。全Skillを読むルーターや起動時の手順注入はありません。
 依存更新の詳細チェックは、そのレビューでだけ読み込みます。
 
-Piの普段の日本語の返答には、`dot_agents/AGENTS.md` の会話方針が適用されます。
+Pi・Claude・Codex CLI・OpenCodeの普段の日本語の返答には、`dot_agents/AGENTS.md` の会話方針が適用されます。
 自然で簡潔な言葉を使い、事実、条件、不確実性は保ちます。作文・推敲や長い説明を見直すときは
 `yomiyasu` を読み、短い会話のたびに全文を読み込んだり検査ツールを実行したりはしません。
 通常の会話や進捗報告には推敲レポートを付けません。
@@ -22,9 +22,17 @@ Piの普段の日本語の返答には、`dot_agents/AGENTS.md` の会話方針�
 承認を止めます。review-onlyの依頼では指摘だけ返し、勝手に修正しません。
 
 小さな変更は対象コード、テスト、差分を直接扱い、別の計画書、TODO、委譲を一律には要求しません。
-Piの共通指示では、検証済みの実装・設定変更は原則として小さなlocal commitで完了します。
+共通指示では、検証済みの実装・設定変更は原則として小さなlocal commitで完了します。
 repositoryの承認規則や明示的なno-commit指示を優先し、read-only作業ではcommitしません。
 commitは`git cc`形式と1Password SSH署名を必須とし、remote変更には別の明示的な許可が必要です。
+設定済みのNew Relicなどへの通常のtelemetry送信は既定運用に含まれ、送信ごとの個別承認は不要です。
+明示的な無効化の依頼がなければ、agentはexporterやwrapperを無効化しません。送信先や収集内容の変更、
+任意のデータupload、remote collector設定の変更には明示的な許可が必要で、client/accountや機密情報の
+制限は維持します。
+
+Orcaが使える環境では、repository変更はmain checkoutよりtask専用のlinked worktreeを優先します。
+同じtaskのworktreeがあれば再利用し、新規作成には`wt new <branch> --no-ai`を使います。Orcaで扱う前に
+external worktreeの表示と実際のcheckout pathを確認します。read-only作業では新規作成は不要です。
 
 委譲は独立して検証できる一つの変更か調査に絞り、範囲・完了条件・検証・返す根拠を指定します。
 結果を確認してから依存する次の作業を渡し、実装全体と完了処理を一人のworkerへまとめません。

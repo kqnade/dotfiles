@@ -1,4 +1,3 @@
-.claude/CLAUDE.md
 .claude/agents/frontend-designer.md
 .claude/agents/anchor-mapper.md
 .claude/agents/consistency-checker.md
@@ -136,8 +135,6 @@ Library/LaunchAgents/com.user.yaskkserv2.plist
 .claude/skills/using-workflow-skills
 .codex/agents/luna-parallelizer.toml
 .codex/agents/spark-worker.toml
-.codex/AGENTS.md
-.config/opencode/AGENTS.md
 .pi/agent/extensions/btw.ts
 .pi/agent/extensions/lib/btw-session.mjs
 .pi/agent/extensions/lib/vendor/pi-btw.ts

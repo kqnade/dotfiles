@@ -101,7 +101,8 @@ Shared skills live in `dot_agents/skills/`: `test-driven-development`, `evidence
 `~/.agents/skills/` files; Claude uses the links in `dot_claude/skills/`.
 Development and review require the sanitizer check.
 Common user instructions, including everyday Japanese communication guidance, live in
-`dot_agents/AGENTS.md`; Pi loads them through `dot_pi/agent/symlink_AGENTS.md`.
+`dot_agents/AGENTS.md`. Pi, Claude, Codex CLI, and OpenCode load the same file through
+managed symlinks at their user-level instruction paths; see `docs/ai-clients.md`.
 Use `yomiyasu` for Japanese writing and editing; ordinary replies do not need its rewrite report.
 Keep client-specific execution settings in their adapters.
 Do not deploy custom subagent instructions or a workflow router. See `docs/ai-clients.md` for

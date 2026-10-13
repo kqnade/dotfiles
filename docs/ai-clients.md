@@ -12,14 +12,27 @@
 | Claudeの設定・保護 | `.chezmoitemplates/claude-settings.json.tmpl`、`dot_claude/` |
 | Piの設定・拡張 | `dot_pi/agent/` |
 | Codex CLIの設定 | `dot_codex/`（Piには適用されない） |
-| 共通のagent instructions | `dot_agents/AGENTS.md`、Pi adapterは`dot_pi/agent/` |
+| 共通のagent instructions | `dot_agents/AGENTS.md`、各clientのadapterからsymlink配備 |
 | 共通のworkflow Skills | `dot_agents/skills/`、Claude用リンクは`dot_claude/skills/` |
 
-`dot_agents/AGENTS.md`はPiのuser-level instructionsとして`~/.pi/agent/AGENTS.md`へsymlink配備します。
-Pi以外のclientへの配備は行いません。既存のregular fileがある場合、初回適用前に内容を比較します。
-同一内容ならmanaged symlinkへの置換を確認して適用でき、異なる内容なら必要な指示を統合して保存するまで
-適用してはいけません。`chezmoi apply`は既存targetを置換するため、unknown home filesの保持規則は
-このmanaged targetには適用されません。既存ファイルの自動移行やbackupは行いません。
+`dot_agents/AGENTS.md`を`~/.agents/AGENTS.md`へ配備し、各clientのuser-level instructionsから
+同じファイルへsymlinkを張ります。
+
+| Client | 配備先 |
+|---|---|
+| Pi | `~/.pi/agent/AGENTS.md` |
+| Claude | `~/.claude/CLAUDE.md` |
+| Codex CLI | `~/.codex/AGENTS.md` |
+| OpenCode | `~/.config/opencode/AGENTS.md` |
+
+既存のregular fileがある場合、初回適用前に内容を比較します。同一内容ならmanaged symlinkへの
+置換を確認して適用でき、異なる内容なら必要な指示を統合して保存するまで適用してはいけません。
+`chezmoi apply`は既存targetを置換するため、unknown home filesの保持規則はこのmanaged targetには
+適用されません。既存ファイルの自動移行やbackupは行いません。
+
+Codex CLIに`~/.codex/AGENTS.override.md`がある場合、そちらが優先されます。独自の`CODEX_HOME`や
+client設定directoryを使う場合、その配備先は別途準備してください。配備によってclient/accountの
+利用範囲が変わることはありません。
 
 ### ClaudeのAGENTS.md読み込み
 
@@ -93,5 +106,7 @@ client sessionで確認してください。sourceとfixtureの検証だけで�
 
 - [Claude instructions / AGENTS.md](https://code.claude.com/docs/en/memory#agents-md)
 - [Claude Code best practices](https://code.claude.com/docs/en/best-practices)
+- [Codex AGENTS.md](https://developers.openai.com/codex/guides/agents-md)
+- [OpenCode rules](https://opencode.ai/docs/rules/)
 - [Pi configuration](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/configuration.md)
 - [Pi security](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/security.md)
