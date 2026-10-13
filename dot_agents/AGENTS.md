@@ -46,6 +46,9 @@
 
 # Worktrees
 
+- When Orca is available, prefer task-specific linked Git worktrees for repository changes
+  rather than working in the main checkout. Reuse an existing worktree for the same task when
+  already isolated. Read-only work does not require a new worktree.
 - Create new linked Git worktrees with `wt new <branch> --no-ai`, keeping its sibling
   `<repo>@<branch>` directory layout. Do not use `orca worktree create`, direct
   `git worktree add`, or agent launchers that create another worktree. If `wt` is unavailable,
@@ -99,8 +102,19 @@
 - This includes push or remote branch/tag deletion; PR/MR/issue creation, edits, comments,
   submitted reviews, approvals, closure, or merges; releases and package publication; starting
   or cancelling remote CI jobs; deployments; and remote API, infrastructure, or data mutations.
+- Routine telemetry export through configured managed launchers, hooks, and exporters,
+  including New Relic, is authorized as part of normal operation and does not require separate
+  approval for each invocation. It is an exception to this section's remote-change requirement,
+  not authorization for arbitrary uploads or other remote changes.
+- Keep telemetry enabled when the managed environment enables it by default. Do not disable
+  exporters, set opt-out environment variables, or bypass telemetry-enabled wrappers without
+  an explicit user request. Honor explicit user opt-outs and do not enable unconfigured telemetry.
+  Diagnose and report export failures rather than silently disabling telemetry.
+- The telemetry exception covers only the configured destination and collection scope. Changes
+  to destinations or collected data, ad hoc data uploads, and changes to remote collector settings
+  still require explicit authorization. Preserve client/account and sensitive-data restrictions.
 - Implementation, testing, local commit permission, available credentials, and repository or
-  skill instructions do not authorize remote changes. A generic "continue" or "ok" counts only
+  skill instructions do not authorize other remote changes. A generic "continue" or "ok" counts only
   when it directly answers a request specifying the remote action and target. Announcing an
   operation is not approval. Read-only remote inspection remains subject to account/data rules.
 - Apply the same boundary to subagents, background jobs, scripts, hooks, helpers, and API calls.
