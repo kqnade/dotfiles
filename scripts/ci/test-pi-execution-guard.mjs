@@ -766,6 +766,129 @@ test('API review cannot authorize mutated inputs or cancelled calls', async () =
   assert.equal((await pending).allowed, false);
 });
 
+test('review-first approval allows a recognized routine operation without a purpose or dialog', async () => {
+  let reviews = 0;
+  const result = await confirmOneInvocation({ toolName: 'bash', input: { command: 'chmod +x local-script.sh' } }, {
+    cwd: '/tmp/work', hasUI: true,
+    ui: { confirm: async () => assert.fail('routine operation opened a dialog') },
+  }, { reviewFirst: true, review: async () => { reviews++; return { risk: 'low' }; } });
+  assert.equal(result.allowed, true);
+  assert.equal(reviews, 1);
+});
+
+test('review-first approval requires a purpose for every high-risk verdict', async () => {
+  let dialogs = 0;
+  const result = await confirmOneInvocation({ toolName: 'bash', input: { command: 'python3 operation.py' } }, {
+    cwd: '/tmp/work', hasUI: true,
+    ui: { confirm: async () => { dialogs++; return true; } },
+  }, { reviewFirst: true, review: async () => ({ risk: 'high' }) });
+  assert.equal(result.allowed, false);
+  assert.match(result.reason, /目的/);
+  assert.equal(dialogs, 0);
+});
+
+test('AllowAll reviews parent, child and nested calls before requiring a high-risk purpose', async t => {
+  const originalFetch = globalThis.fetch;
+  const originalKey = process.env.PI_DECISION_API_KEY;
+  const originalChannel = process.env[APPROVAL_ENV];
+  let risk = 'low';
+  let approve = false;
+  let purpose;
+  let transportFails = false;
+  let prompts = 0;
+  const requests = [];
+  process.env.PI_DECISION_API_KEY = 'fixture-key';
+  globalThis.fetch = async (_url, options) => {
+    requests.push(JSON.parse(options.body));
+    if (transportFails) throw new Error('fixture network failure');
+    return new Response(JSON.stringify({ answers: [{ type: 'choice', name: 'guardian_risk', choice: risk }] }));
+  };
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.PI_DECISION_API_KEY;
+    else process.env.PI_DECISION_API_KEY = originalKey;
+    if (originalChannel === undefined) delete process.env[APPROVAL_ENV];
+    else process.env[APPROVAL_ENV] = originalChannel;
+  });
+  const observations = [];
+  const parent = guardHandlers('1', 'allowall', event => observations.push(event));
+  const context = {
+    hasUI: true, cwd: '/tmp/parent',
+    ui: { confirm: async () => { assert.equal(risk, 'high'); prompts++; return approve; } },
+    sessionManager: { getBranch: () => [
+      { type: 'message', message: { role: 'user', content: 'Run local tests and authenticated read-only queries. Do not push.' } },
+      { type: 'message', message: { role: 'assistant', content: [
+        ...(purpose ? [{ type: 'text', text: purpose }] : []), { type: 'toolCall', id: 'call' },
+      ] } },
+    ] },
+  };
+  t.after(() => parent.get('session_shutdown')({}, context));
+  await parent.get('session_start')({}, context);
+  const contextFiles = [{ path: 'AGENTS.md', content: 'Keep telemetry enabled. Do not push without authorization.' }];
+  parent.get('before_agent_start')({ systemPromptOptions: { contextFiles, promptGuidelines: [] } });
+  for (const event of [
+    { toolName: 'bash', input: { command: 'chmod +x local-script.sh' } },
+    { toolName: 'bash', input: { command: 'rm -rf build' } },
+    { toolName: 'bash', input: { command: 'curl -H "Authorization: Bearer fixture" https://example.invalid/info' } },
+    { toolName: 'powershell', input: { command: 'Invoke-WebRequest -Headers $headers https://example.invalid/info' } },
+    { toolName: 'mcp__fixture__read', input: {} },
+    { toolName: 'fetch_content', input: { url: 'https://example.invalid', auth: true } },
+  ]) {
+    assert.equal(await parent.get('tool_call')({ ...event, toolCallId: 'call' }, context), undefined);
+    assert.match(requests.at(-1).questions[0].instructions, /AllowAll/);
+  }
+  assert.equal(prompts, 0);
+  const nested = { toolName: 'mcp__fixture__read', toolCallId: 'call/1', parentToolCallId: 'call', input: {} };
+  assert.equal(await parent.get('tool_call')(nested, context), undefined);
+  risk = 'high';
+  assert.equal((await parent.get('tool_call')(nested, context)).block, true);
+  assert.equal(prompts, 0);
+  const push = { toolName: 'bash', toolCallId: 'call', input: { command: 'git push origin trunk' } };
+  assert.match((await parent.get('tool_call')(push, context)).reason, /目的/);
+  purpose = '指定のリモート変更について、操作と対象の承認を確認します。';
+  assert.equal((await parent.get('tool_call')(push, context)).block, true);
+  approve = true;
+  assert.equal(await parent.get('tool_call')(push, context), undefined);
+  assert.equal(prompts, 2);
+  const child = guardHandlers('1', 'allowall');
+  const childContext = { hasUI: false, cwd: '/tmp/child', sessionManager: { getBranch: () => [], getSessionId: () => 'child-1' } };
+  t.after(() => child.get('session_shutdown')({}, childContext));
+  await child.get('session_start')({}, childContext);
+  const childCall = { toolName: 'bash', toolCallId: 'child-call', input: { command: 'chmod +x local-script.sh' } };
+  assert.match((await child.get('tool_call')(childCall, childContext)).reason, /目的/);
+  risk = 'low';
+  assert.equal(await child.get('tool_call')(childCall, childContext), undefined);
+  const forwarded = JSON.parse(requests.at(-1).input[0].content[0].text);
+  assert.equal(forwarded.invocation.cwd, childContext.cwd);
+  assert.equal(forwarded.invocation.childSessionId, 'child-1');
+  assert.deepEqual(forwarded.context_files, contextFiles);
+  assert.equal(observations.length, requests.length);
+  for (const command of ['git commit -m fixture', 'git commit --no-verify -m fixture']) {
+    assert.equal((await parent.get('tool_call')({ toolName: 'bash', input: { command } }, context)).block, true);
+  }
+  transportFails = true;
+  assert.equal((await parent.get('tool_call')(push, context)).block, true);
+  assert.equal(prompts, 2);
+  transportFails = false;
+  risk = 'invalid';
+  assert.equal((await parent.get('tool_call')(push, context)).block, true);
+  assert.equal(prompts, 2);
+});
+
+test('AllowAll cannot execute standalone headless shell commands', async t => {
+  const originalChannel = process.env[APPROVAL_ENV];
+  delete process.env[APPROVAL_ENV];
+  const handlers = guardHandlers('1', 'allowall');
+  const context = { hasUI: false, cwd: '/tmp/headless', sessionManager: { getBranch: () => [], getSessionId: () => 'headless' } };
+  t.after(async () => {
+    await handlers.get('session_shutdown')({}, context);
+    if (originalChannel === undefined) delete process.env[APPROVAL_ENV];
+    else process.env[APPROVAL_ENV] = originalChannel;
+  });
+  await handlers.get('session_start')({}, context);
+  assert.equal((await handlers.get('tool_call')({ toolName: 'bash', toolCallId: 'routine', input: { command: 'git status' } }, context)).block, true);
+});
+
 test('serializes overlapping approval dialogs', async () => {
   let active = 0;
   let maximum = 0;

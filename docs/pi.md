@@ -66,8 +66,9 @@ that one invocation automatically. A valid high-risk answer opens a confirmation
 exact operation; only explicit human approval permits execution. The warning title uses the theme's
 warning color in the TUI and plain text in RPC. Refusal, malformed replies, missing evidence,
 credential errors, HTTP errors, timeout, and cancellation deny execution without a confirmation dialog.
-MCP tools and recognized authenticated `fetch_content` operations also require review and a public
-purpose for each invocation. MCP annotation hints do not exempt tools from review. Other tools,
+MCP tools and recognized authenticated `fetch_content` operations also require review. The default
+mode requires a public purpose before reviewing each recognized high-risk invocation; AllowAll
+requires it only after a high-risk verdict. MCP annotation hints do not exempt tools from review. Other tools,
 including file reads/edits and native subagent launch/control, do not use this API.
 
 The reviewer receives the exact invocation and working directory, text user messages from the
@@ -77,8 +78,8 @@ evidence is available, reviews fail closed; an explicitly loaded empty file list
 Agent explanations cannot establish authorization. Private reasoning, assistant messages, tool outputs, images, and credentials used for
 API authentication are not included as evidence. Non-text user messages or requests larger than
 64 KiB fail closed rather than silently dropping evidence. Unknown script contents, variables or
-runtime state are not inspected by the reviewer; the rubric requires a high-risk answer when these
-prevent establishing effects. Remote/shared mutations still require explicit user authorization for
+runtime state are not inspected by the reviewer; the default Decision rubric requires a high-risk
+answer when these prevent establishing effects. Remote/shared mutations still require explicit user authorization for
 the concrete action and target. Model judgment is not authorization or a security guarantee.
 Commands and context can contain sensitive information: do not place secrets in command arguments.
 
@@ -97,7 +98,24 @@ ChatGPT OAuth subscription usage.
 directly without invoking `op`; an environment key supplied by the caller remains subject to ordinary
 process environment inheritance. ChatGPT OAuth credentials are not used for Decisions.
 
-### Manual policy and opt-out
+### Reviewer modes and opt-out
+
+`PI_APPROVAL_REVIEWER=allowall pi` selects **AllowAll**, an opt-in permissive Decision API rubric.
+It reviews the same shell, MCP, and authenticated-fetch invocations as the default mode, but returns
+`high` only when the evidence indicates material destruction, secret exfiltration, persistent security
+weakening, unauthorized remote/shared changes, or a violation of applicable instructions. Ordinary
+local work, build-output cleanup, authentication, and read-only remote queries can proceed automatically.
+Unknown scripts or runtime details alone do not imply high risk; this increases exposure to effects
+not visible in the review evidence. AllowAll is not a sandbox or an unconditional execution bypass.
+
+Only an exact `low` answer executes automatically. A `high` answer requires public purpose text and
+human confirmation; missing purpose text blocks the call with instructions to explain and retry.
+Refusal, missing evidence or credentials, network failure, invalid responses, timeout, and cancellation
+still deny execution. Direct `git commit` commands and detected signing/hook bypasses remain blocked.
+Selecting AllowAll does not authorize remote changes. Configured managed telemetry, including New Relic,
+remains enabled and does not require per-export approval; ad hoc uploads and collector changes do.
+Both API-backed modes use the same credentials, request limits, billing, and telemetry. The default
+remains `decision`; select the mode in the environment before starting Pi.
 
 `PI_APPROVAL_REVIEWER=user pi` selects the rule-based policy: routine operations proceed automatically
 and recognized high-risk operations require human confirmation. This mode never reads the Decisions
@@ -107,7 +125,7 @@ When disabled, remote authorization remains an instruction policy, not a tool-le
 
 A parent session with a TUI or RPC dialog UI owns a private Unix socket. Native foreground and
 background children inherit its session-specific endpoint through `PI_EXECUTION_APPROVAL_CHANNEL`.
-In Decision mode all child shell commands wait for the parent's API judgment and, for high risk,
+In Decision and AllowAll modes all child shell commands wait for the parent's API judgment and, for high risk,
 human confirmation with their own invocation, child session, tool-call ID, and working directory. Children do not independently retrieve keys.
 In manual mode detected high-risk operations wait for the parent's confirmation dialog. Supervisor/model
 replies cannot replace these confirmations; RPC clients must present them to a person.
@@ -118,14 +136,17 @@ bidirectional formatting characters are shown as visible escapes. Raw parameter 
 labels distinguish translated keys, strings, and non-string values. The complete input remains displayed.
 Below the input, the dialog shows a short purpose from the public assistant text immediately preceding
 that tool call in the same message. Private reasoning, user messages, and another call's explanation are
-not used as its purpose. In both modes recognized high-risk operations require this explanation
-through a Pi prompt guideline and the shared user instructions, without a separate purpose-generation call. A missing or whitespace-only explanation blocks the call
-before review, opening a dialog, or forwarding a child request, with instructions to explain the purpose and
-target in Japanese before retrying. Each call needs its own explanation, including calls in a batch.
+not used as its purpose. Recognized high-risk operations in Decision and manual modes require this
+explanation before review or forwarding. AllowAll reviews first and requires the explanation for every
+high-risk verdict before opening a dialog. A missing or whitespace-only explanation blocks the call,
+with instructions to explain the purpose and target in Japanese before retrying. Each call that needs
+approval requires its own explanation, including calls in a batch.
 A long explanation is clipped at 500 Unicode characters with a marker.
-Recognized high-risk operations and MCP calls made through codemode or another tool are blocked:
-their nested call IDs have no assistant transcript entry from which to obtain a purpose. Call these
-tools directly with a separate public explanation; a parent script's explanation does not cover them.
+In Decision and manual modes, recognized high-risk operations and MCP calls made through codemode or
+another tool are blocked. AllowAll can approve nested calls with a `low` verdict, but blocks a `high`
+verdict because nested call IDs have no assistant transcript entry from which to obtain a purpose.
+Call operations needing approval directly with a separate public explanation; a parent script's
+explanation does not cover them.
 The purpose is agent-authored reference text, not proof of safety or permission. Child purposes are forwarded
 to the parent with the invocation; changed purposes or arguments invalidate pending approval.
 
@@ -164,12 +185,12 @@ The argument check covers the wait for approval. Pi allows later `tool_call` han
 arguments after this guard returns; such changes are outside this check. Load only trusted extensions.
 
 This is a best-effort execution gate, not an OS sandbox or a complete side-effect detector.
-Decision mode reviews every agent shell command, but tools outside its coverage remain allowed;
+Decision and AllowAll modes review every agent shell command, but tools outside their coverage remain allowed;
 manual mode also allows unrecognized commands. Extensions' internal execution, wrappers, custom tools,
 and apparently read-only HTTP requests can have external effects beyond the review evidence.
 The instruction policy still requires explicit authorization before remote/shared mutations, including
 indirect operations. Native pi-subagents children receive the extension through `subagents.defaultExtensions`
-and inherit the guard environment. In Decision mode headless sessions without a valid parent channel cannot execute shell commands.
+and inherit the guard environment. In both API-backed modes headless sessions without a valid parent channel cannot execute shell commands.
 In manual mode they can perform routine local work but cannot obtain high-risk approvals. A child or project configuration
 that replaces its extension list or environment can omit the guard. External CLI agent profiles remain
 disabled.

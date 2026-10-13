@@ -142,10 +142,10 @@ function formatApproval(invocation, cwd) {
   ].join('\n');
 }
 
-export function confirmOneInvocation(invocation, context, { signal = context.signal, review } = {}) {
+export function confirmOneInvocation(invocation, context, { signal = context.signal, review, reviewFirst = false } = {}) {
   const showDialog = async () => {
     if (signal?.aborted) return { allowed: false, reason: 'Approval request cancelled.' };
-    if (!review || approvalReason(invocation)) {
+    if (!review || (!reviewFirst && approvalReason(invocation))) {
       const reason = missingPurposeReason(invocation.purpose);
       if (reason) return { allowed: false, reason };
     }
@@ -171,6 +171,10 @@ export function confirmOneInvocation(invocation, context, { signal = context.sig
           return { allowed: false, reason: `Decision API: ${assessment?.reason ?? '有効な判定結果を取得できません。'}` };
         }
         if (assessment.risk === 'low') return { allowed: true };
+        if (reviewFirst) {
+          const reason = missingPurposeReason(invocation.purpose);
+          if (reason) return { allowed: false, reason };
+        }
       }
       const title = review ? '⚠ 高リスク：承認しますか？' : 'この操作を許可しますか？';
       const approved = await Promise.race([

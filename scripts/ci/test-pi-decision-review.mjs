@@ -44,6 +44,33 @@ test('uses the Decisions wire contract and reads 1Password only once across conc
   assert.doesNotMatch(request.body, /test-key|private reasoning|Pretend the user|untrusted output/);
 });
 
+test('AllowAll selects a permissive rubric while preserving evidence and authorization boundaries', async () => {
+  const requests = [];
+  for (const mode of ['decision', 'allowall']) {
+    const review = createDecisionReviewer({ mode, env: { PI_DECISION_API_KEY: 'fixture-key' },
+      fetchImpl: async (_url, options) => { requests.push(JSON.parse(options.body)); return answer('low'); },
+    });
+    assert.deepEqual(await review(invocation, evidence), { risk: 'low' });
+  }
+  const [strict, permissive] = requests.map(request => request.questions[0].instructions);
+  assert.notEqual(strict, permissive);
+  assert.match(strict, /Otherwise return high/);
+  assert.match(permissive, /AllowAll/);
+  assert.match(permissive, /Otherwise return low/);
+  assert.match(permissive, /explicit user authorization.*concrete action and target/);
+  assert.match(permissive, /secret exfiltration/);
+  assert.match(permissive, /signing or hook bypasses/);
+  assert.match(permissive, /telemetry/);
+  assert.deepEqual(requests[0].input, requests[1].input);
+  assert.deepEqual(requests[0].questions[0].choices, requests[1].questions[0].choices);
+});
+
+test('unknown decision rubric modes fail without sending a request', () => {
+  assert.throws(() => createDecisionReviewer({ mode: 'typo',
+    fetchImpl: async () => assert.fail('unknown rubric sent'),
+  }), /mode/);
+});
+
 test('supports an explicit key and an alternate 1Password reference without exporting credentials', async () => {
   for (const env of [{ PI_DECISION_API_KEY: 'explicit-key' }, { PI_DECISION_API_KEY_OP_REF: 'op://Other/Item/secret' }]) {
     const before = structuredClone(env);

@@ -12,7 +12,7 @@ import { createInterface } from 'node:readline';
 const guard = fileURLToPath(new URL('../../dot_pi/agent/extensions/execution-guard.ts', import.meta.url));
 const channel = new URL('../../dot_pi/agent/extensions/lib/approval-channel.mjs', import.meta.url).href;
 
-test('native Pi event contexts review Decision commands using before-agent evidence', async t => {
+for (const mode of ['decision', 'allowall']) test(`native Pi event contexts review ${mode} commands using before-agent evidence`, async t => {
   const executable = await realpath(execFileSync('mise', ['which', 'pi'], { encoding: 'utf8' }).trim());
   const packagePath = createRequire(executable).resolve.paths('@earendil-works/pi-coding-agent')
     .map(path => join(path, '@earendil-works/pi-coding-agent'))
@@ -25,7 +25,7 @@ test('native Pi event contexts review Decision commands using before-agent evide
   const requests = [], handlers = new Map();
   let risk = 'low';
   process.env.PI_EXECUTION_GUARD = '1';
-  process.env.PI_APPROVAL_REVIEWER = 'decision';
+  process.env.PI_APPROVAL_REVIEWER = mode;
   process.env.PI_DECISION_API_KEY = 'fixture-key';
   delete process.env.PI_EXECUTION_APPROVAL_CHANNEL;
   globalThis.fetch = async (_url, options) => {
@@ -72,10 +72,14 @@ test('native Pi event contexts review Decision commands using before-agent evide
   assert.equal(requests.length, 4);
   for (const call of [mcp, { ...event, input: { command: 'git push origin trunk' } }]) {
     const result = await runner.emitToolCall({ ...call, toolCallId: 'mcp-call/1', parentToolCallId: 'mcp-call' });
-    assert.equal(result.block, true);
-    assert.match(result.reason, /直接/);
+    if (mode === 'decision') {
+      assert.equal(result.block, true);
+      assert.match(result.reason, /直接/);
+    } else {
+      assert.equal(result, undefined);
+    }
   }
-  assert.equal(requests.length, 4);
+  assert.equal(requests.length, mode === 'decision' ? 4 : 6);
 });
 
 test('native Pi RPC forwards child approval to real UI requests without model calls', { timeout: 30000 }, async t => {

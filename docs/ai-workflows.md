@@ -77,6 +77,11 @@ Piのexecution guardはDecision APIで全agentシェルコマンドを精査し�
 native childrenにも`subagents.defaultExtensions`からextensionを配備し、子のsession・cwd・tool・引数を
 親のAPI判定へ転送します。鍵は親Piのメモリで共有し、1Passwordの取得を繰り返しません。
 親のないheadless sessionではシェルコマンドを実行できません。file toolや子の起動などはAPI判定の対象外です。
+`PI_APPROVAL_REVIEWER=allowall pi`では、重大な破壊・秘密情報の流出・保護設定の弱体化・未承認のremote変更や
+指示違反を示す根拠がある場合だけ高リスクとするAPI判定を使います。通常操作は自動実行し、高リスク判定後に
+操作の目的・対象の説明と人間の承認を求めます。判定不能や通信失敗では実行せず、署名やhookの迂回禁止も
+維持します。未知のscriptやruntime情報だけでは高リスクとしないため、判定に見えない副作用への注意が必要です。
+既定は`decision`のままで、起動時の環境変数で選びます。
 `PI_APPROVAL_REVIEWER=user pi`ではルールベースの人間確認を使い、`PI_EXECUTION_GUARD=0 pi`ではguardを無効にします。
 間接的な操作も含むremote変更の明示的な事前認可は、どのmodeでも必要です。API判定や子agentの`permissions: ask`、
 supervisorの返答は人間の許可ではありません。extension内部の実行や、extension list・環境設定でguardを外した子、

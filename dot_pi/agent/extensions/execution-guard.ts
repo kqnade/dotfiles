@@ -19,8 +19,9 @@ export default function (pi: ExtensionAPI) {
 
   const inherited = process.env[APPROVAL_ENV];
   const reviewerMode = process.env.PI_APPROVAL_REVIEWER ?? 'decision';
-  const reviewer = reviewerMode === 'decision'
-    ? createDecisionReviewer({ observe: event => pi.events.emit(DECISION_EVENT, event) })
+  const reviewFirst = reviewerMode === 'allowall';
+  const reviewer = ['decision', 'allowall'].includes(reviewerMode)
+    ? createDecisionReviewer({ mode: reviewerMode, observe: event => pi.events.emit(DECISION_EVENT, event) })
     : undefined;
   let lifetime = new AbortController();
   let server: Awaited<ReturnType<typeof createApprovalServer>> | undefined;
@@ -55,7 +56,7 @@ export default function (pi: ExtensionAPI) {
     lifetime = new AbortController();
     startupError = undefined;
     try {
-      if (!['decision', 'user'].includes(reviewerMode)) throw new Error('PI_APPROVAL_REVIEWER must be decision or user.');
+      if (!['decision', 'allowall', 'user'].includes(reviewerMode)) throw new Error('PI_APPROVAL_REVIEWER must be decision, allowall or user.');
       if (context.hasUI) {
         if (parseChannel(process.env[APPROVAL_ENV])?.ownerPid === process.pid) {
           throw new Error('An approval UI already owns this process; use a separate Pi process.');
@@ -65,7 +66,7 @@ export default function (pi: ExtensionAPI) {
           if (reason) return { allowed: false, reason };
           return confirmOneInvocation(invocation, {
             hasUI: context.hasUI, mode: context.mode, ui: context.ui, cwd: invocation.cwd,
-          }, { signal, review: reviewFor(context) });
+          }, { signal, review: reviewFor(context), reviewFirst });
         });
         published = JSON.stringify(server.endpoint);
         process.env[APPROVAL_ENV] = published;
@@ -96,7 +97,7 @@ export default function (pi: ExtensionAPI) {
       if (!approvalReason(event)) return;
     }
     if (!started) return { block: true, reason: startupError ?? 'Approval session is not initialized.' };
-    if (event.parentToolCallId && approvalReason(event)) {
+    if (!reviewFirst && event.parentToolCallId && approvalReason(event)) {
       return { block: true, reason: 'この操作はcodemodeなどの入れ子呼び出しでは承認できません。目的・対象を説明し、ツールを直接呼び出してください。' };
     }
 
@@ -104,13 +105,13 @@ export default function (pi: ExtensionAPI) {
       ? AbortSignal.any([lifetime.signal, context.signal])
       : lifetime.signal;
     try {
-      const purpose = toolCallPurpose(context.sessionManager.getBranch(), event.toolCallId);
-      if (approvalReason(event)) {
+      const purpose = event.parentToolCallId ? undefined : toolCallPurpose(context.sessionManager.getBranch(), event.toolCallId);
+      if (!reviewFirst && approvalReason(event)) {
         const purposeReason = missingPurposeReason(purpose);
         if (purposeReason) return { block: true, reason: purposeReason };
       }
       const decision = context.hasUI
-        ? await confirmOneInvocation({ ...event, purpose }, context, { signal, review: reviewFor(context) })
+        ? await confirmOneInvocation({ ...event, purpose }, context, { signal, review: reviewFor(context), reviewFirst })
         : await requestApproval(endpoint, {
           toolName: event.toolName, toolCallId: event.toolCallId, input: event.input, purpose,
           cwd: context.cwd, childSessionId: context.sessionManager.getSessionId(),
