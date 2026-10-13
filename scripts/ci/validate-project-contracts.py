@@ -37,8 +37,27 @@ if renovate.get("platformAutomerge") is not True:
     fail("Renovate platformAutomerge must remain enabled")
 if renovate.get("lockFileMaintenance", {}).get("enabled") is not True:
     fail("Renovate lockFileMaintenance must remain enabled")
-if "customManagers" in renovate:
-    fail("Renovate must use the standard mise manager, not customManagers")
+if renovate.get("customManagers") != [{
+    "customType": "regex",
+    "managerFilePatterns": [r"/^mise\.(toml|lock)$/"],
+    "matchStrings": [
+        r'"cargo:https://github\.com/wachikun/yaskkserv2"\s*=\s*\{\s*version\s*=\s*"rev:(?<currentDigest>[a-f0-9]{40})"',
+        r'\[\[tools\."cargo:https://github\.com/wachikun/yaskkserv2"\]\]\s*version\s*=\s*"rev:(?<currentDigest>[a-f0-9]{40})"',
+    ],
+    "depNameTemplate": "wachikun/yaskkserv2",
+    "packageNameTemplate": "wachikun/yaskkserv2",
+    "datasourceTemplate": "github-digest",
+    "currentValueTemplate": "master",
+    "versioningTemplate": "exact",
+}]:
+    fail("Renovate custom managers may only track yaskkserv2 master revision pins")
+if not any(
+    rule.get("matchManagers") == ["mise"]
+    and rule.get("matchDepNames") == ["cargo:https://github.com/wachikun/yaskkserv2"]
+    and rule.get("enabled") is False
+    for rule in renovate.get("packageRules", [])
+):
+    fail("the mise manager must leave yaskkserv2 revisions to its master digest manager")
 if renovate.get("customDatasources", {}).get("onepassword-cli") != {
     "defaultRegistryUrlTemplate": "https://mise-versions.jdx.dev/1password-cli",
     "format": "plain",

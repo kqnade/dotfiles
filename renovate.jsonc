@@ -40,6 +40,24 @@
     }
   },
 
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^mise\\.(toml|lock)$/"
+      ],
+      "matchStrings": [
+        "\"cargo:https://github\\.com/wachikun/yaskkserv2\"\\s*=\\s*\\{\\s*version\\s*=\\s*\"rev:(?<currentDigest>[a-f0-9]{40})\"",
+        "\\[\\[tools\\.\"cargo:https://github\\.com/wachikun/yaskkserv2\"\\]\\]\\s*version\\s*=\\s*\"rev:(?<currentDigest>[a-f0-9]{40})\""
+      ],
+      "depNameTemplate": "wachikun/yaskkserv2",
+      "packageNameTemplate": "wachikun/yaskkserv2",
+      "datasourceTemplate": "github-digest",
+      "currentValueTemplate": "master",
+      "versioningTemplate": "exact"
+    }
+  ],
+
   "packageRules": [
     {
       "description": "Track stable 1Password CLI releases through mise's version endpoint because the aqua registry package has no resolvable upstream repository.",
@@ -80,6 +98,16 @@
       ],
       "extractVersion": "^v?(?<version>\\d+\\.\\d+\\.\\d+)$",
       "versioning": "semver"
+    },
+    {
+      "description": "Assign yaskkserv2 revision updates to the master digest manager.",
+      "matchManagers": [
+        "mise"
+      ],
+      "matchDepNames": [
+        "cargo:https://github.com/wachikun/yaskkserv2"
+      ],
+      "enabled": false
     },
     {
       "description": "Track AI coding tool releases without the default release cooldown.",

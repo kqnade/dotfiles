@@ -56,6 +56,54 @@ class ValidateMiseTests(unittest.TestCase):
                 self.assertEqual(match.group("version"), "12.12.1")
         self.assertIsNone(pattern.fullmatch("v12.12.1-rc.1"))
 
+    def test_yaskkserv2_master_updates_both_revision_pins(self) -> None:
+        config = json.loads(
+            strip_json_comments((ROOT / "renovate.jsonc").read_text())
+        )
+        managers = config.get("customManagers", [])
+        self.assertEqual(len(managers), 1)
+        manager = managers[0]
+        self.assertEqual(manager["customType"], "regex")
+        self.assertEqual(manager["managerFilePatterns"], [r"/^mise\.(toml|lock)$/"])
+        self.assertEqual(manager["depNameTemplate"], "wachikun/yaskkserv2")
+        self.assertEqual(manager["packageNameTemplate"], "wachikun/yaskkserv2")
+        self.assertEqual(manager["datasourceTemplate"], "github-digest")
+        self.assertEqual(manager["currentValueTemplate"], "master")
+        self.assertEqual(manager["versioningTemplate"], "exact")
+        self.assertTrue(any(
+            rule.get("matchManagers") == ["mise"]
+            and rule.get("matchDepNames") == [
+                "cargo:https://github.com/wachikun/yaskkserv2"
+            ]
+            and rule.get("enabled") is False
+            for rule in config["packageRules"]
+        ))
+
+        tool = "cargo:https://github.com/wachikun/yaskkserv2"
+        manifest = tomllib.loads((ROOT / "mise.toml").read_text())
+        current_digest = manifest["tools"][tool]["version"].removeprefix("rev:")
+        new_digest = "a" * 40
+        for relative in ("mise.toml", "mise.lock"):
+            with self.subTest(file=relative):
+                content = (ROOT / relative).read_text()
+                matches = [
+                    match
+                    for pattern in manager["matchStrings"]
+                    for match in re.finditer(
+                        pattern.replace("(?<currentDigest>", "(?P<currentDigest>"),
+                        content,
+                    )
+                ]
+                self.assertEqual(len(matches), 1)
+                match = matches[0]
+                self.assertEqual(match.group("currentDigest"), current_digest)
+                start, end = match.span("currentDigest")
+                updated = content[:start] + new_digest + content[end:]
+                entry = tomllib.loads(updated)["tools"][tool]
+                if relative == "mise.lock":
+                    entry = entry[0]
+                self.assertEqual(entry["version"], f"rev:{new_digest}")
+
     def test_1password_uses_aqua_backend(self) -> None:
         mise = shutil.which("mise")
         self.assertIsNotNone(mise)
