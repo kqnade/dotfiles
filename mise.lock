@@ -125,7 +125,7 @@ version = "0.20.1"
 backend = "cargo:git-delta"
 
 [[tools."cargo:https://github.com/wachikun/yaskkserv2"]]
-version = "rev:f5bc4590c798c591e9861e02ea2e12d227a047ed"
+version = "rev:08aabbc91a39c67ff2562b29f92c2a274bd0394b"
 backend = "cargo:https://github.com/wachikun/yaskkserv2"
 
 [[tools."cargo:sheldon"]]
