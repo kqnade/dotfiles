@@ -12,6 +12,7 @@ checksum = "blake3:3b34b753065804e2a413a50d4c980da01dadb73e5f646a85706a822d0ead7
 url = "https://cache.agilebits.com/dist/1P/op2/pkg/v2.40.0/op_darwin_arm64_v2.40.0.zip"
 
 [tools.1password-cli."platforms.macos-x64"]
+checksum = "blake3:ba930fea9481bf5b7e9bbabd60d4f81689e76286483649a0d1e7e326f542f315"
 url = "https://cache.agilebits.com/dist/1P/op2/pkg/v2.40.0/op_darwin_amd64_v2.40.0.zip"
 
 [[tools."aqua:babarot/gomi"]]
@@ -607,6 +608,7 @@ url = "https://github.com/tamasfe/taplo/releases/download/0.10.0/taplo-darwin-aa
 url_api = "https://api.github.com/repos/tamasfe/taplo/releases/assets/257323110"
 
 [tools.taplo."platforms.macos-x64"]
+checksum = "blake3:25bac73e9259cfc8155e8ad1d93c02f611983a81ab2863eeecbdd5de7170fe93"
 url = "https://github.com/tamasfe/taplo/releases/download/0.10.0/taplo-darwin-x86_64.gz"
 url_api = "https://api.github.com/repos/tamasfe/taplo/releases/assets/257323116"
 
