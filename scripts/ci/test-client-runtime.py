@@ -116,7 +116,7 @@ class ClientRuntimeTests(unittest.TestCase):
         ]:
             settings = json.loads(
                 self.render(
-                    "dot_pi/agent/settings.json.tmpl",
+                    ".chezmoitemplates/pi-settings.json.tmpl",
                     {
                         "client_runtime": {
                             "pi": {"agent_dir": str(self.home / "configured pi")}

@@ -19,7 +19,7 @@ def render_pi_settings():
                 str(ROOT),
                 "execute-template",
                 "--file",
-                str(ROOT / "dot_pi/agent/settings.json.tmpl"),
+                str(ROOT / ".chezmoitemplates/pi-settings.json.tmpl"),
             ],
             env=environment,
             text=True,

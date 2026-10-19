@@ -39,6 +39,7 @@ agents:
           - 'dot_pi/**'
           - 'dot_config/opencode/**'
           - '.chezmoitemplates/claude-*'
+          - '.chezmoitemplates/pi-*'
 
 neovim:
   - changed-files:

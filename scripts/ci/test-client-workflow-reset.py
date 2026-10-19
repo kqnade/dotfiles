@@ -85,6 +85,116 @@ class ClientWorkflowResetTests(unittest.TestCase):
         for model, thinking in (("astra", "medium"), ("sol", "xhigh"), ("luna", "max")):
             self.assertEqual(settings["modelThinkingLevels"][f"openai-codex/gpt-6-{model}"], thinking)
 
+    def test_pi_apply_preserves_runtime_state_and_enforces_managed_settings(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory).resolve()
+            target = home / ".pi/agent/settings.json"
+            target.parent.mkdir(parents=True)
+            command = [
+                "chezmoi", "--source", str(ROOT), "--destination", str(home),
+                "--persistent-state", str(home / "state.boltdb"),
+                "--no-tty", "apply", str(target),
+            ]
+            environment = {**os.environ, "HOME": str(home)}
+            environment.pop("PI_CODING_AGENT_DIR", None)
+            result = subprocess.run(
+                command, env=environment, text=True, capture_output=True, check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            settings = json.loads(target.read_text())
+            settings.update({
+                "lastChangelogVersion": "1.1.0",
+                "deviceId": "test-device-id",
+                "trackingId": "test-tracking-id",
+                "defaultModel": "runtime-model",
+                "packages": ["npm:runtime-package@1.0.0"],
+            })
+            settings["terminal"] = {"showTerminalProgress": False, "showImages": False}
+            settings["subagents"]["defaultExtensions"] = ["/runtime/extension.ts"]
+            settings["subagents"]["modelScope"]["allow"] = ["runtime/*"]
+            settings["subagents"]["agentOverrides"]["worker"] = {
+                "thinking": "low", "runtimeOptions": {"label": "状態"},
+            }
+            target.write_text(json.dumps(settings))
+            result = subprocess.run(
+                command, env=environment, text=True, capture_output=True, check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            applied = json.loads(target.read_text())
+            for key in ("lastChangelogVersion", "deviceId", "trackingId"):
+                self.assertEqual(applied.get(key), settings[key], key)
+            self.assertEqual(applied["defaultModel"], "gpt-6.1-sol")
+            self.assertEqual(applied["packages"], render_pi_settings()["packages"])
+            self.assertEqual(applied["terminal"], {
+                "showTerminalProgress": True, "showImages": False,
+            })
+            self.assertEqual(applied["subagents"]["defaultExtensions"],
+                             render_pi_settings()["subagents"]["defaultExtensions"])
+            self.assertEqual(applied["subagents"]["modelScope"]["allow"], ["openai-codex/*"])
+            self.assertEqual(applied["subagents"]["agentOverrides"]["worker"], {
+                "thinking": "max", "runtimeOptions": {"label": "状態"},
+            })
+
+            for version in ("1.1.1", "1.2.0"):
+                applied["lastChangelogVersion"] = version
+                serialized = subprocess.check_output(
+                    ["node", "-e", "process.stdout.write(JSON.stringify(JSON.parse("
+                     "require('node:fs').readFileSync(0, 'utf8')), null, 2))"],
+                    input=json.dumps(applied), text=True,
+                )
+                target.write_text(serialized)
+                result = subprocess.run(
+                    command, env=environment, text=True, capture_output=True, check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(target.read_text(), serialized)
+                diff = subprocess.run(
+                    command[:-2] + ["diff", str(target)], env=environment,
+                    text=True, capture_output=True, check=False,
+                )
+                self.assertEqual(diff.returncode, 0, diff.stderr)
+                self.assertEqual(diff.stdout, "")
+
+    def test_pi_first_apply_does_not_seed_runtime_state(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory).resolve()
+            target = home / ".pi/agent/settings.json"
+            target.parent.mkdir(parents=True)
+            result = subprocess.run(
+                [
+                    "chezmoi", "--source", str(ROOT), "--destination", str(home),
+                    "--persistent-state", str(home / "state.boltdb"),
+                    "--no-tty", "apply", str(target),
+                ],
+                env={**os.environ, "HOME": str(home)},
+                text=True, capture_output=True, check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            settings = json.loads(target.read_text())
+            self.assertEqual(settings["defaultModel"], "gpt-6.1-sol")
+            for key in ("lastChangelogVersion", "deviceId", "trackingId"):
+                self.assertNotIn(key, settings)
+
+    def test_pi_apply_rejects_invalid_settings_without_overwriting(self) -> None:
+        for contents in ("{", "null", "[]", '"text"', "true", "42", " ", "{}\n{}"):
+            with self.subTest(contents=contents), tempfile.TemporaryDirectory() as directory:
+                home = Path(directory).resolve()
+                target = home / ".pi/agent/settings.json"
+                target.parent.mkdir(parents=True)
+                target.write_text(contents)
+                result = subprocess.run(
+                    [
+                        "chezmoi", "--source", str(ROOT), "--destination", str(home),
+                        "--persistent-state", str(home / "state.boltdb"),
+                        "--no-tty", "apply", str(target),
+                    ],
+                    env={**os.environ, "HOME": str(home)},
+                    text=True, capture_output=True, check=False,
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertTrue(result.stderr)
+                self.assertEqual(target.read_text(), contents)
+
     def test_skill_metadata_and_references_are_portable(self) -> None:
         for name in sorted(SKILLS):
             with self.subTest(skill=name):

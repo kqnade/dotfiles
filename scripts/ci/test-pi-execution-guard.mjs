@@ -14,7 +14,7 @@ delete settingsEnv.PI_CODING_AGENT_DIR;
 const settings = JSON.parse((await promisify(execFile)('chezmoi', [
   '--source', fileURLToPath(new URL('../../', import.meta.url)),
   '--override-data', JSON.stringify({ client_runtime: { pi: { agent_dir: '~/.pi/agent' } } }),
-  'execute-template', '--file', fileURLToPath(new URL('../../dot_pi/agent/settings.json.tmpl', import.meta.url)),
+  'execute-template', '--file', fileURLToPath(new URL('../../.chezmoitemplates/pi-settings.json.tmpl', import.meta.url)),
 ], { env: settingsEnv })).stdout);
 
 const invocation = { toolName: 'bash', input: { command: 'git push origin trunk' }, purpose: '検証済みの変更をリモートへ送信します。' };

@@ -119,8 +119,9 @@ client boundaries and `docs/ai-workflows.md` for the workflow.
 - Removed managed targets belong in `.chezmoiremove`. Name specific files or managed symlinks;
   preserve unknown skills, credentials, and runtime state in their parent directories.
 - `dot_codex/modify_private_config.toml` applies stable Codex defaults while preserving
-  Codex-managed runtime state and sibling settings. `dot_pi/agent/settings.json.tmpl` deploys the
-  complete canonical Pi configuration. Claude defaults live in
+  Codex-managed runtime state and sibling settings. `dot_pi/agent/modify_settings.json.tmpl`
+  enforces `.chezmoitemplates/pi-settings.json.tmpl` while preserving Pi runtime state and
+  unmanaged object keys; managed arrays are replaced. Claude defaults live in
   `.chezmoitemplates/claude-settings.json.tmpl`; Claude reads both `CLAUDE.md` and `AGENTS.md`.
   The modifier preserves additional runtime hooks and `tui` on macOS without letting them replace
   managed hooks. Other intentional Claude settings changes should be folded into the template.

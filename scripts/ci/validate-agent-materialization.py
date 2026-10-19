@@ -144,7 +144,7 @@ for key, expected_value in preserved_codex_runtime_state.items():
     if codex_modified_config.get(key) != expected_value:
         fail(f"Codex config modifier changed runtime-owned {key}")
 
-pi_settings_source = ROOT / "dot_pi/agent/settings.json.tmpl"
+pi_settings_source = ROOT / ".chezmoitemplates/pi-settings.json.tmpl"
 if not pi_settings_source.is_file():
     fail("Canonical Pi settings source is missing")
 
@@ -152,7 +152,7 @@ pi_runtime_settings = {
     "defaultProvider": "runtime-provider",
     "defaultModel": "runtime-model",
     "defaultThinkingLevel": "low",
-    "runtimeMarker": "must-be-replaced",
+    "runtimeMarker": "preserve-me",
     "packages": ["npm:runtime-package@1.0.0"],
 }
 
@@ -231,8 +231,8 @@ with tempfile.TemporaryDirectory() as temp_dir:
         fail("Canonical Pi settings did not deploy the complete package set")
     if rendered_pi_settings.get("skills") != ["!skills/herdr/**"]:
         fail("Canonical Pi settings must exclude the Herdr checkout from skill discovery")
-    if "runtimeMarker" in rendered_pi_settings:
-        fail("Canonical Pi settings preserved machine-local runtime state")
+    if rendered_pi_settings.get("runtimeMarker") != "preserve-me":
+        fail("Pi settings modifier changed machine-local runtime state")
     if rendered_pi_settings.get("modelThinkingLevels", {}).get(
         "openai-codex/gpt-6.1-sol"
     ) != "xhigh":

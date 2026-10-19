@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+exec node -e "$(cat <<'JS'
+const fs = require('node:fs');
+const managed = {{ includeTemplate ".chezmoitemplates/pi-settings.json.tmpl" . | fromJson | toJson }};
+const input = fs.readFileSync(0, 'utf8');
+const current = input === '' ? {} : JSON.parse(input);
+
+function isObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function mergeManaged(current, managed) {
+  const result = isObject(current) ? { ...current } : {};
+  for (const [key, value] of Object.entries(managed)) {
+    result[key] = isObject(value) ? mergeManaged(result[key], value) : value;
+  }
+  return result;
+}
+
+if (!isObject(current)) {
+  throw new Error('Pi settings must be a JSON object');
+}
+
+process.stdout.write(JSON.stringify(mergeManaged(current, managed), null, 2));
+JS
+)"
