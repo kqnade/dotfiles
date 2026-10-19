@@ -18,7 +18,10 @@ for (const mode of ['decision', 'allowall']) test(`native Pi event contexts revi
     .map(path => join(path, '@earendil-works/pi-coding-agent'))
     .find(path => existsSync(join(path, 'package.json')));
   assert(packagePath, 'Installed Pi SDK package was not found');
-  const { ExtensionRunner, SessionManager, createExtensionRuntime, createEventBus } = await import(pathToFileURL(join(packagePath, 'dist/index.js')).href);
+  const [{ ExtensionRunner }, { SessionManager }, { createExtensionRuntime }, { createEventBus }] = await Promise.all(
+    ['extensions/runner.js', 'session-manager.js', 'extensions/loader.js', 'event-bus.js']
+      .map(file => import(pathToFileURL(join(packagePath, 'dist/core', file)).href)),
+  );
   const { default: executionGuard } = await import(pathToFileURL(guard).href);
   const saved = Object.fromEntries(['PI_EXECUTION_GUARD', 'PI_APPROVAL_REVIEWER', 'PI_DECISION_API_KEY', 'PI_EXECUTION_APPROVAL_CHANNEL'].map(name => [name, process.env[name]]));
   const originalFetch = globalThis.fetch;
@@ -52,7 +55,13 @@ for (const mode of ['decision', 'allowall']) test(`native Pi event contexts revi
   assert.equal((await runner.emitToolCall(event)).block, true);
   assert.equal(requests.length, 0);
   const contextFiles = [{ path: 'AGENTS.md', content: 'Keep changes local.' }];
-  await runner.emitBeforeAgentStart('Inspect the checkout.', undefined, { cwd: process.cwd(), contextFiles });
+  const systemPromptOptions = { cwd: process.cwd(), contextFiles };
+  if (runner.emitBeforeAgentStart.length === 2) {
+    await runner.emitBeforeAgentStart({ messageType: 'user', prompt: 'Inspect the checkout.' }, systemPromptOptions);
+  } else {
+    assert.equal(runner.emitBeforeAgentStart.length, 3);
+    await runner.emitBeforeAgentStart('Inspect the checkout.', undefined, systemPromptOptions);
+  }
   assert.equal(await runner.emitToolCall(event), undefined);
   assert.deepEqual(requests[0].context_files, contextFiles);
   assert.deepEqual(requests[0].user_requests, ['Inspect the checkout.']);
