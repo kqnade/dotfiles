@@ -86,7 +86,7 @@
       "versioning": "semver"
     },
     {
-      "description": "Keep pnpm versions consistent with mise's unprefixed lockfile entries.",
+      "description": "Keep GitHub binary versions consistent with mise's unprefixed lockfile entries.",
       "matchManagers": [
         "mise"
       ],
@@ -94,7 +94,8 @@
         "github-releases"
       ],
       "matchPackageNames": [
-        "pnpm/pnpm"
+        "pnpm/pnpm",
+        "atuinsh/atuin"
       ],
       "extractVersion": "^v?(?<version>\\d+\\.\\d+\\.\\d+)$",
       "versioning": "semver"
