@@ -51,7 +51,7 @@ just = "1.58.0"
 btop = { version = "1.4.7", os = ["linux"] }
 
 # Editor and source validation
-neovim = "0.12.5"
+neovim = "0.12.6"
 tree-sitter = "0.27.0"
 shellcheck = "0.11.0"
 shfmt = "3.14.1"
