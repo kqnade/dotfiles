@@ -78,7 +78,7 @@ opencode = "1.18.35"
 "npm:@earendil-works/pi-coding-agent" = { version = "1.4.0", depends = [
   "node",
 ] }
-"npm:ccusage" = { version = "20.0.26", depends = ["node"] }
+"npm:ccusage" = { version = "20.0.36", depends = ["node"] }
 
 # SKK server and dictionary builder. Keep this on the Cargo git backend on
 # every platform so the service behaves identically on macOS and Linux.
