@@ -155,23 +155,23 @@ url_api = "https://api.github.com/repos/twpayne/chezmoi/releases/assets/65077222
 provenance = "cosign"
 
 [[tools.claude]]
-version = "2.1.306"
+version = "2.1.308"
 backend = "aqua:anthropics/claude-code"
 
 [tools.claude."platforms.linux-x64"]
-checksum = "sha256:9dc640d16d8228eff9620bde9e0f70d38385a2124f4e7d0a959d0337f0e4b14a"
-url = "https://github.com/anthropics/claude-code/releases/download/v2.1.306/claude-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/anthropics/claude-code/releases/assets/661106756"
+checksum = "sha256:6a699c7205d3c5f99e03a21d6b0511366f41c9a7284547b6e0785504ebdb261a"
+url = "https://github.com/anthropics/claude-code/releases/download/v2.1.308/claude-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/anthropics/claude-code/releases/assets/664635981"
 
 [tools.claude."platforms.macos-arm64"]
-checksum = "sha256:7d83cdfb0a9457f712881bb2f86b0f8fd655c818dbb8abf679c43fd04de44171"
-url = "https://github.com/anthropics/claude-code/releases/download/v2.1.306/claude-darwin-arm64.tar.gz"
-url_api = "https://api.github.com/repos/anthropics/claude-code/releases/assets/661106615"
+checksum = "sha256:e05000c2f5194208379b025df141e4f286ada8b3151fd7c1876d2a339ecf8fa3"
+url = "https://github.com/anthropics/claude-code/releases/download/v2.1.308/claude-darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/anthropics/claude-code/releases/assets/664635796"
 
 [tools.claude."platforms.macos-x64"]
-checksum = "sha256:f28e81593425000a1c69db74dc12a5d2272067c8dc2be23857b2c93300eac427"
-url = "https://github.com/anthropics/claude-code/releases/download/v2.1.306/claude-darwin-x64.tar.gz"
-url_api = "https://api.github.com/repos/anthropics/claude-code/releases/assets/661106603"
+checksum = "sha256:3fda4561145b340ee679b0bb06dfc3cc67e1aebda802829c112c91cc2fc078ad"
+url = "https://github.com/anthropics/claude-code/releases/download/v2.1.308/claude-darwin-x64.tar.gz"
+url_api = "https://api.github.com/repos/anthropics/claude-code/releases/assets/664635804"
 
 [[tools.delta]]
 version = "0.20.1"
