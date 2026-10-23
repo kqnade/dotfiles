@@ -70,7 +70,7 @@ bun = "1.4.3"
 uv = "0.13.4"
 
 # Agent and application CLIs
-1password-cli = "2.40.0"
+1password-cli = "2.41.1"
 herdr = { version = "v0.9.5", os = ["linux"] }
 claude = "2.1.309"
 "aqua:openai/codex" = "0.162.1"
