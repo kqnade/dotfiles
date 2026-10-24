@@ -220,7 +220,7 @@ jobs:
     name: macOS arm64 public interfaces
     needs: [changes, static]
     if: needs.changes.outputs.bootstrap == 'true'
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 90
     env:
       MISE_LOCKED: "1"
@@ -263,7 +263,7 @@ jobs:
     name: Intel Mac public interfaces and source fallbacks
     needs: [changes, static]
     if: needs.changes.outputs.bootstrap == 'true'
-    runs-on: macos-15-intel
+    runs-on: macos-26-intel
     timeout-minutes: 120
     env:
       MISE_LOCKED: "1"
