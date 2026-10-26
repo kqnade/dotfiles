@@ -121,6 +121,14 @@ kickstart = true
 stdout_path = "~/Library/Logs/yaskkserv2.log"
 stderr_path = "~/Library/Logs/yaskkserv2.err"
 
+[bootstrap.macos.launchd.agents.ollama]
+program = "~/repos/github.com/kqnade/dotfiles/scripts/ollama-serve.sh"
+run_at_load = true
+keep_alive = true
+kickstart = true
+stdout_path = "~/Library/Logs/ollama.log"
+stderr_path = "~/Library/Logs/ollama.err"
+
 [bootstrap.macos.launchd.agents.codex-usage-exporter]
 program = "~/repos/github.com/kqnade/dotfiles/scripts/codex-usage-exporter.sh"
 run_at_load = true
@@ -131,6 +139,15 @@ stderr_path = "~/Library/Logs/codex-usage-exporter.err"
 [bootstrap.linux.systemd.units.yaskkserv2]
 description = "Local SKK dictionary server"
 exec_start = "~/repos/github.com/kqnade/dotfiles/scripts/yaskkserv2-serve.sh"
+after = ["network.target"]
+restart = "on-failure"
+restart_sec = "2s"
+standard_output = "journal"
+standard_error = "journal"
+
+[bootstrap.linux.systemd.units.ollama]
+description = "Local Ollama model server"
+exec_start = "~/repos/github.com/kqnade/dotfiles/scripts/ollama-serve.sh"
 after = ["network.target"]
 restart = "on-failure"
 restart_sec = "2s"

@@ -100,9 +100,12 @@ dsh personal login
 ```
 
 `dsh-setup`は両方のprofileに固定版のCLIとpluginをインストールします。各profileは同じ
-依存treeのCLIとpluginで起動します。セットアップではagentを起動せず、Claudeの認証も読み取りません。bootstrapにも同じインストール処理が含まれます。管理するbundleとversionは
+依存treeのCLIとpluginで起動します。セットアップではagentを起動せず、Claudeの認証も読み取りません。
+bootstrapにも同じインストール処理が含まれます。管理するbundleとversionは
 `dot_dsh/`のmanifestで指定し、モデルの初期設定は`dot_config/deepseek-harness/`に置きます。
-TUIで保存したモデル選択などの設定は、各homeの`profiles/tui/cordis.patch.yml`に残ります。
+初期モデルは各bundleの`agent-default-model`で指定します。TUI内の`/model`は実行中の
+sessionのモデルを切り替えます。TUIで保存した外観などの設定は、各homeの
+`profiles/tui/cordis.patch.yml`に残ります。
 
 個人用のCodexは`openai-codex` providerを通じてHarnessから直接呼び出します。Codex CLIを
 subagentとして起動しません。`login`は`@sagmans/dsh-provider-extra`のログイン専用CLIを使い、
@@ -110,15 +113,18 @@ OAuth認証を個人用Harnessの`.credentials.yaml`へ保存します。このp
 有効にせず、既存のPiやCodex CLIの認証情報もコピーしません。
 
 Ollamaの接続先は両方とも`http://127.0.0.1:11434/v1`、モデルは`qwen3.8:27b-mlx`です。
-Ollamaを別のterminalで起動し、モデルが未取得なら取得してください。モデルのダウンロードや
-サーバーの常駐化は`dsh-setup`では行いません。
+OllamaはmacOSのLaunchAgent、Linuxのsystemd user serviceとしてmiseで管理します。
+`mise run apply`でログイン時の起動と異常終了時の再起動を設定します。待受はloopbackだけに限定し、
+macOSのログは`~/Library/Logs/ollama.{log,err}`、Linuxのログはuser journalへ出力します。
+モデルのダウンロードは自動化しません。未取得なら次のように取得してください。
 
 ```sh
-ollama serve
-# 別のterminalで実行
 ollama pull qwen3.8:27b-mlx
-dsh personal --model ollama/qwen3.8:27b-mlx
+dsh personal
 ```
+
+TUI内で`/model ollama/qwen3.8:27b-mlx`を実行するとOllamaへ切り替わります。
+Codexに戻す場合は`/model openai-codex/gpt-6-luna`を使います。
 
 仕事用の親agentはOllamaを使い、`subagent_claude_code`でClaudeへ依頼します。Claudeは
 公式Agent SDKに同梱されたruntimeで実行され、hostの通常のClaude設定と承認済みaccountを
@@ -150,6 +156,7 @@ Claudeのautomatic memoryは無効のままです。`.dev/`を持つrepository�
 mise exec -- python3 scripts/ci/test-claude-settings.py
 mise exec -- python3 scripts/ci/test-pi-telemetry.py
 mise exec -- python3 scripts/ci/test-dsh-profiles.py
+mise exec -- python3 scripts/ci/test-ollama-service.py
 mise exec -- python3 scripts/ci/test-client-workflow-reset.py
 mise exec -- python3 scripts/ci/validate-repository.py
 git diff --check
