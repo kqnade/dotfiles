@@ -15,7 +15,7 @@ class PluginTests(unittest.TestCase):
         self.assertTrue((work / "workspaces.mjs").is_file())
         overlay = (work / "web-required.patch.yml").read_text()
         self.assertIn("name: './workspaces.mjs'", overlay)
-        self.assertIn("- id: webserver\n  inject:\n    - dotfilesWorkWorkspacePolicy", overlay)
+        self.assertIn("- id: webserver\n  inject:\n    - webStartup\n    - dotfilesWorkWorkspacePolicy", overlay)
         self.assertNotIn("workspaces", (ROOT / "dot_config/deepseek-harness/personal/cordis.patch.yml").read_text())
 
     def test_common_plugins_and_cli_subagent_boundaries(self):

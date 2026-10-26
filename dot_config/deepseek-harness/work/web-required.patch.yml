@@ -4,4 +4,5 @@
 
 - id: webserver
   inject:
+    - webStartup
     - dotfilesWorkWorkspacePolicy

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdtemp, mkdir, realpath, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { test } from 'node:test';
@@ -88,21 +88,30 @@ test('installed loader requires the guard before activating the Web server', {
   const root = await mkdtemp(join(tmpdir(), 'dsh-workspace-boot-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const server = join(root, 'server.mjs');
-  await writeFile(server, 'export const inject = ["testOriginalDependency"]; export function apply(ctx) { ctx.provide("testWebServing", ctx.testOriginalDependency); }');
+  await writeFile(server, 'export const inject = ["testOriginalDependency"]; export function apply(ctx, config) { ctx.provide("testWebServing", { host: config.host, port: config.port, original: ctx.testOriginalDependency }); }');
   const config = join(root, 'cordis.yml');
-  await writeFile(config, JSON.stringify([{ id: 'webserver', name: pathToFileURL(server).href }]));
+  await writeFile(config, '[]');
+  const requireProfile = createRequire(join(process.env.DSH_TEST_WEB_PROFILE, 'package.json'));
+  const webPatchPath = join(dirname(requireProfile.resolve('@deepseek-ai/dsh-web-app')), '..', 'cordis.patch.yml');
+  const webLayers = loadOverlayPatches('test', webPatchPath);
+  const webserver = webLayers.flatMap(layer => layer.insert ?? []).find(entry => entry.id === 'webserver');
+  assert.ok(webserver, 'installed Web bundle must declare its webserver');
+  const webLayer = { insert: [{ ...webserver, name: pathToFileURL(server).href }] };
   const overlay = new URL('../../dot_config/deepseek-harness/work/web-required.patch.yml', import.meta.url);
   const { fileURLToPath } = await import('node:url');
   const patches = loadOverlayPatches('test', fileURLToPath(overlay));
-  const prepare = ctx => ctx.provide('testOriginalDependency', true);
-  const ctx = await boot('test', config, patches, prepare);
-  assert.equal(ctx.get('testWebServing'), true);
+  const prepare = ctx => {
+    ctx.provide('testOriginalDependency', true);
+    ctx.plugin({ apply(provider) { provider.provide('webStartup', { host: '127.0.0.1', port: 3081 }); } });
+  };
+  const ctx = await boot('test', config, [webLayer, ...patches], prepare);
+  assert.deepEqual(ctx.get('testWebServing'), { host: '127.0.0.1', port: 3081, original: true });
   await ctx.fiber.dispose();
   for (const broken of [
     patches.filter(patch => !patch.insert),
     [{ insert: [{ id: 'dotfiles-work-workspaces', name: pathToFileURL(join(root, 'missing.mjs')).href }] }, ...patches.filter(patch => !patch.insert)],
   ]) {
-    await assert.rejects(boot('test', config, broken, prepare), /required.*plugin.*did not activate/i);
+    await assert.rejects(boot('test', config, [webLayer, ...broken], prepare), /required.*plugin.*did not activate/i);
   }
   assert.throws(() => loadOverlayPatches('test', join(root, 'missing.patch.yml')), /failed to read overlay/i);
 });
