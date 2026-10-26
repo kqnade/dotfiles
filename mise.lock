@@ -460,6 +460,28 @@ backend = "npm:pyright"
 version = "7.0.2"
 backend = "npm:typescript"
 
+[[tools.ollama]]
+version = "0.40.11"
+backend = "aqua:ollama/ollama"
+
+[tools.ollama."platforms.linux-x64"]
+checksum = "sha256:7bedab90dd122661be78798e9f0edf37fccf0cccf2699d2c58ea1a3afdc04b6d"
+checksum_source = "mise-versions"
+url = "https://github.com/ollama/ollama/releases/download/v0.40.11/ollama-linux-amd64.tar.zst"
+url_api = "https://api.github.com/repos/ollama/ollama/releases/assets/672866959"
+
+[tools.ollama."platforms.macos-arm64"]
+checksum = "sha256:aea7d3f2e32371b7644a6e2ec8d4f26820a0e3965918cce8a46cef3e947f6291"
+checksum_source = "mise-versions"
+url = "https://github.com/ollama/ollama/releases/download/v0.40.11/ollama-darwin.tgz"
+url_api = "https://api.github.com/repos/ollama/ollama/releases/assets/672866873"
+
+[tools.ollama."platforms.macos-x64"]
+checksum = "sha256:aea7d3f2e32371b7644a6e2ec8d4f26820a0e3965918cce8a46cef3e947f6291"
+checksum_source = "mise-versions"
+url = "https://github.com/ollama/ollama/releases/download/v0.40.11/ollama-darwin.tgz"
+url_api = "https://api.github.com/repos/ollama/ollama/releases/assets/672866873"
+
 [[tools.opencode]]
 version = "1.19.4"
 backend = "aqua:anomalyco/opencode"

@@ -74,6 +74,7 @@ herdr = { version = "v0.9.5", os = ["linux"] }
 claude = "2.1.309"
 "aqua:openai/codex" = "0.162.1"
 opencode = "1.19.4"
+ollama = "0.40.11"
 "npm:@earendil-works/pi-coding-agent" = { version = "1.4.0", depends = [
   "node",
 ] }

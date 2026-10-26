@@ -44,6 +44,7 @@ EXPECTED_TOOLS = {
     "npm:ccusage",
     "npm:pyright",
     "npm:typescript",
+    "ollama",
     "opencode",
     "python",
     "ripgrep",
