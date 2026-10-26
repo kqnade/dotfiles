@@ -1,0 +1,13 @@
+diff --git a/lib/profile-boot-C14i-8IN.js b/lib/profile-boot-C14i-8IN.js
+--- a/lib/profile-boot-C14i-8IN.js
++++ b/lib/profile-boot-C14i-8IN.js
+@@ -40,7 +40,8 @@
+ 	const completeOnce = (code) => {
+ 		if (completed || forceExited) return;
+ 		completed = true;
+-		clearExitTimeout();
++		// Bound leftover resources without delaying a quiescent process.
++		timeout?.unref();
+ 		complete(code);
+ 	};
+ 	const start = (code, forceAfterDispose) => {

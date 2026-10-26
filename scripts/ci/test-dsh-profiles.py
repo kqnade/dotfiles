@@ -402,6 +402,19 @@ class DshProfilesTests(unittest.TestCase):
             self.assertNotIn("@sagmans/dsh-tui", bundles)
             self.assertEqual("@deepseek-ai/dsh-subagent-claude-code" in bundles, role == "work")
 
+    def test_tui_profiles_patch_the_pinned_launcher_shutdown(self):
+        for role in ("personal", "work"):
+            profile = ROOT / f"dot_dsh/{role}/profiles/tui"
+            result = subprocess.run(
+                ["yq", "-o=json", ".", str(profile / "pnpm-workspace.yaml")],
+                capture_output=True, text=True, check=True,
+            )
+            patches = json.loads(result.stdout)["patchedDependencies"]
+            self.assertEqual(set(patches), {"@deepseek-ai/dsh@0.2.1-rc.2"})
+            patch = (profile / patches["@deepseek-ai/dsh@0.2.1-rc.2"]).resolve()
+            self.assertEqual(patch, ROOT / "dot_dsh/patches/dsh-shutdown.patch")
+            self.assertTrue(patch.is_file())
+
     def test_setup_stops_on_install_failure(self):
         self.env["DSH_TEST_EXIT"] = "13"
         result = subprocess.run(
