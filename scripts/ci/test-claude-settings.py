@@ -120,6 +120,14 @@ class ClaudeSettingsTests(unittest.TestCase):
             self.settings_for("darwin")["permissions"]["defaultMode"], "auto"
         )
 
+    def test_statusline_uses_pnpm(self) -> None:
+        for os_name in ("darwin", "linux"):
+            with self.subTest(os_name=os_name):
+                self.assertEqual(
+                    self.settings_for(os_name)["statusLine"]["command"],
+                    "pnpm dlx -y ccstatusline@2.2.30",
+                )
+
     def test_output_style_is_concise(self) -> None:
         self.assertEqual(self.settings_for("darwin").get("outputStyle"), "Concise")
 

@@ -219,6 +219,16 @@ class ValidateMiseTests(unittest.TestCase):
         for entry in entries:
             self.assertEqual(entry["backend"], "http:1password-cli")
 
+    def test_node_tooling_uses_pnpm_without_bun(self) -> None:
+        tools = tomllib.loads((ROOT / "mise.toml").read_text())["tools"]
+        self.assertIn("github:pnpm/pnpm", tools)
+        self.assertNotIn("bun", tools)
+        lock = tomllib.loads((ROOT / "mise.lock").read_text())
+        self.assertNotIn("bun", lock["tools"])
+        for name in ("dot_zshrc", "dot_bashrc.tmpl"):
+            with self.subTest(file=name):
+                self.assertNotIn("$HOME/.bun/bin", (ROOT / name).read_text())
+
     def test_mise_exec_uses_python_with_tomllib(self) -> None:
         mise = shutil.which("mise")
         self.assertIsNotNone(mise)

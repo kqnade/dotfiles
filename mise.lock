@@ -80,38 +80,6 @@ checksum = "sha256:5099054dd6a101bd12eb6ff3702a9a6a3f57aaa27923a0da478ae5b517faf
 url = "https://github.com/aristocratos/btop/releases/download/v1.4.7/btop-x86_64-unknown-linux-musl.tar.gz"
 url_api = "https://api.github.com/repos/aristocratos/btop/releases/assets/409963672"
 
-[[tools.bun]]
-version = "1.4.3"
-backend = "core:bun"
-
-[tools.bun."platforms.linux-x64"]
-checksum = "sha256:3e730528d89775f03f87f05c06787c4df4099d0a37f3f252e7b829cb23816e18"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.3/bun-linux-x64.zip"
-
-[tools.bun."platforms.linux-x64-baseline"]
-checksum = "sha256:1fc2edac843102909e3a1be1d8d9802cc6071cf074e67e88231f4ffe0f8b397b"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.3/bun-linux-x64-baseline.zip"
-
-[tools.bun."platforms.linux-x64-musl"]
-checksum = "sha256:6e9ea98554ea0d05efda5840ae292618aaa3adefd66b0853520c5c86a37eac9c"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.3/bun-linux-x64-musl.zip"
-
-[tools.bun."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:4b5b0b5503f6ebf15161e8c56eb5a263134c05cd98a86dc11ee43ac5bda9862e"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.3/bun-linux-x64-musl-baseline.zip"
-
-[tools.bun."platforms.macos-arm64"]
-checksum = "sha256:80afd4c069b46a6fa8f3ec520bebc750a7843e4a8d5b9583d29ad436c00a3403"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.3/bun-darwin-aarch64.zip"
-
-[tools.bun."platforms.macos-x64"]
-checksum = "sha256:62660e6438eb872278877acca77e1152d5d031324df368d4a81b428211489d2d"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.3/bun-darwin-x64.zip"
-
-[tools.bun."platforms.macos-x64-baseline"]
-checksum = "sha256:0fde04e8b092156b97fe6432e899baf16d9ed6ce52cbb4218d2d9c07a2f827ef"
-url = "https://github.com/oven-sh/bun/releases/download/bun-v1.4.3/bun-darwin-x64-baseline.zip"
-
 [[tools."cargo:eza"]]
 version = "0.23.5"
 backend = "cargo:eza"

@@ -18,7 +18,6 @@ EXPECTED_TOOLS = {
     "aqua:openai/codex",
     "bat",
     "btop",
-    "bun",
     "cargo:eza",
     "cargo:git-delta",
     "cargo:https://github.com/wachikun/yaskkserv2",
