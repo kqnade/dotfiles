@@ -162,10 +162,11 @@ if [[ "$login" == true ]]; then
 fi
 if [[ "$surface" == web ]]; then
   port=3080
+  if [[ "$role" == work ]]; then port=3081; fi
+  set -- --host 127.0.0.1 --port "$port" "$@"
   if [[ "$role" == work ]]; then
-    port=3081
     set -- --patch "$HOME/.config/deepseek-harness/work/web-required.patch.yml" "$@"
   fi
-  exec "$dsh_bin" --profile web --host 127.0.0.1 --port "$port" "$@"
+  exec "$dsh_bin" --profile web "$@"
 fi
 exec "$dsh_bin" --profile tui "$@"

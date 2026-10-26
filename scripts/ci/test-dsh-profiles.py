@@ -111,14 +111,31 @@ class DshProfilesTests(unittest.TestCase):
                 result = self.launch(role, "web", "--no-open")
                 self.assertEqual(result.returncode, 0, result.stderr)
                 call = self.calls()[-1]
-                expected = ["--profile", "web", "--host", "127.0.0.1", "--port", port]
+                expected = ["--profile", "web"]
                 if role == "work":
                     expected += ["--patch", str(self.home / ".config/deepseek-harness/work/web-required.patch.yml")]
-                self.assertEqual(call["args"], expected + ["--no-open"])
+                self.assertEqual(call["args"], expected + ["--host", "127.0.0.1", "--port", port, "--no-open"])
                 self.assertEqual(call["env"]["DSH_HOME"], str(self.home / f".dsh/{role}"))
                 self.assertEqual(call["env"]["DSH_NEW_RELIC_ENABLE"], "1" if role == "personal" else "0")
                 if role == "work":
                     self.assertNotIn("DSH_NEW_RELIC_API_KEY", call["env"])
+
+    @unittest.skipUnless(os.environ.get("DSH_TEST_CLI"), "requires installed DSH CLI")
+    def test_real_cli_consumes_guard_overlay_before_web_arguments(self):
+        result = self.launch("work", "web", "--no-open", cwd=self.root)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        (call,) = self.calls()
+        # Dump mode reports forwarded app arguments without loading a profile or starting Web.
+        parsed = subprocess.run(
+            [os.environ["DSH_TEST_CLI"], "--dump-config", *call["args"]],
+            cwd=self.root, env=dict(call["env"], PATH=os.environ["PATH"]),
+            capture_output=True, text=True, check=False,
+        )
+        self.assertEqual(parsed.returncode, 1, parsed.stderr)
+        self.assertIn("config dumps take no app arguments", parsed.stderr)
+        self.assertIn('"--host"', parsed.stderr)
+        self.assertNotIn('"--patch"', parsed.stderr)
+        self.assertNotIn("web-required.patch.yml", parsed.stderr)
 
     def test_web_rejects_bind_and_composition_overrides(self):
         for args in (("--host", "0.0.0.0"), ("--port", "3081"), ("--public-url", "https://example.com"),
