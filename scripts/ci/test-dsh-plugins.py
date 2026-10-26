@@ -10,6 +10,14 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class PluginTests(unittest.TestCase):
+    def test_workspace_guard_overlay_requires_activation_before_serving(self):
+        work = ROOT / "dot_config/deepseek-harness/work"
+        self.assertTrue((work / "workspaces.mjs").is_file())
+        overlay = (work / "web-required.patch.yml").read_text()
+        self.assertIn("name: './workspaces.mjs'", overlay)
+        self.assertIn("- id: webserver\n  inject:\n    - dotfilesWorkWorkspacePolicy", overlay)
+        self.assertNotIn("workspaces", (ROOT / "dot_config/deepseek-harness/personal/cordis.patch.yml").read_text())
+
     def test_common_plugins_and_cli_subagent_boundaries(self):
         common = {
             f"@deepseek-ai/dsh-experimental-{name}"

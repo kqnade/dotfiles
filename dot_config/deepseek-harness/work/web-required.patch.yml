@@ -1,0 +1,7 @@
+- insert:
+    - id: dotfiles-work-workspaces
+      name: './workspaces.mjs'
+
+- id: webserver
+  inject:
+    - dotfilesWorkWorkspacePolicy

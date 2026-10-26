@@ -105,8 +105,10 @@ authorize_repository() {
     fi
   done <<<"$remotes"
 }
-# Refuse the wrong account scope before starting a process or reading credentials.
-authorize_repository
+# Work Web authorizes workspace additions in its server-side plugin.
+if [[ "$role" != work || "$surface" != web ]]; then
+  authorize_repository
+fi
 
 export DSH_HOME="$HOME/.dsh/$role"
 export DSH_OLLAMA_API_KEY=ollama
@@ -160,7 +162,10 @@ if [[ "$login" == true ]]; then
 fi
 if [[ "$surface" == web ]]; then
   port=3080
-  if [[ "$role" == work ]]; then port=3081; fi
+  if [[ "$role" == work ]]; then
+    port=3081
+    set -- --patch "$HOME/.config/deepseek-harness/work/web-required.patch.yml" "$@"
+  fi
   exec "$dsh_bin" --profile web --host 127.0.0.1 --port "$port" "$@"
 fi
 exec "$dsh_bin" --profile tui "$@"
