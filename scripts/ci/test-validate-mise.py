@@ -105,21 +105,56 @@ class ValidateMiseTests(unittest.TestCase):
                     entry = entry[0]
                 self.assertEqual(entry["version"], f"rev:{new_digest}")
 
-    def test_1password_uses_aqua_backend(self) -> None:
+    def test_1password_lock_resolves_official_archives_without_warnings(self) -> None:
         mise = shutil.which("mise")
         self.assertIsNotNone(mise)
-        result = subprocess.run(
-            [mise, "tool", "1password-cli", "--json"],
-            cwd=ROOT,
-            text=True,
-            capture_output=True,
-            check=False,
-        )
-        self.assertEqual(result.returncode, 0, result.stderr)
-        tool = json.loads(result.stdout)
-        self.assertEqual(tool["backend"], "aqua:1password/cli")
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            fixture_root = Path(temporary_directory)
+            shutil.copyfile(ROOT / "mise.toml", fixture_root / "mise.toml")
+            environment = {
+                **os.environ,
+                "MISE_CONFIG_DIR": str(fixture_root / "config"),
+            }
+            result = subprocess.run(
+                [mise, "trust", str(fixture_root / "mise.toml")],
+                cwd=fixture_root,
+                env=environment,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            result = subprocess.run(
+                [mise, "lock", "1password-cli"],
+                cwd=fixture_root,
+                env=environment,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertNotIn("WARN", result.stderr)
+            lock = tomllib.loads((fixture_root / "mise.lock").read_text())
+
+        entry = lock["tools"]["1password-cli"][0]
+        version = entry["version"]
+        for platform, archive_platform in (
+            ("macos-arm64", "darwin_arm64"),
+            ("macos-x64", "darwin_amd64"),
+            ("linux-x64", "linux_amd64"),
+        ):
+            with self.subTest(platform=platform):
+                self.assertEqual(
+                    entry[f"platforms.{platform}"]["url"],
+                    f"https://cache.agilebits.com/dist/1P/op2/pkg/v{version}/"
+                    f"op_{archive_platform}_v{version}.zip",
+                )
+
+    def test_1password_uses_http_backend(self) -> None:
+        manifest = tomllib.loads((ROOT / "mise.toml").read_text())
+        self.assertEqual(manifest["tool_alias"]["1password-cli"], "http:1password-cli")
+        version = manifest["tools"]["1password-cli"]["version"]
         lock = tomllib.loads((ROOT / "mise.lock").read_text())
-        version = tool["requested_versions"][0]
         entries = [
             entry
             for entry in lock["tools"]["1password-cli"]
@@ -127,7 +162,7 @@ class ValidateMiseTests(unittest.TestCase):
         ]
         self.assertTrue(entries)
         for entry in entries:
-            self.assertEqual(entry["backend"], "aqua:1password/cli")
+            self.assertEqual(entry["backend"], "http:1password-cli")
 
     def test_mise_exec_uses_python_with_tomllib(self) -> None:
         mise = shutil.which("mise")
@@ -469,10 +504,10 @@ class ValidateMiseTests(unittest.TestCase):
                 shutil.copyfile(source, destination)
 
             manifest = fixture_root / "mise.toml"
-            version = tomllib.loads(manifest.read_text())["tools"]["1password-cli"]
+            version = tomllib.loads(manifest.read_text())["tools"]["1password-cli"]["version"]
             manifest_text, replacement_count = re.subn(
-                rf'(?m)^1password-cli = "{re.escape(version)}"$',
-                '1password-cli = "999.0.0"',
+                rf'(?m)^(1password-cli = \{{ version = )"{re.escape(version)}"',
+                r'\g<1>"999.0.0"',
                 manifest.read_text(),
             )
             self.assertEqual(replacement_count, 1)
@@ -482,7 +517,7 @@ class ValidateMiseTests(unittest.TestCase):
             lockfile.write_text(
                 lockfile.read_text()
                 + '\n[[tools.1password-cli]]\nversion = "999.0.0"\n'
-                + 'backend = "aqua:1password/cli"\n'
+                + 'backend = "http:1password-cli"\n'
             )
 
             result = subprocess.run(
