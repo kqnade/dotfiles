@@ -111,7 +111,10 @@ class DshProfilesTests(unittest.TestCase):
                 result = self.launch(role, "web", "--no-open")
                 self.assertEqual(result.returncode, 0, result.stderr)
                 call = self.calls()[-1]
-                self.assertEqual(call["args"], ["--profile", "web", "--host", "127.0.0.1", "--port", port, "--no-open"])
+                expected = ["--profile", "web", "--host", "127.0.0.1", "--port", port]
+                if role == "work":
+                    expected += ["--patch", str(self.home / ".config/deepseek-harness/work/web-required.patch.yml")]
+                self.assertEqual(call["args"], expected + ["--no-open"])
                 self.assertEqual(call["env"]["DSH_HOME"], str(self.home / f".dsh/{role}"))
                 self.assertEqual(call["env"]["DSH_NEW_RELIC_ENABLE"], "1" if role == "personal" else "0")
                 if role == "work":
@@ -125,16 +128,20 @@ class DshProfilesTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
         self.assertEqual(self.calls(), [])
 
-    def test_web_checks_repository_scope_before_starting(self):
+    def test_personal_web_checks_repository_scope_before_starting(self):
         self.origin("https://github.com/jobtalk/example.git")
         personal = self.launch("personal", "web")
         self.assertEqual(personal.returncode, 2)
         self.assertIn("Use dsh work", personal.stderr)
-        self.origin("https://github.com/kqnade/example.git")
-        work = self.launch("work", "web")
-        self.assertEqual(work.returncode, 2)
-        self.assertIn("authorized only", work.stderr)
         self.assertEqual(self.calls(), [])
+
+    def test_work_web_starts_outside_company_repositories(self):
+        self.origin("https://github.com/kqnade/example.git")
+        for cwd in (self.repo, self.root):
+            with self.subTest(cwd=cwd):
+                result = self.launch("work", "web", cwd=cwd)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(self.calls()[-1]["env"]["DSH_HOME"], str(self.home / ".dsh/work"))
 
     def test_web_requires_its_own_runtime_installation(self):
         shutil.rmtree(self.home / ".dsh/personal/profiles/web/node_modules")

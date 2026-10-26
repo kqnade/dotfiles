@@ -96,8 +96,14 @@ Web UIは`dsh personal web`または`dsh work web`で起動します。個人用
 このURLは共有しないでください。待受先とportを変更する引数は受け付けません。
 
 同じ用途のTUIとWebは`DSH_HOME`、認証、sessionを共有します。個人用と仕事用の間では
-共有しません。Webにも同じモデル構成とrepositoryの起動制限を適用し、Webの設定は各homeの
+共有しません。Webにも同じモデル構成を適用し、Webの設定は各homeの
 `profiles/web/cordis.patch.yml`に保存します。Webのモデル選択には画面のモデルメニューを使います。
+仕事用Webはrepositoryの親など、任意のdirectoryから起動できます。フォルダ追加時にserver側の
+pluginがGitの全originを確認し、GitHubの`livesense-inc`／`jobtalk`以外は拒否します。
+originを読めないdirectoryも追加できません。symlinkは実体のpathで判定します。
+初回の既定フォルダは自動登録せず、会社のrepositoryを選んで追加します。
+wrapperは`web-required.patch.yml`を必須overlayとして渡し、pluginが有効になるまでWeb serverを起動しません。
+既存のworkspaceや過去のsessionからの復元は変更しません。
 
 初回のセットアップとCodexへのログインは次のとおりです。
 
@@ -141,8 +147,8 @@ Codexに戻す場合は`/model openai-codex/gpt-6-luna`を使います。wrapper
 使います。zshの`claude` functionを経由するわけではありません。`permissionMode: dontAsk`により、
 未許可の操作を対話なしに拒否します。Claudeへのログインは承認済みの仕事用環境で行ってください。
 
-起動wrapperは認証を読む前にGitが解決した全originを確認します。仕事用はGitHubの
-`livesense-inc`／`jobtalk`だけを許可し、個人用はそのownerを拒否します。個人用ではoriginなしの
+仕事用Web以外では、起動wrapperが認証を読む前にGitが解決した全originを確認します。
+仕事用TUIはGitHubの`livesense-inc`／`jobtalk`だけを許可し、個人用はそのownerを拒否します。個人用ではoriginなしの
 作業も許可します。継承されたAnthropic、OpenAI、DeepSeekの認証変数は起動時に除きます。
 profileやpatchを差し替えるCLI引数はwrapperから渡せません。
 
@@ -270,6 +276,9 @@ Claudeのautomatic memoryは無効のままです。`.dev/`を持つrepository�
 mise exec -- python3 scripts/ci/test-claude-settings.py
 mise exec -- python3 scripts/ci/test-pi-telemetry.py
 mise exec -- python3 scripts/ci/test-dsh-profiles.py
+mise exec -- python3 scripts/ci/test-dsh-plugins.py
+mise exec -- node --test scripts/ci/test-dsh-workspaces.mjs
+DSH_TEST_WEB_PROFILE="$HOME/.dsh/personal/profiles/web" mise exec -- node --test scripts/ci/test-dsh-workspaces.mjs
 mise exec -- node --test scripts/ci/test-dsh-telemetry.mjs scripts/ci/test-dsh-dashboard.mjs scripts/ci/test-dsh-cost.mjs scripts/ci/test-dsh-pricing.mjs
 mise exec -- python3 scripts/ci/test-ollama-service.py
 mise exec -- python3 scripts/ci/test-client-workflow-reset.py
