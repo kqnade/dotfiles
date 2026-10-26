@@ -120,6 +120,41 @@ if [[ ! -x "$dsh_bin" ]]; then
   echo 'Harness profile dependencies are missing; run mise run dsh-setup.' >&2
   exit 1
 fi
+configure_telemetry() {
+  local enabled key runtime_config op_ref option
+  enabled="$(printf '%s' "${DSH_NEW_RELIC_ENABLE:-1}" | tr '[:upper:]' '[:lower:]')"
+  case "$enabled" in 0 | false | no | off | disabled) enabled=0 ;; *) enabled=1 ;; esac
+  if [[ "$role" != personal || "$login" == true ]]; then enabled=0; fi
+  for option in "$@"; do
+    case "$option" in -h | --help | list-models) enabled=0 ;; esac
+  done
+  if [[ "$enabled" == 0 ]]; then
+    export DSH_NEW_RELIC_ENABLE=0
+    unset DSH_NEW_RELIC_API_KEY
+    return
+  fi
+  key="${DSH_NEW_RELIC_API_KEY:-${NEW_RELIC_LICENSE_KEY:-}}"
+  if [[ -z "$key" ]]; then
+    runtime_config="$HOME/.config/dotfiles/client-runtime.sh"
+    if [[ ! -r "$runtime_config" ]]; then
+      echo 'New Relic runtime configuration is missing; apply the managed dotfiles first.' >&2
+      return 1
+    fi
+    # shellcheck source=/dev/null
+    source "$runtime_config"
+    op_ref="${NEW_RELIC_LICENSE_KEY_OP_REF:-$DOTFILES_OP_NEW_RELIC_REF}"
+    if [[ "$op_ref" != op://* ]] || ! key="$(op read "$op_ref")"; then
+      echo 'Failed to read the New Relic license key from 1Password.' >&2
+      return 1
+    fi
+  fi
+  if [[ -z "${key//[[:space:]]/}" ]]; then
+    echo 'New Relic license key is empty.' >&2
+    return 1
+  fi
+  export DSH_NEW_RELIC_ENABLE=1 DSH_NEW_RELIC_API_KEY="$key"
+}
+configure_telemetry "$@"
 if [[ "$login" == true ]]; then
   exec "$DSH_HOME/profiles/tui/node_modules/.bin/dsh-provider-extra-login"
 fi

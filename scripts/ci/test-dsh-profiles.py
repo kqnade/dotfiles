@@ -33,6 +33,9 @@ class DshProfilesTests(unittest.TestCase):
             os.environ, HOME=str(self.home), PATH=f"{self.bin}:/usr/bin:/bin"
         )
         self.env["DSH_TEST_LOG"] = str(self.log)
+        self.env["DSH_NEW_RELIC_API_KEY"] = "test-new-relic-key"
+        self.env.pop("DSH_NEW_RELIC_ENABLE", None)
+        self.env.pop("NEW_RELIC_LICENSE_KEY", None)
         stub = self.bin / "dsh"
         stub.write_text(
             f"#!{sys.executable}\n"
@@ -110,6 +113,9 @@ class DshProfilesTests(unittest.TestCase):
                 call = self.calls()[-1]
                 self.assertEqual(call["args"], ["--profile", "web", "--host", "127.0.0.1", "--port", port, "--no-open"])
                 self.assertEqual(call["env"]["DSH_HOME"], str(self.home / f".dsh/{role}"))
+                self.assertEqual(call["env"]["DSH_NEW_RELIC_ENABLE"], "1" if role == "personal" else "0")
+                if role == "work":
+                    self.assertNotIn("DSH_NEW_RELIC_API_KEY", call["env"])
 
     def test_web_rejects_bind_and_composition_overrides(self):
         for args in (("--host", "0.0.0.0"), ("--port", "3081"), ("--public-url", "https://example.com"),
@@ -136,6 +142,60 @@ class DshProfilesTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("mise run dsh-setup", result.stderr)
         self.assertEqual(self.calls(), [])
+
+    def test_personal_enables_telemetry_with_explicit_key(self):
+        result = self.launch("personal")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        env = self.calls()[0]["env"]
+        self.assertEqual(env["DSH_NEW_RELIC_ENABLE"], "1")
+        self.assertEqual(env["DSH_NEW_RELIC_API_KEY"], "test-new-relic-key")
+
+    def test_opt_out_and_help_do_not_pass_telemetry_key(self):
+        for value, args in (("off", ()), ("FALSE", ()), ("0", ()), ("1", ("--help",)), ("1", ("list-models",))):
+            with self.subTest(value=value, args=args):
+                self.env["DSH_NEW_RELIC_ENABLE"] = value
+                result = self.launch("personal", *args)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(self.calls()[-1]["env"]["DSH_NEW_RELIC_ENABLE"], "0")
+                self.assertNotIn("DSH_NEW_RELIC_API_KEY", self.calls()[-1]["env"])
+
+    def test_work_never_inherits_personal_telemetry(self):
+        self.origin("https://github.com/jobtalk/example.git")
+        self.env["DSH_NEW_RELIC_ENABLE"] = "1"
+        result = self.launch("work")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.calls()[0]["env"]["DSH_NEW_RELIC_ENABLE"], "0")
+        self.assertNotIn("DSH_NEW_RELIC_API_KEY", self.calls()[0]["env"])
+
+    def test_telemetry_key_lookup_failure_stops_launch(self):
+        self.env.pop("DSH_NEW_RELIC_API_KEY")
+        config = self.home / ".config/dotfiles/client-runtime.sh"
+        config.parent.mkdir(parents=True)
+        config.write_text("DOTFILES_OP_NEW_RELIC_REF=op://test/new-relic/key\n")
+        op = self.bin / "op"
+        op.write_text("#!/bin/sh\nexit 1\n")
+        op.chmod(0o755)
+        result = self.launch("personal")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("New Relic", result.stderr)
+        self.assertEqual(self.calls(), [])
+
+    def test_telemetry_reads_managed_key_after_authorization(self):
+        self.env.pop("DSH_NEW_RELIC_API_KEY")
+        config = self.home / ".config/dotfiles/client-runtime.sh"
+        config.parent.mkdir(parents=True)
+        config.write_text("DOTFILES_OP_NEW_RELIC_REF=op://test/new-relic/key\n")
+        op = self.bin / "op"
+        op.write_text('#!/bin/sh\n[ "$1" = read ] && [ "$2" = op://test/new-relic/key ] || exit 2\nprintf test-key\n')
+        op.chmod(0o755)
+        result = self.launch("personal")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.calls()[0]["env"]["DSH_NEW_RELIC_API_KEY"], "test-key")
+        self.origin("https://github.com/jobtalk/example.git")
+        op.write_text('#!/bin/sh\nprintf called > "$HOME/op-called"\nexit 1\n')
+        result = self.launch("personal")
+        self.assertEqual(result.returncode, 2)
+        self.assertFalse((self.home / "op-called").exists())
 
     def test_work_starts_only_in_known_work_origins(self):
         for url in (
@@ -310,7 +370,7 @@ class DshProfilesTests(unittest.TestCase):
             self.assertEqual(manifest["dsh"]["bundle"]["patch"], "./cordis.patch.yml")
             result = subprocess.run(["yq", "-o=json", ".", str(bundle / "cordis.patch.yml")],
                                     capture_output=True, text=True, check=True)
-            rows = {row["id"]: row for row in json.loads(result.stdout)}
+            rows = {row["id"]: row for row in json.loads(result.stdout) if "id" in row}
             providers = rows["llm-pi-ai"]["config"]["providers"]
             self.assertEqual(set(providers), {"ollama", "openai-codex"} if role == "personal" else {"ollama"})
             self.assertEqual(providers["ollama"]["baseURL"], "http://127.0.0.1:11434/v1")

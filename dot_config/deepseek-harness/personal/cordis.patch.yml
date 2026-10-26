@@ -1,3 +1,7 @@
+- insert:
+    - id: dotfiles-new-relic
+      name: '@dotfiles/dsh-personal/new-relic'
+
 - id: agent-default-model
   config:
     provider: openai-codex

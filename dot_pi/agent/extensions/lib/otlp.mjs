@@ -170,13 +170,13 @@ function resource(serviceName) {
   };
 }
 
-export function otlpBatchParts(serviceName, field) {
+export function otlpBatchParts(serviceName, field, scopeName = SCOPE_NAME) {
   const layout = layoutFor(field);
   const container = {
     [layout.root]: [{
       resource: resource(serviceName),
       [layout.scopes]: [{
-        scope: { name: SCOPE_NAME },
+        scope: { name: scopeName },
         [layout.records]: [],
       }],
     }],

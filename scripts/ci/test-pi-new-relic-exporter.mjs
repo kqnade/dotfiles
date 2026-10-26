@@ -3,6 +3,15 @@ import test from "node:test";
 
 import { createExporter } from "../../dot_pi/agent/extensions/lib/new-relic-exporter.mjs";
 
+test("exporter uses a caller-selected instrumentation scope", async () => {
+  const requests = [];
+  const exporter = createExporter({ apiKey: "test-key", serviceName: "deepseek-harness", scopeName: "dsh.telemetry",
+    fetchImpl: async (_url, options) => { requests.push(JSON.parse(options.body)); return response(200); } });
+  exporter.addMetric({ name: "dsh.request.count", type: "count", value: 1, timestamp: 1000 });
+  await exporter.flush();
+  assert.equal(requests[0].resourceMetrics[0].scopeMetrics[0].scope.name, "dsh.telemetry");
+});
+
 function response(status, body = "") {
 	return {
 		status,

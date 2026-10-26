@@ -39,6 +39,7 @@ function wait(milliseconds) {
 export function createExporter({
 	apiKey,
 	serviceName = "pi-coding-agent",
+	scopeName = "pi.telemetry",
 	fetchImpl = globalThis.fetch,
 	onError,
 	metricsEndpoint = "https://otlp.nr-data.net/v1/metrics",
@@ -143,7 +144,7 @@ export function createExporter({
 			return null;
 		}
 
-		const { prefix, suffix } = otlpBatchParts(serviceName, field);
+		const { prefix, suffix } = otlpBatchParts(serviceName, field, scopeName);
 		const serializedRecords = [];
 		const records = [];
 		let size = byteLength(prefix) + byteLength(suffix);

@@ -150,6 +150,33 @@ profileやpatchを差し替えるCLI引数はwrapperから渡せません。
 操作、直接binaryからの起動まで隔離するものではありません。profileへ仕事用credentialを
 コピーせず、仕事の内容を個人用の認証や外部サービスへ渡さないでください。
 
+### 個人用の New Relic telemetry
+
+`dsh personal` の TUI と Web UI は、モデル呼び出しとツール実行を OTLP/HTTP で既存の New Relic へ送ります。
+service 名は `deepseek-harness`、scope は `dsh.telemetry` です。
+`dsh.request.count`・`dsh.request.duration`・`dsh.token.usage` と
+`dsh.tool.count`・`dsh.tool.duration` を記録し、対応する span と本文を含まないイベントログも送ります。
+属性は provider、model、個人用 profile、tool 名、成功／失敗などに限定します。
+会話本文、ツール引数・出力、ファイルパス、認証情報、エラー本文は含めません。
+
+モデル使用量は各試行の最後の usage を一度だけ計上します。未取得の使用量をゼロとして補いません。
+入力・キャッシュ読み取り・キャッシュ書き込みは DSH の区分を維持します。
+request の時間はライブストリーム開始から確定まで、tool の時間は呼び出しから結果までのミリ秒です。
+ネストしたツールには親 span を付けます。親の `run_code` と子の時間は重なるため、単純に合計しません。
+履歴の読み直しは集計せず、ローカル子 agent は自身のイベントとして計測します。
+外部子 agent の内部、ライブストリーム開始前の失敗、タイトル生成などの直接 LLM 呼び出しは対象外です。
+
+キーは `DSH_NEW_RELIC_API_KEY`、`NEW_RELIC_LICENSE_KEY`、管理する 1Password 参照の順に取得します。
+取得は origin の認可後に行い、失敗した場合は起動を止めます。
+`DSH_NEW_RELIC_ENABLE=0 dsh personal` で明示的に無効化できます。
+仕事用、login、help、list-models ではこのプラグインの計測を有効にせず、専用キーも渡しません。
+DSH 標準のフィードバック送信設定は変更しません。
+
+送信処理は Pi と同じソースを chezmoi で配置します。毎秒のバッチ送信と終了時の flush を行い、
+通信失敗やキュー超過はローカルに警告します。キューはメモリ内のみで、終了時の未送信分は失われます。
+通信失敗時は再試行とタイムアウトにより終了が遅れることがあります。
+反映には `mise run apply` を使い、DSH を再起動してください。
+
 ## 検証と引き継ぎ
 
 小変更は対象テストと差分確認を基本とし、複雑・高リスクな変更は計画確認と独立したレビューを
@@ -166,6 +193,7 @@ Claudeのautomatic memoryは無効のままです。`.dev/`を持つrepository�
 mise exec -- python3 scripts/ci/test-claude-settings.py
 mise exec -- python3 scripts/ci/test-pi-telemetry.py
 mise exec -- python3 scripts/ci/test-dsh-profiles.py
+mise exec -- node --test scripts/ci/test-dsh-telemetry.mjs
 mise exec -- python3 scripts/ci/test-ollama-service.py
 mise exec -- python3 scripts/ci/test-client-workflow-reset.py
 mise exec -- python3 scripts/ci/validate-repository.py
