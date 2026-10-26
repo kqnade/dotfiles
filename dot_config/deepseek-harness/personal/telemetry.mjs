@@ -47,6 +47,13 @@ export function createCollector({ addMetric, addSpan, now = Date.now }) {
       const success = frame.outcome.kind === 'committed' && frame.outcome.eventType === 'assistant/message' && !['error', 'aborted'].includes(start.reason);
       const attributes = { ...start.attributes, success, stop_reason: start.reason ?? 'unknown', outcome: frame.outcome.kind };
       for (const [field, type] of Object.entries(tokenFields)) metric('dsh.token.usage', start.usage[field], { ...attributes, type });
+      const { inputTokens, cacheReadTokens } = start.usage;
+      const cacheTotal = inputTokens + cacheReadTokens;
+      if (Number.isSafeInteger(inputTokens) && Number.isSafeInteger(cacheReadTokens)
+        && Number.isSafeInteger(cacheTotal) && cacheTotal > 0) {
+        metric('dsh.cache.token.usage', cacheReadTokens, { ...attributes, type: 'cache_read' });
+        metric('dsh.cache.token.usage', inputTokens, { ...attributes, type: 'input' });
+      }
       finish(s, 'dsh.request', start, attributes);
     }
   }

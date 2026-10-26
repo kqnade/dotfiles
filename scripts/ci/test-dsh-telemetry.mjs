@@ -55,6 +55,7 @@ test('rendered plugin registers live hooks, exports OTLP, and drains on unload',
   assert.equal(typeof callbacks.get('agent/assistant-stream'), 'function');
   const f = fixture();
   callbacks.get('agent/assistant-stream')({ agent: f.agent, frame: { type: 'start', attemptId: 'a', revision: 1 } });
+  callbacks.get('agent/assistant-stream')({ agent: f.agent, frame: { type: 'chunk', attemptId: 'a', revision: 2, chunk: { type: 'usage', usage: { inputTokens: 20, cacheReadTokens: 80 } } } });
   callbacks.get('agent/assistant-stream')({ agent: f.agent, frame: { type: 'end', attemptId: 'a', revision: 4, outcome: { kind: 'committed', eventType: 'assistant/message' } } });
   for (const dispose of cleanup.reverse()) await dispose();
   assert.ok(requests.length >= 2);
@@ -62,6 +63,10 @@ test('rendered plugin registers live hooks, exports OTLP, and drains on unload',
   assert.ok(requests.every(r => r.options.headers['Api-Key'] === 'test-secret'));
   assert.ok(requests.every(r => !r.options.body.includes('test-secret')));
   assert.ok(requests.some(r => r.options.body.includes('dsh.telemetry')));
+  const metricRequest = requests.find(r => r.url.endsWith('/metrics'));
+  const exportedCache = JSON.parse(metricRequest.options.body).resourceMetrics[0].scopeMetrics[0].metrics
+    .filter(r => r.name === 'dsh.cache.token.usage');
+  assert.deepEqual(exportedCache.map(r => r.sum.dataPoints[0].asInt), ['80', '20']);
   process.env.DSH_NEW_RELIC_ENABLE = '0';
   plugin.apply({ on() { assert.fail('disabled telemetry must not subscribe'); }, effect() { assert.fail('disabled telemetry must not create effects'); } });
 });
@@ -86,6 +91,52 @@ test('cancelled partial responses are not successful without a finish chunk', ()
   assert.equal(f.spans[0].attributes.success, false);
   assert.equal(f.spans[0].attributes.stop_reason, 'aborted');
   assert.equal(JSON.stringify(f.spans).includes('SECRET'), false);
+});
+
+function completeUsage(f, attemptId, snapshots) {
+  f.collector.stream({ agent: f.agent, frame: { type: 'start', attemptId, revision: 1 } });
+  snapshots.forEach((usage, index) => f.collector.stream({ agent: f.agent,
+    frame: { type: 'chunk', attemptId, revision: index + 2, chunk: { type: 'usage', usage } } }));
+  const end = { agent: f.agent, frame: { type: 'end', attemptId, revision: snapshots.length + 2,
+    outcome: { kind: 'committed', eventType: 'assistant/message' } } };
+  f.collector.stream(end);
+  f.collector.stream(end);
+}
+
+const cacheMetrics = f => f.metrics.filter(r => r.name === 'dsh.cache.token.usage');
+
+test('cache accounting matches DSH read / (read + uncached) using final snapshots', () => {
+  const f = fixture();
+  completeUsage(f, 'a', [{ inputTokens: 10, cacheReadTokens: 10 },
+    { inputTokens: 20, cacheReadTokens: 80, cacheWriteTokens: 500, outputTokens: 200 }]);
+  assert.deepEqual(cacheMetrics(f).map(r => [r.attributes.type, r.value, r.type]),
+    [['cache_read', 80, 'count'], ['input', 20, 'count']]);
+  assert.equal(cacheMetrics(f)[0].attributes.model, 'test-model');
+});
+
+test('cache samples remain paired for token-weighted aggregation', () => {
+  const f = fixture();
+  completeUsage(f, 'small', [{ inputTokens: 0, cacheReadTokens: 10 }]);
+  completeUsage(f, 'large', [{ inputTokens: 90, cacheReadTokens: 0 }]);
+  completeUsage(f, 'unknown', [{ inputTokens: 900 }]);
+  completeUsage(f, 'missing-input', [{ cacheReadTokens: 800 }]);
+  const read = cacheMetrics(f).filter(r => r.attributes.type === 'cache_read').reduce((n, r) => n + r.value, 0);
+  const input = cacheMetrics(f).filter(r => r.attributes.type === 'input').reduce((n, r) => n + r.value, 0);
+  assert.equal(read / (read + input), 0.1);
+  assert.equal(cacheMetrics(f).length, 4);
+  assert.equal(f.metrics.find(r => r.name === 'dsh.token.usage' && r.value === 900)?.attributes.type, 'input');
+});
+
+test('unavailable or unsafe cache usage does not become a fabricated zero-hit sample', () => {
+  for (const usage of [{}, { inputTokens: 0, cacheReadTokens: 0 },
+    { inputTokens: 10 }, { cacheReadTokens: 10 },
+    { inputTokens: 10, cacheReadTokens: -1 }, { inputTokens: NaN, cacheReadTokens: 10 },
+    { inputTokens: 10, cacheReadTokens: Infinity }, { inputTokens: 10, cacheReadTokens: 0.5 },
+    { inputTokens: Number.MAX_SAFE_INTEGER, cacheReadTokens: 1 }]) {
+    const f = fixture();
+    completeUsage(f, 'a', [{ inputTokens: 10, cacheReadTokens: 90 }, usage]);
+    assert.equal(cacheMetrics(f).length, 0, JSON.stringify(usage));
+  }
 });
 
 function fixture() {

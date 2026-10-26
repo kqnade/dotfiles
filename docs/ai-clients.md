@@ -161,6 +161,27 @@ service 名は `deepseek-harness`、scope は `dsh.telemetry` です。
 
 モデル使用量は各試行の最後の usage を一度だけ計上します。未取得の使用量をゼロとして補いません。
 入力・キャッシュ読み取り・キャッシュ書き込みは DSH の区分を維持します。
+
+キャッシュヒット率には `dsh.cache.token.usage` を使います。非キャッシュ入力とキャッシュ読取が
+どちらも非負の安全な整数で、合計が正の安全な整数になる試行だけを、`type=input` と `type=cache_read` のペアで記録します。
+計算式は DSH TUI 0.16.0 と同じ「キャッシュ読取 ÷（キャッシュ読取＋非キャッシュ入力）」です。
+キャッシュ書込と出力は分母に含めません。リクエストごとの率を平均せず、トークン数を合計してから割ります。
+例えば10トークンを全て再利用した試行と、90トークンを全て新規入力した試行の合計は10%です。
+
+```sql
+FROM Metric
+SELECT 100 * filter(sum(dsh.cache.token.usage), WHERE type = 'cache_read')
+  / sum(dsh.cache.token.usage) AS 'Cache hit %'
+WHERE service.name = 'deepseek-harness'
+FACET provider, model
+SINCE 1 hour ago
+```
+
+DSH の累積表示は未取得のキャッシュ読取をゼロとして扱いますが、この集計では不明な試行を分子・分母の両方から除外します。
+通常の `dsh.token.usage` は取得できた値を従来どおり記録します。
+有効な試行がなければ率は算出できません。adapter が未知の値を既にゼロへ変換している場合、その区別は復元できません。
+DSH 画面は履歴を含むセッション累積、New Relic は送信できた試行の指定期間の集計なので、表示値の一致は保証しません。
+
 request の時間はライブストリーム開始から確定まで、tool の時間は呼び出しから結果までのミリ秒です。
 ネストしたツールには親 span を付けます。親の `run_code` と子の時間は重なるため、単純に合計しません。
 履歴の読み直しは集計せず、ローカル子 agent は自身のイベントとして計測します。
