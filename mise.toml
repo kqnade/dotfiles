@@ -77,7 +77,7 @@ ollama = "0.40.11"
 "npm:@earendil-works/pi-coding-agent" = { version = "1.4.0", depends = [
   "node",
 ] }
-"npm:ccusage" = { version = "20.0.37", depends = ["node"] }
+"npm:ccusage" = { version = "20.0.41", depends = ["node"] }
 
 # SKK server and dictionary builder. Keep this on the Cargo git backend on
 # every platform so the service behaves identically on macOS and Linux.
