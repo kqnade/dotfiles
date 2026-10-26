@@ -43,10 +43,11 @@ class DshProfilesTests(unittest.TestCase):
         )
         stub.chmod(0o755)
         for role in ("personal", "work"):
-            profile = self.home / f".dsh/{role}/profiles/tui"
-            (profile / "node_modules/.bin").mkdir(parents=True)
-            shutil.copy(stub, profile / "node_modules/.bin/dsh")
-            (profile / "package.json").write_text("{}")
+            for surface in ("tui", "web"):
+                profile = self.home / f".dsh/{role}/profiles/{surface}"
+                (profile / "node_modules/.bin").mkdir(parents=True)
+                shutil.copy(stub, profile / "node_modules/.bin/dsh")
+                (profile / "package.json").write_text("{}")
         subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
 
     def origin(self, url):
@@ -99,6 +100,42 @@ class DshProfilesTests(unittest.TestCase):
         self.assertEqual(call["env"]["DSH_OLLAMA_API_KEY"], "ollama")
         for name in ("ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN", "OPENAI_API_KEY"):
             self.assertNotIn(name, call["env"])
+
+    def test_web_uses_the_same_role_home_with_separate_loopback_ports(self):
+        for role, port in (("personal", "3080"), ("work", "3081")):
+            with self.subTest(role=role):
+                self.origin(f"https://github.com/{'kqnade' if role == 'personal' else 'jobtalk'}/example.git")
+                result = self.launch(role, "web", "--no-open")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                call = self.calls()[-1]
+                self.assertEqual(call["args"], ["--profile", "web", "--host", "127.0.0.1", "--port", port, "--no-open"])
+                self.assertEqual(call["env"]["DSH_HOME"], str(self.home / f".dsh/{role}"))
+
+    def test_web_rejects_bind_and_composition_overrides(self):
+        for args in (("--host", "0.0.0.0"), ("--port", "3081"), ("--public-url", "https://example.com"),
+                     ("--trusted-host", "example.com"), ("--profile", "tui"), ("--patch", "/tmp/other.yml"), ("login",)):
+            with self.subTest(args=args):
+                result = self.launch("personal", "web", *args)
+                self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.calls(), [])
+
+    def test_web_checks_repository_scope_before_starting(self):
+        self.origin("https://github.com/jobtalk/example.git")
+        personal = self.launch("personal", "web")
+        self.assertEqual(personal.returncode, 2)
+        self.assertIn("Use dsh work", personal.stderr)
+        self.origin("https://github.com/kqnade/example.git")
+        work = self.launch("work", "web")
+        self.assertEqual(work.returncode, 2)
+        self.assertIn("authorized only", work.stderr)
+        self.assertEqual(self.calls(), [])
+
+    def test_web_requires_its_own_runtime_installation(self):
+        shutil.rmtree(self.home / ".dsh/personal/profiles/web/node_modules")
+        result = self.launch("personal", "web")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("mise run dsh-setup", result.stderr)
+        self.assertEqual(self.calls(), [])
 
     def test_work_starts_only_in_known_work_origins(self):
         for url in (
@@ -245,11 +282,11 @@ class DshProfilesTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
             [call["args"] for call in self.calls()],
-            [["plugin", "--profile", "tui", "install"]] * 2,
+            [["plugin", "--profile", surface, "install"] for _ in ("personal", "work") for surface in ("tui", "web")],
         )
         self.assertEqual(
             [call["env"]["DSH_HOME"] for call in self.calls()],
-            [str(self.home / f".dsh/{role}") for role in ("personal", "work")],
+            [str(self.home / f".dsh/{role}") for role in ("personal", "work") for _ in ("tui", "web")],
         )
 
     def test_codex_login_is_personal_and_uses_only_the_harness_store(self):
@@ -291,6 +328,19 @@ class DshProfilesTests(unittest.TestCase):
                 if not version.startswith("link:"):
                     self.assertNotIn("^", version)
                     self.assertNotIn("latest", version)
+
+    def test_web_manifests_mount_only_the_matching_role_and_browser_surface(self):
+        for role in ("personal", "work"):
+            template = ROOT / f"dot_dsh/{role}/profiles/web/package.json.tmpl"
+            rendered = subprocess.run(["chezmoi", "--source", str(ROOT), "execute-template"],
+                                      input=template.read_text(), capture_output=True, text=True, check=True)
+            profile = json.loads(rendered.stdout)
+            self.assertEqual(profile["dependencies"]["@deepseek-ai/dsh"], "0.2.1-rc.2")
+            bundles = profile["dsh"]["profile"]["bundles"]
+            self.assertIn("@deepseek-ai/dsh-web-app", bundles)
+            self.assertIn(f"@dotfiles/dsh-{role}", bundles)
+            self.assertNotIn("@sagmans/dsh-tui", bundles)
+            self.assertEqual("@deepseek-ai/dsh-subagent-claude-code" in bundles, role == "work")
 
     def test_setup_stops_on_install_failure(self):
         self.env["DSH_TEST_EXIT"] = "13"

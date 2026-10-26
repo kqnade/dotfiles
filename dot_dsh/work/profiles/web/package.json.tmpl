@@ -1,0 +1,19 @@
+{
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@deepseek-ai/dsh": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-subagent-claude-code": "0.2.1-rc.2",
+    "@dotfiles/dsh-work": {{ printf "link:%s/.config/deepseek-harness/work" .chezmoi.homeDir | toJson }}
+  },
+  "dsh": {
+    "profile": {
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@deepseek-ai/dsh-subagent-claude-code",
+        "@dotfiles/dsh-work"
+      ]
+    }
+  }
+}

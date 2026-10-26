@@ -1,0 +1,17 @@
+{
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@deepseek-ai/dsh": "0.2.1-rc.2",
+    "@dotfiles/dsh-personal": {{ printf "link:%s/.config/deepseek-harness/personal" .chezmoi.homeDir | toJson }}
+  },
+  "dsh": {
+    "profile": {
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@dotfiles/dsh-personal"
+      ]
+    }
+  }
+}

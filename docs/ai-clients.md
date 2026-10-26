@@ -90,6 +90,15 @@ DeepSeek Harnessはmiseの`npm:@deepseek-ai/dsh`で管理し、TUIには`@sagman
 | `dsh personal` / `dsh-personal` | `~/.dsh/personal/` | Codex契約認証、Ollama | なし |
 | `dsh work` / `dsh-work` | `~/.dsh/work/` | Ollama | Claude Code |
 
+Web UIは`dsh personal web`または`dsh work web`で起動します。個人用は
+`http://127.0.0.1:3080`、仕事用は`http://127.0.0.1:3081`で待ち受け、既定のbrowserを開きます。
+自動で開かない場合は`--no-open`を付け、端末に表示されるtoken付きURLから接続してください。
+このURLは共有しないでください。待受先とportを変更する引数は受け付けません。
+
+同じ用途のTUIとWebは`DSH_HOME`、認証、sessionを共有します。個人用と仕事用の間では
+共有しません。Webにも同じモデル構成とrepositoryの起動制限を適用し、Webの設定は各homeの
+`profiles/web/cordis.patch.yml`に保存します。Webのモデル選択には画面のモデルメニューを使います。
+
 初回のセットアップとCodexへのログインは次のとおりです。
 
 ```sh
@@ -99,7 +108,7 @@ mise run dsh-setup
 dsh personal login
 ```
 
-`dsh-setup`は両方のprofileに固定版のCLIとpluginをインストールします。各profileは同じ
+`dsh-setup`は個人用・仕事用それぞれのTUIとWebに固定版のCLIとpluginをインストールします。各profileは同じ
 依存treeのCLIとpluginで起動します。セットアップではagentを起動せず、Claudeの認証も読み取りません。
 bootstrapにも同じインストール処理が含まれます。管理するbundleとversionは
 `dot_dsh/`のmanifestで指定し、モデルの初期設定は`dot_config/deepseek-harness/`に置きます。
