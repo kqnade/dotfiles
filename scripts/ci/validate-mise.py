@@ -141,8 +141,6 @@ if config.get("min_version") != "2026.8.9":
     fail("min_version must remain 2026.8.9")
 
 settings = config.get("settings", {})
-if tuple(settings.get("lockfile_platforms", ())) != PLATFORMS:
-    fail(f"lockfile_platforms must be exactly {PLATFORMS!r}")
 if settings.get("system_packages", {}).get("managers") != [
     "dnf",
     "pacman",
@@ -234,6 +232,15 @@ if not isinstance(yaskkserv2, dict) or yaskkserv2.get("install_env") != {
     fail("yaskkserv2 must use HTTPS through an isolated Git CLI")
 
 lock_tools = lock.get("tools", {})
+lock_platforms = {
+    "-".join(key.removeprefix("platforms.").split("-")[:2])
+    for entries in lock_tools.values()
+    for entry in entries
+    for key in entry
+    if key.startswith("platforms.")
+}
+if lock_platforms != set(PLATFORMS):
+    fail(f"mise.lock platforms must be exactly {PLATFORMS!r}")
 if set(lock_tools) != EXPECTED_TOOLS:
     fail(
         "lockfile tool set mismatch; "

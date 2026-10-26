@@ -6,7 +6,6 @@ min_version = "2026.8.9"
 activate_aggressive = true
 experimental = true
 lockfile = true
-lockfile_platforms = ["macos-arm64", "macos-x64", "linux-x64"]
 # Use mise's embedded npm installer. Shelling out to Node's npm can trigger its
 # automatic reshim wrapper before mise itself is available on the install PATH.
 npm.package_manager = "auto"
