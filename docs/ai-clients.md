@@ -152,12 +152,62 @@ profileやpatchを差し替えるCLI引数はwrapperから渡せません。
 
 ### 個人用の New Relic telemetry
 
-`dsh personal` の TUI と Web UI は、モデル呼び出しとツール実行を OTLP/HTTP で既存の New Relic へ送ります。
+`dsh personal` の TUI と Web UI は、モデル呼び出し、ツール実行、セッション、ターン、サブエージェントの集計を OTLP/HTTP で既存の New Relic へ送ります。
 service 名は `deepseek-harness`、scope は `dsh.telemetry` です。
 `dsh.request.count`・`dsh.request.duration`・`dsh.token.usage` と
 `dsh.tool.count`・`dsh.tool.duration` を記録し、対応する span と本文を含まないイベントログも送ります。
-属性は provider、model、個人用 profile、tool 名、成功／失敗などに限定します。
+属性は provider、model、個人用 profile、tool 名、親／子の区分、終了理由、成功／失敗などに限定します。
 会話本文、ツール引数・出力、ファイルパス、認証情報、エラー本文は含めません。
+
+#### ダッシュボード用の指標
+
+| 指標 | 内容 |
+| --- | --- |
+| `session.count` | agent の作成・読込回数。`source` は `startup` / `resume` / `clear` / `compact` |
+| `session.loaded` / `session.active` | プロセス内の読込済み数／実行中の数。毎秒の gauge |
+| `session.duration` | 読込から破棄までの時間。待機時間を含む |
+| `turn.count` / `turn.duration` | 開始と終了を観測できたターン数／処理時間 |
+| `turn.interrupted.count` / `request.interrupted.count` | 中断したターン／モデル試行の数 |
+| `request.first_response.duration` | 試行開始から最初の非空テキスト・推論・ツール呼出デルタまでの時間 |
+| `request.retry.count` / `request.retry.started.count` | リトライ待機の予約数／待機後に再試行へ進んだ数 |
+| `request.retry.delay` | リトライの予定待機時間 |
+| `request.error.count` | request-error フックで観測した失敗数。開始前の失敗も含む |
+| `cost.estimated.usage` | API単価換算の推定USD。実請求額ではない |
+| `cost.coverage.count` | 試行ごとの料金取得状況。`status` は `estimated` / `unavailable` |
+| `subagent.started.count` | 再開を含むサブエージェントの稼働開始数 |
+| `subagent.count` / `subagent.duration` | 開始と終了を観測できた稼働期間の数／時間 |
+| `subagent.usage.unavailable.count` | 使用量を取得できない外部サブエージェントの終了数 |
+
+表の指標名にはすべて `dsh.` を付けます。時間の単位はミリ秒です。
+count と usage は差分カウンターなので合計し、duration は gauge として平均・最大値を使います。
+新規セッション数は `source = 'startup'`、再開数は `source = 'resume'` で分けます。
+clear・compact を新規会話数へ足さないでください。履歴を引き継ぐ新規forkも startup に含まれ、
+`agent_role = 'root'` / `'subagent'` で親子を分けられます。
+セッション指標には provider・model を付けません。ターンは最初のモデル試行の解決済みルートに帰属させ、
+モデル試行のないターンは unknown とします。ターン途中でモデルを変更した場合も、各試行の使用量はその試行のモデルへ帰属します。
+
+loaded・active にはプロセスごとのランダムな `instance` を付けます。
+複数プロセスでは直近の短い期間にある各 instance の最新値を合計し、サンプル値自体は合計しません。
+通常終了時はゼロを送りますが、強制終了・通信断では最後の値が残るため、古い instance を除外してください。
+この値は保存済みセッションの総数ではありません。
+
+error_class は rate_limit・authentication・server・client・timeout・network・unknown に限定します。
+モデル試行の終了指標にも、取得できた失敗分類を付けます。
+request.error.count と失敗した request.count は重なり得るため、足し合わせません。
+初回応答時間には推論やツール呼出も含まれ、画面に最初の文章が表示されるまでの時間とは異なります。
+何も応答しなかった試行には初回応答時間を記録しません。
+
+#### 料金と使用量
+
+推定料金には、起動中のDSHが依存する pi-ai の静的 openai-codex カタログを使います。
+認証処理やプロバイダーのコードは実行せず、公開モデルデータだけを読み込みます。
+モデルIDを完全一致させ、キャッシュを含む入力総量で単価の段階を選びます。
+サブスク料金、割引、税、電力費などは含まず、請求額を示す指標は送りません。
+料金不明のモデル、Ollama、使用量不明、キャッシュ保存期間を判別できない料金体系は unavailable です。
+不明な料金をゼロとして補いません。カタログを読み込めない場合はローカルに警告し、他の計測は続けます。
+推定額には `currency = 'USD'` と `pricing_source = 'pi_ai_catalog'` を付け、
+セント未満を丸めず送ります。料金計算では pi-ai アダプターが省略するゼロのキャッシュ数をゼロとして扱い、
+推論トークンを出力へ二重加算しません。集計額と併せて coverage の unavailable 件数を確認してください。
 
 モデル使用量は各試行の最後の usage を一度だけ計上します。未取得の使用量をゼロとして補いません。
 入力・キャッシュ読み取り・キャッシュ書き込みは DSH の区分を維持します。
@@ -184,8 +234,14 @@ DSH 画面は履歴を含むセッション累積、New Relic は送信できた
 
 request の時間はライブストリーム開始から確定まで、tool の時間は呼び出しから結果までのミリ秒です。
 ネストしたツールには親 span を付けます。親の `run_code` と子の時間は重なるため、単純に合計しません。
-履歴の読み直しは集計せず、ローカル子 agent は自身のイベントとして計測します。
-外部子 agent の内部、ライブストリーム開始前の失敗、タイトル生成などの直接 LLM 呼び出しは対象外です。
+履歴の読み直しは集計せず、ローカル子 agent の使用量は自身のストリームから一度だけ計測します。
+その試行の解決済み provider・model と `agent_role = 'subagent'` を使い、親モデルへ帰属させません。
+サブエージェントの稼働開始・終了は `backend` と `local` で区別します。
+backend は委譲先の種類であり、LLM の provider ではありません。起動前に失敗した委譲は起動数に含みません。
+常駐中の追加指示は起動数を増やさず、終了後の再開は別の稼働期間として数えます。
+外部Codexなどの使用量・実行モデルはDSH 0.2.1-rc.2の公開イベントにないため取得不可です。
+ゼロ使用量や親のモデルを代入せず、外部子 agent の内部処理は集計しません。
+タイトル生成など、agent ストリームを通らない直接 LLM 呼び出しも対象外です。
 
 キーは `DSH_NEW_RELIC_API_KEY`、`NEW_RELIC_LICENSE_KEY`、管理する 1Password 参照の順に取得します。
 取得は origin の認可後に行い、失敗した場合は起動を止めます。
@@ -214,7 +270,7 @@ Claudeのautomatic memoryは無効のままです。`.dev/`を持つrepository�
 mise exec -- python3 scripts/ci/test-claude-settings.py
 mise exec -- python3 scripts/ci/test-pi-telemetry.py
 mise exec -- python3 scripts/ci/test-dsh-profiles.py
-mise exec -- node --test scripts/ci/test-dsh-telemetry.mjs
+mise exec -- node --test scripts/ci/test-dsh-telemetry.mjs scripts/ci/test-dsh-dashboard.mjs scripts/ci/test-dsh-cost.mjs scripts/ci/test-dsh-pricing.mjs
 mise exec -- python3 scripts/ci/test-ollama-service.py
 mise exec -- python3 scripts/ci/test-client-workflow-reset.py
 mise exec -- python3 scripts/ci/validate-repository.py

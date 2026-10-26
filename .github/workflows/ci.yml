@@ -82,7 +82,7 @@ jobs:
           mise exec -- python3 scripts/ci/test-pi-telemetry.py
           mise exec -- python3 scripts/ci/test-dsh-profiles.py
           mise exec -- python3 scripts/ci/test-dsh-plugins.py
-          mise exec -- node --test scripts/ci/test-dsh-telemetry.mjs
+          mise exec -- node --test scripts/ci/test-dsh-telemetry.mjs scripts/ci/test-dsh-dashboard.mjs scripts/ci/test-dsh-cost.mjs scripts/ci/test-dsh-pricing.mjs
           mise exec -- python3 scripts/ci/test-ollama-service.py
           mise exec -- python3 scripts/ci/test-pi-lsp-package.py
           mise exec -- python3 scripts/ci/test-git-cc.py

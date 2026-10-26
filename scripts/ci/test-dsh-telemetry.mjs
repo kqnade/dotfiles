@@ -35,7 +35,7 @@ test('rendered plugin registers live hooks, exports OTLP, and drains on unload',
   t.after(() => rm(dir, { recursive: true, force: true }));
   const source = new URL('../../dot_config/deepseek-harness/personal/', import.meta.url);
   await mkdir(join(dir, 'lib'));
-  for (const file of ['package.json', 'new-relic.mjs', 'telemetry.mjs']) await copyFile(new URL(file, source), join(dir, file));
+  for (const file of ['package.json', 'new-relic.mjs', 'telemetry.mjs', 'cost.mjs', 'pricing.mjs']) await copyFile(new URL(file, source), join(dir, file));
   for (const name of ['new-relic-exporter', 'otlp']) {
     const input = await readFile(new URL('lib/' + name + '.mjs.tmpl', source), 'utf8');
     const output = execFileSync('chezmoi', ['--source', new URL('../../', import.meta.url).pathname, 'execute-template'], { input, encoding: 'utf8' });
@@ -44,18 +44,41 @@ test('rendered plugin registers live hooks, exports OTLP, and drains on unload',
   const resolved = createRequire(join(dir, 'package.json')).resolve('@dotfiles/dsh-personal/new-relic');
   assert.equal(resolved, await realpath(join(dir, 'new-relic.mjs')));
   const plugin = await import(pathToFileURL(resolved));
+  const entry = join(dir, 'cli.js');
+  await writeFile(entry, '');
+  const adapter = join(dir, 'node_modules/@deepseek-ai/dsh-llm-pi-ai');
+  const pi = join(dir, 'node_modules/@earendil-works/pi-ai');
+  await mkdir(adapter, { recursive: true });
+  await mkdir(join(pi, 'dist/providers/data'), { recursive: true });
+  await writeFile(join(adapter, 'package.json'), JSON.stringify({ name: '@deepseek-ai/dsh-llm-pi-ai', exports: { './package.json': './package.json' } }));
+  await writeFile(join(pi, 'package.json'), JSON.stringify({ name: '@earendil-works/pi-ai' }));
+  await writeFile(join(pi, 'dist/providers/data/openai-codex.json'), JSON.stringify({ api: { test: {
+    id: 'test-model', provider: 'openai-codex', cost: { input: 2, output: 8, cacheRead: 0.2, cacheWrite: 2.5 },
+  } } }));
+  const previousEntry = process.argv[1];
+  process.argv[1] = entry;
+  t.after(() => { process.argv[1] = previousEntry; });
   const previous = { ...process.env };
   t.after(() => { process.env = previous; });
   process.env.DSH_NEW_RELIC_ENABLE = '1';
   process.env.DSH_NEW_RELIC_API_KEY = 'test-secret';
-  const requests = [], callbacks = new Map(), cleanup = [];
+  const requests = [], callbacks = new Map(), listenerOptions = new Map(), cleanup = [];
   t.mock.method(globalThis, 'fetch', async (url, options) => { requests.push({ url, options }); return { status: 200, text: async () => '' }; });
-  const ctx = { on: (name, fn) => callbacks.set(name, fn), effect: fn => cleanup.push(fn()) };
+  const ctx = { logger: { warn(message) { assert.fail(message); } }, on: (name, fn, options) => { callbacks.set(name, fn); listenerOptions.set(name, options); }, effect: fn => cleanup.push(fn()) };
   plugin.apply(ctx);
-  assert.equal(typeof callbacks.get('agent/assistant-stream'), 'function');
+  for (const hook of ['agent/assistant-stream', 'agent/created', 'agent/status', 'agent/request-error', 'subagent/start', 'subagent/end']) {
+    assert.equal(typeof callbacks.get(hook), 'function');
+  }
+  assert.equal(listenerOptions.get('agent/request-error')?.prepend, true);
   const f = fixture();
+  callbacks.get('agent/created')({ agent: f.agent, source: 'startup' });
+  callbacks.get('agent/status')({ agent: f.agent, status: 'running' });
+  callbacks.get('session/event')(f.session, { type: 'turn/start', seq: 1, time: 1000, data: { turn: 1 } });
+  callbacks.get('session/event')(f.session, { type: 'turn/end', seq: 2, time: 1200, data: { turn: 1, reason: { kind: 'completed' } } });
+  callbacks.get('subagent/start')({ runId: 'run', provider: 'codex', local: false });
+  callbacks.get('subagent/end')({ runId: 'run', stopReason: 'completed' });
   callbacks.get('agent/assistant-stream')({ agent: f.agent, frame: { type: 'start', attemptId: 'a', revision: 1 } });
-  callbacks.get('agent/assistant-stream')({ agent: f.agent, frame: { type: 'chunk', attemptId: 'a', revision: 2, chunk: { type: 'usage', usage: { inputTokens: 20, cacheReadTokens: 80 } } } });
+  callbacks.get('agent/assistant-stream')({ agent: f.agent, frame: { type: 'chunk', attemptId: 'a', revision: 2, chunk: { type: 'usage', usage: { inputTokens: 20, outputTokens: 2, cacheReadTokens: 80 } } } });
   callbacks.get('agent/assistant-stream')({ agent: f.agent, frame: { type: 'end', attemptId: 'a', revision: 4, outcome: { kind: 'committed', eventType: 'assistant/message' } } });
   for (const dispose of cleanup.reverse()) await dispose();
   assert.ok(requests.length >= 2);
@@ -67,6 +90,14 @@ test('rendered plugin registers live hooks, exports OTLP, and drains on unload',
   const exportedCache = JSON.parse(metricRequest.options.body).resourceMetrics[0].scopeMetrics[0].metrics
     .filter(r => r.name === 'dsh.cache.token.usage');
   assert.deepEqual(exportedCache.map(r => r.sum.dataPoints[0].asInt), ['80', '20']);
+  const exported = JSON.parse(metricRequest.options.body).resourceMetrics[0].scopeMetrics[0].metrics;
+  const cost = exported.find(r => r.name === 'dsh.cost.estimated.usage');
+  assert.ok(Math.abs(cost.sum.dataPoints[0].asDouble - 0.000072) < 1e-12);
+  assert.equal(cost.sum.aggregationTemporality, 1);
+  for (const name of ['dsh.session.count', 'dsh.turn.count', 'dsh.subagent.started.count', 'dsh.subagent.usage.unavailable.count']) {
+    assert.equal(exported.find(r => r.name === name).sum.dataPoints[0].asInt, '1');
+  }
+  assert.equal(exported.find(r => r.name === 'dsh.session.active').gauge.dataPoints[0].asInt, '0');
   process.env.DSH_NEW_RELIC_ENABLE = '0';
   plugin.apply({ on() { assert.fail('disabled telemetry must not subscribe'); }, effect() { assert.fail('disabled telemetry must not create effects'); } });
 });
