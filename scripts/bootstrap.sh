@@ -18,6 +18,7 @@ bash "$SCRIPT_DIR/apply.sh"
 bash "$SCRIPT_DIR/install-font.sh"
 bash "$SCRIPT_DIR/build-skk-dictionary.sh"
 bash "$SCRIPT_DIR/configure-herdr.sh"
+bash "$SCRIPT_DIR/configure-dsh.sh"
 
 MISE_BIN="$(dotfiles_mise_bin)"
 readonly MISE_BIN

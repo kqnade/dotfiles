@@ -488,7 +488,7 @@ class ValidateMiseTests(unittest.TestCase):
         self.assertEqual(tasks.returncode, 0, tasks.stderr)
         self.assertEqual(
             {task["name"] for task in json.loads(tasks.stdout)},
-            {"apply", "bootstrap", "doctor", "format", "pre-commit"},
+            {"apply", "bootstrap", "doctor", "dsh-setup", "format", "pre-commit"},
         )
 
     def test_bootstrap_fragment_is_not_a_home_directory_target(self) -> None:

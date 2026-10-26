@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+usage() {
+  printf '%s\n' 'Usage: dsh personal|work [TUI options]; dsh personal login' \
+    'Personal: Codex subscription and Ollama. Work: Ollama and Claude Code subagent.'
+}
+
+case "${1:-}" in
+  personal | work)
+    role="$1"
+    shift
+    ;;
+  -h | --help | '')
+    usage
+    exit 0
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac
+
+# The outer CLI can replace the composition; expose only the TUI interface.
+validate_arguments() {
+  local option value provider
+  while [[ $# -gt 0 ]]; do
+    option="$1"
+    shift
+    case "$option" in
+      --new | --no-color | --no-bell | --profiling | -h | --help | list-models) continue ;;
+      --resume)
+        if [[ $# -gt 0 && "$1" != -* ]]; then shift; fi
+        continue
+        ;;
+      --resume=*) continue ;;
+      --model | --provider | --preset)
+        [[ $# -gt 0 && "$1" != -* ]] || {
+          echo "$option requires a value." >&2
+          return 2
+        }
+        value="$1"
+        shift
+        ;;
+      --model=* | --provider=* | --preset=*)
+        value="${option#*=}"
+        option="${option%%=*}"
+        ;;
+      *)
+        echo "Unsupported managed TUI argument: $option" >&2
+        return 2
+        ;;
+    esac
+    provider=""
+    if [[ "$option" == --provider ]]; then
+      provider="$value"
+    elif [[ "$option" == --model && "$value" == */* ]]; then
+      provider="${value%%/*}"
+    fi
+    case "$provider" in
+      '' | ollama) ;;
+      openai-codex) [[ "$role" == personal ]] || return 2 ;;
+      *)
+        echo "Provider $provider is not enabled for $role." >&2
+        return 2
+        ;;
+    esac
+  done
+}
+login=false
+if [[ "$role" == personal && "${1:-}" == login && $# -eq 1 ]]; then
+  login=true
+else
+  validate_arguments "$@"
+fi
+
+authorize_repository() {
+  local remotes status url work_origin
+  if git config --get-all remote.origin.url >/dev/null; then
+    remotes="$(git remote get-url --all origin)" || return 1
+  else
+    status=$?
+    if [[ "$status" -eq 1 && "$role" == personal ]]; then return 0; fi
+    echo "Cannot authorize $role Harness without a readable repository origin." >&2
+    return 2
+  fi
+  while IFS= read -r url; do
+    url="$(printf '%s' "$url" | tr '[:upper:]' '[:lower:]')"
+    work_origin=false
+    if [[ "$url" =~ ^((ssh|https?|git)://([^/@]+@)?github\.com(:[0-9]+)?/|([^/@:]+@)?github\.com:)(livesense-inc|jobtalk)/[^/]+/?$ ]]; then
+      work_origin=true
+    fi
+    if [[ "$role" == personal && "$work_origin" == true ]]; then
+      echo 'Use dsh work in livesense-inc and jobtalk repositories.' >&2
+      return 2
+    fi
+    if [[ "$role" == work && "$work_origin" != true ]]; then
+      echo 'Work Harness is authorized only for livesense-inc and jobtalk repositories.' >&2
+      return 2
+    fi
+  done <<<"$remotes"
+}
+# Refuse the wrong account scope before starting a process or reading credentials.
+authorize_repository
+
+export DSH_HOME="$HOME/.dsh/$role"
+export DSH_OLLAMA_API_KEY=ollama
+unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN CLAUDE_CODE_OAUTH_TOKEN CLAUDE_API_KEY
+unset OPENAI_API_KEY OPENAI_ACCESS_TOKEN DEEPSEEK_API_KEY CLAUDE_CONFIG_DIR
+if [[ "$role" == personal ]]; then
+  export CLAUDE_CONFIG_DIR="$DSH_HOME/claude-disabled"
+fi
+dsh_bin="$DSH_HOME/profiles/tui/node_modules/.bin/dsh"
+if [[ ! -x "$dsh_bin" ]]; then
+  echo 'Harness profile dependencies are missing; run mise run dsh-setup.' >&2
+  exit 1
+fi
+if [[ "$login" == true ]]; then
+  exec "$DSH_HOME/profiles/tui/node_modules/.bin/dsh-provider-extra-login"
+fi
+exec "$dsh_bin" --profile tui "$@"

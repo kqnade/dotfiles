@@ -1,0 +1,24 @@
+- id: agent-default-model
+  config:
+    provider: openai-codex
+    model: gpt-6-luna
+
+- id: llm-pi-ai
+  config:
+    providers:
+      openai-codex: {}
+      ollama:
+        api: openai-completions
+        baseURL: http://127.0.0.1:11434/v1
+        apiKeyEnv: DSH_OLLAMA_API_KEY
+        compat:
+          supportsDeveloperRole: false
+          maxTokensField: max_tokens
+        models:
+          - id: qwen3.8:27b-mlx
+
+- id: subagent-claude-code
+  disabled: true
+
+- id: tool-subagent-claude-code
+  disabled: true

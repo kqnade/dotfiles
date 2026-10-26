@@ -873,6 +873,10 @@ url = "https://nodejs.org/dist/v26.12.1/node-v26.12.1-darwin-x64.tar.gz"
 checksum = "sha256:b85c2ea4420ad0bc4abf2dc6cf1f55130ed681f1cabf60cf3f526e4c9e2712ff"
 url = "https://nodejs.org/dist/v26.12.1/node-v26.12.1-darwin-x64.tar.gz"
 
+[[tools."npm:@deepseek-ai/dsh"]]
+version = "0.2.1-rc.2"
+backend = "npm:@deepseek-ai/dsh"
+
 [[tools."npm:@earendil-works/pi-coding-agent"]]
 version = "1.4.0"
 backend = "npm:@earendil-works/pi-coding-agent"

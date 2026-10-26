@@ -74,6 +74,7 @@ claude = "2.1.309"
 "aqua:openai/codex" = "0.162.1"
 opencode = "1.19.4"
 ollama = "0.40.11"
+"npm:@deepseek-ai/dsh" = { version = "0.2.1-rc.2", depends = ["node"] }
 "npm:@earendil-works/pi-coding-agent" = { version = "1.4.0", depends = [
   "node",
 ] }
@@ -101,6 +102,10 @@ run = "bash \"${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/a
 [tasks.bootstrap]
 description = "Finish idempotent machine setup after tools are installed"
 run = "bash \"${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/bootstrap.sh\""
+
+[tasks.dsh-setup]
+description = "Install isolated personal and work DeepSeek Harness profiles"
+run = "bash \"${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/configure-dsh.sh\""
 
 [tasks.doctor]
 description = "Diagnose tools, packages, dotfiles, fonts, and services"

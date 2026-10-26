@@ -80,6 +80,7 @@ jobs:
           mise exec -- python3 scripts/ci/test-pr-labels.py
           mise exec -- python3 scripts/ci/test-codex-usage-exporter.py
           mise exec -- python3 scripts/ci/test-pi-telemetry.py
+          mise exec -- python3 scripts/ci/test-dsh-profiles.py
           mise exec -- python3 scripts/ci/test-pi-lsp-package.py
           mise exec -- python3 scripts/ci/test-git-cc.py
           mise exec -- python3 scripts/ci/test-client-runtime.py

@@ -38,6 +38,7 @@ EXPECTED_TOOLS = {
     "just",
     "neovim",
     "node",
+    "npm:@deepseek-ai/dsh",
     "npm:@earendil-works/pi-coding-agent",
     "npm:bash-language-server",
     "npm:ccusage",

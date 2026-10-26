@@ -1,0 +1,19 @@
+{
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@deepseek-ai/dsh": "0.2.1-rc.2",
+    "@sagmans/dsh-tui": "0.16.0",
+    "@sagmans/dsh-provider-extra": "0.8.1",
+    "@dotfiles/dsh-personal": {{ printf "link:%s/.config/deepseek-harness/personal" .chezmoi.homeDir | toJson }}
+  },
+  "dsh": {
+    "profile": {
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@sagmans/dsh-tui",
+        "@dotfiles/dsh-personal"
+      ]
+    }
+  }
+}

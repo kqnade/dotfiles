@@ -11,6 +11,7 @@
 | Claude固有の指示 | 必要なrepositoryの`CLAUDE.md`や`.claude/rules/` |
 | Claudeの設定・保護 | `.chezmoitemplates/claude-settings.json.tmpl`、`dot_claude/` |
 | Piの設定・拡張 | `dot_pi/agent/` |
+| DeepSeek Harnessの構成・profile | `dot_config/deepseek-harness/`、`dot_dsh/` |
 | Codex CLIの設定 | `dot_codex/`（Piには適用されない） |
 | 共通のagent instructions | `dot_agents/AGENTS.md`、各clientのadapterからsymlink配備 |
 | 共通のworkflow Skills | `dot_agents/skills/`、Claude用リンクは`dot_claude/skills/` |
@@ -78,6 +79,61 @@ Claudeでは許可された仕事用repositoryのsessionで`/memory`を使って
 - Piのproject trustはsandboxではありません。必要ならOS accountや隔離環境、credentialのscopeで
   制限します。Claudeの起動保護もOSレベルの隔離の代わりにはなりません。
 
+## DeepSeek Harness
+
+DeepSeek Harnessはmiseの`npm:@deepseek-ai/dsh`で管理し、TUIには`@sagmans/dsh-tui`を使います。
+どちらもdeveloper previewに対応する固定versionです。profileごとに`DSH_HOME`を分け、
+認証、session、設定、pluginのインストール先を共有しません。
+
+| 起動 | 保存先 | 親agentのモデル | 外部subagent |
+|---|---|---|---|
+| `dsh personal` / `dsh-personal` | `~/.dsh/personal/` | Codex契約認証、Ollama | なし |
+| `dsh work` / `dsh-work` | `~/.dsh/work/` | Ollama | Claude Code |
+
+初回のセットアップとCodexへのログインは次のとおりです。
+
+```sh
+mise install npm:@deepseek-ai/dsh
+mise run apply
+mise run dsh-setup
+dsh personal login
+```
+
+`dsh-setup`は両方のprofileに固定版のCLIとpluginをインストールします。各profileは同じ
+依存treeのCLIとpluginで起動します。セットアップではagentを起動せず、Claudeの認証も読み取りません。bootstrapにも同じインストール処理が含まれます。管理するbundleとversionは
+`dot_dsh/`のmanifestで指定し、モデルの初期設定は`dot_config/deepseek-harness/`に置きます。
+TUIで保存したモデル選択などの設定は、各homeの`profiles/tui/cordis.patch.yml`に残ります。
+
+個人用のCodexは`openai-codex` providerを通じてHarnessから直接呼び出します。Codex CLIを
+subagentとして起動しません。`login`は`@sagmans/dsh-provider-extra`のログイン専用CLIを使い、
+OAuth認証を個人用Harnessの`.credentials.yaml`へ保存します。このpackageのprovider bundleは
+有効にせず、既存のPiやCodex CLIの認証情報もコピーしません。
+
+Ollamaの接続先は両方とも`http://127.0.0.1:11434/v1`、モデルは`qwen3.8:27b-mlx`です。
+Ollamaを別のterminalで起動し、モデルが未取得なら取得してください。モデルのダウンロードや
+サーバーの常駐化は`dsh-setup`では行いません。
+
+```sh
+ollama serve
+# 別のterminalで実行
+ollama pull qwen3.8:27b-mlx
+dsh personal --model ollama/qwen3.8:27b-mlx
+```
+
+仕事用の親agentはOllamaを使い、`subagent_claude_code`でClaudeへ依頼します。Claudeは
+公式Agent SDKに同梱されたruntimeで実行され、hostの通常のClaude設定と承認済みaccountを
+使います。zshの`claude` functionを経由するわけではありません。`permissionMode: dontAsk`により、
+未許可の操作を対話なしに拒否します。Claudeへのログインは承認済みの仕事用環境で行ってください。
+
+起動wrapperは認証を読む前にGitが解決した全originを確認します。仕事用はGitHubの
+`livesense-inc`／`jobtalk`だけを許可し、個人用はそのownerを拒否します。個人用ではoriginなしの
+作業も許可します。継承されたAnthropic、OpenAI、DeepSeekの認証変数は起動時に除きます。
+profileやpatchを差し替えるCLI引数はwrapperから渡せません。
+
+この確認は誤起動防止でありsandboxではありません。起動後の別repositoryへの移動、任意のshell
+操作、直接binaryからの起動まで隔離するものではありません。profileへ仕事用credentialを
+コピーせず、仕事の内容を個人用の認証や外部サービスへ渡さないでください。
+
 ## 検証と引き継ぎ
 
 小変更は対象テストと差分確認を基本とし、複雑・高リスクな変更は計画確認と独立したレビューを
@@ -93,6 +149,7 @@ Claudeのautomatic memoryは無効のままです。`.dev/`を持つrepository�
 ```sh
 mise exec -- python3 scripts/ci/test-claude-settings.py
 mise exec -- python3 scripts/ci/test-pi-telemetry.py
+mise exec -- python3 scripts/ci/test-dsh-profiles.py
 mise exec -- python3 scripts/ci/test-client-workflow-reset.py
 mise exec -- python3 scripts/ci/validate-repository.py
 git diff --check
