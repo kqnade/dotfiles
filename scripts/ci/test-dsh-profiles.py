@@ -116,9 +116,8 @@ class DshProfilesTests(unittest.TestCase):
                     expected += ["--patch", str(self.home / ".config/deepseek-harness/work/web-required.patch.yml")]
                 self.assertEqual(call["args"], expected + ["--host", "127.0.0.1", "--port", port, "--no-open"])
                 self.assertEqual(call["env"]["DSH_HOME"], str(self.home / f".dsh/{role}"))
-                self.assertEqual(call["env"]["DSH_NEW_RELIC_ENABLE"], "1" if role == "personal" else "0")
-                if role == "work":
-                    self.assertNotIn("DSH_NEW_RELIC_API_KEY", call["env"])
+                self.assertEqual(call["env"]["DSH_NEW_RELIC_ENABLE"], "1")
+                self.assertEqual(call["env"]["DSH_NEW_RELIC_API_KEY"], "test-new-relic-key")
 
     @unittest.skipUnless(os.environ.get("DSH_TEST_CLI"), "requires installed DSH CLI")
     def test_real_cli_consumes_guard_overlay_before_web_arguments(self):
@@ -175,21 +174,22 @@ class DshProfilesTests(unittest.TestCase):
         self.assertEqual(env["DSH_NEW_RELIC_API_KEY"], "test-new-relic-key")
 
     def test_opt_out_and_help_do_not_pass_telemetry_key(self):
-        for value, args in (("off", ()), ("FALSE", ()), ("0", ()), ("1", ("--help",)), ("1", ("list-models",))):
-            with self.subTest(value=value, args=args):
-                self.env["DSH_NEW_RELIC_ENABLE"] = value
-                result = self.launch("personal", *args)
-                self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertEqual(self.calls()[-1]["env"]["DSH_NEW_RELIC_ENABLE"], "0")
-                self.assertNotIn("DSH_NEW_RELIC_API_KEY", self.calls()[-1]["env"])
+        for role in ("personal", "work"):
+            self.origin(f"https://github.com/{'kqnade' if role == 'personal' else 'jobtalk'}/example.git")
+            for value, args in (("off", ()), ("FALSE", ()), ("0", ()), ("1", ("--help",)), ("1", ("list-models",))):
+                with self.subTest(role=role, value=value, args=args):
+                    self.env["DSH_NEW_RELIC_ENABLE"] = value
+                    result = self.launch(role, *args)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(self.calls()[-1]["env"]["DSH_NEW_RELIC_ENABLE"], "0")
+                    self.assertNotIn("DSH_NEW_RELIC_API_KEY", self.calls()[-1]["env"])
 
-    def test_work_never_inherits_personal_telemetry(self):
+    def test_work_enables_telemetry_by_default(self):
         self.origin("https://github.com/jobtalk/example.git")
-        self.env["DSH_NEW_RELIC_ENABLE"] = "1"
         result = self.launch("work")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(self.calls()[0]["env"]["DSH_NEW_RELIC_ENABLE"], "0")
-        self.assertNotIn("DSH_NEW_RELIC_API_KEY", self.calls()[0]["env"])
+        self.assertEqual(self.calls()[0]["env"]["DSH_NEW_RELIC_ENABLE"], "1")
+        self.assertEqual(self.calls()[0]["env"]["DSH_NEW_RELIC_API_KEY"], "test-new-relic-key")
 
     def test_telemetry_key_lookup_failure_stops_launch(self):
         self.env.pop("DSH_NEW_RELIC_API_KEY")

@@ -2,6 +2,10 @@
   "name": "@dotfiles/dsh-work",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
+  "exports": {
+    "./new-relic": "./new-relic.mjs"
+  },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"

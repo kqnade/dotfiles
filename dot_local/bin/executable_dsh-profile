@@ -126,7 +126,7 @@ configure_telemetry() {
   local enabled key runtime_config op_ref option
   enabled="$(printf '%s' "${DSH_NEW_RELIC_ENABLE:-1}" | tr '[:upper:]' '[:lower:]')"
   case "$enabled" in 0 | false | no | off | disabled) enabled=0 ;; *) enabled=1 ;; esac
-  if [[ "$role" != personal || "$login" == true ]]; then enabled=0; fi
+  if [[ "$login" == true ]]; then enabled=0; fi
   for option in "$@"; do
     case "$option" in -h | --help | list-models) enabled=0 ;; esac
   done

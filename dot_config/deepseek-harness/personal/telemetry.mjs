@@ -18,14 +18,14 @@ function errorClass(failure) {
   return 'unknown';
 }
 
-export function createCollector({ addMetric, addSpan, now = Date.now, getRates = () => null }) {
+export function createCollector({ addMetric, addSpan, now = Date.now, getRates = () => null, profile = 'personal' }) {
   let sessions = new WeakMap();
   let loaded = 0, active = 0;
   const instance = id(8);
   const subagents = new Map();
   function subagentStart(info) {
     if (subagents.has(info.runId)) return;
-    const attributes = { profile: 'personal', backend: ['spawn', 'fork', 'codex', 'claude-code'].includes(info.provider) ? info.provider : 'other', local: info.local === true };
+    const attributes = { profile, backend: ['spawn', 'fork', 'codex', 'claude-code'].includes(info.provider) ? info.provider : 'other', local: info.local === true };
     subagents.set(info.runId, { id: id(8), trace: id(16), time: now(), attributes });
     metric('dsh.subagent.started.count', 1, attributes);
   }
@@ -39,7 +39,7 @@ export function createCollector({ addMetric, addSpan, now = Date.now, getRates =
     finish(start, 'dsh.subagent', start, attributes);
   }
   function sample() {
-    const attributes = { profile: 'personal', instance };
+    const attributes = { profile, instance };
     metric('dsh.session.loaded', loaded, attributes);
     metric('dsh.session.active', active, attributes);
   }
@@ -78,7 +78,7 @@ export function createCollector({ addMetric, addSpan, now = Date.now, getRates =
     return sessions.get(session);
   }
   function sessionMetadata(session) {
-    return { profile: 'personal', agent_role: session.header?.origin === 'subagent' ? 'subagent' : 'root' };
+    return { profile, agent_role: session.header?.origin === 'subagent' ? 'subagent' : 'root' };
   }
   function metadata(session) {
     const config = session.requestHeader()?.config;

@@ -2,7 +2,7 @@ import { createExporter } from './lib/new-relic-exporter.mjs';
 import { createCollector } from './telemetry.mjs';
 import { catalogRates, loadPricingCatalog } from './pricing.mjs';
 
-export function apply(ctx) {
+export function apply(ctx, { profile = 'personal' } = {}) {
   if (process.env.DSH_NEW_RELIC_ENABLE !== '1') return;
   const apiKey = process.env.DSH_NEW_RELIC_API_KEY;
   if (!apiKey?.trim()) throw new Error('DSH New Relic telemetry requires a license key.');
@@ -11,7 +11,7 @@ export function apply(ctx) {
   let catalog;
   try { catalog = loadPricingCatalog(process.argv[1]); }
   catch { ctx.logger.warn('DSH pricing catalog could not be loaded; estimated cost will be unavailable.'); }
-  const collector = createCollector({ ...exporter, getRates: (provider, model, usage) => catalogRates(catalog, provider, model, usage) });
+  const collector = createCollector({ ...exporter, profile, getRates: (provider, model, usage) => catalogRates(catalog, provider, model, usage) });
   ctx.effect(() => {
     const timer = setInterval(() => { collector.sample(); void exporter.flush(); }, 1000);
     timer.unref();

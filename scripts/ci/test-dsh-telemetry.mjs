@@ -8,6 +8,21 @@ import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { createCollector } from '../../dot_config/deepseek-harness/personal/telemetry.mjs';
 
+test('work collector labels metrics and spans without exporting event payloads', () => {
+  const metrics = [], spans = [];
+  const collector = createCollector({ profile: 'work', addMetric: m => metrics.push(m), addSpan: s => spans.push(s) });
+  const session = { header: { origin: 'root', title: 'SECRET' }, requestHeader: () => ({ config: { provider: 'ollama', model: 'test' } }) };
+  collector.created({ agent: { session }, source: 'startup' });
+  collector.sample();
+  collector.subagentStart({ runId: 'SECRET', provider: 'claude-code', local: false });
+  collector.subagentEnd({ runId: 'SECRET', stopReason: 'completed', output: 'SECRET' });
+  collector.event(session, { type: 'tool/call', time: 1000, data: { callId: 'SECRET', name: 'bash', arguments: 'SECRET' } });
+  collector.event(session, { type: 'tool/result', time: 1010, data: { message: { toolCallId: 'SECRET', content: ['SECRET'] } } });
+  assert.ok(metrics.length > 0 && spans.length > 0);
+  assert.ok([...metrics, ...spans].every(item => item.attributes.profile === 'work'));
+  assert.equal(JSON.stringify([metrics, spans]).includes('SECRET'), false);
+});
+
 test('native and nested tool spans use event times and preserve enclosure without payloads', () => {
   const f = fixture();
   f.collector.event(f.session, { type: 'tool/call', time: 1000, data: { callId: 'root', name: 'run_code', arguments: 'SECRET' } });
@@ -30,9 +45,11 @@ test('orphan results and restored messages do not recount usage or tools', () =>
   assert.equal(f.spans.length, 0);
 });
 
-test('rendered plugin registers live hooks, exports OTLP, and drains on unload', async t => {
-  const dir = await mkdtemp(join(tmpdir(), 'dsh-telemetry-'));
-  t.after(() => rm(dir, { recursive: true, force: true }));
+for (const profile of ['personal', 'work']) test(`rendered ${profile} plugin registers live hooks, exports OTLP, and drains on unload`, async t => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-telemetry-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const dir = join(root, 'personal');
+  await mkdir(dir);
   const source = new URL('../../dot_config/deepseek-harness/personal/', import.meta.url);
   await mkdir(join(dir, 'lib'));
   for (const file of ['package.json', 'new-relic.mjs', 'telemetry.mjs', 'cost.mjs', 'pricing.mjs']) await copyFile(new URL(file, source), join(dir, file));
@@ -41,8 +58,15 @@ test('rendered plugin registers live hooks, exports OTLP, and drains on unload',
     const output = execFileSync('chezmoi', ['--source', new URL('../../', import.meta.url).pathname, 'execute-template'], { input, encoding: 'utf8' });
     await writeFile(join(dir, 'lib', name + '.mjs'), output);
   }
-  const resolved = createRequire(join(dir, 'package.json')).resolve('@dotfiles/dsh-personal/new-relic');
-  assert.equal(resolved, await realpath(join(dir, 'new-relic.mjs')));
+  const pluginDir = join(root, profile);
+  if (profile === 'work') {
+    await mkdir(pluginDir);
+    for (const file of ['package.json', 'new-relic.mjs']) await copyFile(new URL('../work/' + file, source), join(pluginDir, file));
+    const patch = await readFile(new URL('../work/cordis.patch.yml', source), 'utf8');
+    assert.ok(patch.includes('@dotfiles/dsh-work/new-relic'));
+  }
+  const resolved = createRequire(join(pluginDir, 'package.json')).resolve(`@dotfiles/dsh-${profile}/new-relic`);
+  assert.equal(resolved, await realpath(join(pluginDir, 'new-relic.mjs')));
   const plugin = await import(pathToFileURL(resolved));
   const entry = join(dir, 'cli.js');
   await writeFile(entry, '');
@@ -91,6 +115,11 @@ test('rendered plugin registers live hooks, exports OTLP, and drains on unload',
     .filter(r => r.name === 'dsh.cache.token.usage');
   assert.deepEqual(exportedCache.map(r => r.sum.dataPoints[0].asInt), ['80', '20']);
   const exported = JSON.parse(metricRequest.options.body).resourceMetrics[0].scopeMetrics[0].metrics;
+  for (const metric of exported) {
+    for (const point of (metric.sum ?? metric.gauge).dataPoints) {
+      assert.equal(point.attributes.find(a => a.key === 'profile').value.stringValue, profile);
+    }
+  }
   const cost = exported.find(r => r.name === 'dsh.cost.estimated.usage');
   assert.ok(Math.abs(cost.sum.dataPoints[0].asDouble - 0.000072) < 1e-12);
   assert.equal(cost.sum.aggregationTemporality, 1);

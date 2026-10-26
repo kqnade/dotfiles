@@ -156,13 +156,13 @@ profileやpatchを差し替えるCLI引数はwrapperから渡せません。
 操作、直接binaryからの起動まで隔離するものではありません。profileへ仕事用credentialを
 コピーせず、仕事の内容を個人用の認証や外部サービスへ渡さないでください。
 
-### 個人用の New Relic telemetry
+### New Relic telemetry
 
-`dsh personal` の TUI と Web UI は、モデル呼び出し、ツール実行、セッション、ターン、サブエージェントの集計を OTLP/HTTP で既存の New Relic へ送ります。
+`dsh personal` と `dsh work` の TUI と Web UI は、モデル呼び出し、ツール実行、セッション、ターン、サブエージェントの集計を OTLP/HTTP で既存の New Relic へ送ります。
 service 名は `deepseek-harness`、scope は `dsh.telemetry` です。
 `dsh.request.count`・`dsh.request.duration`・`dsh.token.usage` と
 `dsh.tool.count`・`dsh.tool.duration` を記録し、対応する span と本文を含まないイベントログも送ります。
-属性は provider、model、個人用 profile、tool 名、親／子の区分、終了理由、成功／失敗などに限定します。
+属性は provider、model、profile（`personal` / `work`）、tool 名、親／子の区分、終了理由、成功／失敗などに限定します。
 会話本文、ツール引数・出力、ファイルパス、認証情報、エラー本文は含めません。
 
 #### ダッシュボード用の指標
@@ -250,9 +250,9 @@ backend は委譲先の種類であり、LLM の provider ではありません�
 タイトル生成など、agent ストリームを通らない直接 LLM 呼び出しも対象外です。
 
 キーは `DSH_NEW_RELIC_API_KEY`、`NEW_RELIC_LICENSE_KEY`、管理する 1Password 参照の順に取得します。
-取得は origin の認可後に行い、失敗した場合は起動を止めます。
-`DSH_NEW_RELIC_ENABLE=0 dsh personal` で明示的に無効化できます。
-仕事用、login、help、list-models ではこのプラグインの計測を有効にせず、専用キーも渡しません。
+仕事用Webでは起動時、それ以外では origin の認可後に取得し、失敗した場合は起動を止めます。
+`DSH_NEW_RELIC_ENABLE=0 dsh personal` または `DSH_NEW_RELIC_ENABLE=0 dsh work` で明示的に無効化できます。
+login、help、list-models ではこのプラグインの計測を有効にせず、専用キーも渡しません。
 DSH 標準のフィードバック送信設定は変更しません。
 
 送信処理は Pi と同じソースを chezmoi で配置します。毎秒のバッチ送信と終了時の flush を行い、
