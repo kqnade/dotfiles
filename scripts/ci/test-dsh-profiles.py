@@ -80,7 +80,7 @@ class DshProfilesTests(unittest.TestCase):
             OPENAI_API_KEY="other-key",
         )
         result = self.launch(
-            "personal", "--resume", "session-one", "--model", "openai-codex/gpt-6-luna"
+            "personal", "--resume", "session-one", "--preset", "standard"
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         (call,) = self.calls()
@@ -91,8 +91,8 @@ class DshProfilesTests(unittest.TestCase):
                 "tui",
                 "--resume",
                 "session-one",
-                "--model",
-                "openai-codex/gpt-6-luna",
+                "--preset",
+                "standard",
             ],
         )
         self.assertEqual(call["env"]["DSH_HOME"], str(self.home / ".dsh/personal"))
@@ -107,7 +107,7 @@ class DshProfilesTests(unittest.TestCase):
         ):
             with self.subTest(url=url):
                 self.origin(url)
-                result = self.launch("work", "--model", "ollama/qwen3.8:27b-mlx")
+                result = self.launch("work", "--new")
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(
                     self.calls()[-1]["env"]["DSH_HOME"], str(self.home / ".dsh/work")
@@ -205,6 +205,12 @@ class DshProfilesTests(unittest.TestCase):
             with self.subTest(args=args):
                 result = self.launch("personal", *args)
                 self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.calls(), [])
+
+    def test_model_flags_require_the_tui_model_command(self):
+        result = self.launch("personal", "--provider", "ollama", "--model", "qwen3.8:27b-mlx")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("/model", result.stderr)
         self.assertEqual(self.calls(), [])
 
     def test_zsh_entry_points_do_not_change_the_calling_shell(self):

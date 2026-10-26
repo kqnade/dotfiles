@@ -24,7 +24,7 @@ esac
 
 # The outer CLI can replace the composition; expose only the TUI interface.
 validate_arguments() {
-  local option value provider
+  local option
   while [[ $# -gt 0 ]]; do
     option="$1"
     shift
@@ -35,34 +35,20 @@ validate_arguments() {
         continue
         ;;
       --resume=*) continue ;;
-      --model | --provider | --preset)
+      --preset)
         [[ $# -gt 0 && "$1" != -* ]] || {
           echo "$option requires a value." >&2
           return 2
         }
-        value="$1"
         shift
         ;;
-      --model=* | --provider=* | --preset=*)
-        value="${option#*=}"
-        option="${option%%=*}"
+      --preset=*) ;;
+      --model | --model=* | --provider | --provider=*)
+        echo 'Select the provider and model with /model inside the TUI.' >&2
+        return 2
         ;;
       *)
         echo "Unsupported managed TUI argument: $option" >&2
-        return 2
-        ;;
-    esac
-    provider=""
-    if [[ "$option" == --provider ]]; then
-      provider="$value"
-    elif [[ "$option" == --model && "$value" == */* ]]; then
-      provider="${value%%/*}"
-    fi
-    case "$provider" in
-      '' | ollama) ;;
-      openai-codex) [[ "$role" == personal ]] || return 2 ;;
-      *)
-        echo "Provider $provider is not enabled for $role." >&2
         return 2
         ;;
     esac

@@ -124,7 +124,8 @@ dsh personal
 ```
 
 TUI内で`/model ollama/qwen3.8:27b-mlx`を実行するとOllamaへ切り替わります。
-Codexに戻す場合は`/model openai-codex/gpt-6-luna`を使います。
+Codexに戻す場合は`/model openai-codex/gpt-6-luna`を使います。wrapperは`--model`と
+`--provider`を受け付けず、モデル選択はTUI内で行います。
 
 仕事用の親agentはOllamaを使い、`subagent_claude_code`でClaudeへ依頼します。Claudeは
 公式Agent SDKに同梱されたruntimeで実行され、hostの通常のClaude設定と承認済みaccountを
