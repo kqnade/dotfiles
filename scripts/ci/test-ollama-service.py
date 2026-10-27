@@ -35,7 +35,7 @@ class OllamaServiceTests(unittest.TestCase):
             capture = directory / "capture.json"
             binary.write_text(
                 "#!/bin/sh\n"
-                'printf \'{"host":"%s","arg":"%s"}\\n\' "$OLLAMA_HOST" "$1" > "$CAPTURE"\n'
+                'printf \'{"host":"%s","context":"%s","arg":"%s"}\\n\' "$OLLAMA_HOST" "$OLLAMA_CONTEXT_LENGTH" "$1" > "$CAPTURE"\n'
             )
             binary.chmod(0o755)
             mise = directory / "mise"
@@ -53,6 +53,7 @@ class OllamaServiceTests(unittest.TestCase):
                     PATH=f"{directory}:/usr/bin:/bin",
                     DOTFILES_ROOT=str(ROOT),
                     OLLAMA_HOST="0.0.0.0:11434",
+                    OLLAMA_CONTEXT_LENGTH="4096",
                     CAPTURE=str(capture),
                 ),
                 capture_output=True,
@@ -64,7 +65,7 @@ class OllamaServiceTests(unittest.TestCase):
     def test_service_uses_the_pinned_binary_on_loopback(self):
         result, captured = self.run_service()
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(captured, {"host": "127.0.0.1:11434", "arg": "serve"})
+        self.assertEqual(captured, {"host": "127.0.0.1:11434", "context": "131072", "arg": "serve"})
 
     def test_missing_tool_fails_instead_of_using_another_binary(self):
         result, captured = self.run_service(fail=True)

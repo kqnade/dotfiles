@@ -132,7 +132,8 @@ Ollamaの接続先は両方とも`http://127.0.0.1:11434/v1`です。次のモ�
 - `qwen3.8:27b-mlx`
 - `fredrezones55/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive:Q4`
 
-DSHのOllama設定はcontextを32,768トークン、1回の最大出力を8,192トークンとします。
+Ollamaの管理サービスは`OLLAMA_CONTEXT_LENGTH=131072`で起動し、DSHのcontextも131,072トークンに揃えます。
+1回の最大出力は8,192トークンです。
 会話圧縮には2,048トークンの余白を取り、要約の最大出力も2,048トークンとします。
 Ollama側の実行時contextは`ollama ps`で確認できます。容量を変える場合はDSH側の`contextWindow`も合わせてください。
 

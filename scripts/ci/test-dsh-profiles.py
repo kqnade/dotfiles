@@ -428,7 +428,7 @@ class DshProfilesTests(unittest.TestCase):
                 rows = {row["id"]: row for row in json.loads(result.stdout) if "id" in row}
                 models = rows["llm-pi-ai"]["config"]["providers"]["ollama"]["models"]
                 for model in models:
-                    self.assertEqual(model.get("contextWindow"), 32768)
+                    self.assertEqual(model.get("contextWindow"), 131072)
                     self.assertEqual(model.get("maxTokens"), 8192)
                 policies = rows["compaction-basic"]["config"]["modelPolicies"]
                 self.assertEqual(
