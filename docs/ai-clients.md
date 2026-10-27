@@ -127,7 +127,11 @@ subagentとして起動しません。`login`は`@sagmans/dsh-provider-extra`の
 OAuth認証を個人用Harnessの`.credentials.yaml`へ保存します。このpackageのprovider bundleは
 有効にせず、既存のPiやCodex CLIの認証情報もコピーしません。
 
-Ollamaの接続先は両方とも`http://127.0.0.1:11434/v1`、モデルは`qwen3.8:27b-mlx`です。
+Ollamaの接続先は両方とも`http://127.0.0.1:11434/v1`です。次のモデルを選択できます。
+
+- `qwen3.8:27b-mlx`
+- `fredrezones55/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive:Q4`
+
 OllamaはmacOSのLaunchAgent、Linuxのsystemd user serviceとしてmiseで管理します。
 `mise run apply`でログイン時の起動と異常終了時の再起動を設定します。待受はloopbackだけに限定し、
 macOSのログは`~/Library/Logs/ollama.{log,err}`、Linuxのログはuser journalへ出力します。

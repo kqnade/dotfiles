@@ -398,7 +398,13 @@ class DshProfilesTests(unittest.TestCase):
             providers = rows["llm-pi-ai"]["config"]["providers"]
             self.assertEqual(set(providers), {"ollama", "openai-codex"} if role == "personal" else {"ollama"})
             self.assertEqual(providers["ollama"]["baseURL"], "http://127.0.0.1:11434/v1")
-            self.assertEqual(providers["ollama"]["models"][0]["id"], "qwen3.8:27b-mlx")
+            self.assertEqual(
+                [model["id"] for model in providers["ollama"]["models"]],
+                [
+                    "qwen3.8:27b-mlx",
+                    "fredrezones55/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive:Q4",
+                ],
+            )
             template = ROOT / f"dot_dsh/{role}/profiles/tui/package.json.tmpl"
             rendered = subprocess.run(["chezmoi", "--source", str(ROOT), "execute-template"],
                                       input=template.read_text(), capture_output=True, text=True, check=True)
