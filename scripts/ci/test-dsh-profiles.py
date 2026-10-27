@@ -419,6 +419,24 @@ class DshProfilesTests(unittest.TestCase):
                     self.assertNotIn("^", version)
                     self.assertNotIn("latest", version)
 
+    def test_ollama_profiles_reserve_output_within_the_local_context(self):
+        for role in ("personal", "work"):
+            with self.subTest(role=role):
+                patch = ROOT / f"dot_config/deepseek-harness/{role}/cordis.patch.yml"
+                result = subprocess.run(["yq", "-o=json", ".", str(patch)],
+                                        capture_output=True, text=True, check=True)
+                rows = {row["id"]: row for row in json.loads(result.stdout) if "id" in row}
+                models = rows["llm-pi-ai"]["config"]["providers"]["ollama"]["models"]
+                for model in models:
+                    self.assertEqual(model.get("contextWindow"), 32768)
+                    self.assertEqual(model.get("maxTokens"), 8192)
+                policies = rows["compaction-basic"]["config"]["modelPolicies"]
+                self.assertEqual(
+                    policies,
+                    [dict(provider="ollama", model=model["id"],
+                          headroomTokens=2048, maxTokens=2048) for model in models],
+                )
+
     def test_web_manifests_mount_only_the_matching_role_and_browser_surface(self):
         for role in ("personal", "work"):
             template = ROOT / f"dot_dsh/{role}/profiles/web/package.json.tmpl"
