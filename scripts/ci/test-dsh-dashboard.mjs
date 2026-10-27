@@ -78,6 +78,69 @@ test('first response excludes accounting and empty deltas and is emitted once', 
   assert.equal(JSON.stringify([f.metrics, f.spans]).includes('SECRET'), false);
 });
 
+test('request throughput uses final output tokens and distinct elapsed windows once', () => {
+  for (const profile of ['personal', 'work']) {
+    const f = fixture({ profile });
+    const emit = frame => f.collector.stream({ agent: f.agent, frame: { attemptId: 'a', ...frame } });
+    emit({ type: 'start' });
+    emit({ type: 'chunk', chunk: { type: 'usage', usage: { outputTokens: 5 } } });
+    f.at(2000);
+    emit({ type: 'chunk', chunk: { type: 'reasoning-delta', text: 'SECRET' } });
+    f.at(3000);
+    emit({ type: 'chunk', chunk: { type: 'text-delta', text: 'SECRET' } });
+    emit({ type: 'chunk', chunk: { type: 'usage', usage: { outputTokens: 100, reasoningTokens: 40, inputTokens: 900 } } });
+    f.session.requestHeader = () => ({ config: { provider: 'ollama', model: 'next' } });
+    f.at(5000);
+    for (let i = 0; i < 2; i++) emit({ type: 'end', outcome: { kind: 'committed', eventType: 'assistant/message' } });
+    assert.deepEqual(f.values('dsh.request.output_tokens_per_second'), [25]);
+    assert.deepEqual(f.values('dsh.request.generation_tokens_per_second'), [100 / 3]);
+    const rates = f.metrics.filter(m => m.name.endsWith('_tokens_per_second'));
+    assert.ok(rates.every(m => m.type === 'gauge' && m.attributes.profile === profile && m.attributes.model === 'test-model'));
+    assert.equal(JSON.stringify(rates).includes('SECRET'), false);
+  }
+});
+
+test('throughput omits missing or invalid final output counts and nonpositive durations', () => {
+  for (const outputTokens of [undefined, -1, NaN, Infinity, 0.5, Number.MAX_SAFE_INTEGER + 1]) {
+    const f = fixture();
+    const emit = frame => f.collector.stream({ agent: f.agent, frame: { attemptId: 'a', ...frame } });
+    emit({ type: 'start' });
+    emit({ type: 'chunk', chunk: { type: 'usage', usage: { outputTokens: 100 } } });
+    f.at(2000);
+    emit({ type: 'chunk', chunk: { type: 'text-delta', text: 'SECRET' } });
+    emit({ type: 'chunk', chunk: { type: 'usage', usage: { outputTokens } } });
+    f.at(3000);
+    emit({ type: 'end', outcome: { kind: 'committed', eventType: 'assistant/message' } });
+    assert.deepEqual(f.metrics.filter(m => m.name.endsWith('_tokens_per_second')), []);
+  }
+  for (const end of [1000, 900]) {
+    const f = fixture();
+    f.collector.stream({ agent: f.agent, frame: { type: 'start', attemptId: 'a' } });
+    f.collector.stream({ agent: f.agent, frame: { type: 'chunk', attemptId: 'a', chunk: { type: 'usage', usage: { outputTokens: 100 } } } });
+    f.at(end);
+    f.collector.stream({ agent: f.agent, frame: { type: 'end', attemptId: 'a', outcome: { kind: 'abandoned' } } });
+    assert.deepEqual(f.metrics.filter(m => m.name.endsWith('_tokens_per_second')), []);
+  }
+});
+
+test('throughput retains known zero and failure labels without inventing generation time', () => {
+  for (const firstResponse of [undefined, 3000, 4000]) {
+    const f = fixture();
+    const emit = frame => f.collector.stream({ agent: f.agent, frame: { attemptId: 'a', ...frame } });
+    emit({ type: 'start' });
+    if (firstResponse !== undefined) {
+      f.at(firstResponse);
+      emit({ type: 'chunk', chunk: { type: 'tool-call-delta' } });
+    }
+    emit({ type: 'chunk', chunk: { type: 'usage', usage: { outputTokens: 0 } } });
+    f.at(3000);
+    emit({ type: 'end', outcome: { kind: 'abandoned' } });
+    assert.deepEqual(f.values('dsh.request.output_tokens_per_second'), [0]);
+    assert.deepEqual(f.values('dsh.request.generation_tokens_per_second'), []);
+    assert.equal(f.metrics.find(m => m.name === 'dsh.request.output_tokens_per_second').attributes.success, false);
+  }
+});
+
 test('tool-only responses have latency and finish failures have safe categories', () => {
   const f = fixture();
   const emit = frame => f.collector.stream({ agent: f.agent, frame });

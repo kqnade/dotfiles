@@ -89,6 +89,8 @@ for (const profile of ['personal', 'work']) test(`rendered ${profile} plugin reg
   const requests = [], callbacks = new Map(), listenerOptions = new Map(), cleanup = [];
   t.mock.method(globalThis, 'fetch', async (url, options) => { requests.push({ url, options }); return { status: 200, text: async () => '' }; });
   const ctx = { logger: { warn(message) { assert.fail(message); } }, on: (name, fn, options) => { callbacks.set(name, fn); listenerOptions.set(name, options); }, effect: fn => cleanup.push(fn()) };
+  let time = 1000;
+  t.mock.method(Date, 'now', () => time);
   plugin.apply(ctx);
   for (const hook of ['agent/assistant-stream', 'agent/created', 'agent/status', 'agent/request-error', 'subagent/start', 'subagent/end']) {
     assert.equal(typeof callbacks.get(hook), 'function');
@@ -102,7 +104,10 @@ for (const profile of ['personal', 'work']) test(`rendered ${profile} plugin reg
   callbacks.get('subagent/start')({ runId: 'run', provider: 'codex', local: false });
   callbacks.get('subagent/end')({ runId: 'run', stopReason: 'completed' });
   callbacks.get('agent/assistant-stream')({ agent: f.agent, frame: { type: 'start', attemptId: 'a', revision: 1 } });
-  callbacks.get('agent/assistant-stream')({ agent: f.agent, frame: { type: 'chunk', attemptId: 'a', revision: 2, chunk: { type: 'usage', usage: { inputTokens: 20, outputTokens: 2, cacheReadTokens: 80 } } } });
+  time = 2000;
+  callbacks.get('agent/assistant-stream')({ agent: f.agent, frame: { type: 'chunk', attemptId: 'a', revision: 2, chunk: { type: 'text-delta', text: 'SECRET' } } });
+  callbacks.get('agent/assistant-stream')({ agent: f.agent, frame: { type: 'chunk', attemptId: 'a', revision: 3, chunk: { type: 'usage', usage: { inputTokens: 20, outputTokens: 2, cacheReadTokens: 80 } } } });
+  time = 5000;
   callbacks.get('agent/assistant-stream')({ agent: f.agent, frame: { type: 'end', attemptId: 'a', revision: 4, outcome: { kind: 'committed', eventType: 'assistant/message' } } });
   for (const dispose of cleanup.reverse()) await dispose();
   assert.ok(requests.length >= 2);
@@ -120,6 +125,9 @@ for (const profile of ['personal', 'work']) test(`rendered ${profile} plugin reg
       assert.equal(point.attributes.find(a => a.key === 'profile').value.stringValue, profile);
     }
   }
+  assert.equal(exported.find(r => r.name === 'dsh.request.output_tokens_per_second').gauge.dataPoints[0].asDouble, 0.5);
+  assert.equal(exported.find(r => r.name === 'dsh.request.generation_tokens_per_second').gauge.dataPoints[0].asDouble, 2 / 3);
+  assert.ok(requests.every(r => !r.options.body.includes('SECRET')));
   const cost = exported.find(r => r.name === 'dsh.cost.estimated.usage');
   assert.ok(Math.abs(cost.sum.dataPoints[0].asDouble - 0.000072) < 1e-12);
   assert.equal(cost.sum.aggregationTemporality, 1);

@@ -123,6 +123,7 @@ export function createCollector({ addMetric, addSpan, now = Date.now, getRates =
       start.reason = ['stop', 'tool-calls', 'max-tokens', 'aborted', 'error'].includes(reason) ? reason : 'unknown';
     }
     if (frame.type === 'end') {
+      const end = now();
       s.attempts.delete(key);
       if (s.lastMessage?.seq === frame.outcome.seq && s.lastMessage?.interrupted) start.reason = 'aborted';
       const success = frame.outcome.kind === 'committed' && frame.outcome.eventType === 'assistant/message' && !['error', 'aborted'].includes(start.reason);
@@ -138,9 +139,16 @@ export function createCollector({ addMetric, addSpan, now = Date.now, getRates =
       const cost = estimateApiCostUsd(start.costUsage, getRates(attributes.provider, attributes.model, start.costUsage ?? {}));
       metric('dsh.cost.coverage.count', 1, { ...attributes, status: cost === null ? 'unavailable' : 'estimated' });
       if (cost !== null) metric('dsh.cost.estimated.usage', cost, { ...attributes, currency: 'USD', pricing_source: 'pi_ai_catalog' });
+      const duration = end - start.time;
+      const generationDuration = duration - start.firstResponse;
+      const { outputTokens } = start.usage;
+      if (Number.isSafeInteger(outputTokens) && outputTokens >= 0) {
+        if (finite(duration) && duration > 0) metric('dsh.request.output_tokens_per_second', outputTokens / (duration / 1000), attributes);
+        if (finite(generationDuration) && generationDuration > 0) metric('dsh.request.generation_tokens_per_second', outputTokens / (generationDuration / 1000), attributes);
+      }
       metric('dsh.request.first_response.duration', start.firstResponse, attributes);
       if (start.reason === 'aborted') metric('dsh.request.interrupted.count', 1, attributes);
-      finish(s, 'dsh.request', start, attributes);
+      finish(s, 'dsh.request', start, attributes, end);
     }
   }
   function event(session, event) {

@@ -177,6 +177,8 @@ service 名は `deepseek-harness`、scope は `dsh.telemetry` です。
 | `turn.count` / `turn.duration` | 開始と終了を観測できたターン数／処理時間 |
 | `turn.interrupted.count` / `request.interrupted.count` | 中断したターン／モデル試行の数 |
 | `request.first_response.duration` | 試行開始から最初の非空テキスト・推論・ツール呼出デルタまでの時間 |
+| `request.output_tokens_per_second` | 最終出力トークン数 ÷ 試行開始から終了までの秒数 |
+| `request.generation_tokens_per_second` | 最終出力トークン数 ÷ 初回応答から試行終了までの秒数。生成速度の概算 |
 | `request.retry.count` / `request.retry.started.count` | リトライ待機の予約数／待機後に再試行へ進んだ数 |
 | `request.retry.delay` | リトライの予定待機時間 |
 | `request.error.count` | request-error フックで観測した失敗数。開始前の失敗も含む |
@@ -186,7 +188,7 @@ service 名は `deepseek-harness`、scope は `dsh.telemetry` です。
 | `subagent.count` / `subagent.duration` | 開始と終了を観測できた稼働期間の数／時間 |
 | `subagent.usage.unavailable.count` | 使用量を取得できない外部サブエージェントの終了数 |
 
-表の指標名にはすべて `dsh.` を付けます。時間の単位はミリ秒です。
+表の指標名にはすべて `dsh.` を付けます。duration と delay の単位はミリ秒、速度の単位は tok/s です。
 count と usage は差分カウンターなので合計し、duration は gauge として平均・最大値を使います。
 新規セッション数は `source = 'startup'`、再開数は `source = 'resume'` で分けます。
 clear・compact を新規会話数へ足さないでください。履歴を引き継ぐ新規forkも startup に含まれ、
@@ -204,6 +206,27 @@ error_class は rate_limit・authentication・server・client・timeout・networ
 request.error.count と失敗した request.count は重なり得るため、足し合わせません。
 初回応答時間には推論やツール呼出も含まれ、画面に最初の文章が表示されるまでの時間とは異なります。
 何も応答しなかった試行には初回応答時間を記録しません。
+
+#### 出力速度（tok/s）
+
+速度はモデル試行ごとに一度だけ gauge で送り、単位は tok/s です。
+最終 usage の出力トークン数を使い、推論トークン数は別途加算しません。
+出力トークン数が未取得・不正な場合や、分母の時間がゼロ以下の場合は記録しません。
+明示的な出力ゼロは記録しますが、初回応答がない試行には生成速度を記録しません。
+生成速度は最初のデルタに含まれるトークンも分子に含み、通信や終了処理の時間も分母に含むため、純粋なモデルの生成速度とは異なります。
+失敗・中断でも有効な使用量があれば記録します。成功した試行だけを比較する場合は `success = true` で絞ります。
+
+```sql
+FROM Metric
+SELECT average(dsh.request.output_tokens_per_second) AS 'End-to-end tok/s',
+       average(dsh.request.generation_tokens_per_second) AS 'Generation tok/s (approx)'
+WHERE service.name = 'deepseek-harness' AND success = true
+FACET profile, provider, model
+SINCE 1 hour ago
+```
+
+これは送信された試行別速度の平均であり、トークン総数 ÷ 処理時間の合計ではありません。
+使用量を取得できない外部サブエージェントは対象外です。
 
 #### 料金と使用量
 
