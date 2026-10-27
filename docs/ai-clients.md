@@ -146,6 +146,8 @@ Codexに戻す場合は`/model openai-codex/gpt-6-luna`を使います。wrapper
 公式Agent SDKに同梱されたruntimeで実行され、hostの通常のClaude設定と承認済みaccountを
 使います。zshの`claude` functionを経由するわけではありません。`permissionMode: dontAsk`により、
 未許可の操作を対話なしに拒否します。Claudeへのログインは承認済みの仕事用環境で行ってください。
+仕事用TUI・Webの`pnpm-workspace.yaml`では、このsubagentのAgent SDKを`0.3.309`に固定します。
+同梱CLIは`2.1.309`です。miseで管理する外部CLIのversionとは別に管理されます。
 
 仕事用Web以外では、起動wrapperが認証を読む前にGitが解決した全originを確認します。
 仕事用TUIはGitHubの`livesense-inc`／`jobtalk`だけを許可し、個人用はそのownerを拒否します。個人用ではoriginなしの
@@ -277,6 +279,7 @@ mise exec -- python3 scripts/ci/test-claude-settings.py
 mise exec -- python3 scripts/ci/test-pi-telemetry.py
 mise exec -- python3 scripts/ci/test-dsh-profiles.py
 mise exec -- python3 scripts/ci/test-dsh-plugins.py
+DSH_TEST_WORK_HOME="$HOME/.dsh/work" mise exec -- node --test scripts/ci/test-dsh-claude-sdk.mjs
 mise exec -- node --test scripts/ci/test-dsh-workspaces.mjs
 DSH_TEST_WEB_PROFILE="$HOME/.dsh/personal/profiles/web" mise exec -- node --test scripts/ci/test-dsh-workspaces.mjs
 mise exec -- node --test scripts/ci/test-dsh-telemetry.mjs scripts/ci/test-dsh-dashboard.mjs scripts/ci/test-dsh-cost.mjs scripts/ci/test-dsh-pricing.mjs

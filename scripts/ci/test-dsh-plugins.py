@@ -10,6 +10,17 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class PluginTests(unittest.TestCase):
+    def test_work_profiles_pin_claude_sdk_without_changing_personal_profiles(self):
+        override = "  '@deepseek-ai/dsh-subagent-claude-code>@anthropic-ai/claude-agent-sdk': 0.3.309"
+        for role in ("personal", "work"):
+            for surface in ("tui", "web"):
+                with self.subTest(role=role, surface=surface):
+                    config = (ROOT / f"dot_dsh/{role}/profiles/{surface}/pnpm-workspace.yaml").read_text()
+                    if role == "work":
+                        self.assertIn("overrides:\n" + override + "\n", config)
+                    else:
+                        self.assertNotIn("@anthropic-ai/claude-agent-sdk", config)
+
     def test_workspace_guard_overlay_requires_activation_before_serving(self):
         work = ROOT / "dot_config/deepseek-harness/work"
         self.assertTrue((work / "workspaces.mjs").is_file())
