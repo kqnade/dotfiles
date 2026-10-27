@@ -434,9 +434,24 @@ class DshProfilesTests(unittest.TestCase):
                 capture_output=True, text=True, check=True,
             )
             patches = json.loads(result.stdout)["patchedDependencies"]
-            self.assertEqual(set(patches), {"@deepseek-ai/dsh@0.2.1-rc.2"})
+            expected = {"@deepseek-ai/dsh@0.2.1-rc.2"}
+            if role == "personal":
+                expected.add("@deepseek-ai/dsh-experimental-auto-review@0.2.1-rc.2")
+            self.assertEqual(set(patches), expected)
             patch = (profile / patches["@deepseek-ai/dsh@0.2.1-rc.2"]).resolve()
             self.assertEqual(patch, ROOT / "dot_dsh/patches/dsh-shutdown.patch")
+            self.assertTrue(patch.is_file())
+
+    def test_personal_profiles_patch_codex_auto_review(self):
+        for surface in ("tui", "web"):
+            profile = ROOT / f"dot_dsh/personal/profiles/{surface}"
+            result = subprocess.run(
+                ["yq", "-o=json", ".", str(profile / "pnpm-workspace.yaml")],
+                capture_output=True, text=True, check=True,
+            )
+            patches = json.loads(result.stdout)["patchedDependencies"]
+            patch = (profile / patches["@deepseek-ai/dsh-experimental-auto-review@0.2.1-rc.2"]).resolve()
+            self.assertEqual(patch, ROOT / "dot_dsh/patches/dsh-auto-review.patch")
             self.assertTrue(patch.is_file())
 
     def test_setup_stops_on_install_failure(self):

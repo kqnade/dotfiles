@@ -1,4 +1,5 @@
 patchedDependencies:
+  '@deepseek-ai/dsh-experimental-auto-review@0.2.1-rc.2': ../../../patches/dsh-auto-review.patch
   '@deepseek-ai/dsh@0.2.1-rc.2': ../../../patches/dsh-shutdown.patch
 allowBuilds:
   '@deepseek-ai/dsh-subprocess-local': true
