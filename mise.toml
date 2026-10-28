@@ -65,7 +65,7 @@ rust = "1.99.1"
 python = "3.15.2"
 node = "26.12.1"
 "github:pnpm/pnpm" = "12.15.0"
-uv = "0.13.5"
+uv = "0.13.6"
 
 # Agent and application CLIs
 1password-cli = { version = "2.41.1", url = 'https://cache.agilebits.com/dist/1P/op2/pkg/v{{ version }}/op_{{ os(macos="darwin") }}_{{ arch(x64="amd64") }}_v{{ version }}.zip', version_list_url = "https://mise-versions.jdx.dev/1password-cli" }
