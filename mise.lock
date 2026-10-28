@@ -682,44 +682,12 @@ checksum_source = "mise-versions"
 url = "https://github.com/herdrdev/herdr/releases/download/v0.9.5/herdr-linux-x86_64"
 url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/640898235"
 
-[tools.herdr."platforms.macos-arm64"]
-checksum = "sha256:fb77c2232a05a8035421382c894392f4174e4e38a18e48af3dd0290157c3a7e2"
-url = "https://github.com/herdrdev/herdr/releases/download/v0.9.5/herdr-macos-aarch64"
-url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/640898230"
-
-[tools.herdr."platforms.macos-x64"]
-checksum = "sha256:5fb0a908ec7f6745e3e245738b06bfad56c46391c391ab3c0955fbead01f1369"
-url = "https://github.com/herdrdev/herdr/releases/download/v0.9.5/herdr-macos-x86_64"
-url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/640898229"
-
-[tools.herdr."platforms.macos-x64-baseline"]
-checksum = "sha256:5fb0a908ec7f6745e3e245738b06bfad56c46391c391ab3c0955fbead01f1369"
-checksum_source = "mise-versions"
-url = "https://github.com/herdrdev/herdr/releases/download/v0.9.5/herdr-macos-x86_64"
-url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/640898229"
-
 [[tools."http:mole"]]
 version = "1.65.0"
 backend = "http:mole"
 
 [tools."http:mole".options]
 strip_components = "1"
-
-[tools."http:mole"."platforms.linux-x64"]
-checksum = "sha256:4b27dae6c4ab73af65c48099d244ac7f49221c151831fb1bb0f4b66763a6e23f"
-url = "https://github.com/tw93/Mole/archive/refs/tags/V1.65.0.tar.gz"
-
-[tools."http:mole"."platforms.linux-x64-baseline"]
-checksum = "sha256:4b27dae6c4ab73af65c48099d244ac7f49221c151831fb1bb0f4b66763a6e23f"
-url = "https://github.com/tw93/Mole/archive/refs/tags/V1.65.0.tar.gz"
-
-[tools."http:mole"."platforms.linux-x64-musl"]
-checksum = "sha256:4b27dae6c4ab73af65c48099d244ac7f49221c151831fb1bb0f4b66763a6e23f"
-url = "https://github.com/tw93/Mole/archive/refs/tags/V1.65.0.tar.gz"
-
-[tools."http:mole"."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:4b27dae6c4ab73af65c48099d244ac7f49221c151831fb1bb0f4b66763a6e23f"
-url = "https://github.com/tw93/Mole/archive/refs/tags/V1.65.0.tar.gz"
 
 [tools."http:mole"."platforms.macos-arm64"]
 checksum = "sha256:4b27dae6c4ab73af65c48099d244ac7f49221c151831fb1bb0f4b66763a6e23f"
