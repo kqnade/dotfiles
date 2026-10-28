@@ -14,18 +14,18 @@ die() {
 [[ -x "$MOLE_ENTRYPOINT" ]] || die "Mole entrypoint is missing"
 
 mole_version="$(sed -n 's/^VERSION="\([^"]*\)"$/\1/p' "$MOLE_ENTRYPOINT" | head -n 1)"
-[[ "$mole_version" == "1.49.2" ]] || die "unexpected Mole version: ${mole_version:-unknown}"
+[[ "$mole_version" == "1.65.0" ]] || die "unexpected Mole version: ${mole_version:-unknown}"
 
 case "$(uname -m)" in
   arm64)
     asset_arch="arm64"
-    analyze_checksum="d054a82989fa99558c44fdd12b7db873167b390b21982afbafc7e67e8eebf061"
-    status_checksum="8b223c4037028962f4e971938a174a3c7e3f59ac75afedda75b2525498663318"
+    analyze_checksum="7e6c87567081fcd93f9d52066f8bcbb9167d0a69d82aaa0e05cd614a8a0b9f99"
+    status_checksum="723c2c2a33402a0953b25fa6430cc9d1750dfd27044159f8afaa139971cd10f8"
     ;;
   x86_64)
     asset_arch="amd64"
-    analyze_checksum="8317534fac35e20b3d9b5bf6b6a92d39166802f39744f81d9eb6e28fbb03ebe5"
-    status_checksum="a8778c0b03f37d612f6036cab50e662e0d3e3569de565a4e7c30a9846f69e91a"
+    analyze_checksum="baab53b59243abee09ae1b83e22dee43105e84cedcb164f69386a930be9caa22"
+    status_checksum="be0238d08dff77078260e5fc3fe2460a335032ab8efd3c27084581279fa1bad5"
     ;;
   *)
     die "unsupported macOS architecture: $(uname -m)"

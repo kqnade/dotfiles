@@ -198,10 +198,10 @@ if not isinstance(atuin, str):
 
 mole = tools["http:mole"]
 if not isinstance(mole, dict) or mole != {
-    "version": "1.49.2",
+    "version": "1.65.0",
     "os": ["macos"],
     "url": "https://github.com/tw93/Mole/archive/refs/tags/V{{ version }}.tar.gz",
-    "checksum": "sha256:dec79ca0c4a8780509f0bf813ba14efdc5b16637e2f7c49be3ea1910c15a2278",
+    "checksum": "sha256:4b27dae6c4ab73af65c48099d244ac7f49221c151831fb1bb0f4b66763a6e23f",
     "strip_components": 1,
     "bin_path": ".",
     "postinstall": 'bash "${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/install-mole-helpers.sh"',
