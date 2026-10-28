@@ -85,6 +85,20 @@ DeepSeek Harnessはmiseの`npm:@deepseek-ai/dsh`で管理し、TUIには`@sagman
 どちらもdeveloper previewに対応する固定versionです。profileごとに`DSH_HOME`を分け、
 認証、session、設定、pluginのインストール先を共有しません。
 
+personalは全対応OSで使えます。workは会社Macで明示的に有効化した場合だけ配備・導入します。
+`chezmoi edit-config`でローカル設定の既存の`[data]`へ次の値を追加・変更してください。
+
+```toml
+[data]
+dsh_work_enabled = true
+```
+
+その後、リポジトリで`mise run apply`と`mise run dsh-setup`を実行します。
+未設定は`false`で、通常の`init`でも選択を保持します。macOS以外の`true`やboolean以外はエラーになります。
+無効化するとworkを配備・更新せず、管理launcherは資格情報を読む前に起動を拒否します。
+既存の認証・session・workspaceやインストール済みファイルは自動削除しません。
+有効化した会社Macでもpersonalは引き続き利用できます。
+
 | 起動 | 保存先 | 親agentのモデル | 外部subagent |
 |---|---|---|---|
 | `dsh personal` / `dsh-personal` | `~/.dsh/personal/` | Codex契約認証、Ollama | なし |
@@ -114,10 +128,13 @@ mise run dsh-setup
 dsh personal login
 ```
 
-`dsh-setup`は個人用・仕事用それぞれのTUIとWebに固定版のCLIとpluginをインストールします。各profileは同じ
+`dsh-setup`は有効な用途のTUIとWebに固定版のCLIとpluginをインストールします。各profileは同じ
 依存treeのCLIとpluginで起動します。セットアップではagentを起動せず、Claudeの認証も読み取りません。
 bootstrapにも同じインストール処理が含まれます。管理するbundleとversionは
-`dot_dsh/`のmanifestで指定し、モデルの初期設定は`dot_config/deepseek-harness/`に置きます。
+[共通packageテンプレート](<../.chezmoitemplates/dsh-package.json.tmpl>)と
+[共通pnpm設定](<../.chezmoitemplates/dsh-pnpm-workspace.yaml.tmpl>)から各profileへ描画します。
+DSH本体のversionは[mise manifest](<../mise.toml>)を参照し、SDKのpinは独立して管理します。
+モデルの初期設定は`dot_config/deepseek-harness/`に置きます。
 初期モデルは各bundleの`agent-default-model`で指定します。TUI内の`/model`は実行中の
 sessionのモデルを切り替えます。TUIで保存した外観などの設定は、各homeの
 `profiles/tui/cordis.patch.yml`に残ります。

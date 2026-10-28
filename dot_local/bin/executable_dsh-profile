@@ -22,6 +22,28 @@ case "${1:-}" in
     ;;
 esac
 
+if [[ "$role" == work ]]; then
+  if [[ "$(uname -s)" != Darwin ]]; then
+    echo 'Work Harness requires Darwin.' >&2
+    exit 2
+  fi
+  runtime_config="$HOME/.config/dotfiles/client-runtime.sh"
+  unset DOTFILES_DSH_WORK_ENABLED
+  if [[ ! -r "$runtime_config" ]]; then
+    echo 'Work Harness runtime configuration is missing; apply the managed dotfiles first.' >&2
+    exit 2
+  fi
+  # shellcheck source=/dev/null
+  source "$runtime_config" || {
+    echo 'Work Harness runtime configuration could not be loaded.' >&2
+    exit 2
+  }
+  if [[ "${DOTFILES_DSH_WORK_ENABLED:-}" != true ]]; then
+    echo 'Work Harness is disabled; enable dsh_work_enabled in the local chezmoi configuration and apply.' >&2
+    exit 2
+  fi
+fi
+
 surface=tui
 if [[ "${1:-}" == web ]]; then
   surface=web
