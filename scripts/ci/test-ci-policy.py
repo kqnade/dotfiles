@@ -38,7 +38,7 @@ class WorkflowTests(unittest.TestCase):
         config = workflow()
         self.assertEqual(config["on"]["push"], {"branches": ["trunk"]})
         self.assertEqual(
-            set(config["on"]), {"push", "pull_request", "workflow_dispatch"}
+            set(config["on"]), {"push", "pull_request", "workflow_dispatch", "schedule"}
         )
         self.assertNotIn("pull_request_target", config["on"])
         self.assertIsNone(config["on"]["pull_request"])
@@ -59,9 +59,10 @@ class WorkflowTests(unittest.TestCase):
             output = Path(temporary) / "outputs"
             for event, base, head, success in (
                 ("workflow_dispatch", "", "", True),
+                ("schedule", "", "", True),
                 ("push", "0" * 40, "HEAD", True),
                 ("pull_request", "HEAD", "HEAD", True),
-                ("push", "missing-ci-base", "HEAD", False),
+                ("pull_request", "missing-ci-base", "HEAD", False),
             ):
                 with self.subTest(event=event, base=base):
                     output.write_text("")
@@ -78,7 +79,8 @@ class WorkflowTests(unittest.TestCase):
                     )
                     self.assertEqual(result.returncode == 0, success, result.stderr)
                     if success:
-                        self.assertEqual(output.read_text(), "bootstrap=true\n")
+                        expected = "false" if event == "push" else "true"
+                        self.assertEqual(output.read_text(), f"bootstrap={expected}\n")
 
     def test_bootstrap_waits_for_static_and_uses_the_plan(self):
         jobs = workflow()["jobs"]
@@ -141,6 +143,13 @@ class PolicyTests(unittest.TestCase):
                     ".gitignore",
                     "renovate.jsonc",
                     "scripts/ci/test-install.py",
+                    "dot_agents/skills/yomiyasu/SKILL.md",
+                    "dot_config/nvim/README.md",
+                    "dot_config/zsh/aliases.zsh",
+                    "dot_zshrc",
+                    "dot_gitconfig.tmpl",
+                    ".chezmoitemplates/pi-settings.json.tmpl",
+                    "dot_pi/agent/extensions/execution-guard.ts",
                 ]
             ),
             "bootstrap=false",
@@ -156,9 +165,12 @@ class PolicyTests(unittest.TestCase):
             ".chezmoiignore",
             ".github/workflows/ci.yml",
             "scripts/ci/ci-policy.py",
-            "dot_config/nvim/README.md",
-            "dot_agents/skills/example/SKILL.md",
-            "dot_config/zsh/aliases.zsh",
+            "scripts/ci/validate-repository.py",
+            "scripts/ci/integration/test-mise-lock.py",
+            "dot_dsh/personal/profiles/web/package.json.tmpl",
+            ".chezmoitemplates/dsh-package.json.tmpl",
+            "dot_config/deepseek-harness/work/package.json",
+            "dot_config/mise/config.toml.tmpl",
             "unknown-file",
             "README.md\ninstall.sh",
             "a file with spaces",

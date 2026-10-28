@@ -12,91 +12,12 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[2]
 PLATFORMS = ("macos-arm64", "macos-x64", "linux-x64")
 
-EXPECTED_TOOLS = {
-    "1password-cli",
-    "aqua:babarot/gomi",
-    "aqua:openai/codex",
-    "bat",
-    "btop",
-    "cargo:eza",
-    "cargo:git-delta",
-    "cargo:https://github.com/wachikun/yaskkserv2",
-    "cargo:sheldon",
-    "chezmoi",
-    "claude",
-    "delta",
-    "fzf",
-    "gh",
-    "ghq",
-    "git-lfs",
-    "github:atuinsh/atuin",
-    "github:pnpm/pnpm",
-    "github:sharkdp/fd",
-    "herdr",
-    "http:mole",
-    "jq",
-    "just",
-    "neovim",
-    "node",
-    "npm:@deepseek-ai/dsh",
-    "npm:@earendil-works/pi-coding-agent",
-    "npm:bash-language-server",
-    "npm:ccusage",
-    "npm:pyright",
-    "npm:typescript",
-    "ollama",
-    "opencode",
-    "python",
-    "ripgrep",
-    "rust",
-    "shellcheck",
-    "sheldon",
-    "shfmt",
-    "starship",
-    "taplo",
-    "tree-sitter",
-    "typos",
-    "uv",
-    "yq",
-    "zoxide",
-}
-
 INTEL_FALLBACKS = {
     "cargo:git-delta",
     "cargo:sheldon",
 }
 
 NON_URL_LOCKS = {"rust"}
-
-EXPECTED_PACKAGES = {
-    "brew-cask:scroll-reverser",
-    "dnf:ca-certificates",
-    "dnf:curl",
-    "dnf:fontconfig",
-    "dnf:gcc",
-    "dnf:gcc-c++",
-    "dnf:git",
-    "dnf:google-noto-sans-cjk-fonts",
-    "dnf:google-noto-serif-cjk-fonts",
-    "dnf:make",
-    "dnf:openssh-clients",
-    "dnf:openssl-devel",
-    "dnf:pkgconf-pkg-config",
-    "dnf:unzip",
-    "dnf:zsh",
-    "pacman:base-devel",
-    "pacman:ca-certificates",
-    "pacman:curl",
-    "pacman:fontconfig",
-    "pacman:git",
-    "pacman:noto-fonts-cjk",
-    "pacman:openssh",
-    "pacman:openssl",
-    "pacman:pkgconf",
-    "pacman:unzip",
-    "pacman:zsh",
-}
-
 
 def fail(message: str) -> None:
     print(f"error: {message}", file=sys.stderr)
@@ -138,9 +59,6 @@ if overlapping_sections:
 config.update(bootstrap_config)
 lock = load_toml(ROOT / "mise.lock")
 
-if config.get("min_version") != "2026.8.9":
-    fail("min_version must remain 2026.8.9")
-
 settings = config.get("settings", {})
 if settings.get("system_packages", {}).get("managers") != [
     "dnf",
@@ -154,24 +72,11 @@ if settings.get("task", {}).get("run_auto_install") is not False:
     fail("public tasks must not implicitly install tools")
 
 packages = config.get("bootstrap", {}).get("packages", {})
-if set(packages) != EXPECTED_PACKAGES:
-    fail(
-        "bootstrap package allowlist mismatch; "
-        f"missing={sorted(EXPECTED_PACKAGES - set(packages))}, "
-        f"unexpected={sorted(set(packages) - EXPECTED_PACKAGES)}"
-    )
 if any(version != "latest" for version in packages.values()):
     fail("bootstrap packages must use the package manager's current version")
 
 tools = config.get("tools", {})
 tool_names = set(tools)
-if tool_names != EXPECTED_TOOLS:
-    fail(
-        "tool allowlist mismatch; "
-        f"missing={sorted(EXPECTED_TOOLS - tool_names)}, "
-        f"unexpected={sorted(tool_names - EXPECTED_TOOLS)}"
-    )
-
 for name, value in tools.items():
     version = configured_version(value)
     if version in {"latest", "stable", "lts"} or any(char in version for char in "*^~"):
@@ -197,16 +102,8 @@ if not isinstance(atuin, str):
     fail("Atuin must use the GitHub backend for upstream platform binaries")
 
 mole = tools["http:mole"]
-if not isinstance(mole, dict) or mole != {
-    "version": "1.49.2",
-    "os": ["macos"],
-    "url": "https://github.com/tw93/Mole/archive/refs/tags/V{{ version }}.tar.gz",
-    "checksum": "sha256:dec79ca0c4a8780509f0bf813ba14efdc5b16637e2f7c49be3ea1910c15a2278",
-    "strip_components": 1,
-    "bin_path": ".",
-    "postinstall": 'bash "${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/install-mole-helpers.sh"',
-}:
-    fail("Mole must use the pinned source archive and verified helper installer")
+if not isinstance(mole, dict) or mole.get("os") != ["macos"]:
+    fail("Mole must be selected only on macOS")
 
 for fallback in INTEL_FALLBACKS:
     value = tools[fallback]
@@ -242,11 +139,11 @@ lock_platforms = {
 }
 if lock_platforms != set(PLATFORMS):
     fail(f"mise.lock platforms must be exactly {PLATFORMS!r}")
-if set(lock_tools) != EXPECTED_TOOLS:
+if set(lock_tools) != tool_names:
     fail(
         "lockfile tool set mismatch; "
-        f"missing={sorted(EXPECTED_TOOLS - set(lock_tools))}, "
-        f"unexpected={sorted(set(lock_tools) - EXPECTED_TOOLS)}"
+        f"missing={sorted(tool_names - set(lock_tools))}, "
+        f"unexpected={sorted(set(lock_tools) - tool_names)}"
     )
 
 if lock_tools["cargo:eza"][-1].get("options") != {

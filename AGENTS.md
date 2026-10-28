@@ -155,9 +155,11 @@ prerequisites; reconcile them with current files before use.
 - Each local commit must be a cohesive, reviewable Green increment. Stage only its paths or hunks,
   inspect the staged diff, and use `git cc`. Pushes and pull-request mutations require separate
   explicit authorization.
-- CI performs real installs and applies rather than preview-only checks. macOS arm64 exercises all
-  public interfaces; Intel macOS also builds the source/npm fallbacks; Fedora exercises all Linux
-  components; Arch exercises system packages.
+- CI always runs offline validators and behavior tests through `scripts/ci/validate-repository.py`.
+  Foundation changes in PRs and weekly/manual runs also perform real installs: macOS arm64
+  exercises both DSH roles and public interfaces, Intel checks source fallbacks, Fedora checks
+  Linux components and package idempotency, and Arch checks system packages. Pushes to trunk
+  run the lightweight suite only. Required checks aggregate through `ci-result`.
 - GitHub-hosted Linux containers cannot run a user systemd manager. CI starts yaskkserv2 directly
   and checks its port; systemd and WSL runtime coverage require dedicated runners. See
   `docs/ci.md` for the complete matrix.

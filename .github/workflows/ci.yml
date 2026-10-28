@@ -5,12 +5,14 @@ on:
     branches: [trunk]
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: "17 18 * * 0"
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -37,7 +39,9 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
-          if [[ "$EVENT_NAME" == workflow_dispatch || "$BASE_SHA" == 0000000000000000000000000000000000000000 ]]; then
+          if [[ "$EVENT_NAME" == push ]]; then
+            echo "bootstrap=false" >> "$GITHUB_OUTPUT"
+          elif [[ "$EVENT_NAME" == workflow_dispatch || "$EVENT_NAME" == schedule || "$BASE_SHA" == 0000000000000000000000000000000000000000 ]]; then
             python3 scripts/ci/ci-policy.py plan --full >> "$GITHUB_OUTPUT"
           else
             base="$BASE_SHA"
@@ -73,30 +77,7 @@ jobs:
           python3 scripts/ci/validate-mise.py
           mise trust mise.toml
           mise install --locked chezmoi yq node python
-          mise exec -- python3 scripts/ci/test-validate-mise.py
-          mise exec -- python3 scripts/ci/test-runtime.py
-          mise exec -- python3 scripts/ci/test-install.py
-          mise exec -- python3 scripts/ci/test-ci-policy.py
-          mise exec -- python3 scripts/ci/test-pr-labels.py
-          mise exec -- python3 scripts/ci/test-codex-usage-exporter.py
-          mise exec -- python3 scripts/ci/test-pi-telemetry.py
-          mise exec -- python3 scripts/ci/test-dsh-profiles.py
-          mise exec -- python3 scripts/ci/test-dsh-plugins.py
-          mise exec -- node --test scripts/ci/test-dsh-telemetry.mjs scripts/ci/test-dsh-dashboard.mjs scripts/ci/test-dsh-cost.mjs scripts/ci/test-dsh-pricing.mjs
-          mise exec -- python3 scripts/ci/test-ollama-service.py
-          mise exec -- python3 scripts/ci/test-pi-lsp-package.py
-          mise exec -- python3 scripts/ci/test-git-cc.py
-          mise exec -- python3 scripts/ci/test-client-runtime.py
-          mise exec -- node --experimental-strip-types --test scripts/ci/test-pi-telemetry-events.mjs scripts/ci/test-pi-new-relic-exporter.mjs scripts/ci/test-pi-new-relic-extension.mjs scripts/ci/test-pi-ask-user.mjs scripts/ci/test-pi-execution-guard.mjs scripts/ci/test-pi-decision-review.mjs scripts/ci/test-pi-approval-channel.mjs scripts/ci/test-pi-approval-rpc.mjs scripts/ci/test-pi-otlp.mjs
-          mise exec -- python3 scripts/ci/test-claude-settings.py
-          mise exec -- python3 scripts/ci/test-client-workflow-reset.py
-          mise exec -- python3 scripts/ci/test-herdr-worktree.py
-          mise exec -- python3 scripts/ci/validate-shell-integrations.py
-          mise exec -- python3 scripts/ci/validate-claude-authorization.py
-          mise exec -- python3 scripts/ci/validate-agent-materialization.py
-          mise exec -- python3 scripts/ci/validate-repository-layout.py
-          mise exec -- python3 scripts/ci/validate-agent-client-config.py
-          mise exec -- python3 scripts/ci/validate-project-contracts.py
+          mise exec -- python3 -B scripts/ci/validate-repository.py
           mise tasks validate
 
       - name: install pinned linters
@@ -126,28 +107,15 @@ jobs:
           '
 
   package-bootstrap:
-    name: packages (${{ matrix.name }})
+    name: Arch packages
     needs: [changes, static]
     if: needs.changes.outputs.bootstrap == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: Fedora
-            image: fedora:44@sha256:6c75d5bf57cb0fa5aa4b92c6a83c86c791644496d9ac230de7711f5b8ec3b898
-          - name: Arch
-            image: archlinux:base-devel@sha256:412efebb0eeef0ef322ff24ad73f82b1ba2d3b12377db4c5fbe3074c7e7e8678
     container:
-      image: ${{ matrix.image }}
+      image: archlinux:base-devel@sha256:412efebb0eeef0ef322ff24ad73f82b1ba2d3b12377db4c5fbe3074c7e7e8678
     steps:
-      - name: prepare Fedora container
-        if: matrix.name == 'Fedora'
-        run: dnf install -y --setopt=install_weak_deps=False git curl ca-certificates tar gzip
-
       - name: prepare Arch container
-        if: matrix.name == 'Arch'
         run: pacman -Syu --needed --noconfirm git curl ca-certificates tar gzip
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -205,6 +173,9 @@ jobs:
           missing="$(mise -C "$DOTFILES_ROOT" ls --current --missing --no-header)"
           test -z "$missing"
           mise -C "$DOTFILES_ROOT" exec -- pnpm --version
+          mise -C "$DOTFILES_ROOT" bootstrap packages status --missing
+          mise -C "$DOTFILES_ROOT" bootstrap packages apply --yes
+          mise -C "$DOTFILES_ROOT" bootstrap packages status --missing
 
           mise -C "$DOTFILES_ROOT" run apply
           test -z "$(chezmoi --source "$DOTFILES_ROOT" diff --exclude=externals)"
@@ -219,6 +190,12 @@ jobs:
             cat "$RUNNER_TEMP/yaskkserv2.log"
             exit 1
           fi
+
+      - name: verify network resolution and installed integrations
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          mise exec -- python3 -B scripts/ci/integration/test-mise-lock.py
+          mise exec -- node scripts/ci/integration/run-dsh.mjs
 
   macos-bootstrap:
     name: macOS arm64 public interfaces
@@ -249,7 +226,8 @@ jobs:
 
       - name: run install.sh and every public command
         run: |
-          canonical_root="$HOME/repos/github.com/kqnade/dotfiles"
+          mkdir -p "$HOME/.config/chezmoi"
+          printf '[data]\ndsh_work_enabled = true\n' > "$HOME/.config/chezmoi/chezmoi.toml"
           bash install.sh
           export PATH="$HOME/.local/bin:$PATH"
 
@@ -257,9 +235,17 @@ jobs:
           mise run apply
           mise run doctor
 
-          cd "$canonical_root"
-          mise bootstrap --yes
+      - name: verify installed personal and work integrations
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          mise exec -- node scripts/ci/integration/run-dsh.mjs --work
 
+      - name: verify repeated bootstrap
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          cd "$HOME/repos/github.com/kqnade/dotfiles"
+          mise bootstrap --yes
           cd "$HOME"
           mise run doctor
 
@@ -316,6 +302,11 @@ jobs:
           done
           expected_pnpm="$(mise config get 'tools.github:pnpm/pnpm')"
           test "$(mise exec -- pnpm --version)" = "$expected_pnpm"
+
+      - name: verify installed personal integrations
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          mise exec -- node scripts/ci/integration/run-dsh.mjs
 
   ci-result:
     name: ci-result

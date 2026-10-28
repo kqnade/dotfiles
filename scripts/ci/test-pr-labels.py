@@ -62,12 +62,8 @@ class LabelWorkflowTests(unittest.TestCase):
             "pr-labels-${{ github.event.pull_request.number }}",
         )
 
-    def test_ci_validates_labels_without_mutating_pull_requests(self):
+    def test_ci_does_not_mutate_pull_requests(self):
         workflow = load_yaml(".github/workflows/ci.yml")
-        commands = "\n".join(
-            step.get("run", "") for step in workflow["jobs"]["static"]["steps"]
-        )
-        self.assertIn("mise exec -- python3 scripts/ci/test-pr-labels.py", commands)
         self.assertEqual(workflow["permissions"], {"contents": "read"})
         for job in workflow["jobs"].values():
             self.assertNotIn("permissions", job)
