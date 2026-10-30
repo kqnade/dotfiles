@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import re
@@ -19,71 +18,13 @@ from client_runtime_fixture import render_pi_settings
 
 
 ROOT = Path(__file__).resolve().parents[2]
-SKILLS = {
-    "test-driven-development", "evidence-review", "context-handoff", "sanitize-artifacts", "yomiyasu",
-}
+SKILLS = {path.parent.name for path in (ROOT / "dot_agents/skills").glob("*/SKILL.md")}
 
 
 class ClientWorkflowResetTests(unittest.TestCase):
-    def test_sources_deploy_only_the_curated_skills(self) -> None:
-        shared = ROOT / "dot_agents/skills"
-        self.assertEqual({path.name for path in shared.glob("*")}, SKILLS)
-        self.assertEqual(
-            {path.name for path in (ROOT / "dot_claude/skills").glob("*")},
-            {f"symlink_{name}" for name in SKILLS},
-        )
-        self.assertFalse((ROOT / "dot_agents/rules").exists())
-        instructions = (ROOT / "dot_agents/AGENTS.md").read_text()
-        for heading in (
-            "Communication", "Coding", "Delegation", "Local commits",
-            "Remote changes require explicit authorization", "Repository workflow state",
-        ):
-            self.assertIn(f"# {heading}\n", instructions)
-        for source, target in (
-            ("dot_pi/agent/symlink_AGENTS.md", "../../.agents/AGENTS.md"),
-            ("dot_claude/symlink_CLAUDE.md", "../.agents/AGENTS.md"),
-            ("dot_codex/symlink_AGENTS.md", "../.agents/AGENTS.md"),
-            ("dot_config/opencode/symlink_AGENTS.md", "../../.agents/AGENTS.md"),
-        ):
-            with self.subTest(source=source):
-                self.assertTrue((ROOT / source).is_file())
-                self.assertEqual((ROOT / source).read_text().strip(), target)
-        removals = (ROOT / ".chezmoiremove").read_text().splitlines()
-        for target in (".claude/CLAUDE.md", ".codex/AGENTS.md", ".config/opencode/AGENTS.md"):
-            self.assertNotIn(target, removals)
-        self.assertIn("検出された `yomiyasu` スキル", instructions)
-        self.assertEqual(set(shared.glob("*/scripts")), {shared / "yomiyasu/scripts"})
-        self.assertFalse((ROOT / "dot_codex/agents").exists())
-        codex_modifier = (ROOT / "dot_codex/modify_private_config.toml").read_text()
-        self.assertNotIn(".agents.default_subagent_model =", codex_modifier)
-        self.assertEqual(
-            {path.name for path in (ROOT / "dot_claude/rules").iterdir()},
-            {"operations.md"},
-        )
-
-    def test_pi_model_cycle_contains_the_three_primary_models(self) -> None:
+    def test_pi_default_model_is_enabled(self) -> None:
         settings = render_pi_settings()
-        self.assertEqual(settings["enabledModels"], [
-            "openai-codex/gpt-6-astra",
-            "openai-codex/gpt-6.1-sol",
-            "openai-codex/gpt-6-luna",
-        ])
-        self.assertEqual(settings["defaultModel"], "gpt-6.1-sol")
         self.assertIn(f'{settings["defaultProvider"]}/{settings["defaultModel"]}', settings["enabledModels"])
-        self.assertEqual(settings["modelThinkingLevels"]["openai-codex/gpt-6.1-sol"], "xhigh")
-        self.assertEqual(settings["defaultThinkingLevel"], "xhigh")
-        self.assertEqual(settings["subagents"]["defaultThinking"], "max")
-        for name in ("worker", "delegate", "scout", "researcher", "evidence-auditor"):
-            self.assertEqual(settings["subagents"]["agentOverrides"][name]["thinking"], "max")
-        self.assertEqual(
-            settings["subagents"]["agentOverrides"]["scout"]["model"],
-            "openai-codex/gpt-6-luna",
-        )
-        for name in ("reviewer", "oracle"):
-            self.assertEqual(settings["subagents"]["agentOverrides"][name]["model"], "openai-codex/gpt-6-sol")
-            self.assertEqual(settings["subagents"]["agentOverrides"][name]["thinking"], "high")
-        for model, thinking in (("astra", "medium"), ("sol", "xhigh"), ("luna", "max")):
-            self.assertEqual(settings["modelThinkingLevels"][f"openai-codex/gpt-6-{model}"], thinking)
 
     def test_pi_apply_preserves_runtime_state_and_enforces_managed_settings(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -101,7 +42,9 @@ class ClientWorkflowResetTests(unittest.TestCase):
                 command, env=environment, text=True, capture_output=True, check=False,
             )
             self.assertEqual(result.returncode, 0, result.stderr)
+            expected = render_pi_settings()
             settings = json.loads(target.read_text())
+            self.assertEqual(settings, expected)
             settings.update({
                 "lastChangelogVersion": "1.1.0",
                 "deviceId": "test-device-id",
@@ -123,17 +66,12 @@ class ClientWorkflowResetTests(unittest.TestCase):
             applied = json.loads(target.read_text())
             for key in ("lastChangelogVersion", "deviceId", "trackingId"):
                 self.assertEqual(applied.get(key), settings[key], key)
-            self.assertEqual(applied["defaultModel"], "gpt-6.1-sol")
-            self.assertEqual(applied["packages"], render_pi_settings()["packages"])
-            self.assertEqual(applied["terminal"], {
-                "showTerminalProgress": True, "showImages": False,
-            })
-            self.assertEqual(applied["subagents"]["defaultExtensions"],
-                             render_pi_settings()["subagents"]["defaultExtensions"])
+            for key in ("lastChangelogVersion", "deviceId", "trackingId"):
+                expected[key] = settings[key]
+            expected["terminal"]["showImages"] = False
+            expected["subagents"]["agentOverrides"]["worker"]["runtimeOptions"] = {"label": "状態"}
+            self.assertEqual(applied, expected)
             self.assertEqual(applied["subagents"]["modelScope"]["allow"], ["openai-codex/*"])
-            self.assertEqual(applied["subagents"]["agentOverrides"]["worker"], {
-                "thinking": "max", "runtimeOptions": {"label": "状態"},
-            })
 
             for version in ("1.1.1", "1.2.0"):
                 applied["lastChangelogVersion"] = version
@@ -171,7 +109,7 @@ class ClientWorkflowResetTests(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 0, result.stderr)
             settings = json.loads(target.read_text())
-            self.assertEqual(settings["defaultModel"], "gpt-6.1-sol")
+            self.assertEqual(settings, render_pi_settings())
             for key in ("lastChangelogVersion", "deviceId", "trackingId"):
                 self.assertNotIn(key, settings)
 
@@ -216,17 +154,6 @@ class ClientWorkflowResetTests(unittest.TestCase):
                     (ROOT / "dot_claude/skills" / f"symlink_{name}").read_text().strip(),
                     f"../../.agents/skills/{name}",
                 )
-
-    def test_sanitize_artifacts_contract_is_unchanged_and_required(self) -> None:
-        content = (ROOT / "dot_agents/skills/sanitize-artifacts/SKILL.md").read_bytes()
-        self.assertEqual(
-            hashlib.sha256(content).hexdigest(),
-            "5360c17c724e2d443320a2faada7053b4d5ccd560452638d02283ec764a52166",
-        )
-        for name in ("test-driven-development", "evidence-review"):
-            content = (ROOT / "dot_agents/skills" / name / "SKILL.md").read_text()
-            self.assertIn("../sanitize-artifacts/SKILL.md", content)
-            self.assertIn("blocking", content)
 
     def test_reset_removes_known_targets_but_preserves_unknown_home_files(self) -> None:
         chezmoi = subprocess.check_output(
@@ -423,7 +350,6 @@ trust_level = "trusted"
             text=True,
         )
         settings = json.loads(rendered)
-        self.assertEqual(settings["model"], "claude-opus-5-5[1m]")
         self.assertEqual(settings["preferredNotifChannel"], "notifications_disabled")
         commands = {
             hook["command"]

@@ -1,8 +1,0 @@
-patchedDependencies:
-  '@deepseek-ai/dsh-experimental-auto-review@0.2.1-rc.2': ../../../patches/dsh-auto-review.patch
-allowBuilds:
-  '@deepseek-ai/dsh-subprocess-local': true
-  '@google/genai': false
-  koffi: true
-  node-pty: true
-  protobufjs: false

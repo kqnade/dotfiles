@@ -23,16 +23,35 @@ STATIC_ONLY_FILES = {
     ".gitignore",
     ".github/CODEOWNERS",
     "renovate.jsonc",
+    ".chezmoidata.toml",
+    "dot_bash_profile", "dot_bashrc.tmpl", "dot_gitconfig.tmpl", "dot_vimrc", "dot_zshrc",
 }
+BOOTSTRAP_FILES = {
+    "install.sh", "mise.toml", "mise.lock",
+    ".chezmoi.toml.tmpl", ".chezmoiignore", ".chezmoiremove",
+    ".chezmoiexternal.toml.tmpl", ".github/workflows/ci.yml",
+    "scripts/ci/ci-policy.py", "scripts/ci/validate-repository.py",
+}
+BOOTSTRAP_PREFIXES = (
+    "mise/", "dot_config/mise/", "dot_dsh/",
+    ".chezmoitemplates/dsh", "scripts/ci/integration/",
+)
+STATIC_PREFIXES = (
+    "docs/", "scripts/ci/", ".chezmoitemplates/",
+    "dot_agents/", "dot_claude/", "dot_codex/", "dot_pi/",
+    "dot_config/", "dot_local/", "private_dot_ssh/",
+)
 
 
 def needs_bootstrap(paths: list[str]) -> bool:
     if not paths:
         return True
     for path in paths:
-        if path == "scripts/ci/ci-policy.py":
+        if path in BOOTSTRAP_FILES or path.startswith(BOOTSTRAP_PREFIXES):
             return True
-        if path in STATIC_ONLY_FILES or path.startswith(("docs/", "scripts/ci/")):
+        if path.endswith(("/package.json", "/package.json.tmpl", "/pnpm-workspace.yaml", "/pnpm-workspace.yaml.tmpl")):
+            return True
+        if path in STATIC_ONLY_FILES or path.startswith(STATIC_PREFIXES):
             continue
         return True
     return False

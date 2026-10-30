@@ -1,3 +1,8 @@
+{{- $workEnabled := includeTemplate ".chezmoitemplates/dsh-work-enabled.tmpl" . -}}
+{{ if eq $workEnabled "false" -}}
+.dsh/work
+.config/deepseek-harness/work
+{{ end -}}
 scripts/
 docs/
 .github/

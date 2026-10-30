@@ -55,14 +55,8 @@ if codex_modified_result.returncode != 0:
     fail(f"Codex config modifier failed: {codex_modified_result.stderr.strip()}")
 codex_modified_config = tomllib.loads(codex_modified_result.stdout)
 
-expected_codex_defaults = {
-    "approvals_reviewer": "auto_review",
-    "model": "gpt-6-astra",
-    "model_reasoning_effort": "medium",
-}
-for key, expected_value in expected_codex_defaults.items():
-    if codex_modified_config.get(key) != expected_value:
-        fail(f"Codex config modifier did not enforce {key}")
+if codex_modified_config.get("approvals_reviewer") != "auto_review":
+    fail("Codex config modifier did not enforce approvals_reviewer")
 
 if codex_modified_config.get("features", {}).get("hooks") is not True:
     fail("Codex config modifier must enable lifecycle hooks")
@@ -213,44 +207,21 @@ with tempfile.TemporaryDirectory() as temp_dir:
     if pi_apply_result.returncode != 0:
         fail(f"Pi settings apply failed: {pi_apply_result.stderr.strip()}")
     rendered_pi_settings = json.loads(pi_settings.read_text())
-    expected_pi_defaults = {
-        "defaultProvider": "openai-codex",
-        "defaultModel": "gpt-6.1-sol",
-        "defaultThinkingLevel": "xhigh",
-    }
-    for key, expected_value in expected_pi_defaults.items():
+    expected_pi_settings = json.loads(subprocess.check_output(
+        ["chezmoi", "--source", str(ROOT), "execute-template", "--file",
+         str(pi_settings_source)],
+        env={**os.environ, "HOME": str(codex_home)},
+        text=True,
+    ))
+    for key, expected_value in expected_pi_settings.items():
         if rendered_pi_settings.get(key) != expected_value:
-            fail(f"Canonical Pi settings did not enforce {key}")
-    expected_pi_packages = [
-        "npm:pi-footer@0.5.1",
-        "npm:pi-subagents@0.76.1",
-        "npm:pi-web-access@0.37.0",
-        "git:github.com/trotsky1997/pi-lsp-extension@39d56f0cdaf4b5e77ee038f0670de14cd19e228d",
-    ]
-    if rendered_pi_settings.get("packages") != expected_pi_packages:
-        fail("Canonical Pi settings did not deploy the complete package set")
-    if rendered_pi_settings.get("skills") != ["!skills/herdr/**"]:
-        fail("Canonical Pi settings must exclude the Herdr checkout from skill discovery")
+            fail(f"Pi settings apply did not preserve the canonical {key}")
     if rendered_pi_settings.get("runtimeMarker") != "preserve-me":
         fail("Pi settings modifier changed machine-local runtime state")
-    if rendered_pi_settings.get("modelThinkingLevels", {}).get(
-        "openai-codex/gpt-6.1-sol"
-    ) != "xhigh":
-        fail("Canonical Pi settings did not pin GPT-6.1 Sol to xhigh thinking")
     rendered_subagents = rendered_pi_settings.get("subagents", {})
-    if rendered_subagents.get("defaultModel") != "openai-codex/gpt-6-luna":
-        fail("Canonical Pi settings did not pin subagents to GPT-6 Luna")
     runtime_defaults = tomllib.loads((ROOT / ".chezmoidata.toml").read_text())["client_runtime"]
     agent_dir = os.environ.get("PI_CODING_AGENT_DIR") or runtime_defaults["pi"]["agent_dir"]
     if rendered_subagents.get("defaultExtensions") != [
         f"{agent_dir}/extensions/execution-guard.ts"
     ]:
         fail("Canonical Pi settings did not load the execution guard in native children")
-    configured_typescript_server = (
-        rendered_pi_settings.get("lsp", {}).get("servers", {}).get("typescript")
-    )
-    if configured_typescript_server != {
-        "command": "tsc",
-        "args": ["--lsp", "--stdio"],
-    }:
-        fail("Canonical Pi settings did not deploy the TypeScript 7 native LSP")

@@ -8,6 +8,7 @@ import { pathToFileURL } from 'node:url';
 import { test } from 'node:test';
 
 const home = process.env.DSH_TEST_WORK_HOME;
+assert.ok(home, 'DSH_TEST_WORK_HOME must point to an installed work profile');
 for (const surface of ['tui', 'web']) {
   test(`work ${surface} resolves the pinned SDK and matching bundled CLI`, { skip: !home }, async () => {
     const profile = createRequire(join(home, 'profiles', surface, 'package.json'));
