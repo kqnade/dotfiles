@@ -34,10 +34,7 @@ if [[ "$role" == work ]]; then
     exit 2
   fi
   # shellcheck source=/dev/null
-  source "$runtime_config" || {
-    echo 'Work Harness runtime configuration could not be loaded.' >&2
-    exit 2
-  }
+  source "$runtime_config"
   if [[ "${DOTFILES_DSH_WORK_ENABLED:-}" != true ]]; then
     echo 'Work Harness is disabled; enable dsh_work_enabled in the local chezmoi configuration and apply.' >&2
     exit 2
