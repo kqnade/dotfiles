@@ -70,7 +70,7 @@ uv = "0.13.5"
 # Agent and application CLIs
 1password-cli = { version = "2.41.1", url = 'https://cache.agilebits.com/dist/1P/op2/pkg/v{{ version }}/op_{{ os(macos="darwin") }}_{{ arch(x64="amd64") }}_v{{ version }}.zip', version_list_url = "https://mise-versions.jdx.dev/1password-cli" }
 herdr = { version = "v0.9.5", os = ["linux"] }
-claude = "2.1.311"
+claude = "2.1.316"
 "aqua:openai/codex" = "0.163.0"
 opencode = "1.19.4"
 ollama = "0.40.12"
