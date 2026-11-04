@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readdirSync } from 'node:fs';
-import { createRequire } from 'node:module';
+import { requireDsh } from './dsh-resolve.mjs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,7 +11,7 @@ assert.ok(process.argv.slice(2).every(arg => arg === '--work'), 'Usage: node run
 const run = (test, args = [], env = process.env) => execFileSync(process.execPath,
   [fileURLToPath(new URL(test, import.meta.url)), ...args], { stdio: 'inherit', env });
 const profile = role => join(homedir(), '.dsh', role, 'profiles', 'tui');
-const personal = createRequire(join(profile('personal'), 'package.json'));
+const personal = requireDsh(profile('personal'));
 run('./test-dsh-auto-review.mjs', [personal.resolve('@deepseek-ai/dsh-experimental-auto-review')]);
 for (const role of process.argv.includes('--work') ? ['personal', 'work'] : ['personal']) {
   const lib = join(profile(role), 'node_modules', '@deepseek-ai/dsh', 'lib');

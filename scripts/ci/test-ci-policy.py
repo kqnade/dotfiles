@@ -34,6 +34,25 @@ def workflow():
 
 
 class WorkflowTests(unittest.TestCase):
+    def test_linux_dotfile_check_propagates_errors_and_detects_drift(self):
+        step = next(step for step in workflow()["jobs"]["linux-bootstrap"]["steps"]
+                    if step.get("name") == "verify tools, dotfiles, font, dictionary, and server")
+        script = step["run"].split('mise -C "$DOTFILES_ROOT" run apply\n', 1)[1].split("fc-list", 1)[0]
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            mise = root / "mise"
+            mise.write_text('#!/bin/sh\n[ "$1" = -C ] && shift 2\nif [ "$1" = exec ]; then shift 2; exec "$@"; fi\n[ "$1" = -- ] && shift\nexec "$@"\n')
+            mise.chmod(0o755)
+            chezmoi = root / "chezmoi"
+            chezmoi.write_text('#!/bin/sh\nprintf "%s" "$DIFF_OUTPUT"\nexit "$DIFF_STATUS"\n')
+            chezmoi.chmod(0o755)
+            for status, output, success in ((0, "", True), (0, "drift", False), (17, "", False)):
+                with self.subTest(status=status, output=output):
+                    result = subprocess.run(["/bin/sh", "-e", "-c", script], capture_output=True, text=True,
+                                            env={**os.environ, "PATH": str(root), "DOTFILES_ROOT": str(ROOT),
+                                                 "DIFF_STATUS": str(status), "DIFF_OUTPUT": output})
+                    self.assertEqual(result.returncode == 0, success, result.stderr)
+
     def test_changes_are_detected_without_workflow_level_path_filters(self):
         config = workflow()
         self.assertEqual(config["on"]["push"], {"branches": ["trunk"]})

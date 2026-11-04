@@ -6,13 +6,14 @@ import { dirname, join } from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { test } from 'node:test';
+import { requireDsh } from './dsh-resolve.mjs';
 
 const modulePath = '../../../dot_config/deepseek-harness/work/workspaces.mjs';
 
 assert.ok(process.env.DSH_TEST_WEB_PROFILE, 'DSH_TEST_WEB_PROFILE must point to an installed work Web profile');
 
 test('installed Cordis routes registry access through the guard', async t => {
-  const requireProfile = createRequire(join(process.env.DSH_TEST_WEB_PROFILE, 'package.json'));
+  const requireProfile = requireDsh(process.env.DSH_TEST_WEB_PROFILE);
   const requireBase = createRequire(requireProfile.resolve('@deepseek-ai/dsh-base'));
   const { Context } = await import(pathToFileURL(requireBase.resolve('@deepseek-ai/cordis')));
   const { apply } = await import(modulePath);
@@ -55,7 +56,7 @@ test('installed Cordis routes registry access through the guard', async t => {
 });
 
 test('installed loader requires the guard before activating the Web server', async t => {
-  const requireCli = createRequire(await realpath(join(process.env.DSH_TEST_WEB_PROFILE, 'node_modules/@deepseek-ai/dsh/package.json')));
+  const requireCli = requireDsh(process.env.DSH_TEST_WEB_PROFILE);
   const { boot, loadOverlayPatches } = await import(pathToFileURL(requireCli.resolve('@deepseek-ai/dsh-app-boot')));
   const root = await mkdtemp(join(tmpdir(), 'dsh-workspace-boot-'));
   t.after(() => rm(root, { recursive: true, force: true }));
@@ -63,7 +64,7 @@ test('installed loader requires the guard before activating the Web server', asy
   await writeFile(server, 'export const inject = ["testOriginalDependency"]; export function apply(ctx, config) { ctx.provide("testWebServing", { host: config.host, port: config.port, original: ctx.testOriginalDependency }); }');
   const config = join(root, 'cordis.yml');
   await writeFile(config, '[]');
-  const requireProfile = createRequire(join(process.env.DSH_TEST_WEB_PROFILE, 'package.json'));
+  const requireProfile = requireDsh(process.env.DSH_TEST_WEB_PROFILE);
   const webPatchPath = join(dirname(requireProfile.resolve('@deepseek-ai/dsh-web-app')), '..', 'cordis.patch.yml');
   const webLayers = loadOverlayPatches('test', webPatchPath);
   const webserver = webLayers.flatMap(layer => layer.insert ?? []).find(entry => entry.id === 'webserver');

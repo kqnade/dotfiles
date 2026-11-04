@@ -178,7 +178,8 @@ jobs:
           mise -C "$DOTFILES_ROOT" bootstrap packages status --missing
 
           mise -C "$DOTFILES_ROOT" run apply
-          test -z "$(chezmoi --source "$DOTFILES_ROOT" diff --exclude=externals)"
+          dotfile_diff="$(mise -C "$DOTFILES_ROOT" exec -- chezmoi --source "$DOTFILES_ROOT" diff --exclude=externals)"
+          test -z "$dotfile_diff"
           fc-list | grep -qi udevgothic
           test -s "$HOME/.skk/dictionary.yaskkserv2"
 

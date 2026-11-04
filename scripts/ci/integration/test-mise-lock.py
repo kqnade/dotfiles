@@ -22,6 +22,8 @@ class LockResolutionTests(unittest.TestCase):
             environment = {
                 **os.environ,
                 "MISE_CONFIG_DIR": str(fixture_root / "config"),
+                "MISE_STATE_DIR": str(fixture_root / "state"),
+                "MISE_LOCKED": "0",
             }
             result = subprocess.run(
                 [mise, "trust", str(fixture_root / "mise.toml")],
