@@ -435,6 +435,45 @@ class ValidateMiseTests(unittest.TestCase):
                         str(destination / relative) in managed, os_name == "linux"
                     )
 
+    def test_mole_archive_fields_have_valid_structure(self) -> None:
+        manifest = (ROOT / "mise.toml").read_text()
+        start = manifest.index('[tools."http:mole"]')
+        end = manifest.index("\n[", start + 1)
+        section = manifest[start:end]
+        cases = [(None, None, True)]
+        for field, invalid_values in {
+            "url": ('"http://example.com/mole.tar.gz"', '"https://"', "42"),
+            "checksum": ('"sha256:abc"', '"md5:' + "a" * 32 + '"', "42"),
+            "strip_components": ('"1"', "true", "1.5"),
+            "bin_path": ('""', '" "', "42"),
+            "postinstall": ('""', '" "', "42"),
+        }.items():
+            for value in (None, *invalid_values):
+                cases.append((field, value, False))
+        cases.extend((field, value, True) for field, value in (
+            ("url", '"https://example.com/mole-{{ version }}.tar.gz"'),
+            ("checksum", '"sha256:' + "a" * 64 + '"'),
+        ))
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            fixture = Path(temporary_directory)
+            for relative in ("mise/config.toml", "mise.lock", "dot_config/mise/config.toml.tmpl",
+                             "dot_config/mise/mise.lock.tmpl", "scripts/ci/validate-mise.py"):
+                destination = fixture / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(ROOT / relative, destination)
+            for field, value, success in cases:
+                with self.subTest(field=field, value=value):
+                    modified = section if field is None else re.sub(
+                        rf"^{field} = .*\n?", "" if value is None else f"{field} = {value}\n",
+                        section, flags=re.MULTILINE,
+                    )
+                    (fixture / "mise.toml").write_text(manifest[:start] + modified + manifest[end:])
+                    result = subprocess.run([sys.executable, "-B", str(fixture / "scripts/ci/validate-mise.py")],
+                                            capture_output=True, text=True, check=False)
+                    self.assertEqual(result.returncode == 0, success, result.stderr)
+                    if not success:
+                        self.assertIn("Mole", result.stderr)
+
     def test_requested_version_must_own_each_locked_platform_url(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             fixture_root = Path(temporary_directory)

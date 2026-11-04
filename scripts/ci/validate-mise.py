@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import re
 import sys
 import tomllib
 from pathlib import Path
@@ -104,6 +105,15 @@ if not isinstance(atuin, str):
 mole = tools["http:mole"]
 if not isinstance(mole, dict) or mole.get("os") != ["macos"]:
     fail("Mole must be selected only on macOS")
+if not isinstance(mole.get("url"), str) or not re.fullmatch(r"https://[^/\s]+(?:/.*)?", mole["url"]):
+    fail("Mole must use an HTTPS archive URL")
+if not isinstance(mole.get("checksum"), str) or not re.fullmatch(r"sha256:[0-9a-fA-F]{64}", mole["checksum"]):
+    fail("Mole must define a SHA-256 archive checksum")
+if type(mole.get("strip_components")) is not int:
+    fail("Mole strip_components must be an integer")
+for field in ("bin_path", "postinstall"):
+    if not isinstance(mole.get(field), str) or not mole[field].strip():
+        fail(f"Mole {field} must be a non-empty string")
 
 for fallback in INTEL_FALLBACKS:
     value = tools[fallback]
