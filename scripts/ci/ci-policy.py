@@ -34,6 +34,8 @@ BOOTSTRAP_FILES = {
 }
 BOOTSTRAP_PREFIXES = (
     "mise/", "dot_config/mise/", "dot_dsh/",
+    "dot_config/deepseek-harness/", "dot_config/dotfiles/",
+    "dot_local/bin/executable_dsh-profile",
     ".chezmoitemplates/dsh", "scripts/ci/integration/",
 )
 STATIC_PREFIXES = (

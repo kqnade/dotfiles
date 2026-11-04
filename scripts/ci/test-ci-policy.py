@@ -197,6 +197,17 @@ class PolicyTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertEqual(self.plan(["docs/ci.md", path]), "bootstrap=true")
 
+    def test_dsh_config_and_runtime_changes_select_bootstrap_individually(self):
+        for path in (
+            "dot_config/deepseek-harness/personal/cordis.patch.yml",
+            "dot_config/deepseek-harness/work/workspaces.mjs",
+            "dot_config/deepseek-harness/work/web-required.patch.yml",
+            "dot_local/bin/executable_dsh-profile",
+            "dot_config/dotfiles/client-runtime.sh.tmpl",
+        ):
+            with self.subTest(path=path):
+                self.assertEqual(self.plan([path]), "bootstrap=true")
+
     def test_empty_and_forced_plans_run_everything(self):
         self.assertEqual(self.plan([]), "bootstrap=true")
         self.assertEqual(self.plan(["docs/ci.md"], full=True), "bootstrap=true")
