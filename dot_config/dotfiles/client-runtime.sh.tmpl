@@ -1,3 +1,5 @@
+DOTFILES_DSH_WORK_ENABLED={{ includeTemplate ".chezmoitemplates/dsh-work-enabled.tmpl" . }}
+
 dotfiles_expand_home() {
   case "$1" in
     '~') printf '%s\n' "$HOME" ;;

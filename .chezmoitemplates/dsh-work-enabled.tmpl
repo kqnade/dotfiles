@@ -1,0 +1,11 @@
+{{- $enabled := false -}}
+{{- if hasKey . "dsh_work_enabled" -}}
+  {{- if not (kindIs "bool" .dsh_work_enabled) -}}
+    {{- fail "dsh_work_enabled must be a boolean" -}}
+  {{- end -}}
+  {{- $enabled = .dsh_work_enabled -}}
+{{- end -}}
+{{- if and $enabled (ne .chezmoi.os "darwin") -}}
+  {{- fail "dsh_work_enabled requires Darwin" -}}
+{{- end -}}
+{{- $enabled -}}

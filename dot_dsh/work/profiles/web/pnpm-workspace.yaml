@@ -1,8 +1,0 @@
-overrides:
-  '@deepseek-ai/dsh-subagent-claude-code>@anthropic-ai/claude-agent-sdk': 0.3.309
-allowBuilds:
-  '@deepseek-ai/dsh-subprocess-local': true
-  '@google/genai': false
-  koffi: true
-  node-pty: true
-  protobufjs: false

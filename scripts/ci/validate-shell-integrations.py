@@ -174,6 +174,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
     mise_stub.write_text(
         "#!/bin/sh\n"
         'printf \'mise %s\\n\' "$*" >>"$COMMAND_LOG"\n'
+        'if test "$3" = reshim; then exit "${RESHIM_STATUS:-0}"; fi\n'
     )
     mise_stub.chmod(0o755)
     uname_stub = fake_bin / "uname"
@@ -207,6 +208,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
         "op read op://Tests/NewRelic/key",
         f"chezmoi init --source {fake_checkout.resolve()}",
         f"chezmoi --source {fake_checkout.resolve()} apply",
+        f"mise -C {fake_checkout.resolve()} reshim",
         "zsh-cache",
         f"mise -C {fake_checkout.resolve()} bootstrap macos launchd-agents apply --yes",
     ]
@@ -216,6 +218,16 @@ with tempfile.TemporaryDirectory() as temp_dir:
             "dotfile apply must refresh the zsh cache and managed services: "
             f"{actual_apply_commands}"
         )
+
+    command_log.write_text("")
+    failed_reshim = subprocess.run(
+        ["bash", str(fake_scripts / "apply.sh")], cwd=fake_checkout,
+        env={**apply_env, "RESHIM_STATUS": "17"}, capture_output=True, text=True,
+    )
+    if failed_reshim.returncode != 17:
+        fail("dotfile apply must propagate shim refresh failures")
+    if command_log.read_text().splitlines() != expected_apply_commands[:5]:
+        fail("shim refresh failures must stop cache rebuilding and service application")
 
     command_log.write_text("")
     existing_key_env = dict(apply_env)

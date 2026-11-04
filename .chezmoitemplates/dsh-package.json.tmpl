@@ -1,0 +1,43 @@
+{{- $version := (index (include "mise.toml" | fromToml).tools "npm:@deepseek-ai/dsh").version -}}
+{
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@deepseek-ai/dsh": {{ $version | toJson }},
+{{- if eq .role "work" }}
+    "@deepseek-ai/dsh-subagent-claude-code": "0.2.1-rc.2",
+{{- end }}
+{{- if eq .surface "tui" }}
+    "@sagmans/dsh-tui": "0.16.0",
+{{- if eq .role "personal" }}
+    "@sagmans/dsh-provider-extra": "0.8.1",
+{{- end }}
+{{- end }}
+    "@dotfiles/dsh-{{ .role }}": {{ printf "link:%s/.config/deepseek-harness/%s" .homeDir .role | toJson }}
+  },
+  "dsh": {
+    "profile": {
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+{{- if eq .surface "tui" }}
+        "@sagmans/dsh-tui",
+{{- else }}
+        "@deepseek-ai/dsh-web-app",
+{{- end }}
+{{- if eq .role "work" }}
+        "@deepseek-ai/dsh-subagent-claude-code",
+{{- end }}
+        "@dotfiles/dsh-{{ .role }}",
+        "@deepseek-ai/dsh-experimental-agent-team-profile",
+        "@deepseek-ai/dsh-experimental-auto-review",
+        "@deepseek-ai/dsh-experimental-tool-worktree",
+        "@deepseek-ai/dsh-experimental-cot-translation-bundle",
+        "@deepseek-ai/dsh-experimental-terminal-bundle",
+        "@deepseek-ai/dsh-experimental-session-search",
+        "@deepseek-ai/dsh-experimental-session-titles-bundle",
+        "@deepseek-ai/dsh-experimental-badge-skill-bundle",
+        "@deepseek-ai/dsh-experimental-ralph-bundle"
+      ]
+    }
+  }
+}

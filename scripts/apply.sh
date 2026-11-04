@@ -59,6 +59,7 @@ apply_managed_services() {
 load_new_relic_license_key
 chezmoi init --source "$DOTFILES_ROOT"
 chezmoi --source "$DOTFILES_ROOT" apply
+"$MISE_BIN" -C "$DOTFILES_ROOT" reshim
 # shellcheck source=/dev/null
 source "$HOME/.config/dotfiles/client-runtime.sh"
 PI_AGENT_DIR="$(dotfiles_pi_agent_dir)"

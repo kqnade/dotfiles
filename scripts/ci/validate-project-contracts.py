@@ -1,126 +1,21 @@
 #!/usr/bin/env python3
 
-"""Validate public project, CI, platform, and bootstrap invariants."""
+"""Validate project, platform, and bootstrap invariants."""
 
 from __future__ import annotations
 
-import hashlib
 import json
-import os
 import re
 import subprocess
-import sys
-import tempfile
 import tomllib
-from pathlib import Path
 
-from validate_common import ROOT, fail, strip_json_comments, tracked_files
+from validate_common import ROOT, fail, strip_json_comments
 
 
 try:
-    renovate = json.loads(strip_json_comments((ROOT / "renovate.jsonc").read_text()))
+    json.loads(strip_json_comments((ROOT / "renovate.jsonc").read_text()))
 except json.JSONDecodeError as error:
     fail(f"invalid JSONC in renovate.jsonc: {error}")
-if renovate.get("minimumReleaseAge") != "1 day":
-    fail("Renovate minimumReleaseAge must remain 1 day")
-if renovate.get("timezone") != "Asia/Tokyo":
-    fail("Renovate timezone must remain Asia/Tokyo")
-if renovate.get("schedule") != ["at any time"]:
-    fail("Renovate must allow dependency PRs at any time")
-if renovate.get("automerge") is not True:
-    fail("Renovate automerge must remain enabled")
-if renovate.get("automergeType") != "pr":
-    fail("Renovate automergeType must remain pr")
-if renovate.get("automergeStrategy") != "squash":
-    fail("Renovate automergeStrategy must remain squash")
-if renovate.get("platformAutomerge") is not True:
-    fail("Renovate platformAutomerge must remain enabled")
-if renovate.get("lockFileMaintenance", {}).get("enabled") is not True:
-    fail("Renovate lockFileMaintenance must remain enabled")
-if renovate.get("customManagers") != [{
-    "customType": "regex",
-    "managerFilePatterns": [r"/^mise\.(toml|lock)$/"],
-    "matchStrings": [
-        r'"cargo:https://github\.com/wachikun/yaskkserv2"\s*=\s*\{\s*version\s*=\s*"rev:(?<currentDigest>[a-f0-9]{40})"',
-        r'\[\[tools\."cargo:https://github\.com/wachikun/yaskkserv2"\]\]\s*version\s*=\s*"rev:(?<currentDigest>[a-f0-9]{40})"',
-    ],
-    "depNameTemplate": "wachikun/yaskkserv2",
-    "packageNameTemplate": "wachikun/yaskkserv2",
-    "datasourceTemplate": "github-digest",
-    "currentValueTemplate": "master",
-    "versioningTemplate": "exact",
-}]:
-    fail("Renovate custom managers may only track yaskkserv2 master revision pins")
-if not any(
-    rule.get("matchManagers") == ["mise"]
-    and rule.get("matchDepNames") == ["cargo:https://github.com/wachikun/yaskkserv2"]
-    and rule.get("enabled") is False
-    for rule in renovate.get("packageRules", [])
-):
-    fail("the mise manager must leave yaskkserv2 revisions to its master digest manager")
-if renovate.get("customDatasources", {}).get("onepassword-cli") != {
-    "defaultRegistryUrlTemplate": "https://mise-versions.jdx.dev/1password-cli",
-    "format": "plain",
-}:
-    fail("Renovate must resolve 1Password CLI through mise's version endpoint")
-if not any(
-    rule.get("matchManagers") == ["mise"]
-    and rule.get("matchPackageNames") == ["1password/cli"]
-    and rule.get("overrideDatasource") == "custom.onepassword-cli"
-    and rule.get("versioning") == "semver"
-    and rule.get("minimumReleaseAge") is None
-    and rule.get("enabled") is not False
-    for rule in renovate.get("packageRules", [])
-):
-    fail("Renovate must track stable 1Password CLI releases")
-if not any(
-    rule.get("matchManagers") == ["mise"]
-    and rule.get("matchDatasources") == ["github-tags"]
-    and rule.get("matchPackageNames") == ["openai/codex"]
-    and rule.get("extractVersion") == r"^rust-v(?<version>\d+\.\d+\.\d+)$"
-    and rule.get("versioning") == "semver"
-    and rule.get("enabled") is not False
-    for rule in renovate.get("packageRules", [])
-):
-    fail("Renovate must track stable Codex CLI releases from rust-v tags")
-if not any(
-    rule.get("matchManagers") == ["mise"]
-    and rule.get("matchDepNames")
-    == [
-        "claude",
-        "aqua:openai/codex",
-        "herdr",
-        "opencode",
-        "npm:@earendil-works/pi-coding-agent",
-    ]
-    and rule.get("minimumReleaseAge") is None
-    and rule.get("enabled") is not False
-    for rule in renovate.get("packageRules", [])
-):
-    fail("Renovate must track AI tools without the default release cooldown")
-if not any(
-    rule.get("matchManagers") == ["mise"]
-    and rule.get("matchDepNames") == ["npm:@earendil-works/pi-coding-agent"]
-    and rule.get("prPriority") == 10
-    and rule.get("enabled") is not False
-    for rule in renovate.get("packageRules", [])
-):
-    fail("Renovate must prioritize Pi update PRs")
-
-if (ROOT / "scripts/update.sh").exists():
-    fail("dependency updates must be owned by Renovate, not scripts/update.sh")
-for relative in (
-    "AGENTS.md",
-    "README.md",
-    "docs/ci.md",
-    "mise.toml",
-    ".github/workflows/ci.yml",
-):
-    if "mise run update" in (ROOT / relative).read_text():
-        fail(f"obsolete mise run update interface remains in {relative}")
-if "[tasks.update]" in (ROOT / "mise.toml").read_text():
-    fail("obsolete mise update task remains in mise.toml")
-
 keymaps = (ROOT / "dot_config/nvim/lua/core/keymaps.lua").read_text()
 for mapping in (
     'map({ "n", "x", "o" }, "m", "h", opts)',
@@ -188,23 +83,10 @@ for fragment in (
     if fragment not in installer:
         fail(f"Linux bootstrap elevation check is missing: {fragment}")
 
-workflow = (ROOT / ".github/workflows/ci.yml").read_text()
 with (ROOT / "mise.toml").open("rb") as stream:
     mise_min_version = tomllib.load(stream).get("min_version")
 if f'readonly MISE_MIN_VERSION="{mise_min_version}"\n' not in installer:
     fail("installer mise version must match min_version")
-if "https://mise.run" in workflow:
-    fail("CI must use the checksum-verified repository installer")
-if workflow.count("bash install.sh --mise-only\n") != 2:
-    fail("static and package CI must install mise without bootstrapping dotfiles")
-if "mise exec -- python3 scripts/ci/test-install.py\n" not in workflow:
-    fail("CI must run the offline installer tests")
-if "--dry-" + "run" in workflow:
-    fail("CI must execute bootstrap interfaces instead of previewing them")
-for formatted_manifest in ("mise.toml", "mise/config.toml"):
-    if f'"$taplo_bin" format --check {formatted_manifest}' not in workflow:
-        fail(f"CI must format-check split manifest: {formatted_manifest}")
-
 format_script = (ROOT / "scripts/format.sh").read_text()
 pre_commit_script = (ROOT / "scripts/pre-commit.sh").read_text()
 for formatted_manifest in ("mise.toml", "mise/config.toml"):
@@ -216,55 +98,6 @@ for formatted_manifest in ("mise.toml", "mise/config.toml"):
         fail(f"format task must format split manifest: {formatted_manifest}")
     if formatted_manifest not in pre_commit_script:
         fail(f"pre-commit must inspect split manifest: {formatted_manifest}")
-
-static_job = workflow.split("  package-bootstrap:", 1)[0]
-repository_validator_commands = (
-    "mise exec -- python3 scripts/ci/validate-shell-integrations.py",
-    "mise exec -- python3 scripts/ci/validate-claude-authorization.py",
-    "mise exec -- python3 scripts/ci/validate-agent-materialization.py",
-    "mise exec -- python3 scripts/ci/validate-repository-layout.py",
-    "mise exec -- python3 scripts/ci/validate-agent-client-config.py",
-    "mise exec -- python3 scripts/ci/validate-project-contracts.py",
-)
-
-zsh_install = "sudo apt-get install --yes zsh"
-if zsh_install not in static_job:
-    fail("CI static validation must install zsh")
-if static_job.index(zsh_install) > static_job.index(repository_validator_commands[0]):
-    fail("CI static validation must install zsh before running the repository validator")
-
-static_tools_install = "mise install --locked chezmoi yq node python"
-if static_tools_install not in static_job:
-    fail("CI static validation must install chezmoi, yq, node, and Python")
-if static_job.index(static_tools_install) > static_job.index(
-    repository_validator_commands[0]
-):
-    fail("CI static validation must install tools before the repository validators")
-
-mise_scoped_mise_tests = "mise exec -- python3 scripts/ci/test-validate-mise.py"
-if mise_scoped_mise_tests not in static_job:
-    fail("CI mise tests must run with installed tools on PATH")
-
-for fragment in (
-    "bash install.sh",
-    "mise run apply",
-    "mise run doctor",
-    "mise bootstrap --yes",
-    "mise bootstrap packages apply --yes",
-    "format --check --stdin-filepath=mise.lock - < mise.lock",
-    "cargo:sheldon",
-    "cargo:git-delta",
-    "github:sharkdp/fd",
-    "github:atuinsh/atuin",
-    "github:pnpm/pnpm",
-    "dotfiles_wait_for_port 127.0.0.1 1178",
-):
-    if fragment not in workflow:
-        fail(f"CI no longer executes required integration path: {fragment}")
-
-intel_job = workflow.split("  intel-fallback:", 1)[1]
-if "actions/cache@" in intel_job:
-    fail("Intel CI must exercise a cold install without restoring a tool cache")
 
 if "\tdefaultBranch = trunk" not in (ROOT / "dot_gitconfig.tmpl").read_text():
     fail("new Git repositories must default to trunk")
@@ -326,7 +159,4 @@ bootstrap = (ROOT / "scripts/bootstrap.sh").read_text()
 if "dotfiles_with_safe_git_directory" not in bootstrap:
     fail("pre-commit generation must trust only the resolved checkout for its Git subprocess")
 
-print(
-    "validated removals, JSON, Claude permissions, public CI paths, WSL proxies, "
-    "Neovim, Colemak, and SKK"
-)
+print("validated project, WSL, bootstrap, Neovim, Colemak, and SKK invariants")

@@ -34,11 +34,30 @@ def workflow():
 
 
 class WorkflowTests(unittest.TestCase):
+    def test_linux_dotfile_check_propagates_errors_and_detects_drift(self):
+        step = next(step for step in workflow()["jobs"]["linux-bootstrap"]["steps"]
+                    if step.get("name") == "verify tools, dotfiles, font, dictionary, and server")
+        script = step["run"].split('mise -C "$DOTFILES_ROOT" run apply\n', 1)[1].split("fc-list", 1)[0]
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            mise = root / "mise"
+            mise.write_text('#!/bin/sh\n[ "$1" = -C ] && shift 2\nif [ "$1" = exec ]; then shift 2; exec "$@"; fi\n[ "$1" = -- ] && shift\nexec "$@"\n')
+            mise.chmod(0o755)
+            chezmoi = root / "chezmoi"
+            chezmoi.write_text('#!/bin/sh\nprintf "%s" "$DIFF_OUTPUT"\nexit "$DIFF_STATUS"\n')
+            chezmoi.chmod(0o755)
+            for status, output, success in ((0, "", True), (0, "drift", False), (17, "", False)):
+                with self.subTest(status=status, output=output):
+                    result = subprocess.run(["/bin/sh", "-e", "-c", script], capture_output=True, text=True,
+                                            env={**os.environ, "PATH": str(root), "DOTFILES_ROOT": str(ROOT),
+                                                 "DIFF_STATUS": str(status), "DIFF_OUTPUT": output})
+                    self.assertEqual(result.returncode == 0, success, result.stderr)
+
     def test_changes_are_detected_without_workflow_level_path_filters(self):
         config = workflow()
         self.assertEqual(config["on"]["push"], {"branches": ["trunk"]})
         self.assertEqual(
-            set(config["on"]), {"push", "pull_request", "workflow_dispatch"}
+            set(config["on"]), {"push", "pull_request", "workflow_dispatch", "schedule"}
         )
         self.assertNotIn("pull_request_target", config["on"])
         self.assertIsNone(config["on"]["pull_request"])
@@ -59,9 +78,10 @@ class WorkflowTests(unittest.TestCase):
             output = Path(temporary) / "outputs"
             for event, base, head, success in (
                 ("workflow_dispatch", "", "", True),
+                ("schedule", "", "", True),
                 ("push", "0" * 40, "HEAD", True),
                 ("pull_request", "HEAD", "HEAD", True),
-                ("push", "missing-ci-base", "HEAD", False),
+                ("pull_request", "missing-ci-base", "HEAD", False),
             ):
                 with self.subTest(event=event, base=base):
                     output.write_text("")
@@ -78,7 +98,8 @@ class WorkflowTests(unittest.TestCase):
                     )
                     self.assertEqual(result.returncode == 0, success, result.stderr)
                     if success:
-                        self.assertEqual(output.read_text(), "bootstrap=true\n")
+                        expected = "false" if event == "push" else "true"
+                        self.assertEqual(output.read_text(), f"bootstrap={expected}\n")
 
     def test_bootstrap_waits_for_static_and_uses_the_plan(self):
         jobs = workflow()["jobs"]
@@ -141,6 +162,13 @@ class PolicyTests(unittest.TestCase):
                     ".gitignore",
                     "renovate.jsonc",
                     "scripts/ci/test-install.py",
+                    "dot_agents/skills/yomiyasu/SKILL.md",
+                    "dot_config/nvim/README.md",
+                    "dot_config/zsh/aliases.zsh",
+                    "dot_zshrc",
+                    "dot_gitconfig.tmpl",
+                    ".chezmoitemplates/pi-settings.json.tmpl",
+                    "dot_pi/agent/extensions/execution-guard.ts",
                 ]
             ),
             "bootstrap=false",
@@ -156,15 +184,29 @@ class PolicyTests(unittest.TestCase):
             ".chezmoiignore",
             ".github/workflows/ci.yml",
             "scripts/ci/ci-policy.py",
-            "dot_config/nvim/README.md",
-            "dot_agents/skills/example/SKILL.md",
-            "dot_config/zsh/aliases.zsh",
+            "scripts/ci/validate-repository.py",
+            "scripts/ci/integration/test-mise-lock.py",
+            "dot_dsh/personal/profiles/web/package.json.tmpl",
+            ".chezmoitemplates/dsh-package.json.tmpl",
+            "dot_config/deepseek-harness/work/package.json",
+            "dot_config/mise/config.toml.tmpl",
             "unknown-file",
             "README.md\ninstall.sh",
             "a file with spaces",
         ):
             with self.subTest(path=path):
                 self.assertEqual(self.plan(["docs/ci.md", path]), "bootstrap=true")
+
+    def test_dsh_config_and_runtime_changes_select_bootstrap_individually(self):
+        for path in (
+            "dot_config/deepseek-harness/personal/cordis.patch.yml",
+            "dot_config/deepseek-harness/work/workspaces.mjs",
+            "dot_config/deepseek-harness/work/web-required.patch.yml",
+            "dot_local/bin/executable_dsh-profile",
+            "dot_config/dotfiles/client-runtime.sh.tmpl",
+        ):
+            with self.subTest(path=path):
+                self.assertEqual(self.plan([path]), "bootstrap=true")
 
     def test_empty_and_forced_plans_run_everything(self):
         self.assertEqual(self.plan([]), "bootstrap=true")

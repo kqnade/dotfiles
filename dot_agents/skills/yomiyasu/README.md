@@ -5,7 +5,7 @@
 ## 配布元とライセンス
 
 - 配布元: <https://github.com/nanaism/yomiyasu>
-- 収録版: `bc55e9210865d53044cc4340fa391530e230cd00`
+- 元にした上流リビジョン: [`bc55e9210865d53044cc4340fa391530e230cd00`](https://github.com/nanaism/yomiyasu/tree/bc55e9210865d53044cc4340fa391530e230cd00/skills/yomiyasu)
 - 収録範囲: `skills/yomiyasu/` のスキル本体、参照資料、検査スクリプト、ライセンス
 - ライセンス: [MIT](LICENSE)。スクリプトに含まれるUnicodeデータは
   [Unicode License V3](UNICODE-LICENSE.txt)に従います。
@@ -15,20 +15,39 @@
 Piでは `/skill:yomiyasu`、Claudeでは `/yomiyasu` の後に対象の文章やファイルを指定します。
 本文だけが必要な場合は「本文だけ返して」と指定します。
 
-Piの普段の会話には、`~/.agents/AGENTS.md` の会話方針が適用されます。
-通常の返答や進捗報告に、文章推敲用のレポート形式は使いません。
+普段の会話には、共通の会話方針が適用されます。通常の返答や進捗報告には推敲レポートを付けず、推敲のためだけに資料や検査ツールを使いません。明示的なリライトの手順と出力形式は[SKILL.md](SKILL.md)を参照してください。
 
-検査ツールはPython標準ライブラリだけで動作します。対象やスクリプトは絶対パスで指定できます。
+## 検査CLI
+
+フルモード指定時や推敲した文章のファイル保存時は、リンターと差分検査を実行します。通常の対話リライトでは原文と改稿を内部で比較し、検査用ファイルは不要です。
+
+検査ツールはPython標準ライブラリだけで動作します。作業ディレクトリではなく、検出されたスキルの配置先を基準にスクリプトの絶対パスを解決します。以下の `skill_dir` は配置先に合わせて指定してください。原文は編集前に別ファイルとして保持し、対象のパスも指定します。
 
 ```sh
-python3 ~/.agents/skills/yomiyasu/scripts/yomiyasu_lint.py /path/to/article.md
-python3 ~/.agents/skills/yomiyasu/scripts/yomiyasu_diff.py /path/to/original.md /path/to/rewritten.md
+skill_dir="$HOME/.agents/skills/yomiyasu"
+python3 "$skill_dir/scripts/yomiyasu_lint.py" /path/to/rewritten.md
+python3 "$skill_dir/scripts/yomiyasu_diff.py" /path/to/original.md /path/to/rewritten.md --stance=説明
 ```
 
-検出結果は見直し候補です。自然な表現や、意味を保つために必要な表現まで機械的に直しません。
+- リンターはファイルを省略すると標準入力を読みます。`--json` でJSONを出力し、`--strict` では警告・エラーがあれば終了コード1、ファイル読込み失敗では2を返します。通常の検査は指摘があっても0です。ヘルプは `python3 "$skill_dir/scripts/yomiyasu_lint.py" --help` で表示します。
+- 差分検査は原文と改稿の2ファイルを比較します。`--json` でJSONを出力します。`--stance=勧め`、`--stance=決まり`、`--stance=説明` は主たる立場が明確な場合だけ指定し、不明なら省略します。候補があっても終了コードは0です。
+- 文末だけを見る場合は `python3 "$skill_dir/scripts/yomiyasu_diff.py" --endings /path/to/rewritten.md --stance=説明` を使います。
+- 差分検査に専用の `--help` はありません。引数なし、または `--help` だけで起動すると使い方を表示し、終了コード1を返します。
 
-## 更新
+指摘やスコアは見直し候補であり、意味の保持や読みやすさの合否判定ではありません。原文と読み比べ、主張・条件・主体・文末・書式の変化を確認します。自然な表現や必要な否定・評価まで機械的に直しません。太字の警告も表示先と修正範囲を確認し、不確かな修正案はそのまま適用しません。
 
-配布元の対象版を確認し、収録範囲のファイルとライセンスをそろえて更新します。
-収録版をこのファイルに記録し、`scripts/ci/test-client-workflow-reset.py` で配備とツールの動作を
-検証してから `mise run apply` で適用します。
+リンターによる修正の試行は最大2回、差分検査後の修正は1回とし、警告を消すための往復を繰り返しません。Pythonやツールを使えない場合は制約を報告し、同じ観点で目視確認します。
+
+## ローカル版の保守
+
+このスキルは上記の上流版を基にしたローカル版です。[SKILL.md](SKILL.md)には保持原則・手順・出力規則をまとめ、詳しい判断や用例は参照資料を必要に応じて読む構成にしています。通常の会話と明示的なリライトを区別します。
+
+上流版を取り込む際は、記録したリビジョンとの差分を確認し、必要な変更を選んで反映します。スキル本体をそのまま上書きせず、簡潔な本体と参照資料の役割分担を保ちます。採用した上流リビジョンを記録し、スクリプト、ライセンス、著作権表示も確認します。
+
+保守時は意味・条件・主張の強さ・時制・文体の保持、通常の返答とリライトの出力規則、参照先のファイルと見出しを確認します。CLIのヘルプ、標準入力とファイル入力、JSON出力、厳格モード、差分検査も検証します。
+
+dotfilesリポジトリで配備を検証する場合は、ルートから次の検査を実行します。配備先には一時ディレクトリを使います。
+
+```sh
+python3 scripts/ci/test-client-workflow-reset.py
+```

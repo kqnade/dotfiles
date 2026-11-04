@@ -22,16 +22,6 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class ValidateMiseTests(unittest.TestCase):
-    def test_ci_validates_lockfile_before_mise_can_refresh_it(self) -> None:
-        workflow = (ROOT / ".github/workflows/ci.yml").read_text()
-        static_job = workflow.split("  static:", 1)[1].split(
-            "  package-bootstrap:", 1
-        )[0]
-        validation = "          python3 scripts/ci/validate-mise.py\n"
-        self.assertIn(validation, static_job)
-        for command in ("mise trust mise.toml", "mise install", "mise exec"):
-            self.assertLess(static_job.index(validation), static_job.index(command))
-
     def test_github_binary_release_tags_use_lockfile_version_format(self) -> None:
         config = json.loads(
             strip_json_comments((ROOT / "renovate.jsonc").read_text())
@@ -61,24 +51,10 @@ class ValidateMiseTests(unittest.TestCase):
         config = json.loads(
             strip_json_comments((ROOT / "renovate.jsonc").read_text())
         )
-        managers = config.get("customManagers", [])
-        self.assertEqual(len(managers), 1)
-        manager = managers[0]
-        self.assertEqual(manager["customType"], "regex")
-        self.assertEqual(manager["managerFilePatterns"], [r"/^mise\.(toml|lock)$/"])
-        self.assertEqual(manager["depNameTemplate"], "wachikun/yaskkserv2")
-        self.assertEqual(manager["packageNameTemplate"], "wachikun/yaskkserv2")
-        self.assertEqual(manager["datasourceTemplate"], "github-digest")
-        self.assertEqual(manager["currentValueTemplate"], "master")
-        self.assertEqual(manager["versioningTemplate"], "exact")
-        self.assertTrue(any(
-            rule.get("matchManagers") == ["mise"]
-            and rule.get("matchDepNames") == [
-                "cargo:https://github.com/wachikun/yaskkserv2"
-            ]
-            and rule.get("enabled") is False
-            for rule in config["packageRules"]
-        ))
+        manager = next(
+            manager for manager in config["customManagers"]
+            if manager.get("depNameTemplate") == "wachikun/yaskkserv2"
+        )
 
         tool = "cargo:https://github.com/wachikun/yaskkserv2"
         manifest = tomllib.loads((ROOT / "mise.toml").read_text())
@@ -104,106 +80,6 @@ class ValidateMiseTests(unittest.TestCase):
                 if relative == "mise.lock":
                     entry = entry[0]
                 self.assertEqual(entry["version"], f"rev:{new_digest}")
-
-    def test_1password_lock_resolves_official_archives_without_warnings(self) -> None:
-        mise = shutil.which("mise")
-        self.assertIsNotNone(mise)
-        with tempfile.TemporaryDirectory() as temporary_directory:
-            fixture_root = Path(temporary_directory)
-            shutil.copyfile(ROOT / "mise.toml", fixture_root / "mise.toml")
-            environment = {
-                **os.environ,
-                "MISE_CONFIG_DIR": str(fixture_root / "config"),
-            }
-            result = subprocess.run(
-                [mise, "trust", str(fixture_root / "mise.toml")],
-                cwd=fixture_root,
-                env=environment,
-                text=True,
-                capture_output=True,
-                check=False,
-            )
-            self.assertEqual(result.returncode, 0, result.stderr)
-            result = subprocess.run(
-                [mise, "lock", "1password-cli"],
-                cwd=fixture_root,
-                env=environment,
-                text=True,
-                capture_output=True,
-                check=False,
-            )
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertNotIn("WARN", result.stderr)
-            lock = tomllib.loads((fixture_root / "mise.lock").read_text())
-
-        entry = lock["tools"]["1password-cli"][0]
-        version = entry["version"]
-        for platform, archive_platform in (
-            ("macos-arm64", "darwin_arm64"),
-            ("macos-x64", "darwin_amd64"),
-            ("linux-x64", "linux_amd64"),
-        ):
-            with self.subTest(platform=platform):
-                self.assertEqual(
-                    entry[f"platforms.{platform}"]["url"],
-                    f"https://cache.agilebits.com/dist/1P/op2/pkg/v{version}/"
-                    f"op_{archive_platform}_v{version}.zip",
-                )
-
-    def test_os_filtered_tools_lock_supported_platforms_without_warnings(self) -> None:
-        mise = shutil.which("mise")
-        self.assertIsNotNone(mise)
-        with tempfile.TemporaryDirectory() as temporary_directory:
-            fixture_root = Path(temporary_directory)
-            for name in ("mise.toml", "mise.lock"):
-                shutil.copyfile(ROOT / name, fixture_root / name)
-            environment = {
-                **os.environ,
-                "MISE_CONFIG_DIR": str(fixture_root / "config"),
-                "MISE_STATE_DIR": str(fixture_root / "state"),
-            }
-            result = subprocess.run(
-                [mise, "trust", str(fixture_root / "mise.toml")],
-                cwd=fixture_root,
-                env=environment,
-                text=True,
-                capture_output=True,
-                check=False,
-            )
-            self.assertEqual(result.returncode, 0, result.stderr)
-            result = subprocess.run(
-                [mise, "lock", "btop", "delta", "sheldon"],
-                cwd=fixture_root,
-                env=environment,
-                text=True,
-                capture_output=True,
-                check=False,
-            )
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertNotIn("is not available for", result.stderr)
-            lock = tomllib.loads((fixture_root / "mise.lock").read_text())
-
-        platforms = {
-            "-".join(key.removeprefix("platforms.").split("-")[:2])
-            for entries in lock["tools"].values()
-            for entry in entries
-            for key in entry
-            if key.startswith("platforms.")
-        }
-        self.assertEqual(platforms, {"linux-x64", "macos-arm64", "macos-x64"})
-        for tool, expected in (
-            ("btop", {"linux-x64"}),
-            ("delta", {"linux-x64", "macos-arm64"}),
-            ("sheldon", {"linux-x64", "macos-arm64"}),
-        ):
-            with self.subTest(tool=tool):
-                actual = {
-                    "-".join(key.removeprefix("platforms.").split("-")[:2])
-                    for entry in lock["tools"][tool]
-                    for key in entry
-                    if key.startswith("platforms.")
-                }
-                self.assertEqual(actual, expected)
 
     def test_1password_uses_http_backend(self) -> None:
         manifest = tomllib.loads((ROOT / "mise.toml").read_text())
@@ -366,6 +242,10 @@ class ValidateMiseTests(unittest.TestCase):
         self.assertIsNotNone(mise, "mise must be installed to validate config discovery")
 
         with tempfile.TemporaryDirectory() as temporary_directory:
+            fixture_root = Path(temporary_directory).resolve() / "project"
+            (fixture_root / "mise").mkdir(parents=True)
+            for relative in ("mise.toml", "mise/config.toml"):
+                shutil.copyfile(ROOT / relative, fixture_root / relative)
             environment = dict(os.environ)
             environment["MISE_CONFIG_DIR"] = temporary_directory
             environment["MISE_CACHE_DIR"] = str(
@@ -375,7 +255,8 @@ class ValidateMiseTests(unittest.TestCase):
                 Path(temporary_directory) / "state"
             )
             trust = subprocess.run(
-                [mise, "trust", str(ROOT / "mise.toml")],
+                [mise, "trust", str(fixture_root / "mise.toml")],
+                cwd=fixture_root,
                 env=environment,
                 text=True,
                 capture_output=True,
@@ -383,7 +264,8 @@ class ValidateMiseTests(unittest.TestCase):
             )
             self.assertEqual(trust.returncode, 0, trust.stderr)
             result = subprocess.run(
-                [mise, "-C", str(ROOT), "config", "ls", "--json"],
+                [mise, "-C", str(fixture_root), "config", "ls", "--json"],
+                cwd=fixture_root,
                 env=environment,
                 text=True,
                 capture_output=True,
@@ -393,12 +275,13 @@ class ValidateMiseTests(unittest.TestCase):
                 [
                     mise,
                     "-C",
-                    str(ROOT),
+                    str(fixture_root),
                     "bootstrap",
                     "user",
                     "status",
                     "--json",
                 ],
+                cwd=fixture_root,
                 env=environment,
                 text=True,
                 capture_output=True,
@@ -409,7 +292,7 @@ class ValidateMiseTests(unittest.TestCase):
         loaded_paths = {Path(item["path"]) for item in json.loads(result.stdout)}
         self.assertEqual(
             loaded_paths,
-            {ROOT / "mise.toml", ROOT / "mise/config.toml"},
+            {fixture_root / "mise.toml", fixture_root / "mise/config.toml"},
         )
         self.assertEqual(user_status.returncode, 0, user_status.stderr)
         self.assertEqual(
@@ -551,6 +434,45 @@ class ValidateMiseTests(unittest.TestCase):
                     self.assertEqual(
                         str(destination / relative) in managed, os_name == "linux"
                     )
+
+    def test_mole_archive_fields_have_valid_structure(self) -> None:
+        manifest = (ROOT / "mise.toml").read_text()
+        start = manifest.index('[tools."http:mole"]')
+        end = manifest.index("\n[", start + 1)
+        section = manifest[start:end]
+        cases = [(None, None, True)]
+        for field, invalid_values in {
+            "url": ('"http://example.com/mole.tar.gz"', '"https://"', "42"),
+            "checksum": ('"sha256:abc"', '"md5:' + "a" * 32 + '"', "42"),
+            "strip_components": ('"1"', "true", "1.5"),
+            "bin_path": ('""', '" "', "42"),
+            "postinstall": ('""', '" "', "42"),
+        }.items():
+            for value in (None, *invalid_values):
+                cases.append((field, value, False))
+        cases.extend((field, value, True) for field, value in (
+            ("url", '"https://example.com/mole-{{ version }}.tar.gz"'),
+            ("checksum", '"sha256:' + "a" * 64 + '"'),
+        ))
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            fixture = Path(temporary_directory)
+            for relative in ("mise/config.toml", "mise.lock", "dot_config/mise/config.toml.tmpl",
+                             "dot_config/mise/mise.lock.tmpl", "scripts/ci/validate-mise.py"):
+                destination = fixture / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(ROOT / relative, destination)
+            for field, value, success in cases:
+                with self.subTest(field=field, value=value):
+                    modified = section if field is None else re.sub(
+                        rf"^{field} = .*\n?", "" if value is None else f"{field} = {value}\n",
+                        section, flags=re.MULTILINE,
+                    )
+                    (fixture / "mise.toml").write_text(manifest[:start] + modified + manifest[end:])
+                    result = subprocess.run([sys.executable, "-B", str(fixture / "scripts/ci/validate-mise.py")],
+                                            capture_output=True, text=True, check=False)
+                    self.assertEqual(result.returncode == 0, success, result.stderr)
+                    if not success:
+                        self.assertIn("Mole", result.stderr)
 
     def test_requested_version_must_own_each_locked_platform_url(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

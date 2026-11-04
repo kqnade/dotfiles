@@ -81,6 +81,11 @@ Linux では Herdr integration、全 OS で pre-commit hook を準備し、`yask
 詳細は [設定一覧](docs/features.md)、[macOS セットアップ](docs/setup-macos.md)、
 [Linux / WSL セットアップ](docs/setup-linux.md) を参照してください。
 
+会社MacのDSH workは[ローカル設定で有効化](<docs/ai-clients.md#deepseek-harness>)します。
+personalは全対応OSで利用できます。
+
+軽量テストは `mise exec -- python3 -B scripts/ci/validate-repository.py` で実行します。
+CIは基盤変更のPRと週次・手動で実インストールを検証します。
 CI の実行範囲は [docs/ci.md](docs/ci.md)、workflow の定義は
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) にあります。未対応事項は
 [TODO.md](TODO.md) で管理しています。

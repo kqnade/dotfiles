@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
 
 const modulePath = process.argv[2];
-if (!modulePath) throw new Error('Usage: node scripts/ci/test-dsh-shutdown.mjs <profile-boot module>');
+if (!modulePath) throw new Error('Usage: node scripts/ci/integration/test-dsh-shutdown.mjs <profile-boot module>');
 const source = readFileSync(modulePath, 'utf8');
 const start = source.indexOf('function createProcessShutdown(');
 const end = source.indexOf('\n//#endregion', start);

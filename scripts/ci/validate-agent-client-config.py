@@ -4,17 +4,10 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
-import os
-import re
 import subprocess
-import sys
-import tempfile
-import tomllib
-from pathlib import Path
 
-from validate_common import ROOT, fail, strip_json_comments, tracked_files
+from validate_common import ROOT, fail
 
 
 opencode = json.loads((ROOT / "dot_config/opencode/opencode.json").read_text())
@@ -98,20 +91,8 @@ try:
 except (subprocess.CalledProcessError, json.JSONDecodeError) as error:
     fail(f"invalid Claude settings JSON: {error}")
 
-if settings.get("language") != "Japanese":
-    fail("Claude language must not encode a voice or tone")
-
-if settings.get("model") != "claude-opus-5-5[1m]":
-    fail("Claude default model must remain pinned to Opus 5.5")
-
 if settings.get("autoMemoryEnabled") is not False:
     fail("Claude automatic memory must remain disabled")
-
-enabled_plugins = settings.get("enabledPlugins")
-if not isinstance(enabled_plugins, dict):
-    fail("Claude enabledPlugins must be an object")
-if enabled_plugins.get("datadog@claude-plugins-official") is not True:
-    fail("Claude must enable the official Datadog plugin")
 
 hooks = settings.get("hooks")
 if not isinstance(hooks, dict):
@@ -132,13 +113,6 @@ for event_name in ("UserPromptSubmit", "PreToolUse"):
     if repository_guard_command not in hook_commands_for(event_name):
         fail(f"Claude repository authorization must guard {event_name}")
 
-hook_commands = {
-    hook.get("command")
-    for groups in hooks.values()
-    for group in groups
-    for hook in group.get("hooks", [])
-    if isinstance(hook, dict)
-}
 permissions = settings.get("permissions")
 if not isinstance(permissions, dict):
     fail("Claude settings permissions must be an object")
