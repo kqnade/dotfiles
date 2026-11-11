@@ -75,7 +75,7 @@ claude = "2.1.311"
 opencode = "1.19.5"
 ollama = "0.40.12"
 "npm:@deepseek-ai/dsh" = { version = "0.2.1-rc.2", depends = ["node"] }
-"npm:@earendil-works/pi-coding-agent" = { version = "1.4.0", depends = [
+"npm:@earendil-works/pi-coding-agent" = { version = "1.5.2", depends = [
   "node",
 ] }
 "npm:ccusage" = { version = "20.0.45", depends = ["node"] }
