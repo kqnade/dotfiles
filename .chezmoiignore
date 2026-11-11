@@ -23,6 +23,10 @@ renovate.jsonc
 .local/bin/herdr-worktree
 {{ end -}}
 
+{{ if ne .chezmoi.os "darwin" -}}
+.local/bin/tailscale
+{{ end -}}
+
 {{- $isWsl := and (eq .chezmoi.os "linux") (contains "microsoft" (.chezmoi.kernel.osrelease | default "" | lower)) }}
 {{ if not $isWsl -}}
 .local/bin/op

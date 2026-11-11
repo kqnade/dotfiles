@@ -1,0 +1,4 @@
+#!/bin/sh
+
+export TAILSCALE_BE_CLI=1
+exec /Applications/Tailscale.app/Contents/MacOS/Tailscale "$@"
