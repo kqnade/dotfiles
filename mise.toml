@@ -45,7 +45,7 @@ zoxide = "0.10.0"
 jq = "1.8.2"
 yq = "4.54.1"
 just = "1.59.0"
-"github:atuinsh/atuin" = "18.24.5"
+"github:atuinsh/atuin" = "18.24.6"
 "aqua:babarot/gomi" = "1.10.1"
 btop = { version = "1.4.8", os = ["linux"] }
 
