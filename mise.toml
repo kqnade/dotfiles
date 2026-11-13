@@ -64,7 +64,7 @@ typos = "1.51.1"
 rust = "1.99.1"
 python = "3.15.2"
 node = "26.13.0"
-"github:pnpm/pnpm" = "12.19.0"
+"github:pnpm/pnpm" = "12.20.0"
 uv = "0.13.7"
 
 # Agent and application CLIs
