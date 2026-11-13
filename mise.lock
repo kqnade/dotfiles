@@ -879,50 +879,50 @@ version = "7.0.2"
 backend = "npm:typescript"
 
 [[tools.ollama]]
-version = "0.40.12"
+version = "0.40.16"
 backend = "aqua:ollama/ollama"
 
 [tools.ollama."platforms.linux-x64"]
-checksum = "sha256:f8adcb7e08d272283a4bd3abc18cf581afe37e64b2aee04fda4f407f215485ba"
+checksum = "sha256:87bfafb2acbc89b2e6a1be0a9043de6aa75fb450696f86bc426e65fc448f788d"
 checksum_source = "mise-versions"
-url = "https://github.com/ollama/ollama/releases/download/v0.40.12/ollama-linux-amd64.tar.zst"
-url_api = "https://api.github.com/repos/ollama/ollama/releases/assets/682919829"
+url = "https://github.com/ollama/ollama/releases/download/v0.40.16/ollama-linux-amd64.tar.zst"
+url_api = "https://api.github.com/repos/ollama/ollama/releases/assets/729375561"
 
 [tools.ollama."platforms.linux-x64-baseline"]
-checksum = "sha256:f8adcb7e08d272283a4bd3abc18cf581afe37e64b2aee04fda4f407f215485ba"
+checksum = "sha256:87bfafb2acbc89b2e6a1be0a9043de6aa75fb450696f86bc426e65fc448f788d"
 checksum_source = "mise-versions"
-url = "https://github.com/ollama/ollama/releases/download/v0.40.12/ollama-linux-amd64.tar.zst"
-url_api = "https://api.github.com/repos/ollama/ollama/releases/assets/682919829"
+url = "https://github.com/ollama/ollama/releases/download/v0.40.16/ollama-linux-amd64.tar.zst"
+url_api = "https://api.github.com/repos/ollama/ollama/releases/assets/729375561"
 
 [tools.ollama."platforms.linux-x64-musl"]
-checksum = "sha256:f8adcb7e08d272283a4bd3abc18cf581afe37e64b2aee04fda4f407f215485ba"
+checksum = "sha256:87bfafb2acbc89b2e6a1be0a9043de6aa75fb450696f86bc426e65fc448f788d"
 checksum_source = "mise-versions"
-url = "https://github.com/ollama/ollama/releases/download/v0.40.12/ollama-linux-amd64.tar.zst"
-url_api = "https://api.github.com/repos/ollama/ollama/releases/assets/682919829"
+url = "https://github.com/ollama/ollama/releases/download/v0.40.16/ollama-linux-amd64.tar.zst"
+url_api = "https://api.github.com/repos/ollama/ollama/releases/assets/729375561"
 
 [tools.ollama."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:f8adcb7e08d272283a4bd3abc18cf581afe37e64b2aee04fda4f407f215485ba"
+checksum = "sha256:87bfafb2acbc89b2e6a1be0a9043de6aa75fb450696f86bc426e65fc448f788d"
 checksum_source = "mise-versions"
-url = "https://github.com/ollama/ollama/releases/download/v0.40.12/ollama-linux-amd64.tar.zst"
-url_api = "https://api.github.com/repos/ollama/ollama/releases/assets/682919829"
+url = "https://github.com/ollama/ollama/releases/download/v0.40.16/ollama-linux-amd64.tar.zst"
+url_api = "https://api.github.com/repos/ollama/ollama/releases/assets/729375561"
 
 [tools.ollama."platforms.macos-arm64"]
-checksum = "sha256:1d1b4c2cf40d2a239f9b08a77384830800a8542c744a55f47247f9baf85b55d2"
+checksum = "sha256:a743717494315da7cd352982b805f6b992d4b4452ca117fd5fbf86c4ee46fca0"
 checksum_source = "mise-versions"
-url = "https://github.com/ollama/ollama/releases/download/v0.40.12/ollama-darwin.tgz"
-url_api = "https://api.github.com/repos/ollama/ollama/releases/assets/682919693"
+url = "https://github.com/ollama/ollama/releases/download/v0.40.16/ollama-darwin.tgz"
+url_api = "https://api.github.com/repos/ollama/ollama/releases/assets/729375443"
 
 [tools.ollama."platforms.macos-x64"]
-checksum = "sha256:1d1b4c2cf40d2a239f9b08a77384830800a8542c744a55f47247f9baf85b55d2"
+checksum = "sha256:a743717494315da7cd352982b805f6b992d4b4452ca117fd5fbf86c4ee46fca0"
 checksum_source = "mise-versions"
-url = "https://github.com/ollama/ollama/releases/download/v0.40.12/ollama-darwin.tgz"
-url_api = "https://api.github.com/repos/ollama/ollama/releases/assets/682919693"
+url = "https://github.com/ollama/ollama/releases/download/v0.40.16/ollama-darwin.tgz"
+url_api = "https://api.github.com/repos/ollama/ollama/releases/assets/729375443"
 
 [tools.ollama."platforms.macos-x64-baseline"]
-checksum = "sha256:1d1b4c2cf40d2a239f9b08a77384830800a8542c744a55f47247f9baf85b55d2"
+checksum = "sha256:a743717494315da7cd352982b805f6b992d4b4452ca117fd5fbf86c4ee46fca0"
 checksum_source = "mise-versions"
-url = "https://github.com/ollama/ollama/releases/download/v0.40.12/ollama-darwin.tgz"
-url_api = "https://api.github.com/repos/ollama/ollama/releases/assets/682919693"
+url = "https://github.com/ollama/ollama/releases/download/v0.40.16/ollama-darwin.tgz"
+url_api = "https://api.github.com/repos/ollama/ollama/releases/assets/729375443"
 
 [[tools.opencode]]
 version = "1.19.5"
