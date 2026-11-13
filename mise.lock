@@ -925,50 +925,36 @@ url = "https://github.com/ollama/ollama/releases/download/v0.40.16/ollama-darwin
 url_api = "https://api.github.com/repos/ollama/ollama/releases/assets/729375443"
 
 [[tools.opencode]]
-version = "1.19.5"
+version = "2.3.0"
 backend = "aqua:anomalyco/opencode"
 
 [tools.opencode."platforms.linux-x64"]
-checksum = "sha256:588310a336fa3b9df36b3f0225b26f679d453efaad0cf3d66c3651ef3ec1647a"
-checksum_source = "mise-versions"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.19.5/opencode-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/683986986"
+checksum = "sha256:fc0f81522aceeabac47693d88389efa2bc517ce74c2c38fd6967819fcc6e4d3b"
+url = "https://opencode.ai/files/bin/2.3.0/opencode-linux-x64.tar.gz"
 
 [tools.opencode."platforms.linux-x64-baseline"]
-checksum = "sha256:588310a336fa3b9df36b3f0225b26f679d453efaad0cf3d66c3651ef3ec1647a"
-checksum_source = "mise-versions"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.19.5/opencode-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/683986986"
+checksum = "sha256:fc0f81522aceeabac47693d88389efa2bc517ce74c2c38fd6967819fcc6e4d3b"
+url = "https://opencode.ai/files/bin/2.3.0/opencode-linux-x64.tar.gz"
 
 [tools.opencode."platforms.linux-x64-musl"]
-checksum = "sha256:588310a336fa3b9df36b3f0225b26f679d453efaad0cf3d66c3651ef3ec1647a"
-checksum_source = "mise-versions"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.19.5/opencode-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/683986986"
+checksum = "sha256:fc0f81522aceeabac47693d88389efa2bc517ce74c2c38fd6967819fcc6e4d3b"
+url = "https://opencode.ai/files/bin/2.3.0/opencode-linux-x64.tar.gz"
 
 [tools.opencode."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:588310a336fa3b9df36b3f0225b26f679d453efaad0cf3d66c3651ef3ec1647a"
-checksum_source = "mise-versions"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.19.5/opencode-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/683986986"
+checksum = "sha256:fc0f81522aceeabac47693d88389efa2bc517ce74c2c38fd6967819fcc6e4d3b"
+url = "https://opencode.ai/files/bin/2.3.0/opencode-linux-x64.tar.gz"
 
 [tools.opencode."platforms.macos-arm64"]
-checksum = "sha256:c1c9e62521192192ef4c3ed1355ada2144055bddb61682217e997b03c55203c1"
-checksum_source = "mise-versions"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.19.5/opencode-darwin-arm64.zip"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/683994920"
+checksum = "sha256:7907df2b12720a840fbb49c5b978b9b82925b6bf75479a5fd216afa8932b6702"
+url = "https://opencode.ai/files/bin/2.3.0/opencode-darwin-arm64.zip"
 
 [tools.opencode."platforms.macos-x64"]
-checksum = "sha256:b0212efa6db347187225a17fa3a31c6b261bf4c9f1589a290b0ca902d720d250"
-checksum_source = "mise-versions"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.19.5/opencode-darwin-x64.zip"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/683994925"
+checksum = "sha256:79a4841925e3344d5bb4b000acf6c50b11de301e9047aa9bea9e288e77fe4249"
+url = "https://opencode.ai/files/bin/2.3.0/opencode-darwin-x64.zip"
 
 [tools.opencode."platforms.macos-x64-baseline"]
-checksum = "sha256:b0212efa6db347187225a17fa3a31c6b261bf4c9f1589a290b0ca902d720d250"
-checksum_source = "mise-versions"
-url = "https://github.com/anomalyco/opencode/releases/download/v1.19.5/opencode-darwin-x64.zip"
-url_api = "https://api.github.com/repos/anomalyco/opencode/releases/assets/683994925"
+checksum = "sha256:79a4841925e3344d5bb4b000acf6c50b11de301e9047aa9bea9e288e77fe4249"
+url = "https://opencode.ai/files/bin/2.3.0/opencode-darwin-x64.zip"
 
 [[tools.python]]
 version = "3.15.2"
