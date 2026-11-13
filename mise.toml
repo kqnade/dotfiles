@@ -72,7 +72,7 @@ uv = "0.13.7"
 herdr = { version = "v0.9.5", os = ["linux"] }
 claude = "2.1.322"
 "aqua:openai/codex" = "0.163.0"
-opencode = "1.19.5"
+opencode = "2.3.0"
 ollama = "0.40.16"
 "npm:@deepseek-ai/dsh" = { version = "0.2.1-rc.2", depends = ["node"] }
 "npm:@earendil-works/pi-coding-agent" = { version = "1.5.2", depends = [
