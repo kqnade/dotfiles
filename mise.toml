@@ -74,7 +74,7 @@ claude = "2.1.322"
 "aqua:openai/codex" = "0.163.0"
 opencode = "1.19.5"
 ollama = "0.40.16"
-"npm:@deepseek-ai/dsh" = { version = "0.2.1-rc.2", depends = ["node"] }
+"npm:@deepseek-ai/dsh" = { version = "0.2.1-rc.5", depends = ["node"] }
 "npm:@earendil-works/pi-coding-agent" = { version = "1.5.2", depends = [
   "node",
 ] }
