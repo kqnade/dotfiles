@@ -1,4 +1,3 @@
-import json
 import os
 from pathlib import Path
 import shutil
@@ -32,7 +31,7 @@ class GitCommitMessageTests(unittest.TestCase):
             GIT_CONFIG_GLOBAL=os.devnull,
             GIT_CONFIG_NOSYSTEM="1",
         )
-        self.env.pop("PI_CODING_AGENT_DIR", None)
+        self.env["TEST_MESSAGE"] = "✨ feat: add example"
         self.git("init", "-q")
         self.git("config", "user.name", "Test")
         self.git("config", "user.email", "test@example.invalid")
@@ -86,23 +85,6 @@ class GitCommitMessageTests(unittest.TestCase):
         self.git("commit", "--allow-empty", "-qm", "initial style reference")
         (self.root / "example.txt").write_text("staged content\n")
         self.git("add", "example.txt")
-        launcher = self.root / ".local/bin/pi-telemetry"
-        launcher.parent.mkdir(parents=True)
-        launcher.write_text(
-            "#!/usr/bin/env python3\n"
-            "import json, os, pathlib, sys\n"
-            "root = pathlib.Path.home()\n"
-            "(root / 'args.json').write_text(json.dumps(sys.argv[1:]))\n"
-            "(root / 'source.txt').write_text(os.environ.get('PI_EXECUTION_SOURCE', ''))\n"
-            "(root / 'prompt.txt').write_text(sys.stdin.read())\n"
-            "print(os.environ.get('TEST_MESSAGE', '✨ feat: add example'))\n"
-            "sys.exit(int(os.environ.get('TEST_EXIT', '0')))\n"
-        )
-        launcher.chmod(0o755)
-        blocker = launcher.parent / "codex"
-        blocker.write_text("#!/bin/sh\nexit 99\n")
-        blocker.chmod(0o755)
-        self.env["PATH"] = str(launcher.parent) + os.pathsep + self.env["PATH"]
 
     def stop_agent(self):
         if self.agent.poll() is None:
@@ -121,7 +103,7 @@ class GitCommitMessageTests(unittest.TestCase):
 
     def run_cc(self, env=None):
         return subprocess.run(
-            ["zsh", "-f", "-c", 'source "$1"; git-cc', "zsh", str(SOURCE)],
+            ["zsh", "-f", "-c", 'source "$1"; git-cc "$TEST_MESSAGE"', "zsh", str(SOURCE)],
             cwd=self.root,
             env=env or self.env,
             text=True,
@@ -167,52 +149,48 @@ class GitCommitMessageTests(unittest.TestCase):
         headers = commit.split("\n\n", 1)[0]
         return "gpgsig -----BEGIN SSH SIGNATURE-----" in headers.splitlines()
 
-    def test_commits_pi_message_from_staged_diff_with_real_ssh_signature(self):
+    def test_commits_explicit_message_with_real_ssh_signature(self):
         result = self.run_cc()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.git("log", "-1", "--format=%s"), "✨ feat: add example")
         commit = self.git("cat-file", "commit", "HEAD")
         self.assertTrue(self.has_ssh_signature_header(commit))
         self.git("verify-commit", "HEAD")
-        prompt = (self.root / "prompt.txt").read_text()
-        self.assertIn("+staged content", prompt)
-        self.assertIn("initial style reference", prompt)
-        args = json.loads((self.root / "args.json").read_text())
-        self.assertEqual((self.root / "source.txt").read_text(), "git_cc")
-        self.assertIn("--no-tools", args)
-        self.assertIn("--print", args)
-        self.assertIn("--no-session", args)
-        self.assertEqual(args[args.index("--provider") + 1], "openai-codex")
-        self.assertEqual(args[args.index("--model") + 1], "gpt-6-luna")
 
-    def test_pi_extension_respects_agent_directory(self):
-        self.env["PI_CODING_AGENT_DIR"] = str(self.root / "pi config")
-        result = self.run_cc()
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        args = json.loads((self.root / "args.json").read_text())
-        self.assertEqual(
-            args[args.index("--extension") + 1],
-            str(self.root / "pi config/extensions/new-relic.ts"),
+    def test_git_aliases_forward_the_explicit_message(self):
+        source = self.root / ".config/zsh/functions/cc.zsh"
+        source.parent.mkdir(parents=True)
+        source.write_bytes(SOURCE.read_bytes())
+        rendered = subprocess.check_output(
+            ["chezmoi", "--source", str(ROOT), "execute-template", "--file", str(ROOT / "dot_gitconfig.tmpl")],
+            text=True,
         )
+        config = self.root / "rendered.gitconfig"
+        config.write_text(rendered)
+        for name in ("cc", "ccc"):
+            alias = self.git("config", "--file", str(config), "--get", f"alias.{name}")
+            self.git("config", f"alias.{name}", alias)
+            (self.root / "example.txt").write_text(name)
+            self.git("add", "example.txt")
+            self.git(name, "✨ feat(shell): accept a supplied message")
+            self.assertEqual(self.git("log", "-1", "--format=%s"), "✨ feat(shell): accept a supplied message")
+            self.git("verify-commit", "HEAD")
 
-    def test_generation_failure_keeps_changes_staged(self):
-        self.env["TEST_EXIT"] = "1"
-        result = self.run_cc()
+    def test_missing_message_keeps_changes_staged(self):
+        result = subprocess.run(
+            ["zsh", "-f", "-c", 'source "$1"; git-cc', "zsh", str(SOURCE)],
+            cwd=self.root, env=self.env, text=True, capture_output=True,
+        )
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn(
-            "Failed to generate commit message", result.stdout + result.stderr
-        )
-        self.assertEqual(
-            self.git("log", "-1", "--format=%s"), "initial style reference"
-        )
+        self.assertIn("Usage:", result.stdout)
         self.assertEqual(self.git("diff", "--cached", "--name-only"), "example.txt")
 
     def test_optional_scope_matches_repository_commit_style(self):
-        self.env["TEST_MESSAGE"] = "✨ feat(pi): add example"
+        self.env["TEST_MESSAGE"] = "✨ feat(shell): add example"
         result = self.run_cc()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(
-            self.git("log", "-1", "--format=%s"), "✨ feat(pi): add example"
+            self.git("log", "-1", "--format=%s"), "✨ feat(shell): add example"
         )
         self.assertTrue(
             self.has_ssh_signature_header(self.git("cat-file", "commit", "HEAD"))
@@ -352,10 +330,11 @@ class GitCommitMessageTests(unittest.TestCase):
         )
         self.assertEqual(self.git("diff", "--cached", "--name-only"), "")
 
-    def test_no_staged_changes_does_not_invoke_pi(self):
+    def test_no_staged_changes_does_not_commit(self):
         self.git("reset", "-q", "HEAD", "--", "example.txt")
+        initial_commit = self.git("rev-parse", "HEAD")
         self.assertNotEqual(self.run_cc().returncode, 0)
-        self.assertFalse((self.root / "args.json").exists())
+        self.assertEqual(self.git("rev-parse", "HEAD"), initial_commit)
 
 
 if __name__ == "__main__":

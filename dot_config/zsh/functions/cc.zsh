@@ -31,70 +31,11 @@ function git-cc() {
     return 1
   fi
 
-  local pi_agent_dir
-  pi_agent_dir=$(dotfiles_pi_agent_dir) || return 1
-
-  local log
-  log=$(git log --oneline -50)
-
-  echo "Generating commit message..."
-
-  local output
-  if ! output=$(mktemp "${TMPDIR:-/tmp}/git-cc.XXXXXX"); then
-    echo "Failed to create temporary output for commit message generation."
+  if (( $# != 1 )); then
+    echo "Usage: git cc '<gitmoji> <type>[(scope)]: <summary>'"
     return 1
   fi
-
-  local generation_status msg=""
-  if printf 'Generate a conventional commit message with a gitmoji prefix for the git diff below.
-Use the recent commits as style reference to stay consistent.
-
-Format: <emoji> <type>[(scope)]: <description>
-Scopes use lowercase letters, digits, and separated dot, slash, underscore, or hyphen segments.
-
-Gitmoji mapping:
-  feat     → ✨
-  fix      → 🐛
-  refactor → ♻️
-  docs     → 📝
-  test     → ✅
-  chore    → 🔧
-  perf     → ⚡️
-  ci       → 👷
-  style    → 🎨
-  revert   → ⏪️
-  build    → 📦
-
-Rules:
-- Output the commit message ONLY (no explanation, no markdown, no code block)
-- Use imperative mood (for example: add, fix, update)
-- Keep it under 72 characters
-
-== Recent commits (for style reference) ==
-%s
-
-== Git diff ==
-%s
-' "$log" "$diff" | PI_CODING_AGENT_DIR="$pi_agent_dir" PI_EXECUTION_SOURCE=git_cc "$HOME/.local/bin/pi-telemetry" \
-    --provider openai-codex \
-    --model gpt-6-luna \
-    --thinking medium \
-    --offline --print --no-session --no-tools \
-    --no-extensions --extension "$pi_agent_dir/extensions/new-relic.ts" \
-    --no-skills --no-prompt-templates --no-context-files >"$output"; then
-    msg=$(<"$output")
-  else
-    generation_status=$?
-    rm -f "$output"
-    echo "Failed to generate commit message (pi-telemetry exited with status $generation_status)."
-    return 1
-  fi
-  rm -f "$output"
-
-  if [[ -z "$msg" ]]; then
-    echo "Failed to generate commit message (pi-telemetry returned an empty message)."
-    return 1
-  fi
+  local msg="$1"
 
   if [[ "$msg" == *$'\n'* || "$msg" == *$'\r'* || ${#msg} -ge 72 ]]; then
     echo "Invalid commit message: use one line under 72 characters."
