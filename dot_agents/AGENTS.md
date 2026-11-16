@@ -1,21 +1,33 @@
+# Priority
+
+1. Split responsibilities and call boundaries first.
+2. Guarantee observable behavior at those boundaries; add tests only when needed.
+3. Leave PR prose to humans; the agent supplies bullet material only.
+4. Answer with conclusions first and short bullets.
+
 # Communication
 
-- 日本語の返答は、普段の会話、説明、進捗報告、完了報告を含め、自然で簡潔に書く。
-  基本は落ち着いた「です・ます」調とし、過剰な敬語や馴れ馴れしい口調を避ける。
-  文体の指定がある場合は、その指定を優先する。
-- 問いへの答えや必要な情報から書く。定型の前置き、過剰な称賛、同じ内容の繰り返しは省く。
-  短い返答に見出しや箇条書きを無理に付けず、手順や並列の項目には読みやすい一覧を使う。
-- 大げさな比喩、意味の曖昧な抽象語、不自然な直訳、宣伝のような言い回しを避け、
-  ふだん使う言葉で具体的に伝える。定着した慣用句や必要な専門用語は無理に言い換えない。
-- 誰が何をするか、条件と結果、否定や例外の掛かり先を読み違えないように書く。
-  自然さのために事実や条件を削ったり、未知の原因、主体、感情を補ったりしない。
-  不確かなことは不確かなまま伝え、必要な注意や承認の説明も省かない。
-- 完了した作業、現在の状態、これから行う作業を区別する。語尾を散らすためだけに
-  時制や言い切りの強さを変えず、文の長さや読点の数を機械的な制限にしない。
-- 日本語の作文や推敲、長い説明の表現を見直すときは、検出された `yomiyasu` スキルを読み、
-  必要な参照資料を使う。短い会話のたびにスキル全文や検査ツールを読み込む必要はない。
-- 普段の会話や進捗報告では、推敲は内部で行い、返答そのものを出す。
-  「書き直した本文」「変えたところ」などの推敲レポートは通常の返答に付けない。
+- Lead with the answer or verdict. Put reasons in bullets below. Skip stock prefaces and polish.
+- Keep facts, conditions, and uncertainty. Do not invent causes, subjects, or feelings.
+- Japanese replies stay short and concrete. Prefer calm「です・ます」. Do not run a fluency rewrite pass.
+- Separate done, current state, and next. Do not vary tone only to look less mechanical.
+
+# Responsibility
+
+- Design the call surface before the implementation. Decide how callers use it and what changes before and after execution.
+- Keep units cohesive around one reason to change. Separate policy from mechanism, I/O from judgment, orchestration from detail.
+- Do not widen private surfaces for testability alone. Prefer fewer, real boundaries.
+- Isolate hard-to-control concerns (time, randomness, network, clocks) at real boundaries. Do not scatter ad-hoc fetches.
+
+# Tests
+
+- Contract target is observable before/after difference and goal achievement, not signatures or internal structure.
+- Prefer real collaborators for in-repo modules. Limit doubles to external or contract boundaries.
+- Avoid brittle tests: mock-heavy suites, private probing, and expectations copied from implementation output.
+- Add a test only when a new responsibility boundary appears or an existing boundary's observable behavior changes.
+- If existing proportionate checks already cover the change, add neither a new test nor a new tester.
+- When adding a test: name the expectation, assert only externally observable results, and do not paste implementation output into the expected value.
+- Do not require a Red→Green ritual. Prefer clear splits and contract quality.
 
 # Coding
 
@@ -33,6 +45,28 @@
   reference when one is available.
 - Handle failures explicitly. Do not swallow errors, disguise failure as success, or claim a
   fallback worked without verifying it.
+
+# Artifacts
+
+- Treat every committed artifact as complete at that version. Do not leave wording that only
+  makes sense with the conversation, request, diff, prior version, prompt example, or edit process.
+- Remove narration such as "as requested", edit-announcing "now/updated/previously",
+  move/rename history Git already records, process-only tool choices, and cleanup notes.
+- Keep audience-facing behavior, interfaces, safety boundaries, and operating contracts.
+- Route agent-only continuity through authorized repository workflow state, not source comments
+  or ordinary docs. Unresolved residue blocks completion.
+
+# Review
+
+- Match claims (problem, accepted/rejected options, impact, verification) to implementation and
+  responsibility boundaries.
+- "Done" or "as instructed" alone is insufficient. Return findings with evidence and gaps.
+
+# Pull requests
+
+- Do not create, edit, title, or draft PR/MR bodies by default.
+- Even when asked for PR help, return only bullet material: problem / what changed / what was
+  skipped and why / expected impact / verification. The human writes the final prose.
 
 # Delegation
 
@@ -88,6 +122,9 @@
 - This includes push or remote branch/tag deletion; PR/MR/issue creation, edits, comments,
   submitted reviews, approvals, closure, or merges; releases and package publication; starting
   or cancelling remote CI jobs; deployments; and remote API, infrastructure, or data mutations.
+- PR/MR authorship remains human-owned even under authorization: supply bullet material only,
+  and do not write or paste final PR title/body unless the user explicitly overrides that boundary
+  for a named target.
 - Routine telemetry export through configured managed launchers, hooks, and exporters,
   including New Relic, is authorized as part of normal operation and does not require separate
   approval for each invocation. It is an exception to this section's remote-change requirement,
@@ -122,3 +159,10 @@
   or silently merge records across worktrees.
 - Do not create or write `.dev/`, change its ignore policy, or select an external state backend
   unless repository instructions or an explicitly invoked workflow authorize that state change.
+
+# Skills
+
+- `responsibility-boundary`: implementation and bug fixes. Split responsibilities, then add
+  boundary contracts only when observable behavior changes.
+- `claim-review`: review-only alignment of claims, verification, boundaries, and implementation.
+- `handoff`: explicit save or resume of thin Markdown continuity records.

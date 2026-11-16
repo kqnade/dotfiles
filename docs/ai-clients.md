@@ -49,7 +49,9 @@ Claudeのログインは承認済みの仕事用accountで行います。イン�
 
 共通指示は`~/.agents/AGENTS.md`、Skillsは`~/.agents/skills/`に配備します。
 Claudeには`~/.claude/CLAUDE.md`と`~/.claude/skills/<name>`からリンクします。
-Cursorではrepositoryの`AGENTS.md`と、利用可能なSkillsを確認して使います。
+Cursorではrepositoryの`AGENTS.md`、`~/.agents/AGENTS.md`、利用可能なSkills、および
+`~/.cursor/rules/`へ配備する薄い alwaysApply rule を使います。Cursor IDE の
+Application Support settings.json は管理しません。
 
 既存の`~/.claude/CLAUDE.md`がregular fileなら、適用前に内容を比較してください。
 必要な指示を統合・保存するまで置換してはいけません。自動backupは行いません。

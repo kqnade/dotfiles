@@ -162,7 +162,7 @@ class PolicyTests(unittest.TestCase):
                     ".gitignore",
                     "renovate.jsonc",
                     "scripts/ci/test-install.py",
-                    "dot_agents/skills/yomiyasu/SKILL.md",
+                    "dot_agents/skills/responsibility-boundary/SKILL.md",
                     "dot_config/nvim/README.md",
                     "dot_config/zsh/aliases.zsh",
                     "dot_zshrc",

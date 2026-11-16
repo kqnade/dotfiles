@@ -1,0 +1,17 @@
+---
+description: Personal agent defaults and shared workflow skills
+alwaysApply: true
+---
+
+# Personal agent defaults
+
+Read `~/.agents/AGENTS.md` as personal defaults after any repository `AGENTS.md`.
+
+Shared skills live in `~/.agents/skills/`:
+
+- `responsibility-boundary` for implementation and bug fixes
+- `claim-review` for review-only claim and boundary checks
+- `handoff` for explicit save or resume
+
+Do not create or draft PR/MR titles or bodies. Return bullet material only when asked.
+Add tests only when an observable responsibility boundary changes.

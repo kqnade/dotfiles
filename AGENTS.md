@@ -69,6 +69,8 @@ worktrees; small changes do not require a multi-agent workflow.
 | Optional work Claude tool pin | `mise.work.toml` |
 | Client runtime paths and 1Password references | `.chezmoidata.toml` |
 | Shared workflow skill | `dot_agents/skills/<name>/` |
+| Common user instructions | `dot_agents/AGENTS.md` |
+| Cursor personal alwaysApply rule | `dot_cursor/rules/` |
 | Claude-specific rule, setting, hook, or skill link | `dot_claude/` |
 
 Chezmoi source names describe their deployed targets: `dot_` becomes a leading `.`,
@@ -98,14 +100,14 @@ dictionary sources belong in `.chezmoiexternal.toml.tmpl`; removed managed targe
 ## Agent configuration model
 
 Repository instructions use `AGENTS.md`; execution settings and authorization remain client-specific.
-Shared skills live in `dot_agents/skills/`: `test-driven-development`, `evidence-review`,
-`context-handoff`, `sanitize-artifacts`, and `yomiyasu`. Skills deploy to `~/.agents/skills/`;
-Claude uses the opt-in links in `dot_claude/skills/`.
-Development and review require the sanitizer check.
-Common user instructions, including everyday Japanese communication guidance, live in
-`dot_agents/AGENTS.md`. Claude loads that file through its managed user-level symlink.
-Cursor uses repository instructions and available shared Skills; see `docs/ai-clients.md`.
-Use `yomiyasu` for Japanese writing and editing; ordinary replies do not need its rewrite report.
+Shared skills live in `dot_agents/skills/`: `responsibility-boundary`, `claim-review`, and
+`handoff`. Skills deploy to `~/.agents/skills/`; Claude uses the opt-in links in
+`dot_claude/skills/`.
+Common user instructions live in `dot_agents/AGENTS.md` and prioritize responsibility
+splits, boundary contracts, human-authored PRs, and short bullet replies. Claude loads that
+file through its managed user-level symlink. Cursor also gets a thin alwaysApply rule under
+`dot_cursor/rules/` that points at `~/.agents/AGENTS.md` and the shared skills; see
+`docs/ai-clients.md`.
 Keep client-specific execution settings in their adapters.
 Do not deploy custom subagent instructions or a workflow router. See `docs/ai-clients.md` for
 client boundaries and `docs/ai-workflows.md` for the workflow.

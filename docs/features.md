@@ -47,10 +47,10 @@ Cursor CLIを標準で導入します。会社用Claude Codeは`bash install.sh 
 起動前、prompt送信前、tool実行前にそれ以外を拒否します。このowner制限はCursorには適用しません。
 
 repositoryの共通指示は`AGENTS.md`に置き、Claudeは`CLAUDE.md`も併せて読み込みます。
-開発・レビュー・引き継ぎの3つのSkillsと`sanitize-artifacts`を配備します。
+共通 Skills は `responsibility-boundary`、`claim-review`、`handoff` の3つです。
 正本は`~/.agents/skills/`に置き、Claudeは同じ正本へのリンクを使います。
 共通のuser instructionsは`dot_agents/AGENTS.md`を正本とし、Claudeの`~/.claude/CLAUDE.md`から
-リンクして読み込みます。
+リンクして読み込みます。Cursor には `~/.cursor/rules/` の薄い alwaysApply rule も配備します。
 独自のsubagent指示やworkflow routerは配置しません。
 実行設定・認証・保護はclientごとに分離し、Claudeのautomatic memoryは無効です。
 詳細は[AI client運用](ai-clients.md)と[開発workflow](ai-workflows.md)を参照してください。
