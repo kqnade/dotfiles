@@ -1,93 +1,24 @@
 #!/usr/bin/env python3
-
-"""Validate OpenCode and Claude client configuration invariants."""
-
-from __future__ import annotations
+"""Validate Claude settings and repository authorization invariants."""
 
 import json
 import subprocess
 
 from validate_common import ROOT, fail
 
-
-opencode = json.loads((ROOT / "dot_config/opencode/opencode.json").read_text())
-if opencode.get("autoupdate") is not False:
-    fail("OpenCode self-update must remain disabled; mise owns the pinned version")
-
-opencode_instructions = opencode.get("instructions")
-if not isinstance(opencode_instructions, list):
-    fail("OpenCode instructions must be a list")
-if "AGENTS.md" in opencode_instructions:
-    fail("OpenCode must not load AGENTS.md twice")
-if ".cursor/rules/*.md" not in opencode_instructions:
-    fail("OpenCode must retain project Cursor rule discovery")
-
-for language in ("javascript", "typescript"):
-    if opencode.get("lsp", {}).get(language, {}).get("command") != [
-        "tsc",
-        "--lsp",
-        "--stdio",
-    ]:
-        fail(f"OpenCode {language} must use the TypeScript 7 native LSP")
-
-opencode_permissions = opencode.get("permission")
-if not isinstance(opencode_permissions, dict):
-    fail("OpenCode permission must be an object")
-opencode_bash = opencode_permissions.get("bash")
-if not isinstance(opencode_bash, dict):
-    fail("OpenCode permission.bash must be an object")
-if opencode_bash.get("*") != "ask":
-    fail("OpenCode shell commands must ask by default")
-if opencode_bash.get("git *") == "allow":
-    fail("OpenCode must not pre-approve the git namespace")
-
-required_opencode_bash = {
-    "allow": {
-        "git status *",
-        "git diff *",
-        "git log *",
-        "git show *",
-        "git rev-parse *",
-        "git ls-files *",
-        "git add *",
-        "git commit *",
-    },
-    "ask": {
-        "git add .",
-        "git add -A *",
-        "git commit --amend *",
-        "git reset *",
-        "git clean *",
-        "git restore *",
-        "git push *",
-        "npm publish *",
-        "cargo publish *",
-        "go install *",
-    },
-    "deny": {
-        "rm -rf *",
-        "git push --force *",
-        "git push --force-with-lease *",
-    },
-}
-for action, patterns in required_opencode_bash.items():
-    invalid = {
-        pattern
-        for pattern in patterns
-        if opencode_bash.get(pattern) != action
-    }
-    if invalid:
-        fail(f"OpenCode permission.bash must set {action}: {sorted(invalid)}")
-
 try:
-    rendered_settings = subprocess.check_output(
+    rendered = subprocess.check_output(
         [
-            "chezmoi", "--source", str(ROOT), "execute-template", "--file",
+            "chezmoi",
+            "--source",
+            str(ROOT),
+            "execute-template",
+            "--file",
             str(ROOT / ".chezmoitemplates/claude-settings.json.tmpl"),
         ],
         text=True,
     )
-    settings = json.loads(rendered_settings)
+    settings = json.loads(rendered)
 except (subprocess.CalledProcessError, json.JSONDecodeError) as error:
     fail(f"invalid Claude settings JSON: {error}")
 
@@ -98,30 +29,22 @@ hooks = settings.get("hooks")
 if not isinstance(hooks, dict):
     fail("Claude settings hooks must be an object")
 
-
-def hook_commands_for(event_name: str) -> set[str | None]:
-    return {
+for event in ("UserPromptSubmit", "PreToolUse"):
+    commands = {
         hook.get("command")
-        for group in hooks.get(event_name, [])
+        for group in hooks.get(event, [])
         for hook in group.get("hooks", [])
         if isinstance(hook, dict)
     }
-
-
-repository_guard_command = "~/.claude/hooks/authorize-repository.sh"
-for event_name in ("UserPromptSubmit", "PreToolUse"):
-    if repository_guard_command not in hook_commands_for(event_name):
-        fail(f"Claude repository authorization must guard {event_name}")
+    if "~/.claude/hooks/authorize-repository.sh" not in commands:
+        fail(f"Claude repository authorization must guard {event}")
 
 permissions = settings.get("permissions")
 if not isinstance(permissions, dict):
     fail("Claude settings permissions must be an object")
 
 required_permissions = {
-    "allow": {
-        "Bash(git add *)",
-        "Bash(git commit *)",
-    },
+    "allow": {"Bash(git add *)", "Bash(git commit *)"},
     "ask": {
         "Bash(rm *)",
         "Bash(git reset *)",

@@ -13,7 +13,7 @@
 通常は各Skillのdescriptionから選択します。全Skillを読むルーターや起動時の手順注入はありません。
 依存更新の詳細チェックは、そのレビューでだけ読み込みます。
 
-Pi・Claude・Codex CLI・OpenCodeの普段の日本語の返答には、`dot_agents/AGENTS.md` の会話方針が適用されます。
+普段の日本語の返答には、読み込んだ`dot_agents/AGENTS.md`の会話方針を適用します。
 自然で簡潔な言葉を使い、事実、条件、不確実性は保ちます。作文・推敲や長い説明を見直すときは
 `yomiyasu` を読み、短い会話のたびに全文を読み込んだり検査ツールを実行したりはしません。
 通常の会話や進捗報告には推敲レポートを付けません。
@@ -42,17 +42,16 @@ external worktreeの表示と実際のcheckout pathを確認します。read-onl
 ## 配備と呼び出し
 
 正本は`dot_agents/skills/<name>/`で、`~/.agents/skills/<name>/`へ配備します。
-Piはこの場所を直接検出します。Claudeは`~/.claude/skills/<name>`から同じdirectoryへのsymlinkで
-読み込みます。Pi用に重複したSkillは作りません。Codex CLIなど、この共通directoryを検出する
-他clientからも利用できますが、仕事用データへの利用許可を与えるものではありません。
+Claudeは`~/.claude/skills/<name>`から同じdirectoryへのsymlinkで読み込みます。
+Cursorでは利用可能なSkillsを確認して使います。配備は仕事用データへの利用許可を与えるものではありません。
 
-| 操作 | Pi | Claude |
-|---|---|---|
-| 開発 | `/skill:test-driven-development` | `/test-driven-development` |
-| レビュー | `/skill:evidence-review` | `/evidence-review` |
-| 引き継ぎ | `/skill:context-handoff` | `/context-handoff` |
-| 成果物の点検 | `/skill:sanitize-artifacts` | `/sanitize-artifacts` |
-| 日本語の推敲 | `/skill:yomiyasu` | `/yomiyasu` |
+| 操作 | Claude |
+|---|---|
+| 開発 | `/test-driven-development` |
+| レビュー | `/evidence-review` |
+| 引き継ぎ | `/context-handoff` |
+| 成果物の点検 | `/sanitize-artifacts` |
+| 日本語の推敲 | `/yomiyasu` |
 
 `yomiyasu` の収録版とライセンスは `dot_agents/skills/yomiyasu/README.md` に記載しています。
 日本語の検査ツールはPython標準ライブラリだけで動作し、検出結果は見直し候補として扱います。
@@ -60,35 +59,18 @@ Piはこの場所を直接検出します。Claudeは`~/.claude/skills/<name>`�
 コマンドの後ろに対象と依頼内容を付けます。たとえば引き継ぎでは「この作業を指定ファイルへ保存」
 か「このファイルから再開」かを指定します。名前だけの呼び出しは保存先や保存権限の指定ではありません。
 
-適用には`mise run apply`を使います。Piは`/reload`、Claudeは`/skills`で利用可能なSkillsを確認し、
+適用には`mise run apply`を使います。Claudeは`/skills`で利用可能なSkillsを確認し、
 必要ならsessionを再起動します。配置の検証と、実際の依頼で適切に選択されることの検証は別です。
 
 ## 実行と認可
 
 Skillsは現在の利用者の依頼、repository規約、client/accountの制限に従います。
-仕事用Claudeと個人用Piの起動保護は[AI client運用](ai-clients.md)のとおり維持します。
+会社用Claudeの導入選択と起動保護は[AI client運用](ai-clients.md)のとおりです。
 別accountへの転送、remoteへの投稿、push、共有環境変更の権限はSkillから発生しません。
 
-委譲には現在のclientの認可された仕組みを使い、その実行規約に従います。Piでは`pi-subagents`、
-Claudeでは認可された同accountの仕組みを使い、利用できないときに別CLIへ切り替えません。
-Piのexecution guardはDecision APIで全agentシェルコマンドを精査し、低リスク判定なら自動許可します。
-正常な高リスク判定では操作内容を確認dialogに表示し、人間が明示的に承認した1回だけを許可します。
-判定不能・通信失敗・取消は拒否し、確認dialogへのfallbackは行いません。
-native childrenにも`subagents.defaultExtensions`からextensionを配備し、子のsession・cwd・tool・引数を
-親のAPI判定へ転送します。鍵は親Piのメモリで共有し、1Passwordの取得を繰り返しません。
-親のないheadless sessionではシェルコマンドを実行できません。file toolや子の起動などはAPI判定の対象外です。
-`PI_APPROVAL_REVIEWER=allowall pi`では、重大な破壊・秘密情報の流出・保護設定の弱体化・未承認のremote変更や
-指示違反を示す根拠がある場合だけ高リスクとするAPI判定を使います。通常操作は自動実行し、高リスク判定後に
-操作の目的・対象の説明と人間の承認を求めます。判定不能や通信失敗では実行せず、署名やhookの迂回禁止も
-維持します。未知のscriptやruntime情報だけでは高リスクとしないため、判定に見えない副作用への注意が必要です。
-既定は`decision`のままで、起動時の環境変数で選びます。起動後は`/approval-mode`で選択画面を開き、
-`/approval-mode allowall`・`decision`・`user`で切り替え、`/approval-mode status`で現在のmodeを確認できます。
-変更はこのPi process内だけで有効です。親の実行中や子を含む承認待ちには切り替えを拒否します。
-起動済みの子も親のmodeに従います。guardの無効化やremote操作の認可を与えるcommandではありません。
-`PI_APPROVAL_REVIEWER=user pi`ではルールベースの人間確認を使い、`PI_EXECUTION_GUARD=0 pi`ではguardを無効にします。
-間接的な操作も含むremote変更の明示的な事前認可は、どのmodeでも必要です。API判定や子agentの`permissions: ask`、
-supervisorの返答は人間の許可ではありません。extension内部の実行や、extension list・環境設定でguardを外した子、
-外部processにはこのguardが及びません。詳しい境界・鍵・費用は[Pi](pi.md#execution-approvals)を参照してください。
+委譲には現在のclientで認可された同accountの仕組みを使い、その実行規約に従います。
+利用できない場合に別CLIやaccountへ切り替えてはいけません。API判定やagentの返答は、
+remote変更に必要な人間の事前認可の代わりにはなりません。
 OrcaやHerdrでのterminal操作は、その操作が必要な依頼に限ります。Skillにmodelやterminalを固定しません。
 
 ## このrepositoryの状態保存

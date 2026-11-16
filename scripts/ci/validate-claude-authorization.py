@@ -270,7 +270,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
         fail("Claude repository authorization must reject malformed hook input")
 
     launcher_home = test_root / "launcher-home"
-    deploy_client_runtime(launcher_home)
+    deploy_client_runtime(launcher_home, {"claude_work_enabled": True})
     launcher_hooks = launcher_home / ".claude/hooks"
     launcher_hooks.mkdir(parents=True)
     launcher_guard = launcher_hooks / "authorize-repository.sh"

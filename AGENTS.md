@@ -14,17 +14,21 @@ Arch Linux x64, and Fedora/Arch under WSL x64.
 - `install.sh` is the fresh-machine entry point. It installs mise into `~/.local/bin`, clones or
   reuses `~/repos/github.com/kqnade/dotfiles`, trusts its mise configuration, and runs
   `mise bootstrap --yes`.
-- Root `mise.toml` owns settings, pinned mise tools, and public tasks. `mise/config.toml` owns
+- Company Claude Code is installed only with `install.sh --with-work-claude` or an explicit
+  `data.claude_work_enabled = true` in the local chezmoi config. The default is false.
+- `mise.work.toml` and `mise.work.lock` own the optional Claude pin and download metadata.
+  Root `mise.toml` owns settings, standard pinned
+  mise tools, and public tasks. `mise/config.toml` owns
   bootstrap packages, user settings, OS defaults, services, and hooks. OS packages intentionally
   use the package managers' `latest` version.
-- `dot_config/mise/config.toml.tmpl` combines both manifests into
-  `~/.config/mise/config.toml`. `mise.lock` covers `macos-arm64`, `macos-x64`, and `linux-x64`.
+- `dot_config/mise/config.toml.tmpl` combines the base manifests and the enabled work overlay
+  into `~/.config/mise/config.toml`. `mise.lock` covers `macos-arm64`, `macos-x64`, and `linux-x64`.
 
 ## Before changing files
 
-1. Confirm the repository remote and inspect `git status`. This Codex account must stop if the
-   GitHub remote owner is `livesense-inc` or `jobtalk`; those repositories require the approved
-   Claude account.
+1. Confirm the repository remote and inspect `git status`. Repositories owned by
+   `livesense-inc` or `jobtalk` require an approved work account. A client installation alone
+   does not authorize access.
 2. If `.dev/todo/` contains an item relevant to the request, read only that item and follow only
    its task-relevant links.
 3. Verify decision-changing claims against the current request, files, Git state, tests, runtime
@@ -42,10 +46,10 @@ Arch Linux x64, and Fedora/Arch under WSL x64.
 | Converge packages, tools, dotfiles, defaults, and services | `mise bootstrap --yes` |
 | Apply dotfiles, rebuild the zsh cache, and apply managed services | `mise run apply` |
 | Diagnose tools, packages, dotfiles, fonts, SKK, services, and WSL proxies | `mise run doctor` |
-| Format `mise.toml`, `mise/config.toml`, and `mise.lock` | `mise run format` |
+| Format the mise manifests and `mise.lock` | `mise run format` |
 | Preview chezmoi-managed file changes | `chezmoi diff` |
 | Run the repository validators | `mise exec -- python3 scripts/ci/validate-repository.py` |
-| Generate and create a local commit | `git cc` |
+| Create a signed local commit | `git cc '<gitmoji> <type>: <summary>'` |
 
 Run focused checks first, then the repository validator when the affected contract requires it.
 Always inspect the final diff and run `git diff --check` before handing work off. Report the commands
@@ -62,9 +66,7 @@ worktrees; small changes do not require a multi-agent workflow.
 | Bootstrap/apply/doctor behavior | `scripts/` |
 | zsh alias or function | `dot_config/zsh/aliases.zsh` or `dot_config/zsh/functions/<name>.zsh` |
 | Neovim LSP or formatter | `dot_config/nvim/lua/modules/configs/lsp/init.lua` or `dot_config/nvim/lua/modules/configs/editor/conform.lua` |
-| OpenCode configuration | `dot_config/opencode/opencode.json` |
-| Codex settings adapter | `dot_codex/` |
-| Pi settings adapter or extension | `dot_pi/` |
+| Optional work Claude tool pin | `mise.work.toml` |
 | Client runtime paths and 1Password references | `.chezmoidata.toml` |
 | Shared workflow skill | `dot_agents/skills/<name>/` |
 | Claude-specific rule, setting, hook, or skill link | `dot_claude/` |
@@ -97,12 +99,12 @@ dictionary sources belong in `.chezmoiexternal.toml.tmpl`; removed managed targe
 
 Repository instructions use `AGENTS.md`; execution settings and authorization remain client-specific.
 Shared skills live in `dot_agents/skills/`: `test-driven-development`, `evidence-review`,
-`context-handoff`, `sanitize-artifacts`, and `yomiyasu`. Pi discovers their deployed
-`~/.agents/skills/` files; Claude uses the links in `dot_claude/skills/`.
+`context-handoff`, `sanitize-artifacts`, and `yomiyasu`. Skills deploy to `~/.agents/skills/`;
+Claude uses the opt-in links in `dot_claude/skills/`.
 Development and review require the sanitizer check.
 Common user instructions, including everyday Japanese communication guidance, live in
-`dot_agents/AGENTS.md`. Pi, Claude, Codex CLI, and OpenCode load the same file through
-managed symlinks at their user-level instruction paths; see `docs/ai-clients.md`.
+`dot_agents/AGENTS.md`. Claude loads that file through its managed user-level symlink.
+Cursor uses repository instructions and available shared Skills; see `docs/ai-clients.md`.
 Use `yomiyasu` for Japanese writing and editing; ordinary replies do not need its rewrite report.
 Keep client-specific execution settings in their adapters.
 Do not deploy custom subagent instructions or a workflow router. See `docs/ai-clients.md` for
@@ -111,21 +113,17 @@ client boundaries and `docs/ai-workflows.md` for the workflow.
 - Claude safety rules, settings, and hooks live in `dot_claude/`. Claude may run only in
   repositories whose GitHub remote owner is `livesense-inc` or `jobtalk`; the wrapper and hooks
   enforce that boundary using the approved account.
-- Codex CLI settings live in `dot_codex/`, OpenCode settings in `dot_config/opencode/`, and Pi
-  settings and extensions in `dot_pi/`. Pi's `openai-codex` provider does not use Codex CLI settings.
-- The managed Pi launcher rejects `livesense-inc` and `jobtalk` GitHub origins before credential
-  lookup or Pi startup, including when telemetry is disabled. This is an accidental-launch guard,
-  not a sandbox or an authorization check on later tool calls.
+- Cursor CLI is the standard AI client. Claude Code and its configuration are opt-in.
+  An existing Claude repository hook is updated even without opt-in to keep Cursor working.
+  The Claude repository hook distinguishes Cursor's imported hook events from actual Claude
+  events. Cursor's terminal environment must not bypass checks on actual Claude launches.
 - Removed managed targets belong in `.chezmoiremove`. Name specific files or managed symlinks;
   preserve unknown skills, credentials, and runtime state in their parent directories.
-- `dot_codex/modify_private_config.toml` applies stable Codex defaults while preserving
-  Codex-managed runtime state and sibling settings. `dot_pi/agent/modify_settings.json.tmpl`
-  enforces `.chezmoitemplates/pi-settings.json.tmpl` while preserving Pi runtime state and
-  unmanaged object keys; managed arrays are replaced. Claude defaults live in
-  `.chezmoitemplates/claude-settings.json.tmpl`; Claude reads both `CLAUDE.md` and `AGENTS.md`.
+- Claude defaults live in `.chezmoitemplates/claude-settings.json.tmpl`;
+  Claude reads both `CLAUDE.md` and `AGENTS.md`.
   The modifier preserves additional runtime hooks and `tui` on macOS without letting them replace
   managed hooks. Other intentional Claude settings changes should be folded into the template.
-- On Linux, Herdr integration is applied idempotently during bootstrap; macOS uses Orca
+- On Linux, opted-in Claude's Herdr integration is applied during bootstrap; macOS uses Orca
   instead. Claude automatic memory remains disabled; durable workflow state uses the
   repository model below.
 
@@ -157,7 +155,7 @@ prerequisites; reconcile them with current files before use.
   explicit authorization.
 - CI always runs offline validators and behavior tests through `scripts/ci/validate-repository.py`.
   Foundation changes in PRs and weekly/manual runs also perform real installs: macOS arm64
-  exercises both DSH roles and public interfaces, Intel checks source fallbacks, Fedora checks
+  exercises work Claude opt-in and public interfaces, Intel checks source fallbacks, Fedora checks
   Linux components and package idempotency, and Arch checks system packages. Pushes to trunk
   run the lightweight suite only. Required checks aggregate through `ci-result`.
 - GitHub-hosted Linux containers cannot run a user systemd manager. CI starts yaskkserv2 directly

@@ -55,15 +55,13 @@ PRへの付与に必要な `pull-requests: write` と、未作成ラベルの作
 mise exec -- python3 -B scripts/ci/validate-repository.py
 ```
 
-ネットワークでのlock解決とインストール済みDSHの検証はintegrationに分けます。
-Fedoraではlock解決とpersonal、macOS arm64ではpersonal/work、Intelではpersonalを検証します。
-指定したintegrationの前提が欠けている場合は失敗し、成功扱いで省略しません。
+ネットワークでのlock解決はintegrationに分けます。
+Fedoraではlock解決とCursor CLI、macOS arm64では会社用Claudeのオプトイン導入、
+Intelでは標準構成とCursor CLIを検証します。
 
 ```sh
 mise exec -- python3 -B scripts/ci/integration/test-mise-lock.py
-mise exec -- node scripts/ci/integration/run-dsh.mjs
-# workを導入済みのMac
-mise exec -- node scripts/ci/integration/run-dsh.mjs --work
+mise exec -- cursor-agent --version
 ```
 
 静的検証とパッケージ導入のjobでは、`bash install.sh --mise-only` でmiseだけを導入します。
@@ -81,11 +79,11 @@ GitHub-hosted runnerのlogin shellを、対象macOSと同じ標準`/bin/zsh`へ�
 次を実行します。
 
 - productionと同じpathへcheckoutを公開
-- `bash install.sh`
+- `bash install.sh --with-work-claude`
 - `mise run apply`
 - `mise run doctor`
 - 週次・手動では2回目の `mise bootstrap --yes` と `mise run doctor`
-- work有効の設定でpersonal/workのTUI/Webを導入し、上流パッチ・SDK・workspaceガードを検証
+- Cursor CLIの起動と、オプトインしたClaudeのbinary配置を確認
 - UDEV Gothic、SKK辞書、launchd service、`127.0.0.1:1178`
 
 ### Intel Mac

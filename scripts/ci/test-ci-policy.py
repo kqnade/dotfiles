@@ -167,8 +167,8 @@ class PolicyTests(unittest.TestCase):
                     "dot_config/zsh/aliases.zsh",
                     "dot_zshrc",
                     "dot_gitconfig.tmpl",
-                    ".chezmoitemplates/pi-settings.json.tmpl",
-                    "dot_pi/agent/extensions/execution-guard.ts",
+                    ".chezmoitemplates/claude-settings.json.tmpl",
+                    "dot_claude/hooks/executable_authorize-repository.sh",
                 ]
             ),
             "bootstrap=false",
@@ -179,6 +179,8 @@ class PolicyTests(unittest.TestCase):
             "install.sh",
             "mise.toml",
             "mise/config.toml",
+            "mise.work.toml",
+            "mise.work.lock",
             "mise.lock",
             "scripts/apply.sh",
             ".chezmoiignore",
@@ -186,9 +188,7 @@ class PolicyTests(unittest.TestCase):
             "scripts/ci/ci-policy.py",
             "scripts/ci/validate-repository.py",
             "scripts/ci/integration/test-mise-lock.py",
-            "dot_dsh/personal/profiles/web/package.json.tmpl",
-            ".chezmoitemplates/dsh-package.json.tmpl",
-            "dot_config/deepseek-harness/work/package.json",
+            ".chezmoitemplates/claude-work-enabled.tmpl",
             "dot_config/mise/config.toml.tmpl",
             "unknown-file",
             "README.md\ninstall.sh",
@@ -197,12 +197,10 @@ class PolicyTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertEqual(self.plan(["docs/ci.md", path]), "bootstrap=true")
 
-    def test_dsh_config_and_runtime_changes_select_bootstrap_individually(self):
+    def test_client_selection_and_runtime_changes_select_bootstrap_individually(self):
         for path in (
-            "dot_config/deepseek-harness/personal/cordis.patch.yml",
-            "dot_config/deepseek-harness/work/workspaces.mjs",
-            "dot_config/deepseek-harness/work/web-required.patch.yml",
-            "dot_local/bin/executable_dsh-profile",
+            "mise.work.toml",
+            ".chezmoitemplates/claude-work-enabled.tmpl",
             "dot_config/dotfiles/client-runtime.sh.tmpl",
         ):
             with self.subTest(path=path):

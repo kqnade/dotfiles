@@ -1,0 +1,15 @@
+{{- $enabled := false -}}
+{{- if hasKey . "claude_work_enabled" -}}
+  {{- if not (kindIs "bool" .claude_work_enabled) -}}
+    {{- fail "claude_work_enabled must be a boolean" -}}
+  {{- end -}}
+  {{- $enabled = .claude_work_enabled -}}
+{{- end -}}
+{{- $override := env "DOTFILES_CLAUDE_WORK_ENABLED" -}}
+{{- if ne $override "" -}}
+  {{- if not (has $override (list "true" "false")) -}}
+    {{- fail "DOTFILES_CLAUDE_WORK_ENABLED must be true or false" -}}
+  {{- end -}}
+  {{- $enabled = eq $override "true" -}}
+{{- end -}}
+{{- $enabled -}}

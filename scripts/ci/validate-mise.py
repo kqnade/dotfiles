@@ -76,7 +76,17 @@ packages = config.get("bootstrap", {}).get("packages", {})
 if any(version != "latest" for version in packages.values()):
     fail("bootstrap packages must use the package manager's current version")
 
-tools = config.get("tools", {})
+tools = dict(config.get("tools", {}))
+work_manifest = load_toml(ROOT / "mise.work.toml")
+if set(work_manifest.get("tools", {})) != {"claude"}:
+    fail("the work opt-in manifest must contain only Claude Code")
+work_lock = load_toml(ROOT / "mise.work.lock")
+if set(work_lock.get("tools", {})) != set(work_manifest["tools"]):
+    fail("work lockfile must contain exactly the opted-in tools")
+if set(lock["tools"]) & set(work_lock["tools"]):
+    fail("standard and work lockfiles must not overlap")
+lock["tools"].update(work_lock["tools"])
+tools.update(work_manifest["tools"])
 tool_names = set(tools)
 for name, value in tools.items():
     version = configured_version(value)
@@ -93,10 +103,6 @@ if not isinstance(eza, dict) or eza.get("features") != ["vendored-libgit2"]:
 herdr = tools["herdr"]
 if not isinstance(herdr, dict) or herdr.get("os") != ["linux"]:
     fail("Herdr must be selected only on Linux")
-
-codex = tools["aqua:openai/codex"]
-if not isinstance(codex, str):
-    fail("Codex must use the pinned Aqua package without a Node dependency")
 
 atuin = tools["github:atuinsh/atuin"]
 if not isinstance(atuin, str):
@@ -188,10 +194,16 @@ for name, value in tools.items():
 config_template = (ROOT / "dot_config/mise/config.toml.tmpl").read_text().strip()
 lock_template = (ROOT / "dot_config/mise/mise.lock.tmpl").read_text().strip()
 if config_template != (
-    '{{ include "mise.toml" }}\n{{ include "mise/config.toml" -}}'
+    '{{ include "mise.toml" }}\n{{ include "mise/config.toml" }}\n'
+    '{{ if eq (includeTemplate ".chezmoitemplates/claude-work-enabled.tmpl" .) "true" -}}\n'
+    '{{ include "mise.work.toml" -}}\n{{ end -}}'
 ):
     fail("deployed mise config must concatenate the split manifest sources")
-if lock_template != '{{ include "mise.lock" -}}':
-    fail("deployed mise lockfile must include the root mise.lock verbatim")
+if lock_template != (
+    '{{ include "mise.lock" }}\n'
+    '{{ if eq (includeTemplate ".chezmoitemplates/claude-work-enabled.tmpl" .) "true" -}}\n'
+    '{{ include "mise.work.lock" -}}\n{{ end -}}'
+):
+    fail("deployed mise lockfile must combine the standard and enabled work locks")
 
 print(f"validated {len(tools)} pinned tools across {len(PLATFORMS)} platforms")

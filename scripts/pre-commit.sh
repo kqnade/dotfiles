@@ -42,6 +42,8 @@ done < <(
     -z \
     -- \
     mise.toml \
+    mise.work.toml \
+    mise.work.lock \
     mise/config.toml \
     mise.lock
 )

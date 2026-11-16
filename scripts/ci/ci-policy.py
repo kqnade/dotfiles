@@ -27,20 +27,18 @@ STATIC_ONLY_FILES = {
     "dot_bash_profile", "dot_bashrc.tmpl", "dot_gitconfig.tmpl", "dot_vimrc", "dot_zshrc",
 }
 BOOTSTRAP_FILES = {
-    "install.sh", "mise.toml", "mise.lock",
+    "install.sh", "mise.toml", "mise.work.toml", "mise.work.lock", "mise.lock",
     ".chezmoi.toml.tmpl", ".chezmoiignore", ".chezmoiremove",
     ".chezmoiexternal.toml.tmpl", ".github/workflows/ci.yml",
     "scripts/ci/ci-policy.py", "scripts/ci/validate-repository.py",
 }
 BOOTSTRAP_PREFIXES = (
-    "mise/", "dot_config/mise/", "dot_dsh/",
-    "dot_config/deepseek-harness/", "dot_config/dotfiles/",
-    "dot_local/bin/executable_dsh-profile",
-    ".chezmoitemplates/dsh", "scripts/ci/integration/",
+    "mise/", "dot_config/mise/", "dot_config/dotfiles/",
+    ".chezmoitemplates/claude-work-enabled", "scripts/ci/integration/",
 )
 STATIC_PREFIXES = (
     "docs/", "scripts/ci/", ".chezmoitemplates/",
-    "dot_agents/", "dot_claude/", "dot_codex/", "dot_pi/",
+    "dot_agents/", "dot_claude/",
     "dot_config/", "dot_local/", "private_dot_ssh/",
 )
 

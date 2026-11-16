@@ -207,10 +207,17 @@ main() {
   local bootstrap_args=(bootstrap --yes)
 
   if (($# > 0)); then
-    [[ $# -eq 1 && "$1" == --mise-only ]] ||
-      die "Usage: bash install.sh [--mise-only]"
-    install_mise
-    return
+    [[ $# -eq 1 ]] || die "Usage: bash install.sh [--mise-only | --with-work-claude]"
+    case "$1" in
+      --mise-only)
+        install_mise
+        return
+        ;;
+      --with-work-claude)
+        export DOTFILES_CLAUDE_WORK_ENABLED=true
+        ;;
+      *) die "Usage: bash install.sh [--mise-only | --with-work-claude]" ;;
+    esac
   fi
 
   ensure_platform_prerequisites
@@ -227,7 +234,8 @@ main() {
   if [[ -n "$BOOTSTRAP_SKIP" ]]; then
     bootstrap_args+=(--skip "$BOOTSTRAP_SKIP")
   fi
-  "$MISE_BIN" -C "$REPO_DIR" "${bootstrap_args[@]}"
+  MISE_CONFIG_DIR="$REPO_DIR/mise" \
+    "$MISE_BIN" -C "$REPO_DIR" "${bootstrap_args[@]}"
 }
 
 main "$@"

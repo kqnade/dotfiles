@@ -40,22 +40,21 @@ skkeleton は `127.0.0.1:1178` の yaskkserv2 を参照します。source dictio
 
 ## AI CLI
 
-Claude Code、Codex、OpenCode、Piの設定・hooks・拡張をchezmoiで維持します。
-認証情報やセッションなどのruntime stateは各clientが管理します。ClaudeはGitHub remote ownerが`livesense-inc`または`jobtalk`のrepository
-だけで利用でき、shell wrapperとauthorization hookが起動前、prompt送信前、tool実行前に
-それ以外を拒否します。
-
-Piの管理対象launcherは、逆に同じ仕事用ownerのoriginを持つrepositoryでの起動を拒否します。
-telemetryを無効にしてもこの確認は残り、1Passwordへの問い合わせより先に実行します。
+Cursor CLIを標準で導入します。会社用Claude Codeは`bash install.sh --with-work-claude`で
+選択した場合だけ導入し、設定・hooks・Skillsのリンクをchezmoiで配備します。
+認証情報やセッションは各clientが管理します。ClaudeはGitHub remote ownerが
+`livesense-inc`または`jobtalk`のrepositoryだけで利用でき、shell wrapperと認可hookが
+起動前、prompt送信前、tool実行前にそれ以外を拒否します。このowner制限はCursorには適用しません。
 
 repositoryの共通指示は`AGENTS.md`に置き、Claudeは`CLAUDE.md`も併せて読み込みます。
 開発・レビュー・引き継ぎの3つのSkillsと`sanitize-artifacts`を配備します。
-Piは`~/.agents/skills/`を読み、Claudeは同じ正本へのリンクを使います。共通のuser instructionsは
-`dot_agents/AGENTS.md`を正本とし、Piの`~/.pi/agent/AGENTS.md`からリンクして読み込みます。
+正本は`~/.agents/skills/`に置き、Claudeは同じ正本へのリンクを使います。
+共通のuser instructionsは`dot_agents/AGENTS.md`を正本とし、Claudeの`~/.claude/CLAUDE.md`から
+リンクして読み込みます。
 独自のsubagent指示やworkflow routerは配置しません。
 実行設定・認証・保護はclientごとに分離し、Claudeのautomatic memoryは無効です。
 詳細は[AI client運用](ai-clients.md)と[開発workflow](ai-workflows.md)を参照してください。
 
 LinuxではHerdrのターミナル設定、worktree操作、状態通知integrationも管理します。
-Herdr integrationはLinuxのbootstrap taskでidempotentに反映します。macOSではOrcaを使い、
+ClaudeのHerdr integrationは、会社用Claudeが有効なLinuxのbootstrap taskで反映します。macOSではOrcaを使い、
 Herdrを導入しません。既存のインストールやユーザーデータも自動削除しません。

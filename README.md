@@ -42,7 +42,7 @@ curl -fsSL https://raw.githubusercontent.com/kqnade/dotfiles/trunk/install.sh | 
 bootstrap は OS パッケージ、mise の tools、ユーザー設定、macOS defaults、
 launchd/systemd の管理サービスを収束させ、最後にリポジトリの bootstrap task を
 実行します。この task は dotfile の適用、zsh 初期化キャッシュ、フォント、SKK 辞書、
-Linux では Herdr integration、全 OS で pre-commit hook を準備し、`yaskkserv2` が
+Linux では有効な会社用 Claude の Herdr integration、全 OS で pre-commit hook を準備し、`yaskkserv2` が
 `127.0.0.1:1178` で待ち受けるまで確認します。何度実行しても収束する設計です。
 
 既存の外部パッケージマネージャや、その管理データは自動削除しません。
@@ -52,17 +52,18 @@ Linux では Herdr integration、全 OS で pre-commit hook を準備し、`yask
 | コマンド | 目的と副作用 |
 | --- | --- |
 | `mise bootstrap --yes` | マシン全体を再収束します。パッケージ、tools、設定、サービスを適用し、bootstrap task も実行します。 |
-| `mise run apply` | chezmoi で dotfile を `init`/`apply` し、zsh 初期化キャッシュを再生成します。利用可能な環境では管理サービスも適用し、通常は 1Password から New Relic key を読みます。 |
+| `mise run apply` | chezmoi で dotfile を `init`/`apply` し、zsh 初期化キャッシュを再生成します。利用可能な環境では管理サービスも適用し、会社用 Claude を有効にした場合はその導入も行います。 |
 | `mise run doctor` | tools、OS パッケージ、chezmoi、フォント、SKK 辞書、サービス、`1178` 番ポート（WSL では proxy）を診断します。失敗時は非 0 で終了します。 |
-| `mise run format` | `mise.toml`、`mise/config.toml`、`mise.lock` をその場で整形します。 |
+| `mise run format` | mise の manifest と `mise.lock` をその場で整形します。 |
 
 ## 設定の持ち主と反映経路
 
 - [`mise.toml`](mise.toml): mise の settings、固定バージョンの `[tools]`、公開 task。
+- [`mise.work.toml`](mise.work.toml) と `mise.work.lock`: 会社用 Claude Code のバージョンと取得情報。
 - [`mise/config.toml`](mise/config.toml): OS パッケージ、ユーザー設定、macOS defaults、
   managed service、bootstrap hook。
 - [`dot_config/mise/config.toml.tmpl`](dot_config/mise/config.toml.tmpl): 上記 2 ファイルを
-  連結し、chezmoi が `~/.config/mise/config.toml` として配置。
+  連結し、有効な場合は会社用 manifest も加えて `~/.config/mise/config.toml` に配置。
 - `dot_*`: zsh、Neovim、Git、AI CLI などのユーザー設定。秘密情報は `private_*`、
   大きな外部辞書は `.chezmoiexternal.toml.tmpl` で管理。
 
@@ -76,13 +77,19 @@ Linux では Herdr integration、全 OS で pre-commit hook を準備し、`yask
 - Vim / Neovim: プラグイン、LSP、formatter、Colemak 向け keymap
 - SKK: skkeleton と yaskkserv2、外部辞書、`127.0.0.1:1178` のローカル server
 - Git / 認証: SSH 署名、delta、macOS/Linux の 1Password SSH agent、WSL proxy
-- AI / 開発: Claude Code、Codex、OpenCode、Pi、Linux の Herdr と安全設定・拡張
+- AI / 開発: Cursor CLI、オプトインの会社用 Claude Code、Linux の Herdr
 
 詳細は [設定一覧](docs/features.md)、[macOS セットアップ](docs/setup-macos.md)、
 [Linux / WSL セットアップ](docs/setup-linux.md) を参照してください。
 
-会社MacのDSH workは[ローカル設定で有効化](<docs/ai-clients.md#deepseek-harness>)します。
-personalは全対応OSで利用できます。
+会社用 Claude Code も導入する場合は、インストール時に明示的に選択します。
+
+```sh
+bash install.sh --with-work-claude
+```
+
+初回インストールで未指定なら、Claude の導入・設定配備を行いません。選択はローカルに保存します。
+[AI client 運用](docs/ai-clients.md)に利用範囲と再設定の手順をまとめています。
 
 軽量テストは `mise exec -- python3 -B scripts/ci/validate-repository.py` で実行します。
 CIは基盤変更のPRと週次・手動で実インストールを検証します。

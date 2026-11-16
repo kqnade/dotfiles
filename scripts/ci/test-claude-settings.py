@@ -64,7 +64,7 @@ class ClaudeSettingsTests(unittest.TestCase):
                 "chezmoi",
                 "--source", str(ROOT),
                 "--destination", str(home),
-                "--override-data", json.dumps({"chezmoi": {"os": "darwin"}}),
+                "--override-data", json.dumps({"claude_work_enabled": True, "chezmoi": {"os": "darwin"}}),
                 "--persistent-state", str(home / "state.boltdb"),
                 "--no-tty",
                 "apply", str(target),

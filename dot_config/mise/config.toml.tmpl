@@ -1,2 +1,5 @@
 {{ include "mise.toml" }}
-{{ include "mise/config.toml" -}}
+{{ include "mise/config.toml" }}
+{{ if eq (includeTemplate ".chezmoitemplates/claude-work-enabled.tmpl" .) "true" -}}
+{{ include "mise.work.toml" -}}
+{{ end -}}

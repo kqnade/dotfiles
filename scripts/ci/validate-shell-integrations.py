@@ -133,8 +133,8 @@ with tempfile.TemporaryDirectory() as temp_dir:
     fake_bin.mkdir()
     fake_home.mkdir()
     deploy_client_runtime(fake_home)
-    (fake_scripts / "repair-pi-lsp-package.py").write_text(
-        (ROOT / "scripts/repair-pi-lsp-package.py").read_text()
+    (fake_scripts / "remove-retired-agent-services.sh").write_text(
+        '#!/bin/sh\nprintf "retire-services\\n" >>"$COMMAND_LOG"\n'
     )
     (fake_checkout / "mise.toml").write_text("")
     (fake_scripts / "apply.sh").write_text(
@@ -150,24 +150,14 @@ with tempfile.TemporaryDirectory() as temp_dir:
     chezmoi_stub = fake_bin / "chezmoi"
     chezmoi_stub.write_text(
         "#!/bin/sh\n"
-        'if test "$3" = execute-template; then\n'
-        '  printf \'chezmoi %s\\n\' "$*" >>"$COMMAND_LOG"\n'
-        "  printf 'op://Tests/NewRelic/key\\n'\n"
-        "  exit 0\n"
-        "fi\n"
-        'if test "${EXPECT_NEW_RELIC_KEY:-}" = 1; then\n'
-        '  test "$NEW_RELIC_LICENSE_KEY" = test-new-relic-key || exit 23\n'
-        "fi\n"
         'printf \'chezmoi %s\\n\' "$*" >>"$COMMAND_LOG"\n'
     )
     chezmoi_stub.chmod(0o755)
     op_stub = fake_bin / "op"
     op_stub.write_text(
         "#!/bin/sh\n"
-        'test "${OP_MUST_NOT_RUN:-}" != 1 || exit 97\n'
         'printf \'op %s\\n\' "$*" >>"$COMMAND_LOG"\n'
-        'test "${OP_READ_FAIL:-}" != 1 || exit 98\n'
-        "printf 'test-new-relic-key\\n'\n"
+        'exit 97\n'
     )
     op_stub.chmod(0o755)
     mise_stub = fake_bin / "mise"
@@ -175,6 +165,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
         "#!/bin/sh\n"
         'printf \'mise %s\\n\' "$*" >>"$COMMAND_LOG"\n'
         'if test "$3" = reshim; then exit "${RESHIM_STATUS:-0}"; fi\n'
+        'if test "$5" = install; then exit "${INSTALL_STATUS:-0}"; fi\n'
     )
     mise_stub.chmod(0o755)
     uname_stub = fake_bin / "uname"
@@ -187,12 +178,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
         PATH=f"{fake_bin}:/usr/bin:/bin",
         DOTFILES_ROOT=str(fake_checkout),
         COMMAND_LOG=str(command_log),
-        EXPECT_NEW_RELIC_KEY="1",
     )
-    apply_env.pop("CI", None)
-    apply_env.pop("PI_CODING_AGENT_DIR", None)
-    apply_env.pop("NEW_RELIC_LICENSE_KEY", None)
-    apply_env.pop("NEW_RELIC_LICENSE_KEY_OP_REF", None)
     apply_result = subprocess.run(
         ["bash", str(fake_scripts / "apply.sh")],
         cwd=fake_checkout,
@@ -204,11 +190,10 @@ with tempfile.TemporaryDirectory() as temp_dir:
     if apply_result.returncode != 0:
         fail("dotfile apply must refresh the zsh initialization cache")
     expected_apply_commands = [
-        f"chezmoi --source {fake_checkout.resolve()} execute-template {{{{ .client_runtime.onepassword.references.new_relic }}}}",
-        "op read op://Tests/NewRelic/key",
         f"chezmoi init --source {fake_checkout.resolve()}",
         f"chezmoi --source {fake_checkout.resolve()} apply",
         f"mise -C {fake_checkout.resolve()} reshim",
+        "retire-services",
         "zsh-cache",
         f"mise -C {fake_checkout.resolve()} bootstrap macos launchd-agents apply --yes",
     ]
@@ -226,66 +211,25 @@ with tempfile.TemporaryDirectory() as temp_dir:
     )
     if failed_reshim.returncode != 17:
         fail("dotfile apply must propagate shim refresh failures")
-    if command_log.read_text().splitlines() != expected_apply_commands[:5]:
+    if command_log.read_text().splitlines() != expected_apply_commands[:3]:
         fail("shim refresh failures must stop cache rebuilding and service application")
 
-    command_log.write_text("")
-    existing_key_env = dict(apply_env)
-    existing_key_env.update(
-        NEW_RELIC_LICENSE_KEY="test-new-relic-key",
-        OP_MUST_NOT_RUN="1",
-    )
-    existing_key_result = subprocess.run(
-        ["bash", str(fake_scripts / "apply.sh")],
-        cwd=fake_checkout,
-        env=existing_key_env,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if existing_key_result.returncode != 0:
-        fail(
-            "dotfile apply must preserve an existing New Relic key: "
-            f"exit={existing_key_result.returncode} "
-            f"stdout={existing_key_result.stdout.strip()!r} "
-            f"stderr={existing_key_result.stderr.strip()!r} "
-            f"commands={command_log.read_text().splitlines()}"
+    deploy_client_runtime(fake_home, {"claude_work_enabled": True})
+    expected_work_commands = expected_apply_commands[:3] + [
+        f"mise trust {fake_checkout.resolve()}/mise.work.toml",
+        f"mise -C {fake_checkout.resolve()} -E work install --locked claude",
+    ] + expected_apply_commands[3:]
+    for status in (0, 19):
+        command_log.write_text("")
+        result = subprocess.run(
+            ["bash", str(fake_scripts / "apply.sh")], cwd=fake_checkout,
+            env={**apply_env, "INSTALL_STATUS": str(status)}, capture_output=True, text=True,
         )
-    if command_log.read_text().splitlines() != expected_apply_commands[2:]:
-        fail("dotfile apply must not query 1Password when the key is already set")
-
-    command_log.write_text("")
-    failing_op_env = dict(apply_env)
-    failing_op_env["OP_READ_FAIL"] = "1"
-    failing_op_result = subprocess.run(
-        ["bash", str(fake_scripts / "apply.sh")],
-        cwd=fake_checkout,
-        env=failing_op_env,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if failing_op_result.returncode == 0:
-        fail("dotfile apply must fail when the 1Password key lookup fails")
-    if "failed to load the New Relic key from 1Password" not in failing_op_result.stderr:
-        fail("dotfile apply must explain a failed 1Password key lookup")
-
-    command_log.write_text("")
-    ci_env = dict(apply_env)
-    ci_env.pop("EXPECT_NEW_RELIC_KEY")
-    ci_env.update(CI="true", OP_MUST_NOT_RUN="1")
-    ci_result = subprocess.run(
-        ["bash", str(fake_scripts / "apply.sh")],
-        cwd=fake_checkout,
-        env=ci_env,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if ci_result.returncode != 0:
-        fail("dotfile apply must remain usable without 1Password in CI")
-    if command_log.read_text().splitlines() != expected_apply_commands[2:]:
-        fail("dotfile apply must not query 1Password in CI")
+        if result.returncode != status:
+            fail(f"Claude opt-in installation must propagate status {status}: {result.stderr}")
+        expected = expected_work_commands if status == 0 else expected_work_commands[:5]
+        if command_log.read_text().splitlines() != expected:
+            fail("only enabled Claude installations may run before cache and service application")
 
 
 with tempfile.TemporaryDirectory() as temp_dir:
@@ -507,14 +451,13 @@ with tempfile.TemporaryDirectory() as temp_dir:
     fake_bin = Path(temp_dir) / "bin"
     fake_home.mkdir()
     fake_bin.mkdir()
-    codex_stub = fake_bin / "codex"
-    codex_stub.write_text("#!/bin/sh\nexit 0\n")
-    codex_stub.chmod(0o755)
+    claude_stub = fake_bin / "claude"
+    claude_stub.write_text("#!/bin/sh\nexit 0\n")
+    claude_stub.chmod(0o755)
     herdr_stub = fake_bin / "herdr"
     herdr_stub.write_text(
         "#!/bin/sh\n"
-        'test "$1 $2 $3" = "integration install codex" || exit 1\n'
-        'test -d "$HOME/.codex" || exit 42\n'
+        'test "$1 $2 $3" = "integration install claude" || exit 1\n'
         'touch "$HOME/herdr-called"\n'
     )
     herdr_stub.chmod(0o755)
@@ -522,7 +465,6 @@ with tempfile.TemporaryDirectory() as temp_dir:
     uname_stub.write_text('#!/bin/sh\nprintf "%s\\n" "$TEST_UNAME"\n')
     uname_stub.chmod(0o755)
     configure_env = dict(os.environ)
-    configure_env.pop("CODEX_HOME", None)
     configure_env.update(
         HOME=str(fake_home),
         PATH=f"{fake_bin}:/usr/bin:/bin",
@@ -530,11 +472,11 @@ with tempfile.TemporaryDirectory() as temp_dir:
     )
     configure_script = ["bash", str(ROOT / "scripts/configure-herdr.sh")]
     mac_result = subprocess.run(configure_script, cwd=ROOT, env=configure_env, check=False)
-    if (mac_result.returncode != 0 or (fake_home / "herdr-called").exists()
-            or (fake_home / ".codex").exists()):
+    if mac_result.returncode != 0 or (fake_home / "herdr-called").exists():
         fail("Herdr integration must not run on macOS")
     configure_env["TEST_UNAME"] = "Linux"
-    linux_result = subprocess.run(configure_script, cwd=ROOT, env=configure_env, check=False)
-    if (linux_result.returncode != 0 or not (fake_home / ".codex").is_dir()
-            or not (fake_home / "herdr-called").is_file()):
-        fail("Herdr setup must initialize Codex's config directory on Linux")
+    for enabled in (False, True):
+        deploy_client_runtime(fake_home, {"claude_work_enabled": enabled})
+        linux_result = subprocess.run(configure_script, cwd=ROOT, env=configure_env, check=False)
+        if linux_result.returncode != 0 or (fake_home / "herdr-called").is_file() != enabled:
+            fail("Herdr must install only the opted-in Claude integration on Linux")

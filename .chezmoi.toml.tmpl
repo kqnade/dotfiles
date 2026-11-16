@@ -1,5 +1,5 @@
-{{- $workEnabled := includeTemplate ".chezmoitemplates/dsh-work-enabled.tmpl" . -}}
+{{- $workEnabled := includeTemplate ".chezmoitemplates/claude-work-enabled.tmpl" . -}}
 sourceDir = {{ .chezmoi.sourceDir | quote }}
 
 [data]
-dsh_work_enabled = {{ $workEnabled }}
+claude_work_enabled = {{ $workEnabled }}

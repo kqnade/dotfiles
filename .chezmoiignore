@@ -1,7 +1,15 @@
-{{- $workEnabled := includeTemplate ".chezmoitemplates/dsh-work-enabled.tmpl" . -}}
+{{- $workEnabled := includeTemplate ".chezmoitemplates/claude-work-enabled.tmpl" . -}}
 {{ if eq $workEnabled "false" -}}
-.dsh/work
-.config/deepseek-harness/work
+{{ if stat (joinPath .chezmoi.destDir ".claude/hooks/authorize-repository.sh") -}}
+.claude/CLAUDE.md
+.claude/settings.json
+.claude/rules
+.claude/skills
+.claude/hooks/*
+!.claude/hooks/authorize-repository.sh
+{{ else -}}
+.claude
+{{ end -}}
 {{ end -}}
 scripts/
 docs/
@@ -13,6 +21,8 @@ AGENTS.md
 CLAUDE.md
 install.sh
 mise.toml
+mise.work.toml
+mise.work.lock
 mise/
 mise.lock
 renovate.jsonc

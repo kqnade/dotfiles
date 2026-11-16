@@ -1,9 +1,4 @@
-[client_runtime.pi]
-agent_dir = "~/.pi/agent"
-
 [client_runtime.onepassword.references]
-new_relic = "op://Personal/j465rncuz4fcf2rc7aogcosypi/credential"
-decision_api = "op://Private/DecisionAPI/api key"
 github = "op://Personal/GitHub/token"
 
 [client_runtime.onepassword.signers]

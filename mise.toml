@@ -14,6 +14,7 @@ task.run_auto_install = false
 
 [tool_alias]
 1password-cli = "http:1password-cli"
+cursor-agent = "http:cursor-agent"
 
 [tools]
 # Bootstrap and shell
@@ -70,15 +71,7 @@ uv = "0.13.7"
 # Agent and application CLIs
 1password-cli = { version = "2.41.1", url = 'https://cache.agilebits.com/dist/1P/op2/pkg/v{{ version }}/op_{{ os(macos="darwin") }}_{{ arch(x64="amd64") }}_v{{ version }}.zip', version_list_url = "https://mise-versions.jdx.dev/1password-cli" }
 herdr = { version = "v0.9.5", os = ["linux"] }
-claude = "2.1.322"
-"aqua:openai/codex" = "0.163.0"
-opencode = "1.19.5"
-ollama = "0.40.16"
-"npm:@deepseek-ai/dsh" = { version = "0.2.1-rc.2", depends = ["node"] }
-"npm:@earendil-works/pi-coding-agent" = { version = "1.5.2", depends = [
-  "node",
-] }
-"npm:ccusage" = { version = "20.0.45", depends = ["node"] }
+cursor-agent = { version = "2026.11.13-eacade1", url = 'https://downloads.cursor.com/lab/{{ version }}/{{ os(macos="darwin") }}/{{ arch(x64="x64", arm64="arm64") }}/agent-cli-package.tar.gz', bin_path = "dist-package", strip_components = 0, version_list_url = "https://cursor.com/install", version_regex = 'downloads\.cursor\.com/lab/([0-9]{4}\.[0-9]{2}\.[0-9]{2}-[0-9a-f]+)/' }
 
 # SKK server and dictionary builder. Keep this on the Cargo git backend on
 # every platform so the service behaves identically on macOS and Linux.
@@ -102,10 +95,6 @@ run = "bash \"${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/a
 [tasks.bootstrap]
 description = "Finish idempotent machine setup after tools are installed"
 run = "bash \"${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/bootstrap.sh\""
-
-[tasks.dsh-setup]
-description = "Install isolated personal and work DeepSeek Harness profiles"
-run = "bash \"${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/configure-dsh.sh\""
 
 [tasks.doctor]
 description = "Diagnose tools, packages, dotfiles, fonts, and services"

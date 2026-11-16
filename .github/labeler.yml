@@ -19,6 +19,8 @@ dependencies:
   - changed-files:
       - any-glob-to-any-file:
           - 'mise.toml'
+          - 'mise.work.toml'
+          - 'mise.work.lock'
           - 'mise.lock'
           - 'mise/config.toml'
           - 'renovate.jsonc'
@@ -35,11 +37,7 @@ agents:
       - any-glob-to-any-file:
           - 'dot_agents/**'
           - 'dot_claude/**'
-          - 'dot_codex/**'
-          - 'dot_pi/**'
-          - 'dot_config/opencode/**'
           - '.chezmoitemplates/claude-*'
-          - '.chezmoitemplates/pi-*'
 
 neovim:
   - changed-files:

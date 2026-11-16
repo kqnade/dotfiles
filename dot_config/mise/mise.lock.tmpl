@@ -1,1 +1,4 @@
-{{ include "mise.lock" -}}
+{{ include "mise.lock" }}
+{{ if eq (includeTemplate ".chezmoitemplates/claude-work-enabled.tmpl" .) "true" -}}
+{{ include "mise.work.lock" -}}
+{{ end -}}

@@ -72,20 +72,6 @@
       "minimumReleaseAge": null
     },
     {
-      "description": "Track stable Codex CLI releases from the rust-v tags used by its Aqua package.",
-      "matchManagers": [
-        "mise"
-      ],
-      "matchDatasources": [
-        "github-tags"
-      ],
-      "matchPackageNames": [
-        "openai/codex"
-      ],
-      "extractVersion": "^rust-v(?<version>\\d+\\.\\d+\\.\\d+)$",
-      "versioning": "semver"
-    },
-    {
       "description": "Keep GitHub binary versions consistent with mise's unprefixed lockfile entries.",
       "matchManagers": [
         "mise"
@@ -117,22 +103,10 @@
       ],
       "matchDepNames": [
         "claude",
-        "aqua:openai/codex",
-        "herdr",
-        "opencode",
-        "npm:@earendil-works/pi-coding-agent"
+        "cursor-agent",
+        "herdr"
       ],
       "minimumReleaseAge": null
-    },
-    {
-      "description": "Prioritize Pi update PRs.",
-      "matchManagers": [
-        "mise"
-      ],
-      "matchDepNames": [
-        "npm:@earendil-works/pi-coding-agent"
-      ],
-      "prPriority": 10
     },
     {
       "description": "Create security PRs immediately, bypassing the default 1-day release age.",

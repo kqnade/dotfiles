@@ -14,33 +14,6 @@ export DOTFILES_ROOT
 MISE_BIN="$(dotfiles_mise_bin)"
 readonly MISE_BIN
 
-load_new_relic_license_key() {
-  [[ -z "${NEW_RELIC_LICENSE_KEY:-}" ]] || return 0
-
-  if [[ "${CI:-}" == true ]]; then
-    dotfiles_log "Skipping 1Password telemetry key lookup in CI."
-    return
-  fi
-
-  local op_bin
-  op_bin="$(command -v op)" ||
-    dotfiles_die "1Password CLI is required to load the New Relic key"
-
-  local op_ref
-  if [[ ${NEW_RELIC_LICENSE_KEY_OP_REF+x} ]]; then
-    op_ref="$NEW_RELIC_LICENSE_KEY_OP_REF"
-  else
-    op_ref="$(chezmoi --source "$DOTFILES_ROOT" execute-template '{{ .client_runtime.onepassword.references.new_relic }}')" ||
-      dotfiles_die "failed to read the New Relic reference from client runtime settings"
-  fi
-  [[ "$op_ref" == op://* ]] || dotfiles_die "New Relic 1Password reference is missing or invalid"
-  NEW_RELIC_LICENSE_KEY="$("$op_bin" read "$op_ref")" ||
-    dotfiles_die "failed to load the New Relic key from 1Password"
-  [[ -n "$NEW_RELIC_LICENSE_KEY" ]] ||
-    dotfiles_die "1Password returned an empty New Relic key"
-  export NEW_RELIC_LICENSE_KEY
-}
-
 apply_managed_services() {
   case "$(uname -s)" in
     Darwin)
@@ -56,14 +29,15 @@ apply_managed_services() {
   esac
 }
 
-load_new_relic_license_key
 chezmoi init --source "$DOTFILES_ROOT"
 chezmoi --source "$DOTFILES_ROOT" apply
 "$MISE_BIN" -C "$DOTFILES_ROOT" reshim
 # shellcheck source=/dev/null
 source "$HOME/.config/dotfiles/client-runtime.sh"
-PI_AGENT_DIR="$(dotfiles_pi_agent_dir)"
-readonly PI_AGENT_DIR
-python3 "$SCRIPT_DIR/repair-pi-lsp-package.py" "$PI_AGENT_DIR"
+if [[ "$DOTFILES_CLAUDE_WORK_ENABLED" == true ]]; then
+  "$MISE_BIN" trust "$DOTFILES_ROOT/mise.work.toml"
+  "$MISE_BIN" -C "$DOTFILES_ROOT" -E work install --locked claude
+fi
+bash "$SCRIPT_DIR/remove-retired-agent-services.sh"
 bash "$SCRIPT_DIR/build-zsh-init-cache.sh"
 apply_managed_services

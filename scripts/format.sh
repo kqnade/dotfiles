@@ -17,12 +17,14 @@ taplo_bin="$("$MISE_BIN" -C "$DOTFILES_ROOT" which taplo)"
 readonly taplo_bin
 
 cd "$DOTFILES_ROOT"
-"$taplo_bin" format mise.toml mise/config.toml
+"$taplo_bin" format mise.toml mise.work.toml mise/config.toml
 
-formatted_lock="$(mktemp "${DOTFILES_ROOT}/.mise.lock.XXXXXX")"
-trap 'rm -f "$formatted_lock"' EXIT
-"$taplo_bin" format --stdin-filepath mise.lock - <mise.lock >"$formatted_lock"
-mv -f "$formatted_lock" mise.lock
+for lockfile in mise.lock mise.work.lock; do
+  formatted_lock="$(mktemp "${DOTFILES_ROOT}/.mise.lock.XXXXXX")"
+  trap 'rm -f "$formatted_lock"' EXIT
+  "$taplo_bin" format --stdin-filepath mise.lock - <"$lockfile" >"$formatted_lock"
+  mv -f "$formatted_lock" "$lockfile"
+done
 trap - EXIT
 
-printf 'Formatted mise manifests and mise.lock.\n'
+printf 'Formatted mise manifests and lockfiles.\n'

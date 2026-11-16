@@ -85,6 +85,8 @@ exit 98
     def mise_script(self, version: str) -> str:
         return (
             '#!/bin/sh\nprintf \'mise %s\\n\' "$*" >>"$COMMAND_LOG"\n'
+            'printf "%s\\n" "${DOTFILES_CLAUDE_WORK_ENABLED-unset}" >"$HOME/work-opt-in"\n'
+            'printf "%s\\n" "${MISE_CONFIG_DIR-unset}" >"$HOME/bootstrap-config-dir"\n'
             f'if test "$1" = --version; then echo "{version}"; fi\n'
         )
 
@@ -165,11 +167,26 @@ exit 98
                 self.assertFalse(self.mise.exists())
                 self.assertEqual(self.commands(), [])
 
+    def test_work_claude_requires_explicit_install_option(self):
+        self.mise.write_text(self.mise_script(VERSION))
+        self.mise.chmod(0o755)
+        result = self.run_install("--with-work-claude")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.home / "work-opt-in").read_text().strip(), "true")
+        self.assertIn(f"mise -C {self.checkout} bootstrap --yes", self.commands())
+
+    def test_mise_only_cannot_enable_work_claude(self):
+        result = self.run_install("--mise-only", "--with-work-claude")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(self.mise.exists())
+
     def test_default_mode_trusts_and_bootstraps_checkout(self):
         self.mise.write_text(self.mise_script(VERSION))
         self.mise.chmod(0o755)
         result = self.run_install()
         self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((self.home / "work-opt-in").read_text().strip(), "unset")
+        self.assertEqual((self.home / "bootstrap-config-dir").read_text().strip(), str(self.checkout / "mise"))
         self.assertEqual(
             self.commands(),
             [

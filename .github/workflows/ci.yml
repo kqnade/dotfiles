@@ -89,14 +89,15 @@ jobs:
           shfmt_bin="$(mise which shfmt)"
           taplo_bin="$(mise which taplo)"
           mapfile -t shell_files < <(find scripts -type f -name '*.sh' -print | sort)
-          mapfile -t toml_files < <(find . -type f -name '*.toml' -not -path './.git/*' -not -path './dot_codex/modify_private_config.toml' -print | sort)
-          shell_files+=(install.sh dot_codex/modify_private_config.toml dot_local/bin/executable_op dot_local/bin/executable_ssh dot_local/bin/executable_ssh-add dot_local/bin/executable_pi-telemetry)
+          mapfile -t toml_files < <(find . -type f -name '*.toml' -not -path './.git/*' -print | sort)
+          shell_files+=(install.sh dot_local/bin/executable_op dot_local/bin/executable_ssh dot_local/bin/executable_ssh-add)
           "$shellcheck_bin" -e SC1091 -S warning "${shell_files[@]}"
           "$shfmt_bin" -i 2 -ci -d "${shell_files[@]}"
           "$taplo_bin" lint "${toml_files[@]}"
-          "$taplo_bin" format --check mise.toml
+          "$taplo_bin" format --check mise.toml mise.work.toml
           "$taplo_bin" format --check mise/config.toml
           "$taplo_bin" format --check --stdin-filepath=mise.lock - < mise.lock
+          "$taplo_bin" format --check --stdin-filepath=mise.lock - < mise.work.lock
 
       - name: verify runtime root override
         run: |
@@ -196,7 +197,7 @@ jobs:
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           mise exec -- python3 -B scripts/ci/integration/test-mise-lock.py
-          mise exec -- node scripts/ci/integration/run-dsh.mjs
+          mise exec -- cursor-agent --version
 
   macos-bootstrap:
     name: macOS arm64 public interfaces
@@ -227,19 +228,18 @@ jobs:
 
       - name: run install.sh and every public command
         run: |
-          mkdir -p "$HOME/.config/chezmoi"
-          printf '[data]\ndsh_work_enabled = true\n' > "$HOME/.config/chezmoi/chezmoi.toml"
-          bash install.sh
+          bash install.sh --with-work-claude
           export PATH="$HOME/.local/bin:$PATH"
 
           cd "$HOME"
           mise run apply
           mise run doctor
 
-      - name: verify installed personal and work integrations
+      - name: verify Cursor and opted-in Claude installations
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          mise exec -- node scripts/ci/integration/run-dsh.mjs --work
+          mise exec -- cursor-agent --version
+          mise -E work which claude
 
       - name: verify repeated bootstrap
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
@@ -304,10 +304,10 @@ jobs:
           expected_pnpm="$(mise config get 'tools.github:pnpm/pnpm')"
           test "$(mise exec -- pnpm --version)" = "$expected_pnpm"
 
-      - name: verify installed personal integrations
+      - name: verify Cursor installation
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          mise exec -- node scripts/ci/integration/run-dsh.mjs
+          mise exec -- cursor-agent --version
 
   ci-result:
     name: ci-result

@@ -5,11 +5,8 @@ set -euo pipefail
 [[ "$(uname -s)" == Linux ]] || exit 0
 command -v herdr >/dev/null 2>&1 || exit 0
 
-for agent in claude codex opencode; do
-  if command -v "$agent" >/dev/null 2>&1; then
-    if [[ "$agent" == codex ]]; then
-      mkdir -p "${CODEX_HOME:-$HOME/.codex}"
-    fi
-    herdr integration install "$agent" >/dev/null
-  fi
-done
+# shellcheck source=/dev/null
+source "$HOME/.config/dotfiles/client-runtime.sh"
+[[ "$DOTFILES_CLAUDE_WORK_ENABLED" == true ]] || exit 0
+command -v claude >/dev/null 2>&1 || exit 0
+herdr integration install claude >/dev/null

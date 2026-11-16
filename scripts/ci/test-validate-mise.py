@@ -149,94 +149,6 @@ class ValidateMiseTests(unittest.TestCase):
         self.assertNotIn('[url "git@github.com:"]', result.stdout)
         self.assertNotIn('[url "git@gitlab.com:"]', result.stdout)
 
-    def test_codex_usage_exporter_runs_every_minute(self) -> None:
-        config = tomllib.loads((ROOT / "mise/config.toml").read_text())
-
-        expected_program = (
-            "~/repos/github.com/kqnade/dotfiles/scripts/codex-usage-exporter.sh"
-        )
-
-        self.assertEqual(
-            config["bootstrap"]["macos"]["launchd"]["agents"][
-                "codex-usage-exporter"
-            ]["program"],
-            expected_program,
-        )
-        self.assertEqual(
-            config["bootstrap"]["macos"]["launchd"]["agents"][
-                "codex-usage-exporter"
-            ]["start_interval"],
-            60,
-        )
-        self.assertEqual(
-            config["bootstrap"]["linux"]["systemd"]["units"][
-                "codex-usage-exporter"
-            ]["exec_start"],
-            expected_program,
-        )
-        self.assertEqual(
-            config["bootstrap"]["linux"]["systemd"]["units"][
-                "codex-usage-exporter"
-            ]["restart_sec"],
-            "60s",
-        )
-
-    def test_codex_usage_exporter_resolves_op_outside_systemd_path(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary_directory:
-            home = Path(temporary_directory)
-            reads = home / "op-reads"
-            op_script = (
-                "#!/bin/sh\n"
-                'test "$1" = read || exit 98\n'
-                f"printf x >> {reads}\n"
-                "printf resolved-key\n"
-            )
-            op = home / ".local/bin/op"
-            op.parent.mkdir(parents=True)
-            op.write_text(op_script)
-            op.chmod(0o755)
-            op_exe = home / "op.exe"
-            op_exe.write_text(op_script)
-            op_exe.chmod(0o755)
-            exporter = home / "exporter"
-            exporter.write_text(
-                "#!/bin/sh\nprintf '%s\\n' \"$NEW_RELIC_ACCOUNT_APIKey\"\n"
-            )
-            exporter.chmod(0o755)
-            op_env = home / ".op.env"
-            op_env.write_text("NEW_RELIC_ACCOUNT_APIKey=op://test/item/key\n")
-
-            environment = {
-                "HOME": str(home),
-                "PATH": "/usr/bin:/bin",
-                "XDG_RUNTIME_DIR": str(home / "runtime"),
-                "DOTFILES_ROOT": str(ROOT),
-                "CODEX_USAGE_OP_ENV": str(op_env),
-                "CODEX_USAGE_OP_EXE": str(op_exe),
-                "CODEX_USAGE_EXPORTER": str(exporter),
-            }
-            results = [
-                subprocess.run(
-                    [str(ROOT / "scripts/codex-usage-exporter.sh")],
-                    env=environment,
-                    text=True,
-                    capture_output=True,
-                    check=False,
-                )
-                for _ in range(2)
-            ]
-            cache = home / "runtime/codex-usage-exporter/op.env"
-            read_count = reads.read_text() if reads.is_file() else ""
-            cache_mode = cache.stat().st_mode & 0o777 if cache.is_file() else None
-
-        self.assertEqual([result.returncode for result in results], [0, 0])
-        self.assertEqual(
-            [result.stdout.strip() for result in results],
-            ["resolved-key", "resolved-key"],
-        )
-        self.assertEqual(read_count, "x")
-        self.assertEqual(cache_mode, 0o600)
-
     def test_repository_loads_split_manifest(self) -> None:
         mise = shutil.which("mise")
         self.assertIsNotNone(mise, "mise must be installed to validate config discovery")
@@ -371,7 +283,7 @@ class ValidateMiseTests(unittest.TestCase):
         self.assertEqual(tasks.returncode, 0, tasks.stderr)
         self.assertEqual(
             {task["name"] for task in json.loads(tasks.stdout)},
-            {"apply", "bootstrap", "doctor", "dsh-setup", "format", "pre-commit"},
+            {"apply", "bootstrap", "doctor", "format", "pre-commit"},
         )
 
     def test_bootstrap_fragment_is_not_a_home_directory_target(self) -> None:
@@ -456,7 +368,7 @@ class ValidateMiseTests(unittest.TestCase):
         ))
         with tempfile.TemporaryDirectory() as temporary_directory:
             fixture = Path(temporary_directory)
-            for relative in ("mise/config.toml", "mise.lock", "dot_config/mise/config.toml.tmpl",
+            for relative in ("mise/config.toml", "mise.work.toml", "mise.work.lock", "mise.lock", "dot_config/mise/config.toml.tmpl",
                              "dot_config/mise/mise.lock.tmpl", "scripts/ci/validate-mise.py"):
                 destination = fixture / relative
                 destination.parent.mkdir(parents=True, exist_ok=True)
@@ -479,6 +391,8 @@ class ValidateMiseTests(unittest.TestCase):
             fixture_root = Path(temporary_directory)
             for relative in (
                 "mise.toml",
+                "mise.work.toml",
+                "mise.work.lock",
                 "mise/config.toml",
                 "mise.lock",
                 "dot_config/mise/config.toml.tmpl",
