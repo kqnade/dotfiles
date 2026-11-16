@@ -8,6 +8,14 @@ deny() {
 }
 
 hook_input=$(cat)
+if printf '%s' "$hook_input" | jq -e '
+	type == "object" and
+	(.cursor_version | type == "string" and length > 0) and
+	(.hook_event_name == "preToolUse" or .hook_event_name == "beforeSubmitPrompt")
+' >/dev/null 2>&1; then
+	exit 0
+fi
+
 repository_cwd=$PWD
 if [[ -n "$hook_input" ]]; then
 	repository_cwd=$(

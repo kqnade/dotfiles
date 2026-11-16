@@ -196,6 +196,36 @@ with tempfile.TemporaryDirectory() as temp_dir:
         ):
             fail("Claude rejection must identify an unauthorized repository owner")
 
+    for event in ("preToolUse", "beforeSubmitPrompt"):
+        cursor_result = subprocess.run(
+            ["bash", str(claude_repository_guard)],
+            cwd=denied_repositories["unapproved owner"],
+            input=json.dumps({
+                "hook_event_name": event,
+                "cursor_version": "3.0.0",
+                "workspace_roots": [str(denied_repositories["unapproved owner"])],
+            }),
+            text=True, capture_output=True, check=False,
+        )
+        if cursor_result.returncode != 0:
+            fail(f"Claude's repository boundary must not block Cursor's {event}")
+
+    for payload in (
+        {"hook_event_name": "PreToolUse", "cursor_version": "3.0.0"},
+        {"hook_event_name": "preToolUse"},
+        {"hook_event_name": "preToolUse", "cursor_version": ""},
+        {"hook_event_name": "preToolUse", "cursor_version": True},
+    ):
+        result = subprocess.run(
+            ["bash", str(claude_repository_guard)],
+            cwd=denied_repositories["unapproved owner"],
+            input=json.dumps({"cwd": str(denied_repositories["unapproved owner"]), **payload}),
+            env={**os.environ, "CURSOR_VERSION": "3.0.0", "TERM_PROGRAM": "cursor"},
+            text=True, capture_output=True, check=False,
+        )
+        if result.returncode != 2:
+            fail("Claude authorization must not be bypassed by a Cursor terminal or invalid payload")
+
     denied_tool = run_claude_repository_guard(
         denied_repositories["unapproved owner"], "PreToolUse"
     )
