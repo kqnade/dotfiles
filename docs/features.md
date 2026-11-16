@@ -51,6 +51,7 @@ repositoryの共通指示は`AGENTS.md`に置き、Claudeは`CLAUDE.md`も併せ
 正本は`~/.agents/skills/`に置き、Claudeは同じ正本へのリンクを使います。
 共通のuser instructionsは`dot_agents/AGENTS.md`を正本とし、Claudeの`~/.claude/CLAUDE.md`から
 リンクして読み込みます。Cursor には `~/.cursor/rules/` の薄い alwaysApply rule も配備します。
+`$HOME` 外の checkout には届かないため、その project の `.cursor/rules/` に同じ file を置きます。
 独自のsubagent指示やworkflow routerは配置しません。
 実行設定・認証・保護はclientごとに分離し、Claudeのautomatic memoryは無効です。
 詳細は[AI client運用](ai-clients.md)と[開発workflow](ai-workflows.md)を参照してください。

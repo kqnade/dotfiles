@@ -106,7 +106,8 @@ Shared skills live in `dot_agents/skills/`: `responsibility-boundary`, `claim-re
 Common user instructions live in `dot_agents/AGENTS.md` and prioritize responsibility
 splits, boundary contracts, human-authored PRs, and short bullet replies. Claude loads that
 file through its managed user-level symlink. Cursor also gets a thin alwaysApply rule under
-`dot_cursor/rules/` that points at `~/.agents/AGENTS.md` and the shared skills; see
+`dot_cursor/rules/` that carries the short personal contract and points at `~/.agents/AGENTS.md`
+and the shared skills. It loads when `$HOME` is an ancestor of the workspace; see
 `docs/ai-clients.md`.
 Keep client-specific execution settings in their adapters.
 Do not deploy custom subagent instructions or a workflow router. See `docs/ai-clients.md` for

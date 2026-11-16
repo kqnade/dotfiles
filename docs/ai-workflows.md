@@ -41,8 +41,14 @@ external worktree の表示と実際の checkout path を確認する。read-onl
 
 正本は `dot_agents/skills/<name>/` で、`~/.agents/skills/<name>/` へ配備する。
 Claude は `~/.claude/skills/<name>` から同じ directory への symlink で読み込む。
-Cursor は `~/.agents/AGENTS.md` と利用可能な Skills、および `~/.cursor/rules/` の薄い alwaysApply
-rule を使う。配備は仕事用データへの利用許可を与えるものではない。
+Cursor は repository の `AGENTS.md`、利用可能な Skills、および alwaysApply rule を使う。
+`dot_cursor/rules/agents.mdc` は `~/.cursor/rules/` に配備する。Cursor は workspace から祖先の
+`.cursor/rules/` を読む。`$HOME` が祖先でない checkout ではこの rule に届かない。その checkout では
+同じ file を project の `.cursor/rules/` に置く。rule 本文に必須の短い契約を書き、
+`~/.agents/AGENTS.md` は全文の正本とする。参照だけでは本文の代わりにならない。
+この範囲は Cursor の project rules と CLI が project の `AGENTS.md` を読むという文書に合わせた。
+pin している `cursor-agent` `2026.11.13-eacade1` で、`$HOME` 外の workspace を起動して測ってはいない。
+配備は仕事用データへの利用許可を与えるものではない。
 
 | 操作 | Claude |
 |---|---|
