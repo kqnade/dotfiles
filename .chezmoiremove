@@ -92,12 +92,10 @@ Library/LaunchAgents/com.user.yaskkserv2.plist
 .agents/rules/workflow-state.md
 .agents/skills/assumption-pruning/SKILL.md
 .agents/skills/assumption-pruning/agents/openai.yaml
-.agents/skills/context-handoff
 .agents/skills/context-handoff/SKILL.md
 .agents/skills/context-handoff/agents/openai.yaml
 .agents/skills/context-handoff/scripts/context-candidates
 .agents/skills/context-handoff/scripts/context-path
-.agents/skills/evidence-review
 .agents/skills/evidence-review/SKILL.md
 .agents/skills/evidence-review/agents/openai.yaml
 .agents/skills/evidence-review/references/dependency-update.md
@@ -109,12 +107,10 @@ Library/LaunchAgents/com.user.yaskkserv2.plist
 .agents/skills/prose-proofreading/SKILL.md
 .agents/skills/route-large-implementation/SKILL.md
 .agents/skills/route-large-implementation/agents/openai.yaml
-.agents/skills/sanitize-artifacts
 .agents/skills/sanitize-artifacts/SKILL.md
 .agents/skills/sanitize-artifacts/agents/openai.yaml
 .agents/skills/security-audit/SKILL.md
 .agents/skills/security-audit/agents/openai.yaml
-.agents/skills/test-driven-development
 .agents/skills/test-driven-development/SKILL.md
 .agents/skills/todo-management/SKILL.md
 .agents/skills/todo-management/scripts/todo-complete
@@ -128,7 +124,6 @@ Library/LaunchAgents/com.user.yaskkserv2.plist
 .agents/skills/using-workflow-skills/scripts/workflow-state-digest
 .agents/skills/using-workflow-skills/scripts/workflow-state-root
 .agents/skills/using-workflow-skills/scripts/workflow-state-write
-.agents/skills/yomiyasu
 .agents/skills/yomiyasu/SKILL.md
 .agents/skills/yomiyasu/README.md
 .agents/skills/yomiyasu/LICENSE
