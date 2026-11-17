@@ -49,7 +49,7 @@ Arch Linux x64, and Fedora/Arch under WSL x64.
 | Format the mise manifests and `mise.lock` | `mise run format` |
 | Preview chezmoi-managed file changes | `chezmoi diff` |
 | Run the repository validators | `mise exec -- python3 scripts/ci/validate-repository.py` |
-| Create a signed local commit | `git cc '<gitmoji> <type>: <summary>'` |
+| Create a signed local commit | `git commit -m '<gitmoji> <type>: <summary>'` |
 
 Run focused checks first, then the repository validator when the affected contract requires it.
 Always inspect the final diff and run `git diff --check` before handing work off. Report the commands
@@ -154,8 +154,8 @@ prerequisites; reconcile them with current files before use.
 - Commit messages use gitmoji prefixes.
 - Default branch is `trunk`.
 - Each local commit must be a cohesive, reviewable Green increment. Stage only its paths or hunks,
-  inspect the staged diff, and use `git cc`. Pushes and pull-request mutations require separate
-  explicit authorization.
+  inspect the staged diff, and create a signed commit. Pushes and pull-request mutations require
+  separate explicit authorization.
 - CI always runs offline validators and behavior tests through `scripts/ci/validate-repository.py`.
   Foundation changes in PRs and weekly/manual runs also perform real installs: macOS arm64
   exercises work Claude opt-in and public interfaces, Intel checks source fallbacks, Fedora checks

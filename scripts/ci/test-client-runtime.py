@@ -92,16 +92,14 @@ class ClientRuntimeTests(unittest.TestCase):
         )
         self.assertIn(f'program = "{signer}"', gitconfig)
         result = self.shell(
-            f'source "{ROOT}/dot_config/zsh/functions/cc.zsh" && '
+            'source "$HOME/.config/dotfiles/client-runtime.sh" && '
             '[[ "$DOTFILES_OP_SOCKET_LINUX" = "$EXPECTED_SOCKET" ]] && '
-            '_git_cc_is_repository_1password_signer_path "$EXPECTED_SIGNER" && '
-            '! _git_cc_is_repository_1password_signer_path "$UNTRUSTED_SIGNER"',
+            '[[ "$DOTFILES_OP_SIGNER_LINUX" = "$EXPECTED_SIGNER" ]]',
             "zsh",
             {
                 **self.env,
                 "EXPECTED_SIGNER": signer,
                 "EXPECTED_SOCKET": socket,
-                "UNTRUSTED_SIGNER": "/tmp/op-ssh-sign",
                 "DOTFILES_OP_SIGNER_LINUX": "/tmp/op-ssh-sign",
             },
         )
@@ -200,13 +198,6 @@ class ClientRuntimeTests(unittest.TestCase):
         for shell in ("bash", "zsh"):
             result = self.shell(command, shell)
             self.assertEqual(result.returncode, 0, result.stderr)
-
-    def test_git_helper_reports_missing_configuration(self):
-        self.config.unlink()
-        result = self.shell(f'source "{ROOT}/dot_config/zsh/functions/cc.zsh"', "zsh")
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("configuration is missing", result.stderr)
-
 
 if __name__ == "__main__":
     unittest.main()

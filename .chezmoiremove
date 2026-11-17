@@ -74,6 +74,7 @@
 .config/cmux
 .local/bin/cmux-worktree
 .config/zsh/functions/ccc.zsh
+.config/zsh/functions/cc.zsh
 .config/project-maker
 .config/zsh/agent-mail.zsh
 .kimi-code/mcp.json

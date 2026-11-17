@@ -97,10 +97,10 @@
   the staged diff. Split independent changes into separate, verified commits so each remains
   useful for bisect. If safe isolation or verification is blocked, leave the changes intact and
   report the blocker instead of claiming completion.
-- Follow the repository's approved commit workflow; otherwise use `git cc` when available.
-  If no helper is available, use `git commit` with the same message style. A helper failure is a
-  blocker, not permission to bypass its checks or switch clients/accounts.
-- Every commit message must use `git cc` style: `<gitmoji> <type>[(scope)]: <imperative English summary>`,
+- Follow the repository's approved commit workflow. Use `git commit` with the message style below.
+  A signing or commit failure is a blocker, not permission to bypass checks or switch
+  clients/accounts.
+- Every commit message must use `<gitmoji> <type>[(scope)]: <imperative English summary>`,
   under 72 characters, following the repository's recent commit conventions. Use these mappings:
   feat ✨, fix 🐛, refactor ♻️, docs 📝, test ✅, chore 🔧, perf ⚡️, ci 👷, style 🎨,
   revert ⏪️, build 📦.
