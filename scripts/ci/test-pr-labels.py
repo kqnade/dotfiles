@@ -122,7 +122,7 @@ class LabelRuleTests(unittest.TestCase):
             "mise/config.toml": {"dependencies"},
             "README.md": {"documentation"},
             "docs/ci.md": {"documentation"},
-            "dot_agents/skills/test-driven-development/SKILL.md": {
+            "dot_agents/skills/responsibility-boundary/SKILL.md": {
                 "documentation",
                 "agents",
             },

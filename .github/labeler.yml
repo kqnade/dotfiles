@@ -37,6 +37,7 @@ agents:
       - any-glob-to-any-file:
           - 'dot_agents/**'
           - 'dot_claude/**'
+          - 'dot_cursor/**'
           - '.chezmoitemplates/claude-*'
 
 neovim:

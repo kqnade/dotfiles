@@ -38,7 +38,7 @@ BOOTSTRAP_PREFIXES = (
 )
 STATIC_PREFIXES = (
     "docs/", "scripts/ci/", ".chezmoitemplates/",
-    "dot_agents/", "dot_claude/",
+    "dot_agents/", "dot_claude/", "dot_cursor/",
     "dot_config/", "dot_local/", "private_dot_ssh/",
 )
 

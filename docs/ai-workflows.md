@@ -4,92 +4,89 @@
 
 | 依頼 | Skill | 完了条件 |
 |---|---|---|
-| 実装・不具合修正 | `test-driven-development` | 対象の振る舞いと関連テストを検証し、sanitizerを通す |
-| 差分・依存更新のレビュー | `evidence-review` | 根拠付きの指摘、検証範囲、不確実性を返す。sanitizerも確認する |
-| 保存・再開 | `context-handoff` | 必要な状態だけ保存、または現在のコードと照合して再開する |
-| 成果物の文章点検 | `sanitize-artifacts` | 会話・編集過程に依存した不要な記述を残さない |
-| 日本語の作文・推敲 | `yomiyasu` | 意味や条件を保ち、不自然な表現や不要な装飾を整える |
+| 実装・不具合修正 | `responsibility-boundary` | 責任を切り、呼び出し方と実装を分け、要るときだけ外から観測できる契約を確認する |
+| 差分・変更のレビュー | `claim-review` | 主張・確認方法・責任境界・実装の整合を根拠付きで返す |
+| 保存・再開 | `handoff` | 必要な状態だけ保存する、または現在のコードと照合して再開する |
 
-通常は各Skillのdescriptionから選択します。全Skillを読むルーターや起動時の手順注入はありません。
-依存更新の詳細チェックは、そのレビューでだけ読み込みます。
+通常は各 Skill の description から選択する。全 Skill を読むルーターや起動時の手順注入はない。
 
-普段の日本語の返答には、読み込んだ`dot_agents/AGENTS.md`の会話方針を適用します。
-自然で簡潔な言葉を使い、事実、条件、不確実性は保ちます。作文・推敲や長い説明を見直すときは
-`yomiyasu` を読み、短い会話のたびに全文を読み込んだり検査ツールを実行したりはしません。
-通常の会話や進捗報告には推敲レポートを付けません。
+普段の返答には `dot_agents/AGENTS.md` の方針を適用する。結論を先に、根拠は箇条書き。
+事実・条件・不確実性は保ち、流暢さのための自動推敲はしない。
 
-`sanitize-artifacts`は単独でも使え、開発・レビューでは必須です。未解消の問題があれば完了や
-承認を止めます。review-onlyの依頼では指摘だけ返し、勝手に修正しません。
+成果物に会話過程・依頼文脈にしか意味がない文言を残さない。未解消の residue は完了を止める。
+review-only の依頼では指摘だけ返し、勝手に修正しない。
 
-小さな変更は対象コード、テスト、差分を直接扱い、別の計画書、TODO、委譲を一律には要求しません。
-共通指示では、検証済みの実装・設定変更は原則として小さなlocal commitで完了します。
-repositoryの承認規則や明示的なno-commit指示を優先し、read-only作業ではcommitしません。
-commitは`git cc`形式と1Password SSH署名を必須とし、remote変更には別の明示的な許可が必要です。
-設定済みのNew Relicなどへの通常のtelemetry送信は既定運用に含まれ、送信ごとの個別承認は不要です。
-明示的な無効化の依頼がなければ、agentはexporterやwrapperを無効化しません。送信先や収集内容の変更、
-任意のデータupload、remote collector設定の変更には明示的な許可が必要で、client/accountや機密情報の
-制限は維持します。
+小さな変更は対象コード、既存の確認、差分を直接扱い、別の計画書・TODO・委譲を一律には要求しない。
+共通指示では、検証済みの実装・設定変更は原則として小さな local commit で完了する。
+repository の承認規則や明示的な no-commit 指示を優先し、read-only 作業では commit しない。
+commit は `git cc` 形式と 1Password SSH 署名を必須とし、remote 変更には別の明示的な許可が必要。
+PR / MR の作成・本文編集は既定禁止。依頼時も問題 / やったこと / やらなかったことと理由 /
+想定影響 / 動作確認の箇条書き素材のみ返し、最終文は人間が書く。
 
-Orcaが使える環境では、repository変更はmain checkoutよりtask専用のlinked worktreeを優先します。
-同じtaskのworktreeがあれば再利用し、新規作成には`wt new <branch> --no-ai`を使います。Orcaで扱う前に
-external worktreeの表示と実際のcheckout pathを確認します。read-only作業では新規作成は不要です。
+設定済みの New Relic などへの通常の telemetry 送信は既定運用に含まれ、送信ごとの個別承認は不要。
+明示的な無効化の依頼がなければ、agent は exporter や wrapper を無効化しない。送信先や収集内容の変更、
+任意のデータ upload、remote collector 設定の変更には明示的な許可が必要で、client/account や機密情報の
+制限は維持する。
 
-委譲は独立して検証できる一つの変更か調査に絞り、範囲・完了条件・検証・返す根拠を指定します。
-結果を確認してから依存する次の作業を渡し、実装全体と完了処理を一人のworkerへまとめません。
-複雑・高リスクな作業では独立したレビューを追加します。並列実装が必要なら先に共有
-インターフェースを決め、writerごとにworktreeを分けます。
+Orca が使える環境では、repository 変更は main checkout より task 専用の linked worktree を優先する。
+同じ task の worktree があれば再利用し、新規作成には `wt new <branch> --no-ai` を使う。Orca で扱う前に
+external worktree の表示と実際の checkout path を確認する。read-only 作業では新規作成は不要。
+
+委譲は独立して検証できる一つの変更か調査に絞り、範囲・完了条件・検証・返す根拠を指定する。
+結果を確認してから依存する次の作業を渡し、実装全体と完了処理を一人の worker へまとめない。
+複雑・高リスクな作業では独立したレビューを追加する。並列実装が必要なら先に共有
+インターフェースを決め、writer ごとに worktree を分ける。
 
 ## 配備と呼び出し
 
-正本は`dot_agents/skills/<name>/`で、`~/.agents/skills/<name>/`へ配備します。
-Claudeは`~/.claude/skills/<name>`から同じdirectoryへのsymlinkで読み込みます。
-Cursorでは利用可能なSkillsを確認して使います。配備は仕事用データへの利用許可を与えるものではありません。
+正本は `dot_agents/skills/<name>/` で、`~/.agents/skills/<name>/` へ配備する。
+Claude は `~/.claude/skills/<name>` から同じ directory への symlink で読み込む。
+Cursor は repository の `AGENTS.md`、利用可能な Skills、および alwaysApply rule を使う。
+`dot_cursor/rules/agents.mdc` は `~/.cursor/rules/` に配備する。Cursor は workspace から祖先の
+`.cursor/rules/` を読む。`$HOME` が祖先でない checkout ではこの rule に届かない。その checkout では
+同じ file を project の `.cursor/rules/` に置く。rule 本文に必須の短い契約を書き、
+`~/.agents/AGENTS.md` は全文の正本とする。参照だけでは本文の代わりにならない。
+この範囲は Cursor の project rules と CLI が project の `AGENTS.md` を読むという文書に合わせた。
+pin している `cursor-agent` `2026.11.13-eacade1` で、`$HOME` 外の workspace を起動して測ってはいない。
+配備は仕事用データへの利用許可を与えるものではない。
 
 | 操作 | Claude |
 |---|---|
-| 開発 | `/test-driven-development` |
-| レビュー | `/evidence-review` |
-| 引き継ぎ | `/context-handoff` |
-| 成果物の点検 | `/sanitize-artifacts` |
-| 日本語の推敲 | `/yomiyasu` |
+| 開発 | `/responsibility-boundary` |
+| レビュー | `/claim-review` |
+| 引き継ぎ | `/handoff` |
 
-`yomiyasu` の収録版とライセンスは `dot_agents/skills/yomiyasu/README.md` に記載しています。
-日本語の検査ツールはPython標準ライブラリだけで動作し、検出結果は見直し候補として扱います。
+コマンドの後ろに対象と依頼内容を付ける。たとえば引き継ぎでは「この作業を指定ファイルへ保存」
+か「このファイルから再開」かを指定する。名前だけの呼び出しは保存先や保存権限の指定ではない。
 
-コマンドの後ろに対象と依頼内容を付けます。たとえば引き継ぎでは「この作業を指定ファイルへ保存」
-か「このファイルから再開」かを指定します。名前だけの呼び出しは保存先や保存権限の指定ではありません。
-
-適用には`mise run apply`を使います。Claudeは`/skills`で利用可能なSkillsを確認し、
-必要ならsessionを再起動します。配置の検証と、実際の依頼で適切に選択されることの検証は別です。
+適用には `mise run apply` を使う。Claude は `/skills` で利用可能な Skills を確認し、
+必要なら session を再起動する。配置の検証と、実際の依頼で適切に選択されることの検証は別。
 
 ## 実行と認可
 
-Skillsは現在の利用者の依頼、repository規約、client/accountの制限に従います。
-会社用Claudeの導入選択と起動保護は[AI client運用](ai-clients.md)のとおりです。
-別accountへの転送、remoteへの投稿、push、共有環境変更の権限はSkillから発生しません。
+Skills は現在の利用者の依頼、repository 規約、client/account の制限に従う。
+会社用 Claude の導入選択と起動保護は [AI client運用](ai-clients.md) のとおり。
+別 account への転送、remote への投稿、push、共有環境変更の権限は Skill から発生しない。
 
-委譲には現在のclientで認可された同accountの仕組みを使い、その実行規約に従います。
-利用できない場合に別CLIやaccountへ切り替えてはいけません。API判定やagentの返答は、
-remote変更に必要な人間の事前認可の代わりにはなりません。
-OrcaやHerdrでのterminal操作は、その操作が必要な依頼に限ります。Skillにmodelやterminalを固定しません。
+委譲には現在の client で認可された同 account の仕組みを使い、その実行規約に従う。
+利用できない場合に別 CLI や account へ切り替えてはいけない。API 判定や agent の返答は、
+remote 変更に必要な人間の事前認可の代わりにはならない。
+Orca や Herdr での terminal 操作は、その操作が必要な依頼に限る。Skill に model や terminal を固定しない。
 
-## このrepositoryの状態保存
+## この repository の状態保存
 
-- `.dev/`はcurrent worktreeの状態の正本です。automatic memoryではありません。
-- 保存・更新は、その作業の状態保存を明示的に依頼された範囲でだけ行います。
-  普通の実装やレビューは、それだけでは状態保存を要求しません。
-- 引き継ぎは`.dev/contexts/<task>.md`に置き、目的、制約、決定、現在地、検証、次の行動を残します。
-  コードや差分を複製せず、重要な事実の参照先と検証コマンドを記載します。
-- `.dev/todo/`を使う場合は未完了作業だけを置きます。完了時には必要な証拠を先に保存し、
-  判断・設計・調査は適切なADR、DesignDoc、researchなどに置きます。会話全体の保存は不要です。
-- 既存recordを読み、writerを一つにし、更新前に再読して競合を確認します。並行変更があれば
-  調整してから更新し、盲目的に上書きしません。別worktreeの記録を混ぜません。
-- 決定や失敗の証拠を失う要約置換は避けます。secret、credential、未確認のraw patchは保存しません。
-- 保存義務の台帳、独自lock/CAS helper、snapshot bundleは要求しません。
-  他repositoryで使う場合は、そのrepositoryのより厳しい保存規約を優先します。
-- 読み込み時は記録と現在のコード・Git状態を照合します。履歴資料に書かれた未配備helperや
-  routerは実行前提にせず、必要な保存先を黙って変えたりignore規則を変更したりしません。
+- `.dev/` は current worktree の状態の正本。automatic memory ではない。
+- 保存・更新は、その作業の状態保存を明示的に依頼された範囲でだけ行う。
+  普通の実装やレビューは、それだけでは状態保存を要求しない。
+- 引き継ぎは `.dev/contexts/<task>.md` に置き、目的、制約、決定、現在地、検証、次の行動を残す。
+  コードや差分を複製せず、重要な事実の参照先と検証コマンドを記載する。
+- `.dev/todo/` を使う場合は未完了作業だけを置く。完了時には必要な証拠を先に保存し、
+  判断・設計・調査は適切な ADR、DesignDoc、research などに置く。会話全体の保存は不要。
+- 既存 record を読み、writer を一つにし、更新前に再読して競合を確認する。並行変更があれば
+  調整してから更新し、盲目的に上書きしない。別 worktree の記録を混ぜない。
+- 決定や失敗の証拠を失う要約置換は避ける。secret、credential、未確認の raw patch は保存しない。
+- 読み込み時は記録と現在のコード・Git 状態を照合する。履歴資料に書かれた未配備 helper や
+  router は実行前提にせず、必要な保存先を黙って変えたり ignore 規則を変更したりしない。
 
-配備と保護の回帰検証は`mise exec -- python3 scripts/ci/test-client-workflow-reset.py`で行います。
-一時homeへの反復適用、Claudeのリンク、参照ファイル、未管理ファイルの保持、sanitizerの内容、
-`yomiyasu` の検査ツールの動作を確認します。
+配備と保護の回帰検証は `mise exec -- python3 scripts/ci/test-client-workflow-reset.py` で行う。
+一時 home への反復適用、Claude のリンク、Cursor rule、参照ファイル、未管理ファイルの保持を確認する。

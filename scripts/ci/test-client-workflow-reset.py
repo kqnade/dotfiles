@@ -1,20 +1,26 @@
 #!/usr/bin/env python3
 """Verify portable skills, opt-in materialization, and safe managed file removal."""
 
-import json
 import os
 from pathlib import Path
 import re
 import subprocess
-import sys
 import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 SKILLS = {path.parent.name for path in (ROOT / "dot_agents/skills").glob("*/SKILL.md")}
+EXPECTED_SKILLS = {
+    "responsibility-boundary",
+    "claim-review",
+    "handoff",
+}
 
 
 class ClientWorkflowResetTests(unittest.TestCase):
+    def test_expected_skills_are_present(self):
+        self.assertEqual(SKILLS, EXPECTED_SKILLS)
+
     def test_skill_metadata_and_references_are_portable(self):
         for name in sorted(SKILLS):
             with self.subTest(skill=name):
@@ -25,16 +31,7 @@ class ClientWorkflowResetTests(unittest.TestCase):
                 metadata = dict(
                     line.split(": ", 1) for line in frontmatter.splitlines()
                 )
-                self.assertEqual(
-                    set(metadata),
-                    {
-                        "name",
-                        "description",
-                        *({"license"} if name == "yomiyasu" else set()),
-                    },
-                )
-                if name == "yomiyasu":
-                    self.assertEqual(metadata["license"], "MIT")
+                self.assertEqual(set(metadata), {"name", "description"})
                 self.assertEqual(metadata["name"], name)
                 self.assertTrue(0 < len(metadata["description"]) <= 1024)
                 for reference in re.findall(r"\]\(([^)]+)\)", body):
@@ -46,6 +43,13 @@ class ClientWorkflowResetTests(unittest.TestCase):
                     f"../../.agents/skills/{name}",
                 )
 
+    def test_cursor_rule_points_at_personal_defaults(self):
+        rule = (ROOT / "dot_cursor/rules/agents.mdc").read_text()
+        self.assertIn("alwaysApply: true", rule)
+        self.assertIn("~/.agents/AGENTS.md", rule)
+        for name in EXPECTED_SKILLS:
+            self.assertIn(name, rule)
+
     def test_repeated_apply_removes_known_targets_and_preserves_runtime_state(self):
         with tempfile.TemporaryDirectory() as temporary:
             temp = Path(temporary).resolve()
@@ -54,9 +58,14 @@ class ClientWorkflowResetTests(unittest.TestCase):
             removed = {
                 ".agents/rules/coding.md",
                 ".agents/skills/assumption-pruning/SKILL.md",
-                ".agents/skills/context-handoff/scripts/context-candidates",
+                ".agents/skills/context-handoff/SKILL.md",
+                ".agents/skills/evidence-review/SKILL.md",
+                ".agents/skills/sanitize-artifacts/SKILL.md",
+                ".agents/skills/test-driven-development/SKILL.md",
+                ".agents/skills/yomiyasu/SKILL.md",
                 ".claude/rules/delivery.md",
                 ".claude/skills/assumption-pruning",
+                ".claude/skills/yomiyasu",
                 ".pi/agent/AGENTS.md",
                 ".pi/agent/settings.json",
                 ".pi/agent/extensions/execution-guard.ts",
@@ -75,6 +84,11 @@ class ClientWorkflowResetTests(unittest.TestCase):
                 ".agents/rules/user.md": "user rule\n",
                 ".agents/skills/user/SKILL.md": "user skill\n",
                 ".agents/skills/assumption-pruning/user.md": "user notes\n",
+                ".agents/skills/context-handoff/user.md": "user notes\n",
+                ".agents/skills/evidence-review/user.md": "user notes\n",
+                ".agents/skills/sanitize-artifacts/user.md": "user notes\n",
+                ".agents/skills/test-driven-development/user.md": "user notes\n",
+                ".agents/skills/yomiyasu/user.md": "user notes\n",
                 ".pi/agent/auth.json": '{"credential":"placeholder"}\n',
                 ".pi/agent/sessions/example.jsonl": '{"type":"session"}\n',
                 ".pi/agent/extensions/user.ts": "user extension\n",
@@ -151,57 +165,12 @@ class ClientWorkflowResetTests(unittest.TestCase):
                         r"\]\(([^)]+)\)", (deployed / "SKILL.md").read_text()
                     ):
                         self.assertTrue((link / reference).is_file(), reference)
-                self.assertTrue((home / ".config/dotfiles/client-runtime.sh").is_file())
-
-            scripts = home / ".agents/skills/yomiyasu/scripts"
-            for text, code, clean in (
-                ("設定を保存しました。\n", 0, True),
-                ("時間を溶かしました。\n", 1, False),
-            ):
-                lint = subprocess.run(
-                    [
-                        sys.executable,
-                        "-B",
-                        str(scripts / "yomiyasu_lint.py"),
-                        "--json",
-                        "--strict",
-                    ],
-                    input=text,
-                    cwd=home,
-                    text=True,
-                    capture_output=True,
+                cursor_rule = home / ".cursor/rules/agents.mdc"
+                self.assertEqual(
+                    cursor_rule.read_bytes(),
+                    (ROOT / "dot_cursor/rules/agents.mdc").read_bytes(),
                 )
-                self.assertEqual(lint.returncode, code, lint.stderr)
-                self.assertEqual(json.loads(lint.stdout)["is_clean"], clean)
-            original = temp / "original.txt"
-            rewritten = temp / "rewritten.txt"
-            original.write_text("設定を保存しました。\n")
-            rewritten.write_bytes(original.read_bytes())
-            diff = subprocess.run(
-                [
-                    sys.executable,
-                    "-B",
-                    str(scripts / "yomiyasu_diff.py"),
-                    str(original),
-                    str(rewritten),
-                    "--json",
-                    "--stance=説明",
-                ],
-                text=True,
-                capture_output=True,
-            )
-            self.assertEqual(diff.returncode, 0, diff.stderr)
-            data = json.loads(diff.stdout)
-            for key in (
-                "markers",
-                "new_words",
-                "lost_words",
-                "structure",
-                "spans",
-                "bold",
-            ):
-                self.assertEqual(data[key], [], key)
-            self.assertEqual(data["endings"]["changes"], [])
+                self.assertTrue((home / ".config/dotfiles/client-runtime.sh").is_file())
 
 
 if __name__ == "__main__":

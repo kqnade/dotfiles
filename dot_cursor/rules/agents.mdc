@@ -1,0 +1,21 @@
+---
+description: Personal agent defaults and shared workflow skills
+alwaysApply: true
+---
+
+# Personal agent defaults
+
+Apply these after any repository `AGENTS.md`. The full text is `~/.agents/AGENTS.md`.
+
+- Separate how a behavior is called from how it is implemented.
+- Add a test only when an observable responsibility boundary changes.
+- Do not create or draft PR/MR titles or bodies. Return bullet material only when asked.
+- Put the conclusion first. Keep facts, conditions, and uncertainty.
+
+Shared skills live in `~/.agents/skills/`:
+
+- `responsibility-boundary` for implementation and bug fixes
+- `claim-review` for review-only claim and boundary checks
+- `handoff` for explicit save or resume
+
+This file is deployed to `~/.cursor/rules/`. Cursor loads `.cursor/rules` by walking ancestors of the workspace. A checkout whose path does not pass through `$HOME` does not load it. Put the same file in that project's `.cursor/rules/` when the checkout is outside `$HOME`.
