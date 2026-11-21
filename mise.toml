@@ -25,7 +25,7 @@ starship = "1.27.0"
 gh = "2.105.0"
 ghq = "1.12.0"
 git-lfs = "3.8.1"
-delta = { version = "0.20.1", os = ["linux", "macos/arm64"] }
+delta = { version = "0.21.2", os = ["linux", "macos/arm64"] }
 "cargo:git-delta" = { version = "0.21.2", os = [
   "macos/x64",
 ], depends = [
