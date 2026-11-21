@@ -62,7 +62,7 @@ typos = "1.51.1"
 "npm:bash-language-server" = { version = "5.8.1", depends = ["node"] }
 
 # Language runtimes
-rust = "1.99.1"
+rust = "1.100.0"
 python = "3.15.2"
 node = "26.13.1"
 "github:pnpm/pnpm" = "12.19.0"
