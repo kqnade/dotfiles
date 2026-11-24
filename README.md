@@ -36,7 +36,7 @@ curl -fsSL https://raw.githubusercontent.com/kqnade/dotfiles/trunk/install.sh | 
 
 `install.sh` は対応プラットフォームを確認し、`mise.toml` の `min_version` と
 同じ mise を `~/.local/bin/mise` に配置します。Renovate がその pin と
-各プラットフォームの SHA-256、lock 更新に使う mise を最新の安定版へ揃えます。
+各プラットフォームの SHA-256、lock 更新に使う mise を、公開から 1 日以上経った最新の安定版へ揃えます。
 導入済みの実行ファイルは、その版と一致するときだけ再利用します。その後リポジトリを
 `~/repos/github.com/kqnade/dotfiles` に clone（既存 checkout は再利用）し、
 設定を trust して `mise bootstrap --yes` を実行します。
