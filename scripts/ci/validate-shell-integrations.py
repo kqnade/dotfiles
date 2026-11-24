@@ -147,6 +147,10 @@ with tempfile.TemporaryDirectory() as temp_dir:
         "#!/bin/sh\n"
         'printf \'zsh-cache\\n\' >>"$COMMAND_LOG"\n'
     )
+    (fake_scripts / "build-skk-dictionary.sh").write_text(
+        "#!/bin/sh\n"
+        'printf \'skk-dictionary\\n\' >>"$COMMAND_LOG"\n'
+    )
     chezmoi_stub = fake_bin / "chezmoi"
     chezmoi_stub.write_text(
         "#!/bin/sh\n"
@@ -197,6 +201,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
         f"mise -C {fake_checkout.resolve()} reshim",
         "retire-services",
         "zsh-cache",
+        "skk-dictionary",
         f"mise -C {fake_checkout.resolve()} bootstrap macos launchd-agents apply --yes",
     ]
     actual_apply_commands = command_log.read_text().splitlines()

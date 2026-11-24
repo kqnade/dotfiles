@@ -68,4 +68,5 @@ if [[ "$DOTFILES_CLAUDE_WORK_ENABLED" == true ]]; then
 fi
 bash "$SCRIPT_DIR/remove-retired-agent-services.sh"
 bash "$SCRIPT_DIR/build-zsh-init-cache.sh"
+bash "$SCRIPT_DIR/build-skk-dictionary.sh"
 apply_managed_services
