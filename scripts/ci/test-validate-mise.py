@@ -81,6 +81,55 @@ class ValidateMiseTests(unittest.TestCase):
                     entry = entry[0]
                 self.assertEqual(entry["version"], f"rev:{new_digest}")
 
+    def test_mise_release_pin_tracks_version_and_asset_checksums(self) -> None:
+        config = json.loads(
+            strip_json_comments((ROOT / "renovate.jsonc").read_text())
+        )
+        manifest_version = tomllib.loads((ROOT / "mise.toml").read_text())["min_version"]
+        self.assertEqual(config["constraints"]["mise"], manifest_version)
+        installer = (ROOT / "install.sh").read_text()
+        managers = [
+            manager for manager in config["customManagers"]
+            if str(manager.get("depNameTemplate", "")).startswith("jdx/mise")
+        ]
+        self.assertEqual(
+            {manager["depNameTemplate"] for manager in managers},
+            {"jdx/mise", "jdx/mise-linux-x64", "jdx/mise-macos-arm64", "jdx/mise-macos-x64"},
+        )
+        grouped = [
+            rule for rule in config["packageRules"]
+            if rule.get("groupName") == "mise"
+        ]
+        self.assertEqual(len(grouped), 1)
+        self.assertIsNone(grouped[0].get("minimumReleaseAge"))
+        sources = {
+            "jdx/mise": {
+                "install.sh": installer,
+                "mise.toml": (ROOT / "mise.toml").read_text(),
+                "renovate.jsonc": (ROOT / "renovate.jsonc").read_text(),
+            },
+            "jdx/mise-linux-x64": {"install.sh": installer},
+            "jdx/mise-macos-arm64": {"install.sh": installer},
+            "jdx/mise-macos-x64": {"install.sh": installer},
+        }
+        for manager in managers:
+            for filename, content in sources[manager["depNameTemplate"]].items():
+                with self.subTest(dep=manager["depNameTemplate"], file=filename):
+                    patterns = [
+                        pattern.replace("(?<currentValue>", "(?P<currentValue>")
+                        .replace("(?<currentDigest>", "(?P<currentDigest>")
+                        for pattern in manager["matchStrings"]
+                    ]
+                    matches = [
+                        match
+                        for pattern in patterns
+                        for match in re.finditer(pattern, content)
+                    ]
+                    self.assertEqual(len(matches), 1, matches)
+                    self.assertEqual(matches[0].group("currentValue"), manifest_version)
+                    if "currentDigest" in matches[0].groupdict():
+                        self.assertRegex(matches[0].group("currentDigest"), r"^[0-9a-f]{64}$")
+
     def test_1password_uses_http_backend(self) -> None:
         manifest = tomllib.loads((ROOT / "mise.toml").read_text())
         self.assertEqual(manifest["tool_alias"]["1password-cli"], "http:1password-cli")
