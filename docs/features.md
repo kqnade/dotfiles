@@ -26,7 +26,8 @@ tool から外した言語 runtime と LSP は、必要な project の `mise.tom
 
 ## SKK
 
-skkeleton は `127.0.0.1:1178` の yaskkserv2 を参照します。source dictionaries
+skkeleton は `127.0.0.1:1178` の yaskkserv2 を参照します。denops が起動できるよう、
+Deno 2.3.0 以上を mise の global tool として固定します。source dictionaries
 は chezmoi externals で `~/.skk/` に配置し、bootstrap task が
 `dictionary.yaskkserv2` を生成します。
 
