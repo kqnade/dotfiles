@@ -29,7 +29,7 @@ Rust、Node、Command Line Tools がそれぞれの dependency です。
 ## macOS defaults
 
 Dock、Finder、keyboard、trackpad は mise の friendly sections、それ以外は
-`[bootstrap.macos.defaults]` で宣言します。
+`[bootstrap.settings.macos.defaults]` で宣言します。
 
 次の imperative 処理だけを idempotent hook に残しています。
 

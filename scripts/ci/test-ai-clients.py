@@ -220,6 +220,11 @@ class AIClientTests(unittest.TestCase):
 
     def test_only_skk_services_remain_managed(self):
         bootstrap = tomllib.loads((ROOT / "mise/config.toml").read_text())["bootstrap"]
+        self.assertEqual(
+            set(bootstrap["settings"]["macos"]),
+            {"dock", "finder", "keyboard", "trackpad", "defaults"},
+        )
+        self.assertEqual(set(bootstrap["macos"]), {"launchd"})
         self.assertEqual(set(bootstrap["macos"]["launchd"]["agents"]), {"yaskkserv2"})
         self.assertEqual(set(bootstrap["linux"]["systemd"]["units"]), {"yaskkserv2"})
 
