@@ -22,6 +22,15 @@ zsh_cache_builder = ROOT / "scripts/build-zsh-init-cache.sh"
 if not zsh_cache_builder.is_file():
     fail("zsh initialization cache builder is missing")
 
+atuin_init_calls = {
+    zsh_cache_builder: "atuin init zsh --disable-ai",
+    ROOT / "dot_zshrc": 'eval "$(atuin init zsh --disable-ai)"',
+    ROOT / "dot_bashrc.tmpl": 'eval "$(atuin init bash --disable-ai)"',
+}
+for path, call in atuin_init_calls.items():
+    if call not in path.read_text():
+        fail(f"{path.relative_to(ROOT)} must initialize Atuin with --disable-ai")
+
 with tempfile.TemporaryDirectory() as temp_dir:
     test_root = Path(temp_dir)
     fake_home = test_root / "home"
@@ -95,7 +104,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
         "sheldon source",
         "starship init zsh",
         "zoxide init zsh --cmd cd",
-        "atuin init zsh",
+        "atuin init zsh --disable-ai",
     ]:
         fail("zsh initialization cache builder invoked unexpected commands")
 
