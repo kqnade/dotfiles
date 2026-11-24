@@ -42,9 +42,9 @@ skkeleton は `127.0.0.1:1178` の yaskkserv2 を参照します。source dictio
 
 Cursor CLIを標準で導入します。会社用Claude Codeは`bash install.sh --with-work-claude`で
 選択した場合だけ導入し、設定・hooks・Skillsのリンクをchezmoiで配備します。
-認証情報やセッションは各clientが管理します。ClaudeはGitHub remote ownerが
-`livesense-inc`または`jobtalk`のrepositoryだけで利用でき、shell wrapperと認可hookが
-起動前、prompt送信前、tool実行前にそれ以外を拒否します。このowner制限はCursorには適用しません。
+認証情報やセッションは各clientが管理します。Claudeのautomatic memoryは無効です。
+`claude`は会社のrepository以外でも起動します。shell wrapperは仕事用のGitHub tokenを渡し、
+設定directoryは`~/.claude`のままです。この起動条件はCursorには適用しません。
 
 repositoryの共通指示は`AGENTS.md`に置き、Claudeは`CLAUDE.md`も併せて読み込みます。
 共通 Skills は `responsibility-boundary`、`claim-review`、`handoff` の3つです。

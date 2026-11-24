@@ -30,5 +30,7 @@ claude() {
             return 1
         }
     fi
-    GITHUB_PERSONAL_ACCESS_TOKEN="$pat" command claude "$@"
+    CLAUDE_CONFIG_DIR="$HOME/.claude" \
+        GITHUB_PERSONAL_ACCESS_TOKEN="$pat" \
+        command claude "$@"
 }

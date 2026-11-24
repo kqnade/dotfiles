@@ -64,14 +64,13 @@ macOSの設定modifierは管理hookを維持し、`tui`を保持します。管�
 
 ## 会社用Claudeの利用範囲
 
-ClaudeはGitHubの`livesense-inc`または`jobtalk`を`origin`に持つrepositoryでだけ使用します。
-zsh wrapper、`UserPromptSubmit`、`PreToolUse`で確認し、originなし、Git repository外、未対応URLも拒否します。
-owner確認はログイン中のaccountの検証やOSレベルの隔離ではありません。
-会社の内容を個人用accountや未承認のサービスに渡してはいけません。
+Claudeのautomatic memoryは無効です。`claude`は`livesense-inc`と`jobtalk`以外のdirectoryでも起動します。
+設定とセッションは`~/.claude`にあり、wrapperは仕事用のGitHub tokenを渡します。
+hookは入力の`cwd`が絶対pathであることを確認し、repositoryのownerでは拒否しません。
+会社のrepositoryでは承認済みの仕事用accountを使います。会社の内容を個人用accountや未承認のサービスに渡してはいけません。
 
-Cursorは既定でClaudeのuser hooksも読み込みます。repository認可hookは、Cursorのversion情報を持つ
-`preToolUse`と`beforeSubmitPrompt`をClaudeのイベントと区別し、会社用Claudeのowner制限を適用しません。
-Cursorのterminalから実際にClaudeを起動した場合は、通常どおりClaudeの制限を適用します。
+Cursorは既定でClaudeのuser hooksも読み込みます。repository hookは、Cursorのversion情報を持つ
+`preToolUse`と`beforeSubmitPrompt`をClaudeのイベントと区別します。
 Cursorの利用accountとデータの扱いは、そのrepositoryの規約に従ってください。
 
 LinuxのHerdr integrationは会社用Claudeが有効な場合だけ導入します。

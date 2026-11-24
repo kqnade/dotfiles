@@ -113,9 +113,10 @@ Keep client-specific execution settings in their adapters.
 Do not deploy custom subagent instructions or a workflow router. See `docs/ai-clients.md` for
 client boundaries and `docs/ai-workflows.md` for the workflow.
 
-- Claude safety rules, settings, and hooks live in `dot_claude/`. Claude may run only in
-  repositories whose GitHub remote owner is `livesense-inc` or `jobtalk`; the wrapper and hooks
-  enforce that boundary using the approved account.
+- Claude safety rules, settings, and hooks live in `dot_claude/`. Automatic memory is
+  disabled, so `claude` may start outside `livesense-inc` and `jobtalk` repositories.
+  Company repositories still use the approved work account. The wrapper passes the work
+  GitHub token and keeps the configuration directory at `~/.claude`.
 - Cursor CLI is the standard AI client. Claude Code and its configuration are opt-in.
   An existing Claude repository hook is updated even without opt-in to keep Cursor working.
   The Claude repository hook distinguishes Cursor's imported hook events from actual Claude

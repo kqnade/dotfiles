@@ -183,18 +183,9 @@ with tempfile.TemporaryDirectory() as temp_dir:
     denied_repositories["non-Git directory"] = non_repository
 
     for description, repository in denied_repositories.items():
-        denied_prompt = run_claude_repository_guard(
-            repository, "UserPromptSubmit"
-        )
-        if denied_prompt.returncode != 2:
-            fail(f"Claude must reject {description}")
-        if "authorized only" not in denied_prompt.stderr:
-            fail(f"Claude rejection must explain its repository boundary: {description}")
-        if (
-            description == "unapproved owner"
-            and "repository owner is not authorized" not in denied_prompt.stderr
-        ):
-            fail("Claude rejection must identify an unauthorized repository owner")
+        opened = run_claude_repository_guard(repository, "UserPromptSubmit")
+        if opened.returncode != 0:
+            fail(f"Claude must start for {description}")
 
     for event in ("preToolUse", "beforeSubmitPrompt"):
         cursor_result = subprocess.run(
@@ -208,7 +199,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
             text=True, capture_output=True, check=False,
         )
         if cursor_result.returncode != 0:
-            fail(f"Claude's repository boundary must not block Cursor's {event}")
+            fail(f"Claude's repository hook must not block Cursor's {event}")
 
     for payload in (
         {"hook_event_name": "PreToolUse", "cursor_version": "3.0.0"},
@@ -223,22 +214,22 @@ with tempfile.TemporaryDirectory() as temp_dir:
             env={**os.environ, "CURSOR_VERSION": "3.0.0", "TERM_PROGRAM": "cursor"},
             text=True, capture_output=True, check=False,
         )
-        if result.returncode != 2:
-            fail("Claude authorization must not be bypassed by a Cursor terminal or invalid payload")
+        if result.returncode != 0:
+            fail("Claude must start when Cursor metadata does not identify a Cursor hook")
 
-    denied_tool = run_claude_repository_guard(
+    outside_tool = run_claude_repository_guard(
         denied_repositories["unapproved owner"], "PreToolUse"
     )
-    if denied_tool.returncode != 2:
-        fail("Claude tools must be blocked in unauthorized repositories")
+    if outside_tool.returncode != 0:
+        fail("Claude tools must be available outside company repositories")
 
-    denied_prompt_from_allowed_cwd = run_claude_repository_guard(
+    prompt_from_other_cwd = run_claude_repository_guard(
         denied_repositories["unapproved owner"],
         "UserPromptSubmit",
         process_cwd=allowed_repository,
     )
-    if denied_prompt_from_allowed_cwd.returncode != 2:
-        fail("Claude repository authorization must reject the hook input cwd")
+    if prompt_from_other_cwd.returncode != 0:
+        fail("Claude must accept a hook whose cwd is outside a company repository")
 
     missing_cwd_prompt = subprocess.run(
         ["bash", str(claude_repository_guard)],
@@ -279,15 +270,22 @@ with tempfile.TemporaryDirectory() as temp_dir:
     launcher_bin = test_root / "launcher-bin"
     launcher_bin.mkdir()
     launcher_stub = launcher_bin / "claude"
-    launcher_stub.write_text("#!/bin/sh\nexit 0\n")
+    launcher_stub.write_text(
+        "#!/bin/sh\n"
+        "printf 'config=%s\\ntoken=%s\\n' "
+        '"${CLAUDE_CONFIG_DIR-}" "${GITHUB_PERSONAL_ACCESS_TOKEN-unset}" '
+        '>"$HOME/claude-launch.env"\n'
+        "exit 0\n"
+    )
     launcher_stub.chmod(0o755)
     launcher_env = dict(os.environ)
     launcher_env.update(
         HOME=str(launcher_home),
         PATH=f"{launcher_bin}:/usr/bin:/bin",
         GITHUB_PERSONAL_ACCESS_TOKEN="test-token",
+        CLAUDE_CONFIG_DIR=str(launcher_home / "wrong-config"),
     )
-    unauthorized_launch = subprocess.run(
+    outside_launch = subprocess.run(
         [
             "zsh",
             "-c",
@@ -299,20 +297,13 @@ with tempfile.TemporaryDirectory() as temp_dir:
         capture_output=True,
         check=False,
     )
-    if unauthorized_launch.returncode == 0:
-        fail("Claude launcher must reject unauthorized repositories before startup")
-
-    authorized_launch = subprocess.run(
-        [
-            "zsh",
-            "-c",
-            f"source {ROOT / 'dot_config/zsh/functions/claude.zsh'}; claude --version",
-        ],
-        cwd=allowed_repository,
-        env=launcher_env,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    if authorized_launch.returncode != 0:
-        fail("Claude launcher must start in authorized repositories")
+    if outside_launch.returncode != 0:
+        fail(
+            "Claude launcher must start outside company repositories: "
+            f"{outside_launch.stderr}"
+        )
+    outside_record = (launcher_home / "claude-launch.env").read_text().splitlines()
+    if f"config={launcher_home / '.claude'}" not in outside_record:
+        fail("Claude must keep its managed configuration directory")
+    if "token=test-token" not in outside_record:
+        fail("Claude must receive the work GitHub token")
