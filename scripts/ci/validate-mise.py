@@ -96,6 +96,13 @@ for name, value in tools.items():
 if tuple(map(int, configured_version(tools["python"]).split("."))) < (3, 11):
     fail("Python must be at least 3.11 for tomllib-based validators")
 
+if "deno" not in tools:
+    fail("Deno must be pinned so denops and skkeleton can start")
+deno_version = tuple(int(part) for part in configured_version(tools["deno"]).split("."))
+deno_version += (0,) * (3 - len(deno_version))
+if deno_version < (2, 3, 0):
+    fail("Deno must be at least 2.3.0 so denops and skkeleton can start")
+
 eza = tools["cargo:eza"]
 if not isinstance(eza, dict) or eza.get("features") != ["vendored-libgit2"]:
     fail("eza must build its bundled libgit2 instead of linking a system copy")
