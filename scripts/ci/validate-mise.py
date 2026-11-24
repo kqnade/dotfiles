@@ -13,11 +13,6 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[2]
 PLATFORMS = ("macos-arm64", "macos-x64", "linux-x64")
 
-INTEL_FALLBACKS = {
-    "cargo:git-delta",
-    "cargo:sheldon",
-}
-
 NON_URL_LOCKS = {"rust"}
 
 def fail(message: str) -> None:
@@ -120,23 +115,6 @@ if type(mole.get("strip_components")) is not int:
 for field in ("bin_path", "postinstall"):
     if not isinstance(mole.get(field), str) or not mole[field].strip():
         fail(f"Mole {field} must be a non-empty string")
-
-for fallback in INTEL_FALLBACKS:
-    value = tools[fallback]
-    if not isinstance(value, dict) or value.get("os") != ["macos/x64"]:
-        fail(f"{fallback} must be restricted to macos/x64")
-
-for primary in ("delta", "sheldon"):
-    value = tools[primary]
-    if active_on(value, "macos-x64"):
-        fail(f"{primary} must not be selected on macos/x64")
-for binary in (
-    "github:atuinsh/atuin",
-    "github:pnpm/pnpm",
-    "github:sharkdp/fd",
-):
-    if not active_on(tools[binary], "macos-x64"):
-        fail(f"{binary} must use its upstream binary on macos-x64")
 
 yaskkserv2 = tools["cargo:https://github.com/wachikun/yaskkserv2"]
 if not isinstance(yaskkserv2, dict) or yaskkserv2.get("install_env") != {

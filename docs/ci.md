@@ -56,8 +56,7 @@ mise exec -- python3 -B scripts/ci/validate-repository.py
 ```
 
 ネットワークでのlock解決はintegrationに分けます。
-Fedoraではlock解決とCursor CLI、macOS arm64では会社用Claudeのオプトイン導入、
-Intelでは標準構成とCursor CLIを検証します。
+Fedoraではlock解決とCursor CLI、macOS arm64では会社用Claudeのオプトイン導入を検証します。
 
 ```sh
 mise exec -- python3 -B scripts/ci/integration/test-mise-lock.py
@@ -75,6 +74,9 @@ mise exec -- cursor-agent --version
 
 ### macOS arm64
 
+対応するmacOSはApple Siliconだけです。Intel macOSは対象外であり、Intel runnerも、
+Intelのためだけに置いていたCargo source fallbackの検証も行いません。
+
 GitHub-hosted runnerのlogin shellを、対象macOSと同じ標準`/bin/zsh`へ揃えた上で
 次を実行します。
 
@@ -85,21 +87,6 @@ GitHub-hosted runnerのlogin shellを、対象macOSと同じ標準`/bin/zsh`へ�
 - 週次・手動では2回目の `mise bootstrap --yes` と `mise run doctor`
 - Cursor CLIの起動と、オプトインしたClaudeのbinary配置を確認
 - UDEV Gothic、SKK辞書、launchd service、`127.0.0.1:1178`
-
-### Intel Mac
-
-login shellを標準`/bin/zsh`へ揃え、`bash install.sh`、`mise run apply`、
-`mise run doctor`をIntel runnerでも実行します。
-さらにIntel向けの次の選択を実際にinstallし、それぞれの`--version`を実行します。
-
-- `cargo:sheldon`
-- `cargo:git-delta`
-- `github:sharkdp/fd`のupstream x64 binary
-- `github:atuinsh/atuin`のupstream x64 binary
-- `github:pnpm/pnpm`のupstream x64 binary
-
-pnpmはversionがpinと一致することまで検証します。Intel jobは毎回cold installし、
-巨大なmise/Cargo cacheのrestore時間とstale cacheによる見逃しを避けます。
 
 ### Fedora / Arch
 
