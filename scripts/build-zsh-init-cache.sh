@@ -20,7 +20,7 @@ trap 'rm -f "$zsh_cache_tmp"' EXIT
   sheldon source
   starship init zsh
   zoxide init zsh --cmd cd
-  atuin init zsh
+  atuin init zsh --disable-ai
 } >"$zsh_cache_tmp"
 
 mv "$zsh_cache_tmp" "$zsh_cache_file"
