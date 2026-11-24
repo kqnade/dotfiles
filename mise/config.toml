@@ -8,6 +8,7 @@
 "dnf:zsh" = "latest"
 "dnf:git" = "latest"
 "dnf:openssh-clients" = "latest"
+"dnf:vim-enhanced" = "latest"
 "dnf:gcc" = "latest"
 "dnf:gcc-c++" = "latest"
 "dnf:make" = "latest"
@@ -23,6 +24,7 @@
 "pacman:zsh" = "latest"
 "pacman:git" = "latest"
 "pacman:openssh" = "latest"
+"pacman:vim" = "latest"
 "pacman:base-devel" = "latest"
 "pacman:openssl" = "latest"
 # Headers live under /usr/lib/openssl-3 so they can sit beside OpenSSL 4.

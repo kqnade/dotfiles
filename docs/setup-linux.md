@@ -21,6 +21,7 @@ curl -fsSL https://raw.githubusercontent.com/kqnade/dotfiles/trunk/install.sh | 
 - C/C++ build toolchain、pkg-config
 - fontconfig、CJK fonts
 - bootstrap と UDEV Gothic 配置に必要な curl、CA certificates、unzip
+- `EDITOR` / `VISUAL` が参照する Vim。Fedora（WSL を含む）は `vim-enhanced`、Arch（WSL を含む）は `vim`
 
 OpenSSL 3 headers は Fedora の release で package 名が変わる。44 では
 `openssl-devel`、45 以降では `openssl3-devel` を
