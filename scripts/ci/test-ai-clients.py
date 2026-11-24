@@ -80,13 +80,17 @@ class AIClientTests(unittest.TestCase):
             with self.subTest(enabled=enabled):
                 result = self.render("dot_config/mise/config.toml.tmpl", enabled)
                 self.assertEqual(result.returncode, 0, result.stderr)
-                tools = tomllib.loads(result.stdout)["tools"]
+                rendered = tomllib.loads(result.stdout)
+                self.assertIs(rendered["settings"]["lockfile"], False)
+                tools = rendered["tools"]
                 self.assertEqual("claude" in tools, enabled)
                 self.assertIn("cursor-agent", tools)
                 self.assertFalse(RETIRED & tools.keys())
-                lock = self.render("dot_config/mise/mise.lock.tmpl", enabled)
-                self.assertEqual(lock.returncode, 0, lock.stderr)
-                self.assertEqual(set(tomllib.loads(lock.stdout)["tools"]), set(tools))
+                self.assertFalse((ROOT / "dot_config/mise/mise.lock.tmpl").exists())
+                lock_tools = set(tomllib.loads((ROOT / "mise.lock").read_text())["tools"])
+                if enabled:
+                    lock_tools.update(tomllib.loads((ROOT / "mise.work.lock").read_text())["tools"])
+                self.assertEqual(lock_tools, set(tools))
 
     def test_claude_files_are_opt_in_on_macos_and_linux(self):
         for os_name in ("darwin", "linux"):

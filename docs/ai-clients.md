@@ -27,6 +27,7 @@ macOS、Fedora、Arch Linuxと対応するWSLで同じ選択を使えます。
 標準のtool pinは`mise.toml`、会社用Claude Codeのpinは`mise.work.toml`にあります。
 取得情報はそれぞれ`mise.lock`と`mise.work.lock`に保持します。`apply`は有効な場合だけwork manifestをtrustし、
 `mise -E work install --locked claude`で導入します。ホームのmise設定にも有効なtoolだけを配置します。
+そのホーム設定は`lockfile = false`にし、`~/.config/mise/mise.lock`は配備しません。
 Claudeの設定、hooks、Skillsのリンクも有効な場合だけ配備します。
 ただし、既存の認可hookがある場合は、無効なマシンでもCursorとの互換性を保つためそのhookだけ更新します。
 

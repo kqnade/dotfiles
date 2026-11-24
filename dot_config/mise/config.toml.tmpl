@@ -1,4 +1,4 @@
-{{ include "mise.toml" }}
+{{ include "mise.toml" | replace "lockfile = true" "lockfile = false" }}
 {{ include "mise/config.toml" }}
 {{ if eq (includeTemplate ".chezmoitemplates/claude-work-enabled.tmpl" .) "true" -}}
 {{ include "mise.work.toml" -}}

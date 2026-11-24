@@ -208,3 +208,4 @@ Library/LaunchAgents/com.user.yaskkserv2.plist
 .config/zsh/functions/dsh.zsh
 .local/bin/pi-telemetry
 .local/bin/dsh-profile
+.config/mise/mise.lock
