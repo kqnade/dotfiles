@@ -127,7 +127,7 @@ exit 98
                 )
                 self.assertTrue(commands[0].startswith("curl "), commands)
 
-    def test_reuses_a_sufficient_installed_version_without_downloading(self):
+    def test_reuses_the_pinned_release_without_downloading(self):
         original = self.mise_script(VERSION)
         self.mise.write_text(original)
         self.mise.chmod(0o755)
@@ -135,6 +135,19 @@ exit 98
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.mise.read_text(), original)
         self.assertEqual(self.commands(), ["mise --version"])
+
+    def test_replaces_a_different_installed_release(self):
+        self.mise.write_text(self.mise_script("2099.1.1"))
+        self.mise.chmod(0o755)
+        result = self.run_install("--mise-only")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.mise.read_bytes(), self.payload.read_bytes())
+        commands = self.commands()
+        self.assertEqual(len(commands), 2, commands)
+        self.assertIn(
+            f"https://github.com/jdx/mise/releases/download/v{VERSION}/mise-v{VERSION}-macos-arm64",
+            commands[1],
+        )
 
     def test_failed_download_or_checksum_preserves_installed_mise(self):
         original = self.mise_script("2020.1.1")
@@ -196,6 +209,97 @@ exit 98
                 f"mise -C {self.checkout} bootstrap --yes",
             ],
         )
+
+    def test_piped_install_waits_for_missing_command_line_tools(self):
+        probes = self.root / "clt-probes"
+        self.env["CLT_PROBES"] = str(probes)
+        self.stub(
+            "xcode-select",
+            """#!/bin/sh
+printf 'xcode-select %s\\n' "$*" >>"$COMMAND_LOG"
+if [ "$1" != -p ]; then
+  exit 0
+fi
+count=0
+if [ -f "$CLT_PROBES" ]; then
+  IFS= read -r count <"$CLT_PROBES"
+fi
+count=$((count + 1))
+printf '%s\\n' "$count" >"$CLT_PROBES"
+if [ "$count" -ge 3 ]; then
+  exit 0
+fi
+exit 1
+""",
+        )
+        self.mise.write_text(self.mise_script(VERSION))
+        self.mise.chmod(0o755)
+        result = subprocess.run(
+            ["bash", "-s", "--"],
+            input=self.installer.read_text(),
+            cwd=self.root,
+            env=self.env,
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            "Waiting for Xcode Command Line Tools to finish installing.",
+            result.stdout,
+        )
+        self.assertNotIn("press Enter", result.stdout)
+        self.assertNotIn("error:", result.stderr)
+        self.assertEqual(
+            self.commands(),
+            [
+                "xcode-select -p",
+                "xcode-select --install",
+                "xcode-select -p",
+                "xcode-select -p",
+                "mise --version",
+                f"mise trust {self.checkout}/mise.toml",
+                f"mise -C {self.checkout} bootstrap --yes",
+            ],
+        )
+
+    def test_piped_install_stops_when_command_line_tools_never_appear(self):
+        self.env["DOTFILES_CLT_POLL_LIMIT"] = "1"
+        self.stub(
+            "xcode-select",
+            """#!/bin/sh
+printf 'xcode-select %s\\n' "$*" >>"$COMMAND_LOG"
+if [ "$1" = -p ]; then
+  exit 1
+fi
+exit 0
+""",
+        )
+        result = subprocess.run(
+            ["bash", "-s", "--"],
+            input=self.installer.read_text(),
+            cwd=self.root,
+            env=self.env,
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(
+            "Xcode Command Line Tools are not available yet. Re-run install.sh after installation.",
+            result.stderr,
+        )
+        self.assertEqual(
+            self.commands(),
+            [
+                "xcode-select -p",
+                "xcode-select --install",
+                "xcode-select -p",
+            ],
+        )
+        self.assertFalse(self.mise.exists())
 
 
 if __name__ == "__main__":

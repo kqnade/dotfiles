@@ -56,8 +56,7 @@ mise exec -- python3 -B scripts/ci/validate-repository.py
 ```
 
 ネットワークでのlock解決はintegrationに分けます。
-Fedoraではlock解決とCursor CLI、macOS arm64では会社用Claudeのオプトイン導入、
-Intelでは標準構成とCursor CLIを検証します。
+Fedoraではlock解決とCursor CLI、macOS arm64では会社用Claudeのオプトイン導入を検証します。
 
 ```sh
 mise exec -- python3 -B scripts/ci/integration/test-mise-lock.py
@@ -68,12 +67,17 @@ mise exec -- cursor-agent --version
 このモードはOSパッケージの導入、checkout、設定のtrust、bootstrapを行いません。
 `curl` とSHA-256検証用の `sha256sum` または `shasum` が必要です。
 全jobが `install.sh` に固定したバージョンとSHA-256でダウンロードを検証します。
-最低バージョンを満たすmiseが導入済みなら、その実行ファイルを再利用します。
+その版と一致するmiseが導入済みのときだけ、その実行ファイルを再利用します。
+静的検証は同じ版で `mise lock` を再実行し、`mise.lock` と `mise.work.lock` に
+差分が出ないことを確認します。
 
 静的検証には、ダウンロード失敗・チェックサム不一致で既存のmiseを保持するテストと、
 サービスの待受ポートに接続できない場合の回帰テストも含まれます。
 
 ### macOS arm64
+
+対応するmacOSはApple Siliconだけです。Intel macOSは対象外であり、Intel runnerも、
+Intelのためだけに置いていたCargo source fallbackの検証も行いません。
 
 GitHub-hosted runnerのlogin shellを、対象macOSと同じ標準`/bin/zsh`へ揃えた上で
 次を実行します。
@@ -86,29 +90,17 @@ GitHub-hosted runnerのlogin shellを、対象macOSと同じ標準`/bin/zsh`へ�
 - Cursor CLIの起動と、オプトインしたClaudeのbinary配置を確認
 - UDEV Gothic、SKK辞書、launchd service、`127.0.0.1:1178`
 
-### Intel Mac
-
-login shellを標準`/bin/zsh`へ揃え、`bash install.sh`、`mise run apply`、
-`mise run doctor`をIntel runnerでも実行します。
-さらにIntel向けの次の選択を実際にinstallし、それぞれの`--version`を実行します。
-
-- `cargo:sheldon`
-- `cargo:git-delta`
-- `github:sharkdp/fd`のupstream x64 binary
-- `github:atuinsh/atuin`のupstream x64 binary
-- `github:pnpm/pnpm`のupstream x64 binary
-
-pnpmはversionがpinと一致することまで検証します。Intel jobは毎回cold installし、
-巨大なmise/Cargo cacheのrestore時間とstale cacheによる見逃しを避けます。
-
 ### Fedora / Arch
 
 FedoraとArchのsystem packageを実際に導入し、2回適用して冪等性を検査します。
 導入後は `EDITOR=vim` と `VISUAL=vim` で `git var GIT_EDITOR` が実在の `vim` になることも確認します。
 Fedoraのパッケージ検証はフル構築ジョブに含め、Archだけをパッケージ専用ジョブで検証します。
 さらにFedoraでは、Linux向け全tool、chezmoi externals、dotfile、UDEV Gothic、
-SKK辞書を実際に配置します。yaskkserv2はforegroundで起動し、1178番portへの
-接続まで確認します。
+SKK辞書を実際に配置します。containerは現行stableの`fedora:45`です。Renovateは
+この番号までを許可し、次の番号付きtag（現在の46。内容は`rawhide`と同一）は
+提案しません。stableが繰り上がったら上限も上げます。このイメージのシステム
+OpenSSLは4系なので、yaskkserv2はOpenSSL 3互換パッケージでbuildします。
+yaskkserv2はforegroundで起動し、1178番portへの接続まで確認します。
 
 ## GitHub-hosted runnerでは保証できないもの
 

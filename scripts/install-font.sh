@@ -38,7 +38,8 @@ published_fonts=()
 cleanup() {
   local staged_font
   rm -rf "$tmp_dir"
-  for staged_font in "${staged_fonts[@]}"; do
+  # bash 3.2 nounset treats an empty "${array[@]}" as unbound.
+  for staged_font in ${staged_fonts[@]+"${staged_fonts[@]}"}; do
     rm -f "$staged_font"
   done
   rm -f "${marker}.new"

@@ -4,8 +4,8 @@ Repository-specific instructions for agents changing this dotfiles repository.
 
 ## Repository model
 
-This repository converges a complete user environment on macOS arm64/x64, Fedora x64,
-Arch Linux x64, and Fedora/Arch under WSL x64.
+This repository converges a complete user environment on macOS arm64, Fedora x64,
+Arch Linux x64, and Fedora/Arch under WSL x64. Intel macOS is not a supported target.
 
 - **mise** owns tools, system packages, user settings, OS defaults, services, hooks, and the
   public tasks that orchestrate setup.
@@ -22,7 +22,8 @@ Arch Linux x64, and Fedora/Arch under WSL x64.
   bootstrap packages, user settings, OS defaults, services, and hooks. OS packages intentionally
   use the package managers' `latest` version.
 - `dot_config/mise/config.toml.tmpl` combines the base manifests and the enabled work overlay
-  into `~/.config/mise/config.toml`. `mise.lock` covers `macos-arm64`, `macos-x64`, and `linux-x64`.
+  into `~/.config/mise/config.toml`. `mise.lock` records `macos-arm64`, `macos-x64`, and `linux-x64`
+  archives. macOS x64 lock entries are upstream metadata, not Intel macOS support.
 
 ## Before changing files
 
@@ -82,8 +83,8 @@ dictionary sources belong in `.chezmoiexternal.toml.tmpl`; removed managed targe
 
 - macOS uses its built-in zsh, Git, SSH, and Xcode Command Line Tools. Casks use mise's built-in
   `brew-cask` manager; no Brewfile or external `brew` CLI is required.
-- Intel macOS uses Cargo fallbacks for sheldon and delta and the upstream x64 archives for fd,
-  atuin, and pnpm.
+- macOS support is Apple Silicon. Do not add an Intel CI job or Cargo source fallbacks that exist
+  only for macOS x64.
 - macOS and Linux desktop use the native 1Password SSH agent socket. WSL deploys
   `~/.local/bin/{op,ssh,ssh-add}` proxies to the corresponding Windows executables and uses
   `op-ssh-sign-wsl.exe` for commit signing. Keep WSL proxies separate from native Windows support.
@@ -122,7 +123,10 @@ client boundaries and `docs/ai-workflows.md` for the workflow.
   The Claude repository hook distinguishes Cursor's imported hook events from actual Claude
   events. Cursor's terminal environment must not bypass checks on actual Claude launches.
 - Removed managed targets belong in `.chezmoiremove`. Name specific files or managed symlinks;
-  preserve unknown skills, credentials, and runtime state in their parent directories.
+  preserve unknown skills, credentials, and runtime state in their parent directories. Do not
+  name a directory: chezmoi removes it recursively. Keep a retired entry until every machine
+  has applied after it was added, then remove the entry so a later file at that path is left
+  alone. After that convergence, drop standard config paths of retired clients first.
 - Claude defaults live in `.chezmoitemplates/claude-settings.json.tmpl`;
   Claude reads both `CLAUDE.md` and `AGENTS.md`.
   The modifier preserves `tui` on macOS. Managed hooks replace any other hooks in the file.
@@ -158,9 +162,9 @@ prerequisites; reconcile them with current files before use.
   separate explicit authorization.
 - CI always runs offline validators and behavior tests through `scripts/ci/validate-repository.py`.
   Foundation changes in PRs and weekly/manual runs also perform real installs: macOS arm64
-  exercises work Claude opt-in and public interfaces, Intel checks source fallbacks, Fedora checks
-  Linux components and package idempotency, and Arch checks system packages. Pushes to trunk
-  run the lightweight suite only. Required checks aggregate through `ci-result`.
+  exercises work Claude opt-in and public interfaces, Fedora checks Linux components and package
+  idempotency, and Arch checks system packages. Pushes to trunk run the lightweight suite only.
+  Required checks aggregate through `ci-result`.
 - GitHub-hosted Linux containers cannot run a user systemd manager. CI starts yaskkserv2 directly
   and checks its port; systemd and WSL runtime coverage require dedicated runners. See
   `docs/ci.md` for the complete matrix.

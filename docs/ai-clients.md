@@ -27,6 +27,7 @@ macOS、Fedora、Arch Linuxと対応するWSLで同じ選択を使えます。
 標準のtool pinは`mise.toml`、会社用Claude Codeのpinは`mise.work.toml`にあります。
 取得情報はそれぞれ`mise.lock`と`mise.work.lock`に保持します。`apply`は有効な場合だけwork manifestをtrustし、
 `mise -E work install --locked claude`で導入します。ホームのmise設定にも有効なtoolだけを配置します。
+そのホーム設定は`lockfile = false`にし、`~/.config/mise/mise.lock`は配備しません。
 Claudeの設定、hooks、Skillsのリンクも有効な場合だけ配備します。
 ただし、既存の認可hookがある場合は、無効なマシンでもCursorとの互換性を保つためそのhookだけ更新します。
 
@@ -78,8 +79,11 @@ LinuxのHerdr integrationは会社用Claudeが有効な場合だけ導入しま�
 ## 管理ファイルの削除と検証
 
 適用時は`.chezmoiremove`に列挙した廃止済みの管理ファイルだけを削除します。
+書くのは、過去に管理していた個別ファイルか管理symlinkだけです。ディレクトリを書くと、その中の未管理ファイルまで再帰削除されます。
 認証情報、セッション、一覧にない独自のSkillsや設定、インストール済みpackageは削除しません。
 一覧にある設定ファイルは追加したキーも含めて削除するため、必要な内容は適用前に保存してください。
+退役エントリは、追加後に全マシンで`mise run apply`が一度通るまで残します。収束したらエントリを外します。外すまで、同じパスへ後から置いたファイルもapplyのたびに消えます。
+退役クライアントの標準設定（`.pi/agent/settings.json`、`.codex/config.toml`、`.config/opencode/opencode.json`）は、手動で使い直した設定と衝突するため、収束後は先に外します。
 廃止したCodex使用量exporterとDSH用Ollamaの管理サービスは、停止してから定義を削除します。
 停止に失敗した場合は適用を失敗させます。モデルデータは削除しません。
 
@@ -87,6 +91,7 @@ LinuxのHerdr integrationは会社用Claudeが有効な場合だけ導入しま�
 mise exec -- python3 -B scripts/ci/test-ai-clients.py
 mise exec -- python3 -B scripts/ci/test-claude-settings.py
 mise exec -- python3 -B scripts/ci/validate-claude-authorization.py
+mise exec -- python3 -B scripts/ci/test-chezmoi-remove.py
 mise exec -- python3 -B scripts/ci/test-client-workflow-reset.py
 mise exec -- python3 -B scripts/ci/validate-repository.py
 chezmoi diff

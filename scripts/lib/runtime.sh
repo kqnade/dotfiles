@@ -93,3 +93,42 @@ dotfiles_wait_for_port() {
   done
   return 1
 }
+
+dotfiles_skk_dictionary_is_stale() {
+  local dictionary="${HOME}/.skk/dictionary.yaskkserv2"
+  local name source_file
+
+  for name in L geo propernoun assoc JIS3_4 law; do
+    source_file="${HOME}/.skk/SKK-JISYO.${name}"
+    if [[ -f "$source_file" && "$source_file" -nt "$dictionary" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+dotfiles_restart_yaskkserv2_if_running() {
+  local service state
+
+  case "$(uname -s)" in
+    Darwin)
+      service="gui/$(id -u)/dev.mise.yaskkserv2"
+      state="$(launchctl print "$service" 2>/dev/null || true)"
+      if [[ "$state" != *'state = running'* ]]; then
+        return 0
+      fi
+      printf 'Restarting yaskkserv2 so it loads the new dictionary.\n'
+      launchctl kickstart -k "$service"
+      ;;
+    Linux)
+      if ! dotfiles_systemd_user_available; then
+        return 0
+      fi
+      if ! systemctl --user is-active --quiet dev.mise.yaskkserv2.service; then
+        return 0
+      fi
+      printf 'Restarting yaskkserv2 so it loads the new dictionary.\n'
+      systemctl --user restart dev.mise.yaskkserv2.service
+      ;;
+  esac
+}

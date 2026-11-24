@@ -87,6 +87,17 @@ with (ROOT / "mise.toml").open("rb") as stream:
     mise_min_version = tomllib.load(stream).get("min_version")
 if f'readonly MISE_MIN_VERSION="{mise_min_version}"\n' not in installer:
     fail("installer mise version must match min_version")
+for platform in ("LINUX_X64", "MACOS_ARM64", "MACOS_X64"):
+    if f'readonly MISE_{platform}_VERSION="{mise_min_version}"\n' not in installer:
+        fail(f"installer {platform} mise version must match min_version")
+    if not re.search(
+        rf'readonly MISE_{platform}_SHA256="[0-9a-f]{{64}}"\n',
+        installer,
+    ):
+        fail(f"installer {platform} mise checksum must be a sha256 hex digest")
+renovate = json.loads(strip_json_comments((ROOT / "renovate.jsonc").read_text()))
+if renovate.get("constraints", {}).get("mise") != mise_min_version:
+    fail("Renovate must run the same mise release as min_version")
 
 with (ROOT / "mise/config.toml").open("rb") as stream:
     bootstrap_packages = tomllib.load(stream)["bootstrap"]["packages"]

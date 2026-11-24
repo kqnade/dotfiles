@@ -5,7 +5,7 @@
 
 -- Bootstrap lazy.nvim
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
-if not vim.loop.fs_stat(lazypath) then
+if not vim.uv.fs_stat(lazypath) then
   vim.fn.system({
     "git",
     "clone",
@@ -79,8 +79,8 @@ local plugins = {
     "neovim/nvim-lspconfig",
     event = { "BufReadPre", "BufNewFile" },
     dependencies = {
-      "williamboman/mason.nvim",
-      "williamboman/mason-lspconfig.nvim",
+      "mason-org/mason.nvim",
+      "mason-org/mason-lspconfig.nvim",
       "WhoIsSethDaniel/mason-tool-installer.nvim",
       "j-hui/fidget.nvim",
       "folke/lazydev.nvim",
@@ -88,6 +88,14 @@ local plugins = {
     },
     config = function()
       require("modules.configs.lsp")
+    end,
+  },
+  {
+    "mrcjkb/rustaceanvim",
+    version = "^9",
+    lazy = false, -- already lazy: it is a Rust filetype plugin
+    init = function()
+      vim.g.rustaceanvim = require("modules.configs.lsp.rustaceanvim")
     end,
   },
   {
@@ -272,7 +280,7 @@ local plugins = {
       "nvim-neotest/neotest-go",
       "nvim-neotest/neotest-python",
       "marilari88/neotest-vitest",
-      "rouge8/neotest-rust",
+      "mrcjkb/rustaceanvim",
     },
     config = function()
       require("modules.configs.editor.neotest")

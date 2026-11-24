@@ -156,17 +156,9 @@ backend = "cargo:eza"
 [tools."cargo:eza".options]
 features = "vendored-libgit2"
 
-[[tools."cargo:git-delta"]]
-version = "0.21.2"
-backend = "cargo:git-delta"
-
 [[tools."cargo:https://github.com/wachikun/yaskkserv2"]]
 version = "rev:08aabbc91a39c67ff2562b29f92c2a274bd0394b"
 backend = "cargo:https://github.com/wachikun/yaskkserv2"
-
-[[tools."cargo:sheldon"]]
-version = "0.8.5"
-backend = "cargo:sheldon"
 
 [[tools.chezmoi]]
 version = "2.74.1"
@@ -280,6 +272,38 @@ url_api = "https://api.github.com/repos/dandavison/delta/releases/assets/6104982
 checksum = "sha256:bc1839cea69288d4673a24faffbb825d408ca907e0f7d33b1678c9e6cdd5e58e"
 url = "https://github.com/dandavison/delta/releases/download/0.20.1/delta-0.20.1-aarch64-apple-darwin.tar.gz"
 url_api = "https://api.github.com/repos/dandavison/delta/releases/assets/610498923"
+
+[[tools.deno]]
+version = "2.9.8"
+backend = "core:deno"
+
+[tools.deno."platforms.linux-x64"]
+checksum = "sha256:a39762429792913fe762ef0b59c9cba41dbd38195984da99221a193b13d97b40"
+url = "https://dl.deno.land/release/v2.9.8/deno-x86_64-unknown-linux-gnu.zip"
+
+[tools.deno."platforms.linux-x64-baseline"]
+checksum = "sha256:a39762429792913fe762ef0b59c9cba41dbd38195984da99221a193b13d97b40"
+url = "https://dl.deno.land/release/v2.9.8/deno-x86_64-unknown-linux-gnu.zip"
+
+[tools.deno."platforms.linux-x64-musl"]
+checksum = "sha256:a39762429792913fe762ef0b59c9cba41dbd38195984da99221a193b13d97b40"
+url = "https://dl.deno.land/release/v2.9.8/deno-x86_64-unknown-linux-gnu.zip"
+
+[tools.deno."platforms.linux-x64-musl-baseline"]
+checksum = "sha256:a39762429792913fe762ef0b59c9cba41dbd38195984da99221a193b13d97b40"
+url = "https://dl.deno.land/release/v2.9.8/deno-x86_64-unknown-linux-gnu.zip"
+
+[tools.deno."platforms.macos-arm64"]
+checksum = "sha256:5882caa6c9b7ab7adb06f23ec1894ac5bec0b1a5df1195157f75829a0d3cb651"
+url = "https://dl.deno.land/release/v2.9.8/deno-aarch64-apple-darwin.zip"
+
+[tools.deno."platforms.macos-x64"]
+checksum = "sha256:05968936d544988b3e0116c9a07204e246956f78476ae5000652f2a9e2e4d075"
+url = "https://dl.deno.land/release/v2.9.8/deno-x86_64-apple-darwin.zip"
+
+[tools.deno."platforms.macos-x64-baseline"]
+checksum = "sha256:05968936d544988b3e0116c9a07204e246956f78476ae5000652f2a9e2e4d075"
+url = "https://dl.deno.land/release/v2.9.8/deno-x86_64-apple-darwin.zip"
 
 [[tools.fzf]]
 version = "0.75.0"
@@ -631,46 +655,12 @@ checksum_source = "mise-versions"
 url = "https://github.com/herdrdev/herdr/releases/download/v0.9.5/herdr-linux-x86_64"
 url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/640898235"
 
-[tools.herdr."platforms.macos-arm64"]
-checksum = "sha256:fb77c2232a05a8035421382c894392f4174e4e38a18e48af3dd0290157c3a7e2"
-checksum_source = "mise-versions"
-url = "https://github.com/herdrdev/herdr/releases/download/v0.9.5/herdr-macos-aarch64"
-url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/640898230"
-
-[tools.herdr."platforms.macos-x64"]
-checksum = "sha256:5fb0a908ec7f6745e3e245738b06bfad56c46391c391ab3c0955fbead01f1369"
-checksum_source = "mise-versions"
-url = "https://github.com/herdrdev/herdr/releases/download/v0.9.5/herdr-macos-x86_64"
-url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/640898229"
-
-[tools.herdr."platforms.macos-x64-baseline"]
-checksum = "sha256:5fb0a908ec7f6745e3e245738b06bfad56c46391c391ab3c0955fbead01f1369"
-checksum_source = "mise-versions"
-url = "https://github.com/herdrdev/herdr/releases/download/v0.9.5/herdr-macos-x86_64"
-url_api = "https://api.github.com/repos/herdrdev/herdr/releases/assets/640898229"
-
 [[tools."http:mole"]]
 version = "1.65.0"
 backend = "http:mole"
 
 [tools."http:mole".options]
 strip_components = "1"
-
-[tools."http:mole"."platforms.linux-x64"]
-checksum = "sha256:4b27dae6c4ab73af65c48099d244ac7f49221c151831fb1bb0f4b66763a6e23f"
-url = "https://github.com/tw93/Mole/archive/refs/tags/V1.65.0.tar.gz"
-
-[tools."http:mole"."platforms.linux-x64-baseline"]
-checksum = "sha256:4b27dae6c4ab73af65c48099d244ac7f49221c151831fb1bb0f4b66763a6e23f"
-url = "https://github.com/tw93/Mole/archive/refs/tags/V1.65.0.tar.gz"
-
-[tools."http:mole"."platforms.linux-x64-musl"]
-checksum = "sha256:4b27dae6c4ab73af65c48099d244ac7f49221c151831fb1bb0f4b66763a6e23f"
-url = "https://github.com/tw93/Mole/archive/refs/tags/V1.65.0.tar.gz"
-
-[tools."http:mole"."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:4b27dae6c4ab73af65c48099d244ac7f49221c151831fb1bb0f4b66763a6e23f"
-url = "https://github.com/tw93/Mole/archive/refs/tags/V1.65.0.tar.gz"
 
 [tools."http:mole"."platforms.macos-arm64"]
 checksum = "sha256:4b27dae6c4ab73af65c48099d244ac7f49221c151831fb1bb0f4b66763a6e23f"

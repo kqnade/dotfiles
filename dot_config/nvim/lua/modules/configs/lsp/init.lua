@@ -53,7 +53,7 @@ vim.api.nvim_create_autocmd("LspAttach", {
     local client = vim.lsp.get_client_by_id(event.data.client_id)
 
     local map = function(mode, lhs, rhs, desc)
-      vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, desc = desc, noremap = true, silent = true })
+      vim.keymap.set(mode, lhs, rhs, { buf = bufnr, desc = desc, noremap = true, silent = true })
     end
 
     -- Navigation
@@ -110,6 +110,30 @@ require("mason").setup({
 })
 
 -- ─── Server Configurations ──────────────────────────────────
+-- SchemaStore is loaded here, before vim.lsp.config copies settings into the
+-- client. on_init runs after that copy, so assigning client.config.settings
+-- there never reaches jsonls.
+local function json_schemas()
+  local schemas = {}
+  local ok_schema, schemastore = pcall(require, "schemastore")
+  if ok_schema then
+    schemas = schemastore.json.schemas() or {}
+  end
+  table.insert(schemas, {
+    description = "OpenCode configuration",
+    fileMatch = { "opencode.json", ".opencode/opencode.json" },
+    name = "opencode.json",
+    url = "https://opencode.ai/config.json",
+  })
+  table.insert(schemas, {
+    description = "OpenCode TUI configuration",
+    fileMatch = { "tui.json", ".opencode/tui.json" },
+    name = "tui.json",
+    url = "https://opencode.ai/tui.json",
+  })
+  return schemas
+end
+
 local servers = {
   -- Lua
   lua_ls = {
@@ -159,48 +183,6 @@ local servers = {
         staticcheck = true,
         directoryFilters = { "-.git", "-.vscode", "-.idea", "-.vscode-test", "-node_modules" },
         semanticTokens = true,
-      },
-    },
-  },
-
-  -- Rust
-  rust_analyzer = {
-    settings = {
-      ["rust-analyzer"] = {
-        cargo = {
-          allFeatures = true,
-          loadOutDirsFromCheck = true,
-          runBuildScripts = true,
-        },
-        checkOnSave = {
-          allFeatures = true,
-          command = "clippy",
-          extraArgs = { "--no-deps" },
-        },
-        procMacro = {
-          enable = true,
-          ignored = {
-            ["async-trait"] = { "async_trait" },
-            ["napi-derive"] = { "napi" },
-            ["async-recursion"] = { "async_recursion" },
-          },
-        },
-        inlayHints = {
-          bindingModeHints = { enable = false },
-          chainingHints = { enable = true },
-          closingBraceHints = { enable = true, minLines = 25 },
-          closureReturnTypeHints = { enable = "never" },
-          lifetimeElisionHints = { enable = "never", useParameterNames = false },
-          maxLength = 25,
-          parameterHints = { enable = true },
-          reborrowHints = { enable = "never" },
-          renderColons = true,
-          typeHints = {
-            enable = true,
-            hideClosureInitialization = false,
-            hideNamedConstructor = false,
-          },
-        },
       },
     },
   },
@@ -285,8 +267,8 @@ local servers = {
   -- Java
   jdtls = {},
 
-  -- Kotlin
-  kotlin_language_server = {},
+  -- Kotlin. JetBrains kotlin-lsp; mason package kotlin-lsp.
+  kotlin_lsp = {},
 
   -- C# / .NET
   omnisharp = {
@@ -332,32 +314,12 @@ local servers = {
 
   -- JSON
   jsonls = {
-    on_init = function(client)
-      local schemas = {}
-      local ok_schema, schemastore = pcall(require, "schemastore")
-      if ok_schema then
-        schemas = schemastore.json.schemas()
-      end
-      -- opencode config schemas
-      table.insert(schemas, {
-        description = "OpenCode configuration",
-        fileMatch = { "opencode.json", ".opencode/opencode.json" },
-        name = "opencode.json",
-        url = "https://opencode.ai/config.json",
-      })
-      table.insert(schemas, {
-        description = "OpenCode TUI configuration",
-        fileMatch = { "tui.json", ".opencode/tui.json" },
-        name = "tui.json",
-        url = "https://opencode.ai/tui.json",
-      })
-      client.config.settings = {
-        json = {
-          schemas = schemas,
-          validate = { enable = true },
-        },
-      }
-    end,
+    settings = {
+      json = {
+        schemas = json_schemas(),
+        validate = { enable = true },
+      },
+    },
   },
 
   -- YAML
@@ -386,10 +348,12 @@ local servers = {
 
 -- ─── Mason LSPConfig ────────────────────────────────────────
 local ensure_installed = vim.tbl_keys(servers)
+-- rustaceanvim starts rust-analyzer. Keep the Mason binary, but do not enable a second client.
+table.insert(ensure_installed, "rust_analyzer")
 
 require("mason-lspconfig").setup({
   ensure_installed = ensure_installed,
-  automatic_installation = true,
+  automatic_enable = { exclude = { "rust_analyzer" } },
 })
 
 -- ─── Mason Tool Installer (formatters / linters / DAP) ──────

@@ -31,7 +31,7 @@ class LabelWorkflowTests(unittest.TestCase):
         self.assertEqual(set(workflow["on"]), {"pull_request_target"})
         self.assertEqual(
             set(workflow["on"]["pull_request_target"]["types"]),
-            {"opened", "synchronize", "reopened", "edited"},
+            {"opened", "synchronize", "reopened"},
         )
         self.assertEqual(workflow["permissions"], {})
         self.assertEqual(set(workflow["jobs"]), {"label"})

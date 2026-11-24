@@ -4,9 +4,9 @@
 
 ## Contextとの境界
 
-- `.dev/contexts/`は特定のbranch、変更、PRに紐づく詳細な対話出力と作業証跡である。
-  PRとSanity Reviewの対象なので、完了後も削減・削除しない。訂正時は当時の観測を残し、
-  現在の結論を追記する。
+- `.dev/contexts/`は特定のbranch、変更、PRに紐づく引き継ぎと作業証跡である。
+  目的、制約、決定、現在地、検証、次の行動を残し、決定や失敗の証拠は要約で置換して
+  削減・削除しない。訂正時は当時の観測を残し、現在の結論を追記する。
 - `.dev/memory/`は将来のtaskで利用するためにcontext、ADR、research、codeから抽出した
   repository scopedな知識である。根拠が変われば更新またはsupersedeできる。
 

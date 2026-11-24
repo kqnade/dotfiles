@@ -1,6 +1,6 @@
 # macOS セットアップ
 
-Apple Silicon と Intel Mac を対象にします。OS 標準の zsh、Git、OpenSSH と
+Apple Silicon を対象にします。Intel macOS は対象外です。OS 標準の zsh、Git、OpenSSH と
 Xcode Command Line Tools を利用します。
 
 ## 初回セットアップ
@@ -13,23 +13,10 @@ Command Line Tools が未導入の場合は OS の確認画面が開きます。
 `install.sh` が mise の導入、repository checkout、`mise bootstrap --yes` まで
 続行します。
 
-## Intel Mac
-
-Intel Mac 用 artifact がない tool は、同じ `mise.toml` 内で Cargo backend に
-切り替えます。
-
-- sheldon
-- delta
-- fd
-- atuin
-
-pnpm は Intel 用 standalone artifact がないため npm backend を使います。
-Rust、Node、Command Line Tools がそれぞれの dependency です。
-
 ## macOS defaults
 
 Dock、Finder、keyboard、trackpad は mise の friendly sections、それ以外は
-`[bootstrap.macos.defaults]` で宣言します。
+`[bootstrap.settings.macos.defaults]` で宣言します。
 
 次の imperative 処理だけを idempotent hook に残しています。
 

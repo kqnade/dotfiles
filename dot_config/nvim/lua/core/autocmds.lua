@@ -37,7 +37,7 @@ autocmd("BufWritePre", {
 autocmd("TextYankPost", {
   group = general,
   callback = function()
-    vim.highlight.on_yank({ higroup = "IncSearch", timeout = 200 })
+    vim.hl.on_yank({ higroup = "IncSearch", timeout = 200 })
   end,
   desc = "Highlight yanked text",
 })
@@ -74,7 +74,7 @@ autocmd("FileType", {
   },
   callback = function(event)
     vim.bo[event.buf].buflisted = false
-    vim.keymap.set("n", "q", "<cmd>close<CR>", { buffer = event.buf, silent = true })
+    vim.keymap.set("n", "q", "<cmd>close<CR>", { buf = event.buf, silent = true })
   end,
   desc = "Close with q",
 })
@@ -142,7 +142,7 @@ local large_file = augroup("LargeFile", { clear = true })
 autocmd("BufReadPre", {
   group = large_file,
   callback = function(args)
-    local ok, stats = pcall(vim.loop.fs_stat, vim.api.nvim_buf_get_name(args.buf))
+    local ok, stats = pcall(vim.uv.fs_stat, vim.api.nvim_buf_get_name(args.buf))
     if ok and stats and stats.size > 1024 * 1024 then -- 1MB
       vim.b[args.buf].large_file = true
       vim.opt_local.foldmethod = "manual"
