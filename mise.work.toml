@@ -1,4 +1,4 @@
 #:schema https://mise.jdx.dev/schema/mise.json
 
 [tools.claude]
-version = "2.1.322"
+version = "2.1.331"
