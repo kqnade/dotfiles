@@ -72,6 +72,37 @@ class ValidateMiseTests(unittest.TestCase):
                     self.assertEqual(match.group("version"), version)
                 self.assertIsNone(version_pattern.fullmatch(f"v{version}-rc.1"))
 
+    def test_fedora_ci_stays_on_stable_and_rejects_numbered_rawhide(self) -> None:
+        config = json.loads(
+            strip_json_comments((ROOT / "renovate.jsonc").read_text())
+        )
+        rules = [
+            rule
+            for rule in config["packageRules"]
+            if rule.get("matchDatasources") == ["docker"]
+            and rule.get("matchPackageNames") == ["fedora"]
+        ]
+        self.assertEqual(len(rules), 1)
+        rule = rules[0]
+        expression = rule["allowedVersions"]
+        self.assertTrue(expression.startswith("/") and expression.endswith("/"))
+        pattern = re.compile(expression[1:-1])
+        for version in ("1", "9", "10", "39", "44", "45"):
+            with self.subTest(version=version):
+                self.assertIsNotNone(pattern.fullmatch(version))
+        for version in ("46", "47", "045", "45.0", "rawhide", "latest", "46-aarch64", ""):
+            with self.subTest(version=version):
+                self.assertIsNone(pattern.fullmatch(version))
+        allowed = [number for number in range(1, 100) if pattern.fullmatch(str(number))]
+        self.assertEqual(max(allowed), 45)
+
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text()
+        tags = re.findall(r"image:\s*fedora:(\d+)@sha256:[0-9a-f]+\b", workflow)
+        self.assertEqual(tags, ["45"])
+        self.assertEqual(int(tags[0]), max(allowed))
+        self.assertNotIn("fedora:46", workflow)
+        self.assertNotIn("fedora:rawhide", workflow)
+
     def test_yaskkserv2_master_updates_both_revision_pins(self) -> None:
         config = json.loads(
             strip_json_comments((ROOT / "renovate.jsonc").read_text())

@@ -230,14 +230,14 @@
       "pinDigests": true
     },
     {
-      "description": "Keep the Fedora CI container on numbered release tags instead of latest or rawhide.",
+      "description": "Keep the Fedora CI container on the current stable numeric tag. The next integer is the numbered rawhide tag (46 matches rawhide while 45 is stable), so the ceiling has to move when Fedora promotes that release. latest and rawhide stay excluded.",
       "matchDatasources": [
         "docker"
       ],
       "matchPackageNames": [
         "fedora"
       ],
-      "allowedVersions": "/^\\d+$/"
+      "allowedVersions": "/^(?:[1-9]|[1-3][0-9]|4[0-5])$/"
     }
   ]
 }
