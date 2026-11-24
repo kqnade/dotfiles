@@ -26,26 +26,82 @@ class ValidateMiseTests(unittest.TestCase):
         config = json.loads(
             strip_json_comments((ROOT / "renovate.jsonc").read_text())
         )
-        for package, version in (("pnpm/pnpm", "12.12.1"), ("atuinsh/atuin", "18.24.1")):
-            with self.subTest(package=package):
-                rules = [
-                    rule
-                    for rule in config["packageRules"]
-                    if rule.get("matchManagers") == ["mise"]
-                    and rule.get("matchDatasources") == ["github-releases"]
-                    and package in rule.get("matchPackageNames", [])
-                ]
-                self.assertEqual(len(rules), 1)
-                rule = rules[0]
-                self.assertEqual(rule.get("versioning"), "semver")
-                pattern = re.compile(
-                    rule["extractVersion"].replace("(?<version>", "(?P<version>")
-                )
+        rules = [
+            rule
+            for rule in config["packageRules"]
+            if rule.get("matchManagers") == ["mise"]
+            and rule.get("matchDatasources") == ["github-releases"]
+            and "extractVersion" in rule
+        ]
+        self.assertEqual(len(rules), 1)
+        rule = rules[0]
+        self.assertNotIn("matchPackageNames", rule)
+        self.assertEqual(rule.get("versioning"), "semver")
+        dep_patterns = [
+            re.compile(pattern[1:-1])
+            for pattern in rule.get("matchDepNames", [])
+            if pattern.startswith("/") and pattern.endswith("/")
+        ]
+        self.assertTrue(dep_patterns)
+
+        def matches_dep(dep_name: str) -> bool:
+            return any(pattern.search(dep_name) for pattern in dep_patterns)
+
+        tools = tomllib.loads((ROOT / "mise.toml").read_text())["tools"]
+        github_tools = [name for name in tools if name.startswith("github:")]
+        self.assertIn("github:sharkdp/fd", github_tools)
+        self.assertIn("github:pnpm/pnpm", github_tools)
+        self.assertIn("github:atuinsh/atuin", github_tools)
+        for name in github_tools:
+            with self.subTest(dep=name):
+                self.assertTrue(matches_dep(name))
+        for name in tools:
+            if name.startswith("github:"):
+                continue
+            with self.subTest(dep=name):
+                self.assertFalse(matches_dep(name))
+
+        version_pattern = re.compile(
+            rule["extractVersion"].replace("(?<version>", "(?P<version>")
+        )
+        for version in ("10.5.2", "12.12.1", "18.24.1"):
+            with self.subTest(version=version):
                 for tag in (f"v{version}", version):
-                    match = pattern.fullmatch(tag)
+                    match = version_pattern.fullmatch(tag)
                     self.assertIsNotNone(match)
                     self.assertEqual(match.group("version"), version)
-                self.assertIsNone(pattern.fullmatch(f"v{version}-rc.1"))
+                self.assertIsNone(version_pattern.fullmatch(f"v{version}-rc.1"))
+
+    def test_fedora_ci_stays_on_stable_and_rejects_numbered_rawhide(self) -> None:
+        config = json.loads(
+            strip_json_comments((ROOT / "renovate.jsonc").read_text())
+        )
+        rules = [
+            rule
+            for rule in config["packageRules"]
+            if rule.get("matchDatasources") == ["docker"]
+            and rule.get("matchPackageNames") == ["fedora"]
+        ]
+        self.assertEqual(len(rules), 1)
+        rule = rules[0]
+        expression = rule["allowedVersions"]
+        self.assertTrue(expression.startswith("/") and expression.endswith("/"))
+        pattern = re.compile(expression[1:-1])
+        for version in ("1", "9", "10", "39", "44", "45"):
+            with self.subTest(version=version):
+                self.assertIsNotNone(pattern.fullmatch(version))
+        for version in ("46", "47", "045", "45.0", "rawhide", "latest", "46-aarch64", ""):
+            with self.subTest(version=version):
+                self.assertIsNone(pattern.fullmatch(version))
+        allowed = [number for number in range(1, 100) if pattern.fullmatch(str(number))]
+        self.assertEqual(max(allowed), 45)
+
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text()
+        tags = re.findall(r"image:\s*fedora:(\d+)@sha256:[0-9a-f]+\b", workflow)
+        self.assertEqual(tags, ["45"])
+        self.assertEqual(int(tags[0]), max(allowed))
+        self.assertNotIn("fedora:46", workflow)
+        self.assertNotIn("fedora:rawhide", workflow)
 
     def test_yaskkserv2_master_updates_both_revision_pins(self) -> None:
         config = json.loads(
@@ -80,6 +136,55 @@ class ValidateMiseTests(unittest.TestCase):
                 if relative == "mise.lock":
                     entry = entry[0]
                 self.assertEqual(entry["version"], f"rev:{new_digest}")
+
+    def test_mise_release_pin_tracks_version_and_asset_checksums(self) -> None:
+        config = json.loads(
+            strip_json_comments((ROOT / "renovate.jsonc").read_text())
+        )
+        manifest_version = tomllib.loads((ROOT / "mise.toml").read_text())["min_version"]
+        self.assertEqual(config["constraints"]["mise"], manifest_version)
+        installer = (ROOT / "install.sh").read_text()
+        managers = [
+            manager for manager in config["customManagers"]
+            if str(manager.get("depNameTemplate", "")).startswith("jdx/mise")
+        ]
+        self.assertEqual(
+            {manager["depNameTemplate"] for manager in managers},
+            {"jdx/mise", "jdx/mise-linux-x64", "jdx/mise-macos-arm64", "jdx/mise-macos-x64"},
+        )
+        grouped = [
+            rule for rule in config["packageRules"]
+            if rule.get("groupName") == "mise"
+        ]
+        self.assertEqual(len(grouped), 1)
+        self.assertIsNone(grouped[0].get("minimumReleaseAge"))
+        sources = {
+            "jdx/mise": {
+                "install.sh": installer,
+                "mise.toml": (ROOT / "mise.toml").read_text(),
+                "renovate.jsonc": (ROOT / "renovate.jsonc").read_text(),
+            },
+            "jdx/mise-linux-x64": {"install.sh": installer},
+            "jdx/mise-macos-arm64": {"install.sh": installer},
+            "jdx/mise-macos-x64": {"install.sh": installer},
+        }
+        for manager in managers:
+            for filename, content in sources[manager["depNameTemplate"]].items():
+                with self.subTest(dep=manager["depNameTemplate"], file=filename):
+                    patterns = [
+                        pattern.replace("(?<currentValue>", "(?P<currentValue>")
+                        .replace("(?<currentDigest>", "(?P<currentDigest>")
+                        for pattern in manager["matchStrings"]
+                    ]
+                    matches = [
+                        match
+                        for pattern in patterns
+                        for match in re.finditer(pattern, content)
+                    ]
+                    self.assertEqual(len(matches), 1, matches)
+                    self.assertEqual(matches[0].group("currentValue"), manifest_version)
+                    if "currentDigest" in matches[0].groupdict():
+                        self.assertRegex(matches[0].group("currentDigest"), r"^[0-9a-f]{64}$")
 
     def test_1password_uses_http_backend(self) -> None:
         manifest = tomllib.loads((ROOT / "mise.toml").read_text())
@@ -369,7 +474,7 @@ class ValidateMiseTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary_directory:
             fixture = Path(temporary_directory)
             for relative in ("mise/config.toml", "mise.work.toml", "mise.work.lock", "mise.lock", "dot_config/mise/config.toml.tmpl",
-                             "dot_config/mise/mise.lock.tmpl", "scripts/ci/validate-mise.py"):
+                             ".chezmoiremove", "scripts/ci/validate-mise.py"):
                 destination = fixture / relative
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(ROOT / relative, destination)
@@ -396,7 +501,7 @@ class ValidateMiseTests(unittest.TestCase):
                 "mise/config.toml",
                 "mise.lock",
                 "dot_config/mise/config.toml.tmpl",
-                "dot_config/mise/mise.lock.tmpl",
+                ".chezmoiremove",
                 "scripts/ci/validate-mise.py",
             ):
                 source = ROOT / relative

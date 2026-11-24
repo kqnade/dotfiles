@@ -18,9 +18,14 @@ curl -fsSL https://raw.githubusercontent.com/kqnade/dotfiles/trunk/install.sh | 
 [mise/config.toml](../mise/config.toml) の `[bootstrap.packages]` が次を管理します。
 
 - zsh、Git、OpenSSH
-- C/C++ build toolchain、OpenSSL headers、pkg-config
+- C/C++ build toolchain、pkg-config
 - fontconfig、CJK fonts
 - bootstrap と UDEV Gothic 配置に必要な curl、CA certificates、unzip
+
+OpenSSL 3 headers は Fedora の release で package 名が変わる。44 では
+`openssl-devel`、45 以降では `openssl3-devel` を
+`scripts/install-openssl-dev.sh` が tools の build 前に導入する。Arch の
+`openssl-3` は上の packages が導入する。
 
 Fedora は dnf、Arch は pacman だけを使います。
 
@@ -52,3 +57,43 @@ ssh-add -l
 
 この proxy は WSL 専用です。ネイティブ Windows の dotfile/bootstrap 機能は
 ありません。
+
+## WSL interop
+
+`op`、`ssh`、`ssh-add` の proxy は、Windows 側の実行ファイルを WSL interop で
+起動します。`WSLInterop` が無効、または未登録のとき、`ssh.exe` への委譲は
+`cannot execute binary file: Exec format error` で失敗します。`mise run doctor`
+は `ssh.exe -V` を 5 秒のタイムアウト付きで起動し、失敗すると `WSL interop` を
+`[failed]` にします。
+
+登録状態を確認します。
+
+```bash
+cat /proc/sys/fs/binfmt_misc/WSLInterop
+```
+
+先頭が `enabled` で、`interpreter /init` と `magic 4d5a` が含まれていれば、
+Windows 実行ファイルを起動する登録は有効です。ファイルが無い、または先頭が
+`disabled` のときは起動できません。
+
+`/etc/wsl.conf` で interop を有効にします。
+
+```ini
+[interop]
+enabled=true
+appendWindowsPath=true
+```
+
+`enabled` は Windows プロセスの起動、`appendWindowsPath` は Windows の PATH を
+WSL に追加する設定です。既定値はどちらも `true` です。
+
+この設定は、Windows の PowerShell から WSL を完全に停止したあとに有効になります。
+
+```powershell
+wsl --shutdown
+```
+
+`wsl --shutdown` は起動中のすべてのディストリビューションを停止します。特定の
+ディストリビューションだけを止める場合は `wsl --terminate <Distro>` を使います。
+停止後にディストリビューションを開き直し、上の `WSLInterop` の確認と
+`mise run doctor` を実行します。

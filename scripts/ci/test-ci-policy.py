@@ -19,7 +19,6 @@ BOOTSTRAP_JOBS = (
     "package-bootstrap",
     "linux-bootstrap",
     "macos-bootstrap",
-    "intel-fallback",
 )
 
 
@@ -34,6 +33,12 @@ def workflow():
 
 
 class WorkflowTests(unittest.TestCase):
+    def test_fedora_job_builds_yaskkserv2_on_openssl4_stable(self):
+        image = workflow()["jobs"]["linux-bootstrap"]["container"]["image"]
+        self.assertTrue(image.startswith("fedora:45@sha256:"))
+        self.assertNotIn("fedora:44@", image)
+        self.assertNotIn("fedora:46", image)
+
     def test_linux_dotfile_check_propagates_errors_and_detects_drift(self):
         step = next(step for step in workflow()["jobs"]["linux-bootstrap"]["steps"]
                     if step.get("name") == "verify tools, dotfiles, font, dictionary, and server")

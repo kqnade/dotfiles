@@ -22,6 +22,15 @@ zsh_cache_builder = ROOT / "scripts/build-zsh-init-cache.sh"
 if not zsh_cache_builder.is_file():
     fail("zsh initialization cache builder is missing")
 
+atuin_init_calls = {
+    zsh_cache_builder: "atuin init zsh --disable-ai",
+    ROOT / "dot_zshrc": 'eval "$(atuin init zsh --disable-ai)"',
+    ROOT / "dot_bashrc.tmpl": 'eval "$(atuin init bash --disable-ai)"',
+}
+for path, call in atuin_init_calls.items():
+    if call not in path.read_text():
+        fail(f"{path.relative_to(ROOT)} must initialize Atuin with --disable-ai")
+
 with tempfile.TemporaryDirectory() as temp_dir:
     test_root = Path(temp_dir)
     fake_home = test_root / "home"
@@ -95,7 +104,7 @@ with tempfile.TemporaryDirectory() as temp_dir:
         "sheldon source",
         "starship init zsh",
         "zoxide init zsh --cmd cd",
-        "atuin init zsh",
+        "atuin init zsh --disable-ai",
     ]:
         fail("zsh initialization cache builder invoked unexpected commands")
 
@@ -147,6 +156,10 @@ with tempfile.TemporaryDirectory() as temp_dir:
         "#!/bin/sh\n"
         'printf \'zsh-cache\\n\' >>"$COMMAND_LOG"\n'
     )
+    (fake_scripts / "build-skk-dictionary.sh").write_text(
+        "#!/bin/sh\n"
+        'printf \'skk-dictionary\\n\' >>"$COMMAND_LOG"\n'
+    )
     chezmoi_stub = fake_bin / "chezmoi"
     chezmoi_stub.write_text(
         "#!/bin/sh\n"
@@ -189,12 +202,15 @@ with tempfile.TemporaryDirectory() as temp_dir:
     )
     if apply_result.returncode != 0:
         fail("dotfile apply must refresh the zsh initialization cache")
+    if "systemd user manager" in apply_result.stderr:
+        fail("macOS apply must not report a missing systemd user manager")
     expected_apply_commands = [
         f"chezmoi init --source {fake_checkout.resolve()}",
         f"chezmoi --source {fake_checkout.resolve()} apply",
         f"mise -C {fake_checkout.resolve()} reshim",
         "retire-services",
         "zsh-cache",
+        "skk-dictionary",
         f"mise -C {fake_checkout.resolve()} bootstrap macos launchd-agents apply --yes",
     ]
     actual_apply_commands = command_log.read_text().splitlines()
@@ -230,6 +246,98 @@ with tempfile.TemporaryDirectory() as temp_dir:
         expected = expected_work_commands if status == 0 else expected_work_commands[:5]
         if command_log.read_text().splitlines() != expected:
             fail("only enabled Claude installations may run before cache and service application")
+
+    uname_stub.write_text("#!/bin/sh\nprintf 'Linux\\n'\n")
+    systemctl_stub = fake_bin / "systemctl"
+    systemctl_stub.write_text(
+        "#!/bin/sh\n"
+        'printf \'systemctl %s\\n\' "$*" >>"$COMMAND_LOG"\n'
+        'exit "${SYSTEMCTL_STATUS:-1}"\n'
+    )
+    systemctl_stub.chmod(0o755)
+    deploy_client_runtime(fake_home)
+    linux_prefix = expected_apply_commands[:5]
+    systemd_probe = "systemctl --user show-environment"
+    linux_service_apply = (
+        f"mise -C {fake_checkout.resolve()} "
+        "bootstrap linux systemd-units apply --yes"
+    )
+    absent_warning = (
+        "warning: skipped service apply because the systemd user manager is unavailable"
+    )
+    linux_cases = (
+        {
+            "name": "missing systemd user manager",
+            "env": {"SYSTEMCTL_STATUS": "1"},
+            "commands": [*linux_prefix, systemd_probe],
+            "warning": True,
+        },
+        {
+            "name": "unrelated bootstrap skip",
+            "env": {
+                "SYSTEMCTL_STATUS": "1",
+                "DOTFILES_BOOTSTRAP_SKIP": "user,not-linux-systemd-units",
+            },
+            "commands": [*linux_prefix, systemd_probe],
+            "warning": True,
+        },
+        {
+            "name": "intentional systemd unit skip",
+            "env": {
+                "SYSTEMCTL_STATUS": "1",
+                "DOTFILES_BOOTSTRAP_SKIP": "linux-systemd-units,user",
+            },
+            "commands": [*linux_prefix, systemd_probe],
+            "warning": False,
+        },
+        {
+            "name": "intentional single-unit skip",
+            "env": {
+                "SYSTEMCTL_STATUS": "1",
+                "DOTFILES_BOOTSTRAP_SKIP": " linux-systemd-units-yaskkserv2 ",
+            },
+            "commands": [*linux_prefix, systemd_probe],
+            "warning": False,
+        },
+        {
+            "name": "available systemd user manager",
+            "env": {
+                "SYSTEMCTL_STATUS": "0",
+                "DOTFILES_BOOTSTRAP_SKIP": "linux-systemd-units",
+            },
+            "commands": [*linux_prefix, systemd_probe, linux_service_apply],
+            "warning": False,
+        },
+    )
+    for case in linux_cases:
+        command_log.write_text("")
+        case_env = dict(apply_env)
+        case_env.pop("DOTFILES_BOOTSTRAP_SKIP", None)
+        case_env.update(case["env"])
+        result = subprocess.run(
+            ["bash", str(fake_scripts / "apply.sh")],
+            cwd=fake_checkout,
+            env=case_env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            fail(f"{case['name']}: apply must still succeed: {result.stderr}")
+        if command_log.read_text().splitlines() != case["commands"]:
+            fail(
+                f"{case['name']}: unexpected apply commands: "
+                f"{command_log.read_text().splitlines()}"
+            )
+        warned = absent_warning in result.stderr
+        if warned != case["warning"]:
+            fail(
+                f"{case['name']}: systemd skip warning was {warned}: {result.stderr}"
+            )
+        if case["warning"] and result.stderr.strip() != absent_warning:
+            fail(f"{case['name']}: unexpected stderr: {result.stderr}")
+        if not case["warning"] and "systemd user manager" in result.stderr:
+            fail(f"{case['name']}: unexpected systemd warning: {result.stderr}")
 
 
 with tempfile.TemporaryDirectory() as temp_dir:

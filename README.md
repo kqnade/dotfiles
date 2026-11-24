@@ -9,7 +9,7 @@ macOS、Fedora、Arch Linux、またはそれらを使う WSL x64 向けの dotf
 
 ## 対象環境と前提
 
-- macOS arm64 / x64
+- macOS arm64（Intel macOS は対象外）
 - Fedora x64
 - Arch Linux x64
 - Fedora / Arch Linux on WSL x64
@@ -34,8 +34,10 @@ bash install.sh
 curl -fsSL https://raw.githubusercontent.com/kqnade/dotfiles/trunk/install.sh | bash
 ```
 
-`install.sh` は対応プラットフォームを確認し、mise（最低 `2026.8.9`）を
-`~/.local/bin/mise` に配置します。その後リポジトリを
+`install.sh` は対応プラットフォームを確認し、`mise.toml` の `min_version` と
+同じ mise を `~/.local/bin/mise` に配置します。Renovate がその pin と
+各プラットフォームの SHA-256、lock 更新に使う mise を最新の安定版へ揃えます。
+導入済みの実行ファイルは、その版と一致するときだけ再利用します。その後リポジトリを
 `~/repos/github.com/kqnade/dotfiles` に clone（既存 checkout は再利用）し、
 設定を trust して `mise bootstrap --yes` を実行します。
 
@@ -64,11 +66,13 @@ Linux では有効な会社用 Claude の Herdr integration、全 OS で pre-com
   managed service、bootstrap hook。
 - [`dot_config/mise/config.toml.tmpl`](dot_config/mise/config.toml.tmpl): 上記 2 ファイルを
   連結し、有効な場合は会社用 manifest も加えて `~/.config/mise/config.toml` に配置。
+  配備先では `lockfile = false` にし、`~/.config/mise/mise.lock` は管理しません。
 - `dot_*`: zsh、Neovim、Git、AI CLI などのユーザー設定。秘密情報は `private_*`、
   大きな外部辞書は `.chezmoiexternal.toml.tmpl` で管理。
 
-`mise.toml` の `[tools]` はすべてバージョンを固定し、`macos-arm64`、`macos-x64`、
-`linux-x64` 向けの取得情報を [`mise.lock`](mise.lock) に保持します。一方、
+`mise.toml` の `[tools]` はすべてバージョンを固定します。[`mise.lock`](mise.lock) は
+`macos-arm64` と `linux-x64` に加え、upstream が公開する `macos-x64` の取得情報も保持します。
+その `macos-x64` の記録は Intel macOS の対応を意味しません。一方、
 `[bootstrap.packages]` の OS パッケージは `latest` です。
 
 ## 管理している主な機能

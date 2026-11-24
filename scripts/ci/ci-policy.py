@@ -13,7 +13,6 @@ BOOTSTRAP_JOBS = (
     "package-bootstrap",
     "linux-bootstrap",
     "macos-bootstrap",
-    "intel-fallback",
 )
 STATIC_ONLY_FILES = {
     "README.md",

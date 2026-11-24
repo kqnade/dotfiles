@@ -13,11 +13,6 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[2]
 PLATFORMS = ("macos-arm64", "macos-x64", "linux-x64")
 
-INTEL_FALLBACKS = {
-    "cargo:git-delta",
-    "cargo:sheldon",
-}
-
 NON_URL_LOCKS = {"rust"}
 
 def fail(message: str) -> None:
@@ -71,10 +66,51 @@ if settings.get("npm", {}).get("package_manager") != "auto":
     fail("npm tools must use mise's embedded installer")
 if settings.get("task", {}).get("run_auto_install") is not False:
     fail("public tasks must not implicitly install tools")
+if settings.get("lockfile") is not True:
+    fail("repository mise.toml must keep lockfile generation enabled")
+
+macos = config.get("bootstrap", {}).get("macos", {})
+deprecated_macos = {
+    "dock",
+    "finder",
+    "keyboard",
+    "trackpad",
+    "defaults",
+    "defaults_entries",
+    "login_items",
+}
+leftover = sorted(deprecated_macos & set(macos))
+if leftover:
+    fail(f"deprecated bootstrap.macos keys remain: {leftover}")
+settings_macos = config.get("bootstrap", {}).get("settings", {}).get("macos", {})
+required_macos = {"dock", "finder", "keyboard", "trackpad", "defaults"}
+missing = sorted(required_macos - set(settings_macos))
+if missing:
+    fail(f"bootstrap.settings.macos is missing {missing}")
+if set(macos) != {"launchd"}:
+    fail(f"bootstrap.macos must keep only launchd, found {sorted(macos)}")
+min_version = tuple(int(part) for part in str(config["min_version"]).split("."))
+if min_version < (2026, 11, 8):
+    fail("bootstrap.settings.macos requires mise 2026.11.8 or newer")
 
 packages = config.get("bootstrap", {}).get("packages", {})
 if any(version != "latest" for version in packages.values()):
     fail("bootstrap packages must use the package manager's current version")
+if "dnf:openssl3-devel" in packages or "dnf:openssl-devel" in packages:
+    fail(
+        "Fedora OpenSSL headers depend on the release; "
+        "scripts/install-openssl-dev.sh selects openssl-devel before 45 "
+        "and openssl3-devel from 45"
+    )
+pre_tools = config.get("bootstrap", {}).get("hooks", {}).get("pre-tools")
+pre_tools_run = pre_tools.get("run") if isinstance(pre_tools, dict) else pre_tools
+if (
+    pre_tools_run
+    != 'bash "${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/install-openssl-dev.sh"'
+):
+    fail("bootstrap must install Fedora OpenSSL 3 headers before building tools")
+if packages.get("pacman:openssl-3") != "latest":
+    fail("Arch must install the OpenSSL 3 compatibility package for yaskkserv2")
 
 tools = dict(config.get("tools", {}))
 work_manifest = load_toml(ROOT / "mise.work.toml")
@@ -95,6 +131,13 @@ for name, value in tools.items():
 
 if tuple(map(int, configured_version(tools["python"]).split("."))) < (3, 11):
     fail("Python must be at least 3.11 for tomllib-based validators")
+
+if "deno" not in tools:
+    fail("Deno must be pinned so denops and skkeleton can start")
+deno_version = tuple(int(part) for part in configured_version(tools["deno"]).split("."))
+deno_version += (0,) * (3 - len(deno_version))
+if deno_version < (2, 3, 0):
+    fail("Deno must be at least 2.3.0 so denops and skkeleton can start")
 
 eza = tools["cargo:eza"]
 if not isinstance(eza, dict) or eza.get("features") != ["vendored-libgit2"]:
@@ -121,29 +164,13 @@ for field in ("bin_path", "postinstall"):
     if not isinstance(mole.get(field), str) or not mole[field].strip():
         fail(f"Mole {field} must be a non-empty string")
 
-for fallback in INTEL_FALLBACKS:
-    value = tools[fallback]
-    if not isinstance(value, dict) or value.get("os") != ["macos/x64"]:
-        fail(f"{fallback} must be restricted to macos/x64")
-
-for primary in ("delta", "sheldon"):
-    value = tools[primary]
-    if active_on(value, "macos-x64"):
-        fail(f"{primary} must not be selected on macos/x64")
-for binary in (
-    "github:atuinsh/atuin",
-    "github:pnpm/pnpm",
-    "github:sharkdp/fd",
-):
-    if not active_on(tools[binary], "macos-x64"):
-        fail(f"{binary} must use its upstream binary on macos-x64")
-
 yaskkserv2 = tools["cargo:https://github.com/wachikun/yaskkserv2"]
 if not isinstance(yaskkserv2, dict) or yaskkserv2.get("install_env") != {
     "CARGO_NET_GIT_FETCH_WITH_CLI": "true",
     "GIT_CONFIG_GLOBAL": "/dev/null",
+    "PKG_CONFIG_PATH": "/usr/lib/openssl-3/pkgconfig",
 }:
-    fail("yaskkserv2 must use HTTPS through an isolated Git CLI")
+    fail("yaskkserv2 must use HTTPS through an isolated Git CLI and the OpenSSL 3 pkg-config prefix")
 
 lock_tools = lock.get("tools", {})
 lock_platforms = {
@@ -192,18 +219,16 @@ for name, value in tools.items():
             fail(f"{name}@{requested_version} has no locked URL for {platform}")
 
 config_template = (ROOT / "dot_config/mise/config.toml.tmpl").read_text().strip()
-lock_template = (ROOT / "dot_config/mise/mise.lock.tmpl").read_text().strip()
 if config_template != (
-    '{{ include "mise.toml" }}\n{{ include "mise/config.toml" }}\n'
+    '{{ include "mise.toml" | replace "lockfile = true" "lockfile = false" }}\n'
+    '{{ include "mise/config.toml" }}\n'
     '{{ if eq (includeTemplate ".chezmoitemplates/claude-work-enabled.tmpl" .) "true" -}}\n'
     '{{ include "mise.work.toml" -}}\n{{ end -}}'
 ):
-    fail("deployed mise config must concatenate the split manifest sources")
-if lock_template != (
-    '{{ include "mise.lock" }}\n'
-    '{{ if eq (includeTemplate ".chezmoitemplates/claude-work-enabled.tmpl" .) "true" -}}\n'
-    '{{ include "mise.work.lock" -}}\n{{ end -}}'
-):
-    fail("deployed mise lockfile must combine the standard and enabled work locks")
+    fail("deployed mise config must concatenate the split manifests and disable lockfile writes")
+if (ROOT / "dot_config/mise/mise.lock.tmpl").exists():
+    fail("the home mise lockfile must not be a managed chezmoi target")
+if ".config/mise/mise.lock" not in (ROOT / ".chezmoiremove").read_text().splitlines():
+    fail("removed targets must delete a previously deployed ~/.config/mise/mise.lock")
 
 print(f"validated {len(tools)} pinned tools across {len(PLATFORMS)} platforms")

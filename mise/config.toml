@@ -11,7 +11,6 @@
 "dnf:gcc" = "latest"
 "dnf:gcc-c++" = "latest"
 "dnf:make" = "latest"
-"dnf:openssl-devel" = "latest"
 "dnf:pkgconf-pkg-config" = "latest"
 "dnf:fontconfig" = "latest"
 "dnf:google-noto-sans-cjk-fonts" = "latest"
@@ -26,6 +25,8 @@
 "pacman:openssh" = "latest"
 "pacman:base-devel" = "latest"
 "pacman:openssl" = "latest"
+# Headers live under /usr/lib/openssl-3 so they can sit beside OpenSSL 4.
+"pacman:openssl-3" = "latest"
 "pacman:pkgconf" = "latest"
 "pacman:fontconfig" = "latest"
 "pacman:noto-fonts-cjk" = "latest"
@@ -36,7 +37,7 @@
 [bootstrap.user]
 login_shell = "/bin/zsh"
 
-[bootstrap.macos.dock]
+[bootstrap.settings.macos.dock]
 autohide = true
 magnification = true
 largesize = 61
@@ -45,23 +46,23 @@ orientation = "left"
 show_recents = false
 mru_spaces = false
 
-[bootstrap.macos.finder]
+[bootstrap.settings.macos.finder]
 show_all_files = true
 show_pathbar = true
 show_status_bar = true
 show_extensions_warning = false
 preferred_view_style = "list"
 
-[bootstrap.macos.keyboard]
+[bootstrap.settings.macos.keyboard]
 key_repeat = 2
 initial_key_repeat = 15
 press_and_hold = false
 fn_state = true
 
-[bootstrap.macos.trackpad]
+[bootstrap.settings.macos.trackpad]
 tap_to_click = true
 
-[bootstrap.macos.defaults.NSGlobalDomain]
+[bootstrap.settings.macos.defaults.NSGlobalDomain]
 AppleShowAllExtensions = true
 AppleMiniaturizeOnDoubleClick = false
 AppleActionOnDoubleClick = "Minimize"
@@ -74,13 +75,13 @@ NSNavPanelExpandedStateForSaveMode = true
 NSNavPanelExpandedStateForSaveMode2 = true
 NSDocumentSaveNewDocumentsToCloud = false
 
-[bootstrap.macos.defaults."com.apple.dock"]
+[bootstrap.settings.macos.defaults."com.apple.dock"]
 mineffect = "genie"
 showAppExposeGestureEnabled = false
 showLaunchpadGestureEnabled = true
 expose-group-apps = false
 
-[bootstrap.macos.defaults."com.apple.finder"]
+[bootstrap.settings.macos.defaults."com.apple.finder"]
 FXRemoveOldTrashItems = true
 NewWindowTarget = "PfHm"
 ShowExternalHardDrivesOnDesktop = true
@@ -92,23 +93,23 @@ FXDefaultSearchScope = "SCcf"
 _FXShowPosixPathInTitle = true
 FXArrangeGroupViewBy = "Name"
 
-[bootstrap.macos.defaults."com.apple.menuextra.clock"]
+[bootstrap.settings.macos.defaults."com.apple.menuextra.clock"]
 ShowAMPM = true
 ShowDate = 0
 ShowDayOfWeek = true
 
-[bootstrap.macos.defaults."com.apple.WindowManager"]
+[bootstrap.settings.macos.defaults."com.apple.WindowManager"]
 GloballyEnabled = false
 HideDesktop = true
 
-[bootstrap.macos.defaults."com.apple.ncprefs"]
+[bootstrap.settings.macos.defaults."com.apple.ncprefs"]
 summarize_previews = 0
 
-[bootstrap.macos.defaults."com.apple.screencapture"]
+[bootstrap.settings.macos.defaults."com.apple.screencapture"]
 type = "png"
 disable-shadow = true
 
-[bootstrap.macos.defaults."com.apple.TextEdit"]
+[bootstrap.settings.macos.defaults."com.apple.TextEdit"]
 RichText = 0
 PlainTextEncoding = 4
 PlainTextEncodingForWrite = 4
@@ -132,6 +133,11 @@ standard_error = "journal"
 
 [bootstrap.hooks.pre-packages]
 run = "bash \"${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/remove-legacy-yaskkserv2.sh\""
+
+# Fedora 44's openssl-devel is OpenSSL 3. From 45, that name is OpenSSL 4 and
+# the OpenSSL 3 headers are openssl3-devel, which Fedora 44 does not ship.
+[bootstrap.hooks.pre-tools]
+run = "bash \"${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/install-openssl-dev.sh\""
 
 [bootstrap.hooks.post-defaults]
 run = "bash \"${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/macos-finalize.sh\""

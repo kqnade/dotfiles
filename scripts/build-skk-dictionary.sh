@@ -13,6 +13,7 @@ export DOTFILES_ROOT
 
 readonly SKK_DIR="${HOME}/.skk"
 readonly DICTIONARY="${SKK_DIR}/dictionary.yaskkserv2"
+readonly RESTART_MARKER="${SKK_DIR}/.dictionary.yaskkserv2.restart-required"
 
 MISE_BIN="$(dotfiles_mise_bin)"
 readonly MISE_BIN
@@ -29,15 +30,8 @@ if ((${#sources[@]} == 0)); then
 fi
 
 needs_rebuild=false
-if [[ ! -f "$DICTIONARY" ]]; then
+if [[ ! -s "$DICTIONARY" ]] || dotfiles_skk_dictionary_is_stale; then
   needs_rebuild=true
-else
-  for source_file in "${sources[@]}"; do
-    if [[ "$source_file" -nt "$DICTIONARY" ]]; then
-      needs_rebuild=true
-      break
-    fi
-  done
 fi
 
 if [[ "$needs_rebuild" == true ]]; then
@@ -54,6 +48,14 @@ if [[ "$needs_rebuild" == true ]]; then
   mv -f "$temporary_dictionary" "$DICTIONARY"
   rmdir "$dictionary_tmp_dir"
   trap - EXIT
+  : >"$RESTART_MARKER"
 else
   printf 'yaskkserv2 dictionary is current.\n'
+fi
+
+if [[ -f "$RESTART_MARKER" ]]; then
+  if ! dotfiles_restart_yaskkserv2_if_running; then
+    dotfiles_die "failed to restart yaskkserv2 after updating the dictionary"
+  fi
+  rm -f "$RESTART_MARKER"
 fi

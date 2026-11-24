@@ -1,6 +1,6 @@
 #:schema https://mise.jdx.dev/schema/mise.json
 
-min_version = "2026.8.9"
+min_version = "2026.11.13"
 
 [settings]
 activate_aggressive = true
@@ -19,18 +19,13 @@ cursor-agent = "http:cursor-agent"
 [tools]
 # Bootstrap and shell
 chezmoi = "2.74.1"
+# Intel macOS is unsupported. sheldon and delta publish Linux and Apple Silicon archives only.
 sheldon = { version = "0.8.5", os = ["linux", "macos/arm64"] }
-"cargo:sheldon" = { version = "0.8.5", os = ["macos/x64"], depends = ["rust"] }
 starship = "1.27.0"
 gh = "2.105.0"
 ghq = "1.12.0"
 git-lfs = "3.8.1"
 delta = { version = "0.20.1", os = ["linux", "macos/arm64"] }
-"cargo:git-delta" = { version = "0.21.2", os = [
-  "macos/x64",
-], depends = [
-  "rust",
-] }
 
 # Daily CLI tools
 "cargo:eza" = { version = "0.23.5", depends = [
@@ -65,6 +60,8 @@ typos = "1.51.1"
 rust = "1.100.0"
 python = "3.15.2"
 node = "26.13.1"
+# denops and skkeleton need the deno executable. denops requires 2.3.0 or newer.
+deno = "2.9.8"
 "github:pnpm/pnpm" = "12.22.0"
 uv = "0.13.9"
 
@@ -75,9 +72,12 @@ cursor-agent = { version = "2026.11.13-eacade1", url = 'https://downloads.cursor
 
 # SKK server and dictionary builder. Keep this on the Cargo git backend on
 # every platform so the service behaves identically on macOS and Linux.
+# rev 08aabbc locks openssl-sys 0.9.112, which rejects OpenSSL 4. Arch keeps
+# that OpenSSL 3 prefix ahead of the system OpenSSL 4 pkg-config files.
+# Fedora's release-selected OpenSSL 3 headers occupy the default pkg-config path.
 "cargo:https://github.com/wachikun/yaskkserv2" = { version = "rev:08aabbc91a39c67ff2562b29f92c2a274bd0394b", depends = [
   "rust",
-], install_env = { CARGO_NET_GIT_FETCH_WITH_CLI = "true", GIT_CONFIG_GLOBAL = "/dev/null" } }
+], install_env = { CARGO_NET_GIT_FETCH_WITH_CLI = "true", GIT_CONFIG_GLOBAL = "/dev/null", PKG_CONFIG_PATH = "/usr/lib/openssl-3/pkgconfig" } }
 
 [tools."http:mole"]
 version = "1.65.0"
