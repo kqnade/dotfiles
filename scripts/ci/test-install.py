@@ -210,6 +210,97 @@ exit 98
             ],
         )
 
+    def test_piped_install_waits_for_missing_command_line_tools(self):
+        probes = self.root / "clt-probes"
+        self.env["CLT_PROBES"] = str(probes)
+        self.stub(
+            "xcode-select",
+            """#!/bin/sh
+printf 'xcode-select %s\\n' "$*" >>"$COMMAND_LOG"
+if [ "$1" != -p ]; then
+  exit 0
+fi
+count=0
+if [ -f "$CLT_PROBES" ]; then
+  IFS= read -r count <"$CLT_PROBES"
+fi
+count=$((count + 1))
+printf '%s\\n' "$count" >"$CLT_PROBES"
+if [ "$count" -ge 3 ]; then
+  exit 0
+fi
+exit 1
+""",
+        )
+        self.mise.write_text(self.mise_script(VERSION))
+        self.mise.chmod(0o755)
+        result = subprocess.run(
+            ["bash", "-s", "--"],
+            input=self.installer.read_text(),
+            cwd=self.root,
+            env=self.env,
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            "Waiting for Xcode Command Line Tools to finish installing.",
+            result.stdout,
+        )
+        self.assertNotIn("press Enter", result.stdout)
+        self.assertNotIn("error:", result.stderr)
+        self.assertEqual(
+            self.commands(),
+            [
+                "xcode-select -p",
+                "xcode-select --install",
+                "xcode-select -p",
+                "xcode-select -p",
+                "mise --version",
+                f"mise trust {self.checkout}/mise.toml",
+                f"mise -C {self.checkout} bootstrap --yes",
+            ],
+        )
+
+    def test_piped_install_stops_when_command_line_tools_never_appear(self):
+        self.env["DOTFILES_CLT_POLL_LIMIT"] = "1"
+        self.stub(
+            "xcode-select",
+            """#!/bin/sh
+printf 'xcode-select %s\\n' "$*" >>"$COMMAND_LOG"
+if [ "$1" = -p ]; then
+  exit 1
+fi
+exit 0
+""",
+        )
+        result = subprocess.run(
+            ["bash", "-s", "--"],
+            input=self.installer.read_text(),
+            cwd=self.root,
+            env=self.env,
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(
+            "Xcode Command Line Tools are not available yet. Re-run install.sh after installation.",
+            result.stderr,
+        )
+        self.assertEqual(
+            self.commands(),
+            [
+                "xcode-select -p",
+                "xcode-select --install",
+                "xcode-select -p",
+            ],
+        )
+        self.assertFalse(self.mise.exists())
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -17,6 +17,8 @@ readonly REPO_REF="${DOTFILES_REPO_REF:-}"
 readonly REPO_DIR="${DOTFILES_REPO_DIR:-${HOME}/repos/github.com/kqnade/dotfiles}"
 readonly MISE_BIN="${DOTFILES_MISE_BIN:-${HOME}/.local/bin/mise}"
 readonly BOOTSTRAP_SKIP="${DOTFILES_BOOTSTRAP_SKIP:-}"
+# One poll per second. 1800 leaves half an hour for the macOS installer.
+readonly CLT_POLL_LIMIT="${DOTFILES_CLT_POLL_LIMIT:-1800}"
 
 log() {
   printf '\033[1;36m==>\033[0m %s\n' "$*"
@@ -28,13 +30,28 @@ die() {
 }
 
 ensure_macos_prerequisites() {
+  local attempts=0
+
   if ! xcode-select -p >/dev/null 2>&1; then
     log "Xcode Command Line Tools are required; opening the installer."
     xcode-select --install 2>/dev/null || true
-    printf 'Complete the macOS installer, then press Enter to continue: '
-    read -r _
-    xcode-select -p >/dev/null 2>&1 ||
-      die "Xcode Command Line Tools are not available yet. Re-run install.sh after installation."
+    if [[ -t 0 ]]; then
+      printf 'Complete the macOS installer, then press Enter to continue: '
+      read -r _ ||
+        die "Xcode Command Line Tools are not available yet. Re-run install.sh after installation."
+      xcode-select -p >/dev/null 2>&1 ||
+        die "Xcode Command Line Tools are not available yet. Re-run install.sh after installation."
+    else
+      # curl | bash leaves the script on stdin, so do not read from it.
+      log "Waiting for Xcode Command Line Tools to finish installing."
+      until xcode-select -p >/dev/null 2>&1; do
+        attempts=$((attempts + 1))
+        if ((attempts >= CLT_POLL_LIMIT)); then
+          die "Xcode Command Line Tools are not available yet. Re-run install.sh after installation."
+        fi
+        sleep 1
+      done
+    fi
   fi
 
   [[ -x /usr/bin/curl ]] || die "macOS curl is unavailable."
