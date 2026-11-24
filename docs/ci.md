@@ -104,6 +104,7 @@ pnpmはversionがpinと一致することまで検証します。Intel jobは毎
 ### Fedora / Arch
 
 FedoraとArchのsystem packageを実際に導入し、2回適用して冪等性を検査します。
+導入後は `EDITOR=vim` と `VISUAL=vim` で `git var GIT_EDITOR` が実在の `vim` になることも確認します。
 Fedoraのパッケージ検証はフル構築ジョブに含め、Archだけをパッケージ専用ジョブで検証します。
 さらにFedoraでは、Linux向け全tool、chezmoi externals、dotfile、UDEV Gothic、
 SKK辞書を実際に配置します。yaskkserv2はforegroundで起動し、1178番portへの

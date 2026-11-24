@@ -13,7 +13,8 @@
 
 ## Vim / Neovim
 
-Vim と Neovim は Colemak 向けの基本操作を維持します。
+Vim と Neovim は Colemak 向けの基本操作を維持します。`EDITOR` と `VISUAL` は `vim` です。
+Fedora と Arch、およびそれらを使う WSL は、そのコマンドを bootstrap package で導入します。
 
 | Colemak | QWERTY 相当 | 用途 |
 |---------|-------------|------|

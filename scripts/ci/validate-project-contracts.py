@@ -87,6 +87,17 @@ with (ROOT / "mise.toml").open("rb") as stream:
     mise_min_version = tomllib.load(stream).get("min_version")
 if f'readonly MISE_MIN_VERSION="{mise_min_version}"\n' not in installer:
     fail("installer mise version must match min_version")
+
+with (ROOT / "mise/config.toml").open("rb") as stream:
+    bootstrap_packages = tomllib.load(stream)["bootstrap"]["packages"]
+for package in ("dnf:vim-enhanced", "pacman:vim"):
+    if bootstrap_packages.get(package) != "latest":
+        fail(f"{package} must be a latest bootstrap package so EDITOR=vim exists")
+for relative in ("dot_zshrc", "dot_bashrc.tmpl"):
+    shell_rc = (ROOT / relative).read_text()
+    if 'export EDITOR="vim"' not in shell_rc or 'export VISUAL="vim"' not in shell_rc:
+        fail(f"{relative} must keep EDITOR and VISUAL set to vim")
+
 format_script = (ROOT / "scripts/format.sh").read_text()
 pre_commit_script = (ROOT / "scripts/pre-commit.sh").read_text()
 for formatted_manifest in ("mise.toml", "mise/config.toml"):

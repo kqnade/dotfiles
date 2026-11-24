@@ -136,6 +136,15 @@ jobs:
           mise bootstrap packages status --missing
           mise bootstrap packages apply --yes
           mise bootstrap packages status --missing
+          editor="$(
+            GIT_CONFIG_GLOBAL=/dev/null \
+              GIT_CONFIG_SYSTEM=/dev/null \
+              EDITOR=vim \
+              VISUAL=vim \
+              git var GIT_EDITOR
+          )"
+          test "$editor" = vim
+          command -v "$editor" >/dev/null
 
   linux-bootstrap:
     name: Fedora full bootstrap without user systemd
@@ -177,6 +186,15 @@ jobs:
           mise -C "$DOTFILES_ROOT" bootstrap packages status --missing
           mise -C "$DOTFILES_ROOT" bootstrap packages apply --yes
           mise -C "$DOTFILES_ROOT" bootstrap packages status --missing
+          editor="$(
+            GIT_CONFIG_GLOBAL=/dev/null \
+              GIT_CONFIG_SYSTEM=/dev/null \
+              EDITOR=vim \
+              VISUAL=vim \
+              git var GIT_EDITOR
+          )"
+          test "$editor" = vim
+          command -v "$editor" >/dev/null
 
           mise -C "$DOTFILES_ROOT" run apply
           dotfile_diff="$(mise -C "$DOTFILES_ROOT" exec -- chezmoi --source "$DOTFILES_ROOT" diff --exclude=externals)"

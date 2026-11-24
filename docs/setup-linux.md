@@ -21,6 +21,7 @@ curl -fsSL https://raw.githubusercontent.com/kqnade/dotfiles/trunk/install.sh | 
 - C/C++ build toolchain、OpenSSL headers、pkg-config
 - fontconfig、CJK fonts
 - bootstrap と UDEV Gothic 配置に必要な curl、CA certificates、unzip
+- `EDITOR` / `VISUAL` が参照する Vim。Fedora（WSL を含む）は `vim-enhanced`、Arch（WSL を含む）は `vim`
 
 Fedora は dnf、Arch は pacman だけを使います。
 
