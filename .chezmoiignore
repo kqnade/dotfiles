@@ -27,6 +27,7 @@ mise/
 mise.lock
 renovate.jsonc
 .config/nvim/README.md
+.config/nvim/lazy-lock.json
 
 {{ if eq .chezmoi.os "darwin" -}}
 .config/herdr

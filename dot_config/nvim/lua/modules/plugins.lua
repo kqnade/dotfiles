@@ -11,7 +11,9 @@ if not vim.uv.fs_stat(lazypath) then
     "clone",
     "--filter=blob:none",
     "https://github.com/folke/lazy.nvim.git",
-    "--branch=stable",
+    -- stable was removed upstream. main is only the bootstrap checkout;
+    -- the Renovate lock restores the pinned release.
+    "--branch=main",
     lazypath,
   })
 end
@@ -422,8 +424,11 @@ local plugins = {
    },
  }
  
- -- Setup lazy.nvim
+ -- Setup lazy.nvim. The committed lock stays in the dotfiles checkout, where
+ -- Renovate can bump it. Chezmoi does not deploy that file.
+local lockfile = require("modules.lazy-lock").materialize()
 require("lazy").setup(plugins, {
+  lockfile = lockfile,
   defaults = {
     lazy = true,
   },
