@@ -189,7 +189,7 @@ Leader key: `<Space>`
 - [lazy.nvim](https://github.com/folke/lazy.nvim) - Plugin manager
 - [nvim-treesitter](https://github.com/nvim-treesitter/nvim-treesitter) - Syntax highlighting
 - [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig) - LSP configuration
-- [mason.nvim](https://github.com/williamboman/mason.nvim) - LSP/DAP installer
+- [mason.nvim](https://github.com/mason-org/mason.nvim) - LSP/DAP installer
 - [lazydev.nvim](https://github.com/folke/lazydev.nvim) - Lua development
 
 ### Completion

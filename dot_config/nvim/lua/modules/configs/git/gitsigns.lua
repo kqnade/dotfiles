@@ -59,7 +59,7 @@ require("gitsigns").setup({
         return "]h"
       end
       vim.schedule(function()
-        gs.next_hunk()
+        gs.nav_hunk("next")
       end)
       return "<Ignore>"
     end, "Next hunk")
@@ -69,7 +69,7 @@ require("gitsigns").setup({
         return "[h"
       end
       vim.schedule(function()
-        gs.prev_hunk()
+        gs.nav_hunk("prev")
       end)
       return "<Ignore>"
     end, "Previous hunk")
@@ -84,7 +84,8 @@ require("gitsigns").setup({
       gs.reset_hunk({ vim.fn.line("."), vim.fn.line("v") })
     end, "Reset hunk")
     map("n", "<leader>gS", gs.stage_buffer, "Stage buffer")
-    map("n", "<leader>gu", gs.undo_stage_hunk, "Undo stage hunk")
+    -- stage_hunk unstages when the cursor is on a staged sign.
+    map("n", "<leader>gu", gs.stage_hunk, "Unstage hunk on staged sign")
     map("n", "<leader>gR", gs.reset_buffer, "Reset buffer")
     map("n", "<leader>gp", gs.preview_hunk, "Preview hunk")
     map("n", "<leader>gb", function()

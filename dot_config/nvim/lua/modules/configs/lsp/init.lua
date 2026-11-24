@@ -389,7 +389,6 @@ local ensure_installed = vim.tbl_keys(servers)
 
 require("mason-lspconfig").setup({
   ensure_installed = ensure_installed,
-  automatic_installation = true,
 })
 
 -- ─── Mason Tool Installer (formatters / linters / DAP) ──────
