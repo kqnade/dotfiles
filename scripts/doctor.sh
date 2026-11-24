@@ -7,14 +7,6 @@ readonly SCRIPT_DIR
 # shellcheck source=scripts/lib/runtime.sh
 source "$SCRIPT_DIR/lib/runtime.sh"
 
-DOTFILES_ROOT="$(dotfiles_resolve_root)"
-readonly DOTFILES_ROOT
-export DOTFILES_ROOT
-
-MISE_BIN="$(dotfiles_mise_bin)"
-readonly MISE_BIN
-failures=0
-
 check() {
   local label="$1"
   shift
@@ -45,15 +37,27 @@ dotfiles_ok() {
   [[ -z "$diff" ]]
 }
 
+font_listing_has_udev_gothic() {
+  local listing="${1-}"
+  (
+    shopt -s nocasematch
+    [[ "$listing" == *udevgothic* ]]
+  )
+}
+
 font_ok() {
+  local listing
   case "$(uname -s)" in
     Darwin)
-      find "${HOME}/Library/Fonts" \
-        -maxdepth 1 -type f -name 'UDEVGothic*.ttf' -print -quit |
-        grep -q .
+      listing="$(
+        find "${HOME}/Library/Fonts" \
+          -maxdepth 1 -type f -name 'UDEVGothic*.ttf' -print -quit
+      )" || return 1
+      [[ -n "$listing" ]]
       ;;
     Linux)
-      fc-list 2>/dev/null | grep -qi udevgothic
+      listing="$(fc-list 2>/dev/null)" || return 1
+      font_listing_has_udev_gothic "$listing"
       ;;
   esac
 }
@@ -80,18 +84,32 @@ wsl_proxies_ok() {
   done
 }
 
-run_check "supported platform" dotfiles_supported_platform
-run_check "mise installation" "$MISE_BIN" doctor
-run_check "tool pins installed" tools_ok
-run_check "system packages" "$MISE_BIN" -C "$DOTFILES_ROOT" \
-  bootstrap packages status --missing
-run_check "chezmoi state" dotfiles_ok
-run_check "UDEV Gothic" font_ok
-run_check "SKK dictionary" test -s "${HOME}/.skk/dictionary.yaskkserv2"
-run_check "yaskkserv2 service" service_ok
-run_check "yaskkserv2 port" dotfiles_port_open 127.0.0.1 1178
-if dotfiles_is_wsl; then
-  run_check "WSL proxies" wsl_proxies_ok
-fi
+main() {
+  DOTFILES_ROOT="$(dotfiles_resolve_root)"
+  readonly DOTFILES_ROOT
+  export DOTFILES_ROOT
 
-exit "$failures"
+  MISE_BIN="$(dotfiles_mise_bin)"
+  readonly MISE_BIN
+  failures=0
+
+  run_check "supported platform" dotfiles_supported_platform
+  run_check "mise installation" "$MISE_BIN" doctor
+  run_check "tool pins installed" tools_ok
+  run_check "system packages" "$MISE_BIN" -C "$DOTFILES_ROOT" \
+    bootstrap packages status --missing
+  run_check "chezmoi state" dotfiles_ok
+  run_check "UDEV Gothic" font_ok
+  run_check "SKK dictionary" test -s "${HOME}/.skk/dictionary.yaskkserv2"
+  run_check "yaskkserv2 service" service_ok
+  run_check "yaskkserv2 port" dotfiles_port_open 127.0.0.1 1178
+  if dotfiles_is_wsl; then
+    run_check "WSL proxies" wsl_proxies_ok
+  fi
+
+  exit "$failures"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main
+fi
