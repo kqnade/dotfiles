@@ -91,6 +91,14 @@ local plugins = {
     end,
   },
   {
+    "mrcjkb/rustaceanvim",
+    version = "^9",
+    lazy = false, -- already lazy: it is a Rust filetype plugin
+    init = function()
+      vim.g.rustaceanvim = require("modules.configs.lsp.rustaceanvim")
+    end,
+  },
+  {
     "j-hui/fidget.nvim",
     opts = {
       notification = {
@@ -272,7 +280,7 @@ local plugins = {
       "nvim-neotest/neotest-go",
       "nvim-neotest/neotest-python",
       "marilari88/neotest-vitest",
-      "rouge8/neotest-rust",
+      "mrcjkb/rustaceanvim",
     },
     config = function()
       require("modules.configs.editor.neotest")
