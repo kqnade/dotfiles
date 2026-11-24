@@ -256,7 +256,9 @@ with tempfile.TemporaryDirectory() as temp_dir:
     )
     systemctl_stub.chmod(0o755)
     deploy_client_runtime(fake_home)
-    linux_prefix = expected_apply_commands[:5]
+    linux_prefix = expected_apply_commands[
+        : expected_apply_commands.index("skk-dictionary") + 1
+    ]
     systemd_probe = "systemctl --user show-environment"
     linux_service_apply = (
         f"mise -C {fake_checkout.resolve()} "
