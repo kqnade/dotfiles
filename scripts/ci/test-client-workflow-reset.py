@@ -63,8 +63,15 @@ class ClientWorkflowResetTests(unittest.TestCase):
                 ".agents/skills/sanitize-artifacts/SKILL.md",
                 ".agents/skills/test-driven-development/SKILL.md",
                 ".agents/skills/yomiyasu/SKILL.md",
+                ".agents/skills/remove-conversation-residue/SKILL.md",
+                ".agents/skills/remove-conversation-residue/agents/openai.yaml",
+                ".claude/agents/schedule-planner.md",
+                ".claude/agents/summarizer-L0.md",
                 ".claude/rules/delivery.md",
                 ".claude/skills/assumption-pruning",
+                ".claude/skills/remove-conversation-residue",
+                ".claude/skills/learned/.keep",
+                ".claude/skills/learned/rev-all.md",
                 ".claude/skills/yomiyasu",
                 ".pi/agent/AGENTS.md",
                 ".pi/agent/settings.json",
@@ -89,6 +96,9 @@ class ClientWorkflowResetTests(unittest.TestCase):
                 ".agents/skills/sanitize-artifacts/user.md": "user notes\n",
                 ".agents/skills/test-driven-development/user.md": "user notes\n",
                 ".agents/skills/yomiyasu/user.md": "user notes\n",
+                ".agents/skills/remove-conversation-residue/user.md": "user notes\n",
+                ".claude/agents/user.md": "user agent\n",
+                ".claude/skills/learned/user.md": "user notes\n",
                 ".pi/agent/auth.json": '{"credential":"placeholder"}\n',
                 ".pi/agent/sessions/example.jsonl": '{"type":"session"}\n',
                 ".pi/agent/extensions/user.ts": "user extension\n",
@@ -105,9 +115,10 @@ class ClientWorkflowResetTests(unittest.TestCase):
                 path = home / relative
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(preserved.get(relative, "outdated managed file\n"))
-            link = home / ".claude/skills/assumption-pruning"
-            link.unlink()
-            link.symlink_to("../../.agents/skills/assumption-pruning")
+            for name in ("assumption-pruning", "remove-conversation-residue"):
+                link = home / ".claude/skills" / name
+                link.unlink()
+                link.symlink_to(f"../../.agents/skills/{name}")
             instructions = home / ".claude/CLAUDE.md"
             instructions.write_text("outdated managed instructions\n")
             environment = {

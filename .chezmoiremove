@@ -1,6 +1,8 @@
 .claude/agents/frontend-designer.md
+.claude/agents/schedule-planner.md
 .claude/agents/anchor-mapper.md
 .claude/agents/consistency-checker.md
+.claude/agents/summarizer-L0.md
 .claude/agents/summarizer-L1.md
 .claude/agents/summarizer-L2.md
 .claude/agents/summarizer-L3.md
@@ -127,6 +129,8 @@ Library/LaunchAgents/com.user.yaskkserv2.plist
 .agents/skills/peer-consultation/SKILL.md
 .agents/skills/peer-consultation/agents/openai.yaml
 .agents/skills/prose-proofreading/SKILL.md
+.agents/skills/remove-conversation-residue/SKILL.md
+.agents/skills/remove-conversation-residue/agents/openai.yaml
 .agents/skills/route-large-implementation/SKILL.md
 .agents/skills/route-large-implementation/agents/openai.yaml
 .agents/skills/sanitize-artifacts/SKILL.md
@@ -170,6 +174,7 @@ Library/LaunchAgents/com.user.yaskkserv2.plist
 .claude/skills/herdr
 .claude/skills/peer-consultation
 .claude/skills/prose-proofreading
+.claude/skills/remove-conversation-residue
 .claude/skills/route-large-implementation
 .claude/skills/sanitize-artifacts
 .claude/skills/security-audit
@@ -177,6 +182,8 @@ Library/LaunchAgents/com.user.yaskkserv2.plist
 .claude/skills/todo-management
 .claude/skills/using-workflow-skills
 .claude/skills/yomiyasu
+.claude/skills/learned/.keep
+.claude/skills/learned/rev-all.md
 .codex/agents/luna-parallelizer.toml
 .codex/agents/spark-worker.toml
 .pi/agent/extensions/btw.ts
