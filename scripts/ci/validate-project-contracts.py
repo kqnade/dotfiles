@@ -170,6 +170,10 @@ if not isinstance(lazy_lock, dict) or not lazy_lock:
     fail("Neovim lazy lock must pin at least one plugin")
 
 plugin_sources = nvim_plugins
+if 'lazy_lock.pin("lazy.nvim")' not in plugin_sources:
+    fail("lazy.nvim bootstrap must checkout its lock commit")
+if "--branch=main" in plugin_sources or "--branch=stable" in plugin_sources:
+    fail("lazy.nvim bootstrap must not clone a moving branch")
 declared_repos = set(re.findall(r'["\']([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)["\']', plugin_sources))
 declared_repos.update(
     re.findall(

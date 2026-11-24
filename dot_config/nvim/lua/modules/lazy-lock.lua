@@ -19,13 +19,26 @@ function M.source_path()
   return vim.fs.joinpath(dotfiles_root(), LOCK_RELATIVE)
 end
 
-function M.materialize()
+function M.read()
   local source = M.source_path()
   if vim.fn.filereadable(source) ~= 1 then
     error("Neovim plugin lock not found: " .. source)
   end
+  return vim.json.decode(table.concat(vim.fn.readfile(source), "\n"))
+end
 
-  local pins = vim.json.decode(table.concat(vim.fn.readfile(source), "\n"))
+-- lazy.nvim is not a plugin spec, so :Lazy restore never checks out its entry.
+function M.pin(name)
+  local pin = M.read()[name]
+  local commit = type(pin) == "table" and pin.commit or nil
+  if type(commit) ~= "string" or not commit:match("^%x+$") or #commit ~= 40 then
+    error("Neovim plugin lock has no commit for " .. name)
+  end
+  return pin
+end
+
+function M.materialize()
+  local pins = M.read()
   local names = vim.tbl_keys(pins)
   table.sort(names)
 

@@ -188,7 +188,8 @@ Leader key: `<Space>`
 Plugin commits live in `lazy-lock.json` next to this file. Chezmoi does not
 deploy that file. Renovate bumps branch digests and release tags there.
 Neovim copies the pins into its state directory before lazy.nvim reads them,
-and `:Lazy restore` checks out those commits.
+and `:Lazy restore` checks out the commits for plugins in the spec. lazy.nvim
+itself is not in that spec, so startup checks its lock commit out directly.
 
 ### Core
 - [lazy.nvim](https://github.com/folke/lazy.nvim) - Plugin manager
