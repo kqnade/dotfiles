@@ -197,6 +197,60 @@ exit 98
             ],
         )
 
+    def test_piped_install_waits_for_missing_command_line_tools(self):
+        probes = self.root / "clt-probes"
+        self.env["CLT_PROBES"] = str(probes)
+        self.stub(
+            "xcode-select",
+            """#!/bin/sh
+printf 'xcode-select %s\\n' "$*" >>"$COMMAND_LOG"
+if [ "$1" != -p ]; then
+  exit 0
+fi
+count=0
+if [ -f "$CLT_PROBES" ]; then
+  IFS= read -r count <"$CLT_PROBES"
+fi
+count=$((count + 1))
+printf '%s\\n' "$count" >"$CLT_PROBES"
+if [ "$count" -ge 3 ]; then
+  exit 0
+fi
+exit 1
+""",
+        )
+        self.mise.write_text(self.mise_script(VERSION))
+        self.mise.chmod(0o755)
+        result = subprocess.run(
+            ["bash", "-s", "--"],
+            input=self.installer.read_text(),
+            cwd=self.root,
+            env=self.env,
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(
+            "Waiting for Xcode Command Line Tools to finish installing.",
+            result.stdout,
+        )
+        self.assertNotIn("press Enter", result.stdout)
+        self.assertNotIn("error:", result.stderr)
+        self.assertEqual(
+            self.commands(),
+            [
+                "xcode-select -p",
+                "xcode-select --install",
+                "xcode-select -p",
+                "xcode-select -p",
+                "mise --version",
+                f"mise trust {self.checkout}/mise.toml",
+                f"mise -C {self.checkout} bootstrap --yes",
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

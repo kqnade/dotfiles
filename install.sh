@@ -41,10 +41,19 @@ ensure_macos_prerequisites() {
   if ! xcode-select -p >/dev/null 2>&1; then
     log "Xcode Command Line Tools are required; opening the installer."
     xcode-select --install 2>/dev/null || true
-    printf 'Complete the macOS installer, then press Enter to continue: '
-    read -r _
-    xcode-select -p >/dev/null 2>&1 ||
-      die "Xcode Command Line Tools are not available yet. Re-run install.sh after installation."
+    if [[ -t 0 ]]; then
+      printf 'Complete the macOS installer, then press Enter to continue: '
+      read -r _ ||
+        die "Xcode Command Line Tools are not available yet. Re-run install.sh after installation."
+      xcode-select -p >/dev/null 2>&1 ||
+        die "Xcode Command Line Tools are not available yet. Re-run install.sh after installation."
+    else
+      # curl | bash leaves the script on stdin, so do not read from it.
+      log "Waiting for Xcode Command Line Tools to finish installing."
+      until xcode-select -p >/dev/null 2>&1; do
+        sleep 1
+      done
+    fi
   fi
 
   [[ -x /usr/bin/curl ]] || die "macOS curl is unavailable."
