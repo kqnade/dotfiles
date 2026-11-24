@@ -71,6 +71,8 @@ if settings.get("npm", {}).get("package_manager") != "auto":
     fail("npm tools must use mise's embedded installer")
 if settings.get("task", {}).get("run_auto_install") is not False:
     fail("public tasks must not implicitly install tools")
+if settings.get("lockfile") is not True:
+    fail("repository mise.toml must keep lockfile generation enabled")
 
 packages = config.get("bootstrap", {}).get("packages", {})
 if any(version != "latest" for version in packages.values()):
@@ -215,18 +217,16 @@ for name, value in tools.items():
             fail(f"{name}@{requested_version} has no locked URL for {platform}")
 
 config_template = (ROOT / "dot_config/mise/config.toml.tmpl").read_text().strip()
-lock_template = (ROOT / "dot_config/mise/mise.lock.tmpl").read_text().strip()
 if config_template != (
-    '{{ include "mise.toml" }}\n{{ include "mise/config.toml" }}\n'
+    '{{ include "mise.toml" | replace "lockfile = true" "lockfile = false" }}\n'
+    '{{ include "mise/config.toml" }}\n'
     '{{ if eq (includeTemplate ".chezmoitemplates/claude-work-enabled.tmpl" .) "true" -}}\n'
     '{{ include "mise.work.toml" -}}\n{{ end -}}'
 ):
-    fail("deployed mise config must concatenate the split manifest sources")
-if lock_template != (
-    '{{ include "mise.lock" }}\n'
-    '{{ if eq (includeTemplate ".chezmoitemplates/claude-work-enabled.tmpl" .) "true" -}}\n'
-    '{{ include "mise.work.lock" -}}\n{{ end -}}'
-):
-    fail("deployed mise lockfile must combine the standard and enabled work locks")
+    fail("deployed mise config must concatenate the split manifests and disable lockfile writes")
+if (ROOT / "dot_config/mise/mise.lock.tmpl").exists():
+    fail("the home mise lockfile must not be a managed chezmoi target")
+if ".config/mise/mise.lock" not in (ROOT / ".chezmoiremove").read_text().splitlines():
+    fail("removed targets must delete a previously deployed ~/.config/mise/mise.lock")
 
 print(f"validated {len(tools)} pinned tools across {len(PLATFORMS)} platforms")

@@ -443,7 +443,7 @@ class ValidateMiseTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary_directory:
             fixture = Path(temporary_directory)
             for relative in ("mise/config.toml", "mise.work.toml", "mise.work.lock", "mise.lock", "dot_config/mise/config.toml.tmpl",
-                             "dot_config/mise/mise.lock.tmpl", "scripts/ci/validate-mise.py"):
+                             ".chezmoiremove", "scripts/ci/validate-mise.py"):
                 destination = fixture / relative
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(ROOT / relative, destination)
@@ -470,7 +470,7 @@ class ValidateMiseTests(unittest.TestCase):
                 "mise/config.toml",
                 "mise.lock",
                 "dot_config/mise/config.toml.tmpl",
-                "dot_config/mise/mise.lock.tmpl",
+                ".chezmoiremove",
                 "scripts/ci/validate-mise.py",
             ):
                 source = ROOT / relative

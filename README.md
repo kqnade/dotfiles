@@ -66,6 +66,7 @@ Linux では有効な会社用 Claude の Herdr integration、全 OS で pre-com
   managed service、bootstrap hook。
 - [`dot_config/mise/config.toml.tmpl`](dot_config/mise/config.toml.tmpl): 上記 2 ファイルを
   連結し、有効な場合は会社用 manifest も加えて `~/.config/mise/config.toml` に配置。
+  配備先では `lockfile = false` にし、`~/.config/mise/mise.lock` は管理しません。
 - `dot_*`: zsh、Neovim、Git、AI CLI などのユーザー設定。秘密情報は `private_*`、
   大きな外部辞書は `.chezmoiexternal.toml.tmpl` で管理。
 
