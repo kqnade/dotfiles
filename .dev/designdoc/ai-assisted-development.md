@@ -1,7 +1,7 @@
 # AI支援開発workflow
 
 - 状態: 共通層を責任分割優先へ再設計済み
-- 更新日: 2026-11-16
+- 更新日: 2026-11-24
 
 ## 目的
 
@@ -57,7 +57,10 @@ state write は明示依頼があるときだけ行う。
 
 ## データ境界
 
-- 会社用 Claude は GitHub remote owner が `livesense-inc` または `jobtalk` の repository だけ
-- Cursor は標準 client。Claude Code は opt-in
+- `claude` は `livesense-inc` と `jobtalk` 以外の directory でも起動する。hook は
+  `cwd` が絶対 path であることを確認し、repository owner では拒否しない
+- 会社の repository では承認済みの仕事用 account を使う。wrapper は仕事用 GitHub token を渡し、
+  設定とセッションは `~/.claude` のままとする
+- Cursor は標準 client。Claude Code は opt-in。Claude の起動条件は Cursor には適用しない
 - 承認済みでない account / service へ repository 由来情報を送らない
 - automatic memory は無効。必要な引き継ぎは `handoff` と `.dev/contexts/`
