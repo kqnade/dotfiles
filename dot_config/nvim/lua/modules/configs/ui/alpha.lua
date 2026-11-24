@@ -78,7 +78,7 @@ vim.api.nvim_create_autocmd("User", {
 })
 
 vim.api.nvim_create_autocmd("BufUnload", {
-  buffer = 0,
+  buf = 0,
   callback = function()
     vim.opt.laststatus = 3
     vim.opt.showtabline = 2

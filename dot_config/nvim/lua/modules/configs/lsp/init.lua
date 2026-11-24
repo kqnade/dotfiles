@@ -53,7 +53,7 @@ vim.api.nvim_create_autocmd("LspAttach", {
     local client = vim.lsp.get_client_by_id(event.data.client_id)
 
     local map = function(mode, lhs, rhs, desc)
-      vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, desc = desc, noremap = true, silent = true })
+      vim.keymap.set(mode, lhs, rhs, { buf = bufnr, desc = desc, noremap = true, silent = true })
     end
 
     -- Navigation

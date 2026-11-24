@@ -14,15 +14,15 @@ require("nvim-tree").setup({
   on_attach = function(bufnr)
     local api = require("nvim-tree.api")
     local function opts(desc)
-      return { desc = "nvim-tree: " .. desc, buffer = bufnr, noremap = true, silent = true, nowait = true }
+      return { desc = "nvim-tree: " .. desc, buf = bufnr, noremap = true, silent = true, nowait = true }
     end
 
     -- Default mappings first
     api.config.mappings.default_on_attach(bufnr)
 
     -- Remove default conflicting keys
-    vim.keymap.del("n", "e", { buffer = bufnr })
-    vim.keymap.del("n", "m", { buffer = bufnr })
+    vim.keymap.del("n", "e", { buf = bufnr })
+    vim.keymap.del("n", "m", { buf = bufnr })
 
     -- Colemak navigation (m/n/e/i → h/j/k/l)
     vim.keymap.set("n", "m", api.node.navigate.parent_close, opts("Close Directory"))
