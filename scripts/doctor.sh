@@ -84,6 +84,10 @@ wsl_proxies_ok() {
   done
 }
 
+wsl_interop_ok() {
+  timeout --kill-after=1s 5s ssh.exe -V >/dev/null 2>&1
+}
+
 main() {
   DOTFILES_ROOT="$(dotfiles_resolve_root)"
   readonly DOTFILES_ROOT
@@ -105,6 +109,7 @@ main() {
   run_check "yaskkserv2 port" dotfiles_port_open 127.0.0.1 1178
   if dotfiles_is_wsl; then
     run_check "WSL proxies" wsl_proxies_ok
+    run_check "WSL interop" wsl_interop_ok
   fi
 
   exit "$failures"

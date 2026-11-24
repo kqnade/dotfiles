@@ -27,7 +27,7 @@ v2の未完了事項です。CIや実機検証で新しい問題が見つかっ�
 
 ## P1: WSL interopの診断
 
-- [ ] Windows executableを起動できないWSLを `mise run doctor` で検出する。
+- [x] Windows executableを起動できないWSLを `mise run doctor` で検出する。
   - 再現条件は `WSLInterop` が無効または未登録の状態で、`ssh.exe`
     への委譲が `cannot execute binary file: Exec format error` で失敗すること。
   - proxyとWindows側executableの存在確認だけでなく、Windows executableを

@@ -57,3 +57,43 @@ ssh-add -l
 
 この proxy は WSL 専用です。ネイティブ Windows の dotfile/bootstrap 機能は
 ありません。
+
+## WSL interop
+
+`op`、`ssh`、`ssh-add` の proxy は、Windows 側の実行ファイルを WSL interop で
+起動します。`WSLInterop` が無効、または未登録のとき、`ssh.exe` への委譲は
+`cannot execute binary file: Exec format error` で失敗します。`mise run doctor`
+は `ssh.exe -V` を 5 秒のタイムアウト付きで起動し、失敗すると `WSL interop` を
+`[failed]` にします。
+
+登録状態を確認します。
+
+```bash
+cat /proc/sys/fs/binfmt_misc/WSLInterop
+```
+
+先頭が `enabled` で、`interpreter /init` と `magic 4d5a` が含まれていれば、
+Windows 実行ファイルを起動する登録は有効です。ファイルが無い、または先頭が
+`disabled` のときは起動できません。
+
+`/etc/wsl.conf` で interop を有効にします。
+
+```ini
+[interop]
+enabled=true
+appendWindowsPath=true
+```
+
+`enabled` は Windows プロセスの起動、`appendWindowsPath` は Windows の PATH を
+WSL に追加する設定です。既定値はどちらも `true` です。
+
+この設定は、Windows の PowerShell から WSL を完全に停止したあとに有効になります。
+
+```powershell
+wsl --shutdown
+```
+
+`wsl --shutdown` は起動中のすべてのディストリビューションを停止します。特定の
+ディストリビューションだけを止める場合は `wsl --terminate <Distro>` を使います。
+停止後にディストリビューションを開き直し、上の `WSLInterop` の確認と
+`mise run doctor` を実行します。
