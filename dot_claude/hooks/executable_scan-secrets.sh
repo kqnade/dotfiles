@@ -3,8 +3,9 @@
 # Used as a PreToolUse hook for Edit|Write operations.
 # Structured decisions are emitted on stdout with exit 0.
 
-# Requires jq for JSON parsing. Allow if missing (don't block the user)
+# Requires jq for JSON parsing. Fail closed if missing.
 if ! command -v jq >/dev/null 2>&1; then
+  echo "{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"jq is required for secret scanning hooks but is not installed.\"}}"
   exit 0
 fi
 
@@ -53,8 +54,23 @@ if echo "$CONTENT" | grep -qE 'xox[bpras]-[0-9a-zA-Z-]{10,}'; then
   MATCHES="$MATCHES Slack token;"
 fi
 
-# Private key blocks
-if echo "$CONTENT" | grep -qE -- '-----BEGIN[[:space:]]+(RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----'; then
+# Google API keys
+if echo "$CONTENT" | grep -qE 'AIza[0-9A-Za-z_-]{35}'; then
+  MATCHES="$MATCHES Google API key (AIza...);"
+fi
+
+# npm access tokens
+if echo "$CONTENT" | grep -qE 'npm_[A-Za-z0-9]{36}'; then
+  MATCHES="$MATCHES npm token;"
+fi
+
+# GitLab personal, project, and group access tokens
+if echo "$CONTENT" | grep -qE 'glpat-[A-Za-z0-9_-]{20,}'; then
+  MATCHES="$MATCHES GitLab token;"
+fi
+
+# Private key blocks, including PKCS#8 encrypted keys
+if echo "$CONTENT" | grep -qE -- '-----BEGIN[[:space:]]+(RSA |EC |DSA |OPENSSH |ENCRYPTED )?PRIVATE KEY-----'; then
   MATCHES="$MATCHES private key block;"
 fi
 
