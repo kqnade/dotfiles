@@ -110,6 +110,13 @@ class ClaudeSettingsTests(unittest.TestCase):
             self.settings_for("darwin")["permissions"]["defaultMode"], "auto"
         )
 
+    def test_attribution_replaces_deprecated_include_co_authored_by(self) -> None:
+        for os_name in ("darwin", "linux"):
+            with self.subTest(os_name=os_name):
+                settings = self.settings_for(os_name)
+                self.assertNotIn("includeCoAuthoredBy", settings)
+                self.assertEqual(settings["attribution"], {"commit": "", "pr": ""})
+
     def test_top_level_keys_are_sorted_for_herdr_stability(self) -> None:
         settings = self.settings_for("linux")
         self.assertEqual(list(settings), sorted(settings))
