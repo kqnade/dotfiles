@@ -2,16 +2,17 @@
 
 set -euo pipefail
 
-# Renovate keeps this pin on the latest stable mise release. The platform
-# versions exist so each asset checksum updates with that same release, and
-# they must stay equal to MISE_MIN_VERSION and mise.toml min_version.
-readonly MISE_MIN_VERSION="2026.11.13"
-readonly MISE_LINUX_X64_VERSION="2026.11.13"
-readonly MISE_LINUX_X64_SHA256="9c8cc9e10886fe1b1ae2ff625f34905f3bd94e47ee5c9b0d3d597e6629d43d20"
-readonly MISE_MACOS_ARM64_VERSION="2026.11.13"
-readonly MISE_MACOS_ARM64_SHA256="973eb467ec9671f73a96a4c6c39f175703dde49523a5532157e659afcc5f2eca"
-readonly MISE_MACOS_X64_VERSION="2026.11.13"
-readonly MISE_MACOS_X64_SHA256="7e0b50348e00ad9a3ed9efe30012dd6e5f7fb29b4debac8edd93cc3efedded2d"
+# Renovate keeps this pin on the newest stable mise release that is at least
+# one day old, matching mise self-update's default 24h minimum release age.
+# The platform versions exist so each asset checksum updates with that same
+# release, and they must stay equal to MISE_MIN_VERSION and mise.toml min_version.
+readonly MISE_MIN_VERSION="2026.11.12"
+readonly MISE_LINUX_X64_VERSION="2026.11.12"
+readonly MISE_LINUX_X64_SHA256="9c12c24f5eac6b6357e5265e2629166cc3005459037f5d747680a99e375ff2ab"
+readonly MISE_MACOS_ARM64_VERSION="2026.11.12"
+readonly MISE_MACOS_ARM64_SHA256="87b2bd5a1b88a612ee8856df23499404b115870b5a8a8e008763c7cd51c8d412"
+readonly MISE_MACOS_X64_VERSION="2026.11.12"
+readonly MISE_MACOS_X64_SHA256="14954fb2f451636a53a04c025e1bf896f5f47f3fd19aaac9f6ff792fdfdbc18d"
 readonly REPO_URL="${DOTFILES_REPO_URL:-https://github.com/kqnade/dotfiles.git}"
 readonly REPO_REF="${DOTFILES_REPO_REF:-}"
 readonly REPO_DIR="${DOTFILES_REPO_DIR:-${HOME}/repos/github.com/kqnade/dotfiles}"

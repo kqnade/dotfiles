@@ -157,7 +157,7 @@ class ValidateMiseTests(unittest.TestCase):
             if rule.get("groupName") == "mise"
         ]
         self.assertEqual(len(grouped), 1)
-        self.assertIsNone(grouped[0].get("minimumReleaseAge"))
+        self.assertEqual(grouped[0].get("minimumReleaseAge"), "1 day")
         sources = {
             "jdx/mise": {
                 "install.sh": installer,
