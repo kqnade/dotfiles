@@ -110,6 +110,30 @@ require("mason").setup({
 })
 
 -- ─── Server Configurations ──────────────────────────────────
+-- SchemaStore is loaded here, before vim.lsp.config copies settings into the
+-- client. on_init runs after that copy, so assigning client.config.settings
+-- there never reaches jsonls.
+local function json_schemas()
+  local schemas = {}
+  local ok_schema, schemastore = pcall(require, "schemastore")
+  if ok_schema then
+    schemas = schemastore.json.schemas() or {}
+  end
+  table.insert(schemas, {
+    description = "OpenCode configuration",
+    fileMatch = { "opencode.json", ".opencode/opencode.json" },
+    name = "opencode.json",
+    url = "https://opencode.ai/config.json",
+  })
+  table.insert(schemas, {
+    description = "OpenCode TUI configuration",
+    fileMatch = { "tui.json", ".opencode/tui.json" },
+    name = "tui.json",
+    url = "https://opencode.ai/tui.json",
+  })
+  return schemas
+end
+
 local servers = {
   -- Lua
   lua_ls = {
@@ -290,32 +314,12 @@ local servers = {
 
   -- JSON
   jsonls = {
-    on_init = function(client)
-      local schemas = {}
-      local ok_schema, schemastore = pcall(require, "schemastore")
-      if ok_schema then
-        schemas = schemastore.json.schemas()
-      end
-      -- opencode config schemas
-      table.insert(schemas, {
-        description = "OpenCode configuration",
-        fileMatch = { "opencode.json", ".opencode/opencode.json" },
-        name = "opencode.json",
-        url = "https://opencode.ai/config.json",
-      })
-      table.insert(schemas, {
-        description = "OpenCode TUI configuration",
-        fileMatch = { "tui.json", ".opencode/tui.json" },
-        name = "tui.json",
-        url = "https://opencode.ai/tui.json",
-      })
-      client.config.settings = {
-        json = {
-          schemas = schemas,
-          validate = { enable = true },
-        },
-      }
-    end,
+    settings = {
+      json = {
+        schemas = json_schemas(),
+        validate = { enable = true },
+      },
+    },
   },
 
   -- YAML
