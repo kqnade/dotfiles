@@ -251,6 +251,43 @@ exit 1
             ],
         )
 
+    def test_piped_install_stops_when_command_line_tools_never_appear(self):
+        self.env["DOTFILES_CLT_POLL_LIMIT"] = "1"
+        self.stub(
+            "xcode-select",
+            """#!/bin/sh
+printf 'xcode-select %s\\n' "$*" >>"$COMMAND_LOG"
+if [ "$1" = -p ]; then
+  exit 1
+fi
+exit 0
+""",
+        )
+        result = subprocess.run(
+            ["bash", "-s", "--"],
+            input=self.installer.read_text(),
+            cwd=self.root,
+            env=self.env,
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(
+            "Xcode Command Line Tools are not available yet. Re-run install.sh after installation.",
+            result.stderr,
+        )
+        self.assertEqual(
+            self.commands(),
+            [
+                "xcode-select -p",
+                "xcode-select --install",
+                "xcode-select -p",
+            ],
+        )
+        self.assertFalse(self.mise.exists())
+
 
 if __name__ == "__main__":
     unittest.main()
