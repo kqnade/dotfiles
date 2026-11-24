@@ -88,6 +88,11 @@ wsl_interop_ok() {
   timeout --kill-after=1s 5s ssh.exe -V >/dev/null 2>&1
 }
 
+skk_dictionary_fresh() {
+  [[ -s "${HOME}/.skk/dictionary.yaskkserv2" ]] || return 1
+  ! dotfiles_skk_dictionary_is_stale
+}
+
 main() {
   DOTFILES_ROOT="$(dotfiles_resolve_root)"
   readonly DOTFILES_ROOT
@@ -105,6 +110,7 @@ main() {
   run_check "chezmoi state" dotfiles_ok
   run_check "UDEV Gothic" font_ok
   run_check "SKK dictionary" test -s "${HOME}/.skk/dictionary.yaskkserv2"
+  run_check "SKK dictionary freshness" skk_dictionary_fresh
   run_check "yaskkserv2 service" service_ok
   run_check "yaskkserv2 port" dotfiles_port_open 127.0.0.1 1178
   if dotfiles_is_wsl; then
