@@ -181,4 +181,88 @@ bootstrap = (ROOT / "scripts/bootstrap.sh").read_text()
 if "dotfiles_with_safe_git_directory" not in bootstrap:
     fail("pre-commit generation must trust only the resolved checkout for its Git subprocess")
 
+if ".config/nvim/lazy-lock.json" not in ignore:
+    fail("Neovim lazy lock must be ignored by chezmoi")
+lazy_lock_path = ROOT / "dot_config/nvim/lazy-lock.json"
+try:
+    lazy_lock = json.loads(lazy_lock_path.read_text())
+except json.JSONDecodeError as error:
+    fail(f"invalid Neovim lazy lock: {error}")
+if not isinstance(lazy_lock, dict) or not lazy_lock:
+    fail("Neovim lazy lock must pin at least one plugin")
+
+plugin_sources = nvim_plugins
+if 'lazy_lock.pin("lazy.nvim")' not in plugin_sources:
+    fail("lazy.nvim bootstrap must checkout its lock commit")
+if "--branch=main" in plugin_sources or "--branch=stable" in plugin_sources:
+    fail("lazy.nvim bootstrap must not clone a moving branch")
+declared_repos = set(re.findall(r'["\']([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)["\']', plugin_sources))
+declared_repos.update(
+    re.findall(
+        r"github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?[\"']",
+        plugin_sources,
+    )
+)
+pinned_repos = set()
+for plugin_name, pin in lazy_lock.items():
+    if not isinstance(pin, dict):
+        fail(f"{plugin_name} lock entry must be an object")
+    unexpected = set(pin) - {"branch", "commit", "repository", "version"}
+    if unexpected:
+        fail(f"{plugin_name} lock entry has unsupported fields: {sorted(unexpected)}")
+    repository = pin.get("repository")
+    commit = pin.get("commit")
+    branch = pin.get("branch")
+    if not isinstance(repository, str) or not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository):
+        fail(f"{plugin_name} repository must be owner/name")
+    if repository.split("/", 1)[1] != plugin_name:
+        fail(f"{plugin_name} must use its repository name")
+    if not isinstance(branch, str) or not branch or branch.startswith("refs/"):
+        fail(f"{plugin_name} branch must be a short ref")
+    if not isinstance(commit, str) or not re.fullmatch(r"[0-9a-f]{40}", commit):
+        fail(f"{plugin_name} commit must be a 40-character sha")
+    version = pin.get("version")
+    if version is not None and not re.fullmatch(r"v\d+\.\d+\.\d+", version):
+        fail(f"{plugin_name} version must be a stable vX.Y.Z tag")
+    pinned_repos.add(repository)
+if declared_repos != pinned_repos:
+    fail(
+        "Neovim lazy lock must pin exactly the declared plugins: "
+        f"missing={sorted(declared_repos - pinned_repos)}, "
+        f"unexpected={sorted(pinned_repos - declared_repos)}"
+    )
+
+renovate = json.loads(strip_json_comments((ROOT / "renovate.jsonc").read_text()))
+lazy_managers = [
+    manager
+    for manager in renovate.get("customManagers", [])
+    if any("lazy-lock" in pattern for pattern in manager.get("managerFilePatterns", []))
+]
+if len(lazy_managers) != 2:
+    fail("Renovate must bump both branch and release pins in the Neovim lazy lock")
+
+
+def renovate_pattern(pattern: str) -> str:
+    return pattern.replace("(?<", "(?P<")
+
+
+for line in lazy_lock_path.read_text().splitlines():
+    if '"repository"' not in line:
+        continue
+    matched = [
+        manager["datasourceTemplate"] + ("+version" if "versioningTemplate" in manager else "")
+        for manager in lazy_managers
+        if any(re.search(renovate_pattern(pattern), line) for pattern in manager["matchStrings"])
+    ]
+    if matched != (["git-refs+version"] if '"version"' in line else ["git-refs"]):
+        fail(f"Neovim lazy lock line is not exclusively Renovate-managed: {line}")
+
+rustaceanvim_rules = [
+    rule
+    for rule in renovate.get("packageRules", [])
+    if rule.get("matchDepNames") == ["mrcjkb/rustaceanvim"]
+]
+if len(rustaceanvim_rules) != 1 or rustaceanvim_rules[0].get("allowedVersions") != "/^v9\\./":
+    fail("Renovate must keep rustaceanvim on v9")
+
 print("validated project, WSL, bootstrap, Neovim, Colemak, and SKK invariants")

@@ -3,17 +3,44 @@
 -- │                      lazy.nvim                            │
 -- ╰──────────────────────────────────────────────────────────╯
 
--- Bootstrap lazy.nvim
+-- Bootstrap lazy.nvim at the lock commit. It is not a plugin spec, so
+-- :Lazy restore does not move this checkout.
+local lazy_lock = require("modules.lazy-lock")
+local lazy_pin = lazy_lock.pin("lazy.nvim")
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+
+local function git(args)
+  local output = vim.fn.system(args)
+  if vim.v.shell_error ~= 0 then
+    error(table.concat(args, " ") .. "\n" .. output)
+  end
+  return vim.trim(output)
+end
+
 if not vim.uv.fs_stat(lazypath) then
-  vim.fn.system({
+  git({
     "git",
     "clone",
     "--filter=blob:none",
+    "--no-checkout",
     "https://github.com/folke/lazy.nvim.git",
-    "--branch=stable",
     lazypath,
   })
+end
+
+local installed = vim.uv.fs_stat(lazypath .. "/lua/lazy/init.lua")
+  and git({ "git", "-C", lazypath, "rev-parse", "HEAD" })
+if installed ~= lazy_pin.commit then
+  git({
+    "git",
+    "-C",
+    lazypath,
+    "fetch",
+    "--filter=blob:none",
+    "origin",
+    lazy_pin.commit,
+  })
+  git({ "git", "-C", lazypath, "checkout", "--detach", lazy_pin.commit })
 end
 vim.opt.rtp:prepend(lazypath)
 
@@ -422,8 +449,11 @@ local plugins = {
    },
  }
  
- -- Setup lazy.nvim
+ -- Setup lazy.nvim. The committed lock stays in the dotfiles checkout, where
+ -- Renovate can bump it. Chezmoi does not deploy that file.
+local lockfile = require("modules.lazy-lock").materialize()
 require("lazy").setup(plugins, {
+  lockfile = lockfile,
   defaults = {
     lazy = true,
   },

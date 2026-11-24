@@ -142,6 +142,31 @@
       "packageNameTemplate": "macos-x64",
       "datasourceTemplate": "custom.mise-macos-x64",
       "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "description": "Bump Neovim plugin branch checkouts recorded in the lazy lock.",
+      "managerFilePatterns": [
+        "/^dot_config/nvim/lazy-lock\\.json$/"
+      ],
+      "matchStrings": [
+        "\"[^\"]+\": \\{\"branch\": \"(?<currentValue>[^\"]+)\", \"commit\": \"(?<currentDigest>[0-9a-f]{40})\", \"repository\": \"(?<depName>[^\"]+)\"\\}"
+      ],
+      "datasourceTemplate": "git-refs",
+      "packageNameTemplate": "https://github.com/{{depName}}"
+    },
+    {
+      "customType": "regex",
+      "description": "Bump Neovim plugin release tags recorded in the lazy lock.",
+      "managerFilePatterns": [
+        "/^dot_config/nvim/lazy-lock\\.json$/"
+      ],
+      "matchStrings": [
+        "\"[^\"]+\": \\{\"branch\": \"[^\"]+\", \"commit\": \"(?<currentDigest>[0-9a-f]{40})\", \"repository\": \"(?<depName>[^\"]+)\", \"version\": \"(?<currentValue>[^\"]+)\"\\}"
+      ],
+      "datasourceTemplate": "git-refs",
+      "packageNameTemplate": "https://github.com/{{depName}}",
+      "versioningTemplate": "regex:^v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)$"
     }
   ],
 
@@ -194,6 +219,30 @@
         "cargo:https://github.com/wachikun/yaskkserv2"
       ],
       "enabled": false
+    },
+    {
+      "description": "Keep rustaceanvim on the v9 releases the plugin spec accepts.",
+      "matchManagers": [
+        "regex"
+      ],
+      "matchDatasources": [
+        "git-refs"
+      ],
+      "matchDepNames": [
+        "mrcjkb/rustaceanvim"
+      ],
+      "allowedVersions": "/^v9\\./"
+    },
+    {
+      "description": "Open one Renovate PR for Neovim lazy lock pin bumps.",
+      "matchManagers": [
+        "regex"
+      ],
+      "matchFileNames": [
+        "dot_config/nvim/lazy-lock.json"
+      ],
+      "groupName": "neovim lazy lock",
+      "commitMessageTopic": "Neovim lazy lock"
     },
     {
       "description": "Track AI coding tool releases without the default release cooldown.",
