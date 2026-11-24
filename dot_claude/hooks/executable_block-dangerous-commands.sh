@@ -41,7 +41,17 @@ contains_cmd() { printf '%s' "$COMMAND" | grep -qE "$1"; }
 contains_icmd() { printf '%s' "$COMMAND" | grep -qiE "$1"; }
 
 # ── Git push protections ────────────────────────────────────────────────
-if contains_cmd '(^|[;&|()]+[[:space:]]*)git[[:space:]]+push'; then
+# git -C <path> and git -c <name>=<value> sit between git and push.
+# Repeated, attached (-C/repo) or separated (-C /repo).
+GIT_GLOBAL='([[:space:]]+(-C[[:space:]]*[^[:space:]]+|-c[[:space:]]*[^[:space:]]+))*'
+GIT_PUSH='(^|[;&|()]+[[:space:]]*)git'"${GIT_GLOBAL}"'[[:space:]]+push'
+# -u and --set-upstream are the extra tokens the one-token refspec check skips.
+# --force-with-lease is omitted on purpose; see the guard below.
+PUSH_UPSTREAM='([[:space:]]+(-u|--set-upstream))*'
+PUSH_REMOTE='[[:space:]]+[^[:space:]-][^[:space:]]*'
+PUSH_REFSPEC="[[:space:]]+[+]?([^[:space:]]*:)?(${BR_REGEX})(\$|[[:space:]])"
+
+if contains_cmd "$GIT_PUSH"; then
   # Explicit refspec to a protected branch (origin main, :main, HEAD:main, remote branch)
   if contains_cmd "git[[:space:]]+push[[:space:]]+[^[:space:]]+[[:space:]]+([^[:space:]]*:)?($BR_REGEX)(\$|[[:space:]])"; then
     MATCHED_BRANCH=$(printf '%s' "$COMMAND" | grep -oE "($BR_REGEX)(\$|[[:space:]])" | head -1 | tr -d '[:space:]')
@@ -50,6 +60,14 @@ if contains_cmd '(^|[;&|()]+[[:space:]]*)git[[:space:]]+push'; then
   if contains_cmd "git[[:space:]]+push.*:($BR_REGEX)(\$|[[:space:]])"; then
     MATCHED_BRANCH=$(printf '%s' "$COMMAND" | grep -oE ":($BR_REGEX)(\$|[[:space:]])" | head -1 | tr -d ': [:space:]')
     emit_deny "Blocked: push to protected branch '${MATCHED_BRANCH:-main}' via refspec. Use a feature branch and open a PR."
+  fi
+  # -u / --set-upstream, a leading + on the refspec, and git -C / -c.
+  # A command that contains --force-with-lease keeps the historical result
+  # from the two checks above. Issue #240 does not decide that case.
+  if ! contains_cmd '\-\-force-with-lease' \
+    && contains_cmd "${GIT_PUSH}${PUSH_UPSTREAM}${PUSH_REMOTE}${PUSH_REFSPEC}"; then
+    MATCHED_BRANCH=$(printf '%s' "$COMMAND" | grep -oE "($BR_REGEX)(\$|[[:space:]])" | head -1 | tr -d '[:space:]')
+    emit_deny "Blocked: push to protected branch '${MATCHED_BRANCH:-main}'. Use a feature branch and open a PR."
   fi
   # Bare `git push` while on protected branch
   if contains_cmd 'git[[:space:]]+push[[:space:]]*($|[;&|])'; then
@@ -76,13 +94,56 @@ if printf '%s' "$CMD_NOQUOTE" | grep -qiE '(^|[[:space:]/])\.env([.][^[:space:]/
   emit_ask "Shell command references a protected secret path. Confirm that access is necessary and safe."
 fi
 
+# Recursive and force may be split, reversed (-fr, -r -f), or long options.
+rm_recursive_force_targets() {
+  local path_re="$1"
+  local -a words=()
+  local token=""
+  local i=0
+  local j=0
+  local recursive=0
+  local force=0
+  read -r -a words <<< "$CMD_NOQUOTE"
+  for ((i = 0; i < ${#words[@]}; i++)); do
+    token=${words[$i]}
+    [[ $token == rm || $token == */rm ]] || continue
+    recursive=0
+    force=0
+    j=$((i + 1))
+    while ((j < ${#words[@]})); do
+      token=${words[$j]}
+      case "$token" in
+        --recursive) recursive=1 ;;
+        --force) force=1 ;;
+        -*)
+          if printf '%s' "$token" | grep -qE '^-[a-zA-Z]+$'; then
+            [[ $token == *r* ]] && recursive=1
+            [[ $token == *f* ]] && force=1
+          else
+            break
+          fi
+          ;;
+        *) break ;;
+      esac
+      j=$((j + 1))
+    done
+    if ((j >= ${#words[@]})); then
+      continue
+    fi
+    if ((recursive == 1 && force == 1)) && printf '%s' "${words[$j]}" | grep -qE "$path_re"; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 # Match literal shell-variable spellings in command text, not variables in this hook.
 # shellcheck disable=SC2016
-if printf '%s' "$CMD_NOQUOTE" | grep -qE 'rm[[:space:]]+(-[a-zA-Z]*[[:space:]]+)*-?[a-zA-Z]*r[a-zA-Z]*f[a-zA-Z]*[[:space:]]+(/([[:space:]]|\*|$)|~|\$HOME|\$[A-Za-z_][A-Za-z0-9_]*|\.\./\.\.)' ; then
+if rm_recursive_force_targets '^(/([[:space:]]|\*|$)|~|\$HOME|\$[A-Za-z_][A-Za-z0-9_]*|\.\./\.\.)'; then
   emit_deny "Blocked: recursive force-delete on /, ~, \$HOME, an unresolved \$VAR, or .../.. Path. Specify a concrete safe target."
 fi
 # rm -rf /usr, /etc, /var, /bin, etc.
-if printf '%s' "$CMD_NOQUOTE" | grep -qE 'rm[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*-?[a-zA-Z]*r[a-zA-Z]*f[a-zA-Z]*[[:space:]]+/(usr|etc|var|bin|sbin|lib|opt|root|boot)([[:space:]/]|$)'; then
+if rm_recursive_force_targets '^/(usr|etc|var|bin|sbin|lib|opt|root|boot)([[:space:]/]|$)'; then
   emit_deny "Blocked: recursive delete targeting a system directory."
 fi
 
