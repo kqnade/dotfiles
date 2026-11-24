@@ -77,9 +77,12 @@ cursor-agent = { version = "2026.11.13-eacade1", url = 'https://downloads.cursor
 
 # SKK server and dictionary builder. Keep this on the Cargo git backend on
 # every platform so the service behaves identically on macOS and Linux.
+# rev 08aabbc locks openssl-sys 0.9.112, which rejects OpenSSL 4. Arch keeps
+# that OpenSSL 3 prefix ahead of the system OpenSSL 4 pkg-config files.
+# Fedora's release-selected OpenSSL 3 headers occupy the default pkg-config path.
 "cargo:https://github.com/wachikun/yaskkserv2" = { version = "rev:08aabbc91a39c67ff2562b29f92c2a274bd0394b", depends = [
   "rust",
-], install_env = { CARGO_NET_GIT_FETCH_WITH_CLI = "true", GIT_CONFIG_GLOBAL = "/dev/null" } }
+], install_env = { CARGO_NET_GIT_FETCH_WITH_CLI = "true", GIT_CONFIG_GLOBAL = "/dev/null", PKG_CONFIG_PATH = "/usr/lib/openssl-3/pkgconfig" } }
 
 [tools."http:mole"]
 version = "1.65.0"

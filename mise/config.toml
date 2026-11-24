@@ -11,7 +11,6 @@
 "dnf:gcc" = "latest"
 "dnf:gcc-c++" = "latest"
 "dnf:make" = "latest"
-"dnf:openssl-devel" = "latest"
 "dnf:pkgconf-pkg-config" = "latest"
 "dnf:fontconfig" = "latest"
 "dnf:google-noto-sans-cjk-fonts" = "latest"
@@ -26,6 +25,8 @@
 "pacman:openssh" = "latest"
 "pacman:base-devel" = "latest"
 "pacman:openssl" = "latest"
+# Headers live under /usr/lib/openssl-3 so they can sit beside OpenSSL 4.
+"pacman:openssl-3" = "latest"
 "pacman:pkgconf" = "latest"
 "pacman:fontconfig" = "latest"
 "pacman:noto-fonts-cjk" = "latest"
@@ -132,6 +133,11 @@ standard_error = "journal"
 
 [bootstrap.hooks.pre-packages]
 run = "bash \"${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/remove-legacy-yaskkserv2.sh\""
+
+# Fedora 44's openssl-devel is OpenSSL 3. From 45, that name is OpenSSL 4 and
+# the OpenSSL 3 headers are openssl3-devel, which Fedora 44 does not ship.
+[bootstrap.hooks.pre-tools]
+run = "bash \"${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/install-openssl-dev.sh\""
 
 [bootstrap.hooks.post-defaults]
 run = "bash \"${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/macos-finalize.sh\""
