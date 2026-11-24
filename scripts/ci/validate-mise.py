@@ -75,8 +75,19 @@ if settings.get("task", {}).get("run_auto_install") is not False:
 packages = config.get("bootstrap", {}).get("packages", {})
 if any(version != "latest" for version in packages.values()):
     fail("bootstrap packages must use the package manager's current version")
-if packages.get("dnf:openssl3-devel") != "latest" or "dnf:openssl-devel" in packages:
-    fail("Fedora must build yaskkserv2 against openssl3-devel, not OpenSSL 4 openssl-devel")
+if "dnf:openssl3-devel" in packages or "dnf:openssl-devel" in packages:
+    fail(
+        "Fedora OpenSSL headers depend on the release; "
+        "scripts/install-openssl-dev.sh selects openssl-devel before 45 "
+        "and openssl3-devel from 45"
+    )
+pre_tools = config.get("bootstrap", {}).get("hooks", {}).get("pre-tools")
+pre_tools_run = pre_tools.get("run") if isinstance(pre_tools, dict) else pre_tools
+if (
+    pre_tools_run
+    != 'bash "${DOTFILES_ROOT:-$HOME/repos/github.com/kqnade/dotfiles}/scripts/install-openssl-dev.sh"'
+):
+    fail("bootstrap must install Fedora OpenSSL 3 headers before building tools")
 if packages.get("pacman:openssl-3") != "latest":
     fail("Arch must install the OpenSSL 3 compatibility package for yaskkserv2")
 

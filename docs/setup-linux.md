@@ -18,9 +18,14 @@ curl -fsSL https://raw.githubusercontent.com/kqnade/dotfiles/trunk/install.sh | 
 [mise/config.toml](../mise/config.toml) の `[bootstrap.packages]` が次を管理します。
 
 - zsh、Git、OpenSSH
-- C/C++ build toolchain、OpenSSL 3 compatibility headers（Fedora `openssl3-devel`、Arch `openssl-3`）、pkg-config
+- C/C++ build toolchain、pkg-config
 - fontconfig、CJK fonts
 - bootstrap と UDEV Gothic 配置に必要な curl、CA certificates、unzip
+
+OpenSSL 3 headers は Fedora の release で package 名が変わる。44 では
+`openssl-devel`、45 以降では `openssl3-devel` を
+`scripts/install-openssl-dev.sh` が tools の build 前に導入する。Arch の
+`openssl-3` は上の packages が導入する。
 
 Fedora は dnf、Arch は pacman だけを使います。
 
