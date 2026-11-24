@@ -122,7 +122,10 @@ client boundaries and `docs/ai-workflows.md` for the workflow.
   The Claude repository hook distinguishes Cursor's imported hook events from actual Claude
   events. Cursor's terminal environment must not bypass checks on actual Claude launches.
 - Removed managed targets belong in `.chezmoiremove`. Name specific files or managed symlinks;
-  preserve unknown skills, credentials, and runtime state in their parent directories.
+  preserve unknown skills, credentials, and runtime state in their parent directories. Do not
+  name a directory: chezmoi removes it recursively. Keep a retired entry until every machine
+  has applied after it was added, then remove the entry so a later file at that path is left
+  alone. After that convergence, drop standard config paths of retired clients first.
 - Claude defaults live in `.chezmoitemplates/claude-settings.json.tmpl`;
   Claude reads both `CLAUDE.md` and `AGENTS.md`.
   The modifier preserves `tui` on macOS. Managed hooks replace any other hooks in the file.
