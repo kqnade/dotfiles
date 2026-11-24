@@ -75,6 +75,10 @@ if settings.get("task", {}).get("run_auto_install") is not False:
 packages = config.get("bootstrap", {}).get("packages", {})
 if any(version != "latest" for version in packages.values()):
     fail("bootstrap packages must use the package manager's current version")
+if packages.get("dnf:openssl3-devel") != "latest" or "dnf:openssl-devel" in packages:
+    fail("Fedora must build yaskkserv2 against openssl3-devel, not OpenSSL 4 openssl-devel")
+if packages.get("pacman:openssl-3") != "latest":
+    fail("Arch must install the OpenSSL 3 compatibility package for yaskkserv2")
 
 tools = dict(config.get("tools", {}))
 work_manifest = load_toml(ROOT / "mise.work.toml")
@@ -142,8 +146,9 @@ yaskkserv2 = tools["cargo:https://github.com/wachikun/yaskkserv2"]
 if not isinstance(yaskkserv2, dict) or yaskkserv2.get("install_env") != {
     "CARGO_NET_GIT_FETCH_WITH_CLI": "true",
     "GIT_CONFIG_GLOBAL": "/dev/null",
+    "PKG_CONFIG_PATH": "/usr/lib/openssl-3/pkgconfig",
 }:
-    fail("yaskkserv2 must use HTTPS through an isolated Git CLI")
+    fail("yaskkserv2 must use HTTPS through an isolated Git CLI and the OpenSSL 3 pkg-config prefix")
 
 lock_tools = lock.get("tools", {})
 lock_platforms = {

@@ -11,7 +11,9 @@
 "dnf:gcc" = "latest"
 "dnf:gcc-c++" = "latest"
 "dnf:make" = "latest"
-"dnf:openssl-devel" = "latest"
+# openssl-devel is OpenSSL 4 and conflicts with this package. yaskkserv2's
+# locked openssl-sys 0.9.112 only builds against OpenSSL 3.
+"dnf:openssl3-devel" = "latest"
 "dnf:pkgconf-pkg-config" = "latest"
 "dnf:fontconfig" = "latest"
 "dnf:google-noto-sans-cjk-fonts" = "latest"
@@ -26,6 +28,8 @@
 "pacman:openssh" = "latest"
 "pacman:base-devel" = "latest"
 "pacman:openssl" = "latest"
+# Headers live under /usr/lib/openssl-3 so they can sit beside OpenSSL 4.
+"pacman:openssl-3" = "latest"
 "pacman:pkgconf" = "latest"
 "pacman:fontconfig" = "latest"
 "pacman:noto-fonts-cjk" = "latest"

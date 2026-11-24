@@ -106,8 +106,9 @@ pnpmはversionがpinと一致することまで検証します。Intel jobは毎
 FedoraとArchのsystem packageを実際に導入し、2回適用して冪等性を検査します。
 Fedoraのパッケージ検証はフル構築ジョブに含め、Archだけをパッケージ専用ジョブで検証します。
 さらにFedoraでは、Linux向け全tool、chezmoi externals、dotfile、UDEV Gothic、
-SKK辞書を実際に配置します。yaskkserv2はforegroundで起動し、1178番portへの
-接続まで確認します。
+SKK辞書を実際に配置します。containerは現行stableの`fedora:45`です。この
+イメージのシステムOpenSSLは4系なので、yaskkserv2はOpenSSL 3互換パッケージで
+buildします。yaskkserv2はforegroundで起動し、1178番portへの接続まで確認します。
 
 ## GitHub-hosted runnerでは保証できないもの
 

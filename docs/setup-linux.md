@@ -18,7 +18,7 @@ curl -fsSL https://raw.githubusercontent.com/kqnade/dotfiles/trunk/install.sh | 
 [mise/config.toml](../mise/config.toml) の `[bootstrap.packages]` が次を管理します。
 
 - zsh、Git、OpenSSH
-- C/C++ build toolchain、OpenSSL headers、pkg-config
+- C/C++ build toolchain、OpenSSL 3 compatibility headers（Fedora `openssl3-devel`、Arch `openssl-3`）、pkg-config
 - fontconfig、CJK fonts
 - bootstrap と UDEV Gothic 配置に必要な curl、CA certificates、unzip
 
