@@ -23,9 +23,7 @@ require("neotest").setup({
       end,
     }),
     require("neotest-vitest"),
-    require("neotest-rust")({
-      args = { "--no-capture" },
-    }),
+    require("rustaceanvim.neotest"),
   },
   benchmark = {
     enabled = true,
