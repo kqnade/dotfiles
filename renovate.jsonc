@@ -25,7 +25,7 @@
 
   // CI、ローカル bootstrap、lock 更新が同じ mise を使う。
   "constraints": {
-    "mise": "2026.11.13"
+    "mise": "2026.11.12"
   },
 
   // Approveと必須CIの成功後、GitHubのnative auto-mergeでsquashする。
@@ -172,7 +172,7 @@
 
   "packageRules": [
     {
-      "description": "Move CI, bootstrap, and Renovate onto the newest stable mise release together.",
+      "description": "Move CI, bootstrap, and Renovate onto one mise release after it is old enough for mise self-update.",
       "matchPackageNames": [
         "jdx/mise",
         "jdx/mise-linux-x64",
@@ -181,7 +181,7 @@
       ],
       "groupName": "mise",
       "groupSlug": "mise",
-      "minimumReleaseAge": null,
+      "minimumReleaseAge": "1 day",
       "commitMessageTopic": "mise"
     },
     {
@@ -223,7 +223,7 @@
     {
       "description": "Keep rustaceanvim on the v9 releases the plugin spec accepts.",
       "matchManagers": [
-        "regex"
+        "custom.regex"
       ],
       "matchDatasources": [
         "git-refs"
@@ -236,7 +236,7 @@
     {
       "description": "Open one Renovate PR for Neovim lazy lock pin bumps.",
       "matchManagers": [
-        "regex"
+        "custom.regex"
       ],
       "matchFileNames": [
         "dot_config/nvim/lazy-lock.json"
