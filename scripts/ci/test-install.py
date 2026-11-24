@@ -127,7 +127,7 @@ exit 98
                 )
                 self.assertTrue(commands[0].startswith("curl "), commands)
 
-    def test_reuses_a_sufficient_installed_version_without_downloading(self):
+    def test_reuses_the_pinned_release_without_downloading(self):
         original = self.mise_script(VERSION)
         self.mise.write_text(original)
         self.mise.chmod(0o755)
@@ -135,6 +135,19 @@ exit 98
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.mise.read_text(), original)
         self.assertEqual(self.commands(), ["mise --version"])
+
+    def test_replaces_a_different_installed_release(self):
+        self.mise.write_text(self.mise_script("2099.1.1"))
+        self.mise.chmod(0o755)
+        result = self.run_install("--mise-only")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.mise.read_bytes(), self.payload.read_bytes())
+        commands = self.commands()
+        self.assertEqual(len(commands), 2, commands)
+        self.assertIn(
+            f"https://github.com/jdx/mise/releases/download/v{VERSION}/mise-v{VERSION}-macos-arm64",
+            commands[1],
+        )
 
     def test_failed_download_or_checksum_preserves_installed_mise(self):
         original = self.mise_script("2020.1.1")

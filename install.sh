@@ -2,10 +2,16 @@
 
 set -euo pipefail
 
-readonly MISE_MIN_VERSION="2026.8.9"
-readonly MISE_LINUX_X64_SHA256="997b6f3e0d760d292eb99f2824c70dddb432514b3a0d487f975c0f22b3cae430"
-readonly MISE_MACOS_ARM64_SHA256="485168d972389230053be0c3cdf8a76f9525b742a343ca179093bb90181dc05a"
-readonly MISE_MACOS_X64_SHA256="5273bff1797e7731f4e044d857f86a8fd373347075e5c5bfcf6cc920f60d44cb"
+# Renovate keeps this pin on the latest stable mise release. The platform
+# versions exist so each asset checksum updates with that same release, and
+# they must stay equal to MISE_MIN_VERSION and mise.toml min_version.
+readonly MISE_MIN_VERSION="2026.11.13"
+readonly MISE_LINUX_X64_VERSION="2026.11.13"
+readonly MISE_LINUX_X64_SHA256="9c8cc9e10886fe1b1ae2ff625f34905f3bd94e47ee5c9b0d3d597e6629d43d20"
+readonly MISE_MACOS_ARM64_VERSION="2026.11.13"
+readonly MISE_MACOS_ARM64_SHA256="973eb467ec9671f73a96a4c6c39f175703dde49523a5532157e659afcc5f2eca"
+readonly MISE_MACOS_X64_VERSION="2026.11.13"
+readonly MISE_MACOS_X64_SHA256="7e0b50348e00ad9a3ed9efe30012dd6e5f7fb29b4debac8edd93cc3efedded2d"
 readonly REPO_URL="${DOTFILES_REPO_URL:-https://github.com/kqnade/dotfiles.git}"
 readonly REPO_REF="${DOTFILES_REPO_REF:-}"
 readonly REPO_DIR="${DOTFILES_REPO_DIR:-${HOME}/repos/github.com/kqnade/dotfiles}"
@@ -19,22 +25,6 @@ log() {
 die() {
   printf '\033[1;31merror:\033[0m %s\n' "$*" >&2
   exit 1
-}
-
-version_at_least() {
-  local actual="$1"
-  local minimum="$2"
-  local actual_year actual_month actual_patch
-  local minimum_year minimum_month minimum_patch
-
-  IFS=. read -r actual_year actual_month actual_patch <<<"$actual"
-  IFS=. read -r minimum_year minimum_month minimum_patch <<<"$minimum"
-
-  ((actual_year > minimum_year)) && return 0
-  ((actual_year < minimum_year)) && return 1
-  ((actual_month > minimum_month)) && return 0
-  ((actual_month < minimum_month)) && return 1
-  ((actual_patch >= minimum_patch))
 }
 
 ensure_macos_prerequisites() {
@@ -129,12 +119,17 @@ configure_wsl_mise() {
 install_mise() {
   local asset checksum download_url mise_tmp
   local installed_version=""
+
+  if [[ "$MISE_LINUX_X64_VERSION" != "$MISE_MIN_VERSION" || "$MISE_MACOS_ARM64_VERSION" != "$MISE_MIN_VERSION" || "$MISE_MACOS_X64_VERSION" != "$MISE_MIN_VERSION" ]]; then
+    die "mise platform pins must all equal ${MISE_MIN_VERSION}."
+  fi
+
   if [[ -x "$MISE_BIN" ]]; then
     installed_version="$("$MISE_BIN" --version | awk '{print $1}')"
   fi
 
-  if [[ -n "$installed_version" ]] && version_at_least "$installed_version" "$MISE_MIN_VERSION"; then
-    log "mise ${installed_version} already satisfies >= ${MISE_MIN_VERSION}."
+  if [[ "$installed_version" == "$MISE_MIN_VERSION" ]]; then
+    log "mise ${installed_version} matches the pinned release."
     return
   fi
 
