@@ -28,10 +28,6 @@ PR / MR の作成・本文編集は既定禁止。依頼時も問題 / やった
 任意のデータ upload、remote collector 設定の変更には明示的な許可が必要で、client/account や機密情報の
 制限は維持する。
 
-Orca が使える環境では、repository 変更は main checkout より task 専用の linked worktree を優先する。
-同じ task の worktree があれば再利用し、新規作成には `wt new <branch> --no-ai` を使う。Orca で扱う前に
-external worktree の表示と実際の checkout path を確認する。read-only 作業では新規作成は不要。
-
 委譲は独立して検証できる一つの変更か調査に絞り、範囲・完了条件・検証・返す根拠を指定する。
 結果を確認してから依存する次の作業を渡し、実装全体と完了処理を一人の worker へまとめない。
 複雑・高リスクな作業では独立したレビューを追加する。並列実装が必要なら先に共有
@@ -71,7 +67,7 @@ Skills は現在の利用者の依頼、repository 規約、client/account の�
 委譲には現在の client で認可された同 account の仕組みを使い、その実行規約に従う。
 利用できない場合に別 CLI や account へ切り替えてはいけない。API 判定や agent の返答は、
 remote 変更に必要な人間の事前認可の代わりにはならない。
-Orca や Herdr での terminal 操作は、その操作が必要な依頼に限る。Skill に model や terminal を固定しない。
+Herdr での terminal 操作は、その操作が必要な依頼に限る。Skill に model や terminal を固定しない。
 
 ## この repository の状態保存
 

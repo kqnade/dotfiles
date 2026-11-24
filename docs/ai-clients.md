@@ -60,7 +60,7 @@ Cursorではrepositoryの`AGENTS.md`、利用可能なSkills、および `~/.cur
 Claudeは`claude-md-and-agents-md`設定で`CLAUDE.md`と`AGENTS.md`を併せて読みます。
 `AGENTS.override.md`だけに必須指示を置かず、許可された仕事用sessionの`/memory`で読み込み元を確認します。
 automatic memoryは無効です。必要な引き継ぎは[開発workflow](ai-workflows.md)に従います。
-macOSの設定modifierは管理hookを維持し、Orcaなどの追加hookと`tui`を保持します。
+macOSの設定modifierは管理hookを維持し、`tui`を保持します。管理外のhookは適用時に外れます。
 
 ## 会社用Claudeの利用範囲
 
@@ -74,7 +74,7 @@ Cursorは既定でClaudeのuser hooksも読み込みます。repository認可hoo
 Cursorのterminalから実際にClaudeを起動した場合は、通常どおりClaudeの制限を適用します。
 Cursorの利用accountとデータの扱いは、そのrepositoryの規約に従ってください。
 
-LinuxのHerdr integrationは会社用Claudeが有効な場合だけ導入します。macOSではOrcaを使います。
+LinuxのHerdr integrationは会社用Claudeが有効な場合だけ導入します。
 
 ## 管理ファイルの削除と検証
 

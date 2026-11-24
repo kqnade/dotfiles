@@ -124,11 +124,10 @@ client boundaries and `docs/ai-workflows.md` for the workflow.
   preserve unknown skills, credentials, and runtime state in their parent directories.
 - Claude defaults live in `.chezmoitemplates/claude-settings.json.tmpl`;
   Claude reads both `CLAUDE.md` and `AGENTS.md`.
-  The modifier preserves additional runtime hooks and `tui` on macOS without letting them replace
-  managed hooks. Other intentional Claude settings changes should be folded into the template.
-- On Linux, opted-in Claude's Herdr integration is applied during bootstrap; macOS uses Orca
-  instead. Claude automatic memory remains disabled; durable workflow state uses the
-  repository model below.
+  The modifier preserves `tui` on macOS. Managed hooks replace any other hooks in the file.
+  Other intentional Claude settings changes should be folded into the template.
+- On Linux, opted-in Claude's Herdr integration is applied during bootstrap. Claude automatic
+  memory remains disabled; durable workflow state uses the repository model below.
 
 ## Repository workflow state
 

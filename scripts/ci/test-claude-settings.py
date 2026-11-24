@@ -33,17 +33,16 @@ class ClaudeSettingsTests(unittest.TestCase):
         )
         return json.loads(result.stdout)
 
-    def test_macos_apply_preserves_runtime_hooks_and_fullscreen(self) -> None:
+    def test_macos_apply_drops_extra_hooks_and_preserves_fullscreen(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory)
             target = home / ".claude/settings.json"
             target.parent.mkdir()
             canonical = self.settings_for("darwin")
-            orca_hooks = {
+            current_hooks = {
                 event: [{"hooks": [{"type": "command", "command": f"orca-{event}"}]}]
                 for event in ("Stop", "SessionStart", "PreToolUse")
             }
-            current_hooks = json.loads(json.dumps(orca_hooks))
             current_hooks["PreToolUse"][0]["hooks"].append({
                 "type": "command",
                 "command": "~/.claude/hooks/authorize-repository.sh",
@@ -75,15 +74,7 @@ class ClaudeSettingsTests(unittest.TestCase):
                 )
                 self.assertEqual(result.returncode, 0, result.stderr)
                 settings = json.loads(target.read_text())
-                self.assertEqual(settings["hooks"]["Stop"], orca_hooks["Stop"])
-                self.assertEqual(settings["tui"], "fullscreen")
-                expected_hooks = {
-                    event: canonical["hooks"].get(event, []) + orca_hooks.get(event, [])
-                    for event in canonical["hooks"] | orca_hooks
-                }
-                self.assertEqual(settings, {
-                    **canonical, "hooks": expected_hooks, "tui": "fullscreen",
-                })
+                self.assertEqual(settings, {**canonical, "tui": "fullscreen"})
 
     def test_claude_loads_shared_and_client_specific_instructions(self) -> None:
         for os_name in ("darwin", "linux"):

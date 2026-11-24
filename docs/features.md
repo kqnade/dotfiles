@@ -57,5 +57,5 @@ repositoryの共通指示は`AGENTS.md`に置き、Claudeは`CLAUDE.md`も併せ
 詳細は[AI client運用](ai-clients.md)と[開発workflow](ai-workflows.md)を参照してください。
 
 LinuxではHerdrのターミナル設定、worktree操作、状態通知integrationも管理します。
-ClaudeのHerdr integrationは、会社用Claudeが有効なLinuxのbootstrap taskで反映します。macOSではOrcaを使い、
-Herdrを導入しません。既存のインストールやユーザーデータも自動削除しません。
+ClaudeのHerdr integrationは、会社用Claudeが有効なLinuxのbootstrap taskで反映します。
+既存のインストールやユーザーデータも自動削除しません。

@@ -1,4 +1,6 @@
 {
+  "agentPushNotifEnabled": true,
+  "askUserQuestionTimeout": "never",
   "attribution": {
     "commit": "",
     "pr": ""
@@ -6,10 +8,12 @@
   "autoMemoryEnabled": false,
   "awaySummaryEnabled": false,
   "cleanupPeriodDays": 14,
-  "disableArtifact": true,
+  "crossSessionInbound": "accept",
   "disableClaudeAiConnectors": true,
   "editorMode": "normal",
-  "effortLevel": "high",
+  "effortLevel": "xhigh",
+  "enableArtifact": false,
+  "enableWorkflows": false,
   "enabledPlugins": {
     "datadog@claude-plugins-official": true,
     "github@claude-plugins-official": true,
@@ -21,6 +25,8 @@
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "DISABLE_NON_ESSENTIAL_MODEL_CALLS": "1"
   },
+  "feedbackDrafts": "off",
+  "fileCheckpointingEnabled": false,
   "hooks": {
     "Notification": [
       {
@@ -132,8 +138,14 @@
   },
   "includeCoAuthoredBy": false,
   "includeGitInstructions": false,
+  "inputNeededNotifEnabled": true,
   "language": "Japanese",
   "model": "claude-opus-5-5[1m]",
+  "modelSettings": {
+    "claude-opus-5-5": {
+      "effortLevel": "xhigh"
+    }
+  },
   "outputStyle": "Concise",
   "permissions": {
     "allow": [
@@ -240,17 +252,31 @@
       "options": {
         "instructionFiles": "claude-md-and-agents-md"
       }
+    },
+    "cc-plugin-agents-md@builtin": {
+      "options": {
+        "instructionFiles": "claude-md-and-agents-md"
+      }
     }
   },
-  "preferredNotifChannel": "notifications_disabled",
+  "preferredNotifChannel": "ghostty",
   "promptSuggestionEnabled": false,
   "remoteControlAtStartup": true,
+  "showTurnDuration": false,
   "spinnerTipsEnabled": false,
   "statusLine": {
     "command": "pnpm dlx -y ccstatusline@2.2.30",
     "padding": 0,
     "type": "command"
   },
-  "theme": "dark-daltonize",
-  "verbose": true
+  "switchModelsOnFlag": true,
+  "teammateMode": "auto",
+  "terminalProgressBarEnabled": false,
+  "theme": "dark-daltonized",
+  "timeFormat": "auto",
+  "verbose": false,
+  "workflowKeywordTriggerEnabled": false,
+  "worktree": {
+    "baseRef": "fresh"
+  }
 }{{- /* Herdr's Claude integration writes JSON without a trailing newline. */ -}}
