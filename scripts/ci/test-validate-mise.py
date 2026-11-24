@@ -26,26 +26,51 @@ class ValidateMiseTests(unittest.TestCase):
         config = json.loads(
             strip_json_comments((ROOT / "renovate.jsonc").read_text())
         )
-        for package, version in (("pnpm/pnpm", "12.12.1"), ("atuinsh/atuin", "18.24.1")):
-            with self.subTest(package=package):
-                rules = [
-                    rule
-                    for rule in config["packageRules"]
-                    if rule.get("matchManagers") == ["mise"]
-                    and rule.get("matchDatasources") == ["github-releases"]
-                    and package in rule.get("matchPackageNames", [])
-                ]
-                self.assertEqual(len(rules), 1)
-                rule = rules[0]
-                self.assertEqual(rule.get("versioning"), "semver")
-                pattern = re.compile(
-                    rule["extractVersion"].replace("(?<version>", "(?P<version>")
-                )
+        rules = [
+            rule
+            for rule in config["packageRules"]
+            if rule.get("matchManagers") == ["mise"]
+            and rule.get("matchDatasources") == ["github-releases"]
+            and "extractVersion" in rule
+        ]
+        self.assertEqual(len(rules), 1)
+        rule = rules[0]
+        self.assertNotIn("matchPackageNames", rule)
+        self.assertEqual(rule.get("versioning"), "semver")
+        dep_patterns = [
+            re.compile(pattern[1:-1])
+            for pattern in rule.get("matchDepNames", [])
+            if pattern.startswith("/") and pattern.endswith("/")
+        ]
+        self.assertTrue(dep_patterns)
+
+        def matches_dep(dep_name: str) -> bool:
+            return any(pattern.search(dep_name) for pattern in dep_patterns)
+
+        tools = tomllib.loads((ROOT / "mise.toml").read_text())["tools"]
+        github_tools = [name for name in tools if name.startswith("github:")]
+        self.assertIn("github:sharkdp/fd", github_tools)
+        self.assertIn("github:pnpm/pnpm", github_tools)
+        self.assertIn("github:atuinsh/atuin", github_tools)
+        for name in github_tools:
+            with self.subTest(dep=name):
+                self.assertTrue(matches_dep(name))
+        for name in tools:
+            if name.startswith("github:"):
+                continue
+            with self.subTest(dep=name):
+                self.assertFalse(matches_dep(name))
+
+        version_pattern = re.compile(
+            rule["extractVersion"].replace("(?<version>", "(?P<version>")
+        )
+        for version in ("10.5.2", "12.12.1", "18.24.1"):
+            with self.subTest(version=version):
                 for tag in (f"v{version}", version):
-                    match = pattern.fullmatch(tag)
+                    match = version_pattern.fullmatch(tag)
                     self.assertIsNotNone(match)
                     self.assertEqual(match.group("version"), version)
-                self.assertIsNone(pattern.fullmatch(f"v{version}-rc.1"))
+                self.assertIsNone(version_pattern.fullmatch(f"v{version}-rc.1"))
 
     def test_yaskkserv2_master_updates_both_revision_pins(self) -> None:
         config = json.loads(
