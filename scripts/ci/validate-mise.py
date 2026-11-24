@@ -74,6 +74,30 @@ if settings.get("task", {}).get("run_auto_install") is not False:
 if settings.get("lockfile") is not True:
     fail("repository mise.toml must keep lockfile generation enabled")
 
+macos = config.get("bootstrap", {}).get("macos", {})
+deprecated_macos = {
+    "dock",
+    "finder",
+    "keyboard",
+    "trackpad",
+    "defaults",
+    "defaults_entries",
+    "login_items",
+}
+leftover = sorted(deprecated_macos & set(macos))
+if leftover:
+    fail(f"deprecated bootstrap.macos keys remain: {leftover}")
+settings_macos = config.get("bootstrap", {}).get("settings", {}).get("macos", {})
+required_macos = {"dock", "finder", "keyboard", "trackpad", "defaults"}
+missing = sorted(required_macos - set(settings_macos))
+if missing:
+    fail(f"bootstrap.settings.macos is missing {missing}")
+if set(macos) != {"launchd"}:
+    fail(f"bootstrap.macos must keep only launchd, found {sorted(macos)}")
+min_version = tuple(int(part) for part in str(config["min_version"]).split("."))
+if min_version < (2026, 11, 8):
+    fail("bootstrap.settings.macos requires mise 2026.11.8 or newer")
+
 packages = config.get("bootstrap", {}).get("packages", {})
 if any(version != "latest" for version in packages.values()):
     fail("bootstrap packages must use the package manager's current version")
