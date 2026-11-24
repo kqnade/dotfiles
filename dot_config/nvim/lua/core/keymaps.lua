@@ -139,8 +139,22 @@ map("n", "[q", "<cmd>cprevious<CR>", { desc = "Previous quickfix" })
 map("n", "]q", "<cmd>cnext<CR>", { desc = "Next quickfix" })
 
 -- ─── Diagnostic Navigation ─────────────────────────────────
-map("n", "[d", vim.diagnostic.goto_prev, { desc = "Previous diagnostic" })
-map("n", "]d", vim.diagnostic.goto_next, { desc = "Next diagnostic" })
+-- goto_prev/goto_next are hard-deprecated. float= is soft-deprecated;
+-- on_jump keeps the float those commands opened.
+local function jump_diagnostic(count)
+  vim.diagnostic.jump({
+    count = count,
+    on_jump = function()
+      vim.diagnostic.open_float()
+    end,
+  })
+end
+map("n", "[d", function()
+  jump_diagnostic(-1)
+end, { desc = "Previous diagnostic" })
+map("n", "]d", function()
+  jump_diagnostic(1)
+end, { desc = "Next diagnostic" })
 map("n", "<leader>cd", vim.diagnostic.open_float, { desc = "Line diagnostics" })
 
 -- ═══════════════════════════════════════════════════════════

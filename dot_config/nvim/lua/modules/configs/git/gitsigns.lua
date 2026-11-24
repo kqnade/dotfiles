@@ -50,7 +50,7 @@ require("gitsigns").setup({
   on_attach = function(bufnr)
     local gs = package.loaded.gitsigns
     local map = function(mode, lhs, rhs, desc)
-      vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, desc = desc })
+      vim.keymap.set(mode, lhs, rhs, { buf = bufnr, desc = desc })
     end
 
     -- Navigation
