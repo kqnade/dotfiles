@@ -34,12 +34,3 @@ v2の未完了事項です。CIや実機検証で新しい問題が見つかっ�
     実際に起動できることを検査する。
   - WSLの完全再起動、interop設定、`binfmt_misc` の確認手順を
     `docs/setup-linux.md` に記載する。
-
-## P2: CI運用
-
-- [ ] 初回のfull CI結果からjob時間とnetwork転送量を記録し、cache対象を決める。
-  - pinまたはlock変更時に確実にinvalidateされる。
-  - cacheなしでも再現できる状態を維持する。
-- [ ] 同じcommitに対するbranch pushとpull requestの重複実行を解消する。
-  - forkからのpull request検証は失わない。
-  - mainと手動実行ではfull jobが必ず動く。

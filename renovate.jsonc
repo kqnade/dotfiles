@@ -72,16 +72,15 @@
       "minimumReleaseAge": null
     },
     {
-      "description": "Keep GitHub binary versions consistent with mise's unprefixed lockfile entries.",
+      "description": "Keep every github: backend tool consistent with mise's unprefixed lockfile entries. Release tags may include a leading v; depName retains the github: prefix while packageName is only owner/repo.",
       "matchManagers": [
         "mise"
       ],
       "matchDatasources": [
         "github-releases"
       ],
-      "matchPackageNames": [
-        "pnpm/pnpm",
-        "atuinsh/atuin"
+      "matchDepNames": [
+        "/^github:/"
       ],
       "extractVersion": "^v?(?<version>\\d+\\.\\d+\\.\\d+)$",
       "versioning": "semver"
