@@ -156,17 +156,9 @@ backend = "cargo:eza"
 [tools."cargo:eza".options]
 features = "vendored-libgit2"
 
-[[tools."cargo:git-delta"]]
-version = "0.21.2"
-backend = "cargo:git-delta"
-
 [[tools."cargo:https://github.com/wachikun/yaskkserv2"]]
 version = "rev:08aabbc91a39c67ff2562b29f92c2a274bd0394b"
 backend = "cargo:https://github.com/wachikun/yaskkserv2"
-
-[[tools."cargo:sheldon"]]
-version = "0.8.5"
-backend = "cargo:sheldon"
 
 [[tools.chezmoi]]
 version = "2.74.1"

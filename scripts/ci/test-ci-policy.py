@@ -19,7 +19,6 @@ BOOTSTRAP_JOBS = (
     "package-bootstrap",
     "linux-bootstrap",
     "macos-bootstrap",
-    "intel-fallback",
 )
 
 

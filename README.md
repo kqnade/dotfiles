@@ -9,7 +9,7 @@ macOS、Fedora、Arch Linux、またはそれらを使う WSL x64 向けの dotf
 
 ## 対象環境と前提
 
-- macOS arm64 / x64
+- macOS arm64（Intel macOS は対象外）
 - Fedora x64
 - Arch Linux x64
 - Fedora / Arch Linux on WSL x64
@@ -70,8 +70,9 @@ Linux では有効な会社用 Claude の Herdr integration、全 OS で pre-com
 - `dot_*`: zsh、Neovim、Git、AI CLI などのユーザー設定。秘密情報は `private_*`、
   大きな外部辞書は `.chezmoiexternal.toml.tmpl` で管理。
 
-`mise.toml` の `[tools]` はすべてバージョンを固定し、`macos-arm64`、`macos-x64`、
-`linux-x64` 向けの取得情報を [`mise.lock`](mise.lock) に保持します。一方、
+`mise.toml` の `[tools]` はすべてバージョンを固定します。[`mise.lock`](mise.lock) は
+`macos-arm64` と `linux-x64` に加え、upstream が公開する `macos-x64` の取得情報も保持します。
+その `macos-x64` の記録は Intel macOS の対応を意味しません。一方、
 `[bootstrap.packages]` の OS パッケージは `latest` です。
 
 ## 管理している主な機能
