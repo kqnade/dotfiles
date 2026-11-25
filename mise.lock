@@ -33,50 +33,50 @@ checksum = "sha256:917b0d2b41de3d943bb6562331275c43c4b525af6b003eade06248905ddd6
 url = "https://cache.agilebits.com/dist/1P/op2/pkg/v2.42.0/op_darwin_amd64_v2.42.0.zip"
 
 [[tools."aqua:babarot/gomi"]]
-version = "1.10.1"
+version = "1.11.0"
 backend = "aqua:babarot/gomi"
 
 [tools."aqua:babarot/gomi"."platforms.linux-x64"]
-checksum = "sha256:5fcdd53768f0c89130b8b956b27682d742c09e130645bc8a4f06db433c75240a"
+checksum = "sha256:2f7562a82485e83953e7a047ac69b198703179970324ca3f67ae99f0247b7eb4"
 checksum_source = "mise-versions"
-url = "https://github.com/babarot/gomi/releases/download/v1.10.1/gomi_Linux_x86_64.tar.gz"
-url_api = "https://api.github.com/repos/babarot/gomi/releases/assets/678796399"
+url = "https://github.com/babarot/gomi/releases/download/v1.11.0/gomi_Linux_x86_64.tar.gz"
+url_api = "https://api.github.com/repos/babarot/gomi/releases/assets/772363755"
 
 [tools."aqua:babarot/gomi"."platforms.linux-x64-baseline"]
-checksum = "sha256:5fcdd53768f0c89130b8b956b27682d742c09e130645bc8a4f06db433c75240a"
+checksum = "sha256:2f7562a82485e83953e7a047ac69b198703179970324ca3f67ae99f0247b7eb4"
 checksum_source = "mise-versions"
-url = "https://github.com/babarot/gomi/releases/download/v1.10.1/gomi_Linux_x86_64.tar.gz"
-url_api = "https://api.github.com/repos/babarot/gomi/releases/assets/678796399"
+url = "https://github.com/babarot/gomi/releases/download/v1.11.0/gomi_Linux_x86_64.tar.gz"
+url_api = "https://api.github.com/repos/babarot/gomi/releases/assets/772363755"
 
 [tools."aqua:babarot/gomi"."platforms.linux-x64-musl"]
-checksum = "sha256:5fcdd53768f0c89130b8b956b27682d742c09e130645bc8a4f06db433c75240a"
+checksum = "sha256:2f7562a82485e83953e7a047ac69b198703179970324ca3f67ae99f0247b7eb4"
 checksum_source = "mise-versions"
-url = "https://github.com/babarot/gomi/releases/download/v1.10.1/gomi_Linux_x86_64.tar.gz"
-url_api = "https://api.github.com/repos/babarot/gomi/releases/assets/678796399"
+url = "https://github.com/babarot/gomi/releases/download/v1.11.0/gomi_Linux_x86_64.tar.gz"
+url_api = "https://api.github.com/repos/babarot/gomi/releases/assets/772363755"
 
 [tools."aqua:babarot/gomi"."platforms.linux-x64-musl-baseline"]
-checksum = "sha256:5fcdd53768f0c89130b8b956b27682d742c09e130645bc8a4f06db433c75240a"
+checksum = "sha256:2f7562a82485e83953e7a047ac69b198703179970324ca3f67ae99f0247b7eb4"
 checksum_source = "mise-versions"
-url = "https://github.com/babarot/gomi/releases/download/v1.10.1/gomi_Linux_x86_64.tar.gz"
-url_api = "https://api.github.com/repos/babarot/gomi/releases/assets/678796399"
+url = "https://github.com/babarot/gomi/releases/download/v1.11.0/gomi_Linux_x86_64.tar.gz"
+url_api = "https://api.github.com/repos/babarot/gomi/releases/assets/772363755"
 
 [tools."aqua:babarot/gomi"."platforms.macos-arm64"]
-checksum = "sha256:924b3bc72e86a582730ad0e7d035e9c206f13fb21285818acde7f6306453f189"
+checksum = "sha256:c11ddd721d09af2641713aac16599630b74d2b4a92b98a6313d7f32cc15d6f89"
 checksum_source = "mise-versions"
-url = "https://github.com/babarot/gomi/releases/download/v1.10.1/gomi_Darwin_arm64.tar.gz"
-url_api = "https://api.github.com/repos/babarot/gomi/releases/assets/678796319"
+url = "https://github.com/babarot/gomi/releases/download/v1.11.0/gomi_Darwin_arm64.tar.gz"
+url_api = "https://api.github.com/repos/babarot/gomi/releases/assets/772363801"
 
 [tools."aqua:babarot/gomi"."platforms.macos-x64"]
-checksum = "sha256:132a1731916b486fe01b72f2c7bd50a157926a401da82f7eada23314ef24df78"
+checksum = "sha256:36ea03a7aaf0ce3655d6ea2e847a7c06393284685fc7086fb07a4eb5b077e255"
 checksum_source = "mise-versions"
-url = "https://github.com/babarot/gomi/releases/download/v1.10.1/gomi_Darwin_x86_64.tar.gz"
-url_api = "https://api.github.com/repos/babarot/gomi/releases/assets/678796317"
+url = "https://github.com/babarot/gomi/releases/download/v1.11.0/gomi_Darwin_x86_64.tar.gz"
+url_api = "https://api.github.com/repos/babarot/gomi/releases/assets/772363799"
 
 [tools."aqua:babarot/gomi"."platforms.macos-x64-baseline"]
-checksum = "sha256:132a1731916b486fe01b72f2c7bd50a157926a401da82f7eada23314ef24df78"
+checksum = "sha256:36ea03a7aaf0ce3655d6ea2e847a7c06393284685fc7086fb07a4eb5b077e255"
 checksum_source = "mise-versions"
-url = "https://github.com/babarot/gomi/releases/download/v1.10.1/gomi_Darwin_x86_64.tar.gz"
-url_api = "https://api.github.com/repos/babarot/gomi/releases/assets/678796317"
+url = "https://github.com/babarot/gomi/releases/download/v1.11.0/gomi_Darwin_x86_64.tar.gz"
+url_api = "https://api.github.com/repos/babarot/gomi/releases/assets/772363799"
 
 [[tools.bat]]
 version = "0.26.1"
