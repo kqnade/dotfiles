@@ -6,7 +6,7 @@ set -euo pipefail
 # one day old, matching mise self-update's default 24h minimum release age.
 # The platform versions exist so each asset checksum updates with that same
 # release, and they must stay equal to MISE_MIN_VERSION and mise.toml min_version.
-readonly MISE_MIN_VERSION="2026.11.12"
+readonly MISE_MIN_VERSION="2026.11.14"
 readonly MISE_LINUX_X64_VERSION="2026.11.12"
 readonly MISE_LINUX_X64_SHA256="9c12c24f5eac6b6357e5265e2629166cc3005459037f5d747680a99e375ff2ab"
 readonly MISE_MACOS_ARM64_VERSION="2026.11.12"

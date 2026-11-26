@@ -25,7 +25,7 @@
 
   // CI、ローカル bootstrap、lock 更新が同じ mise を使う。
   "constraints": {
-    "mise": "2026.11.12"
+    "mise": "2026.11.14"
   },
 
   // Approveと必須CIの成功後、GitHubのnative auto-mergeでsquashする。
