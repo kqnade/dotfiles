@@ -63,7 +63,7 @@ node = "26.13.1"
 # denops and skkeleton need the deno executable. denops requires 2.3.0 or newer.
 deno = "2.9.8"
 "github:pnpm/pnpm" = "12.23.0"
-uv = "0.13.9"
+uv = "0.13.10"
 
 # Agent and application CLIs
 1password-cli = { version = "2.42.0", url = 'https://cache.agilebits.com/dist/1P/op2/pkg/v{{ version }}/op_{{ os(macos="darwin") }}_{{ arch(x64="amd64") }}_v{{ version }}.zip', version_list_url = "https://mise-versions.jdx.dev/1password-cli" }
