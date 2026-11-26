@@ -7,8 +7,8 @@ set -euo pipefail
 # The platform versions exist so each asset checksum updates with that same
 # release, and they must stay equal to MISE_MIN_VERSION and mise.toml min_version.
 readonly MISE_MIN_VERSION="2026.11.12"
-readonly MISE_LINUX_X64_VERSION="2026.11.12"
-readonly MISE_LINUX_X64_SHA256="9c12c24f5eac6b6357e5265e2629166cc3005459037f5d747680a99e375ff2ab"
+readonly MISE_LINUX_X64_VERSION="2026.11.14"
+readonly MISE_LINUX_X64_SHA256="6fa596291e9758106f761fea4f8e7fac6c3e7ff4714d5c0b9a76e16068db14f6"
 readonly MISE_MACOS_ARM64_VERSION="2026.11.12"
 readonly MISE_MACOS_ARM64_SHA256="87b2bd5a1b88a612ee8856df23499404b115870b5a8a8e008763c7cd51c8d412"
 readonly MISE_MACOS_X64_VERSION="2026.11.12"
