@@ -57,7 +57,7 @@ typos = "1.52.2"
 "npm:bash-language-server" = { version = "5.8.1", depends = ["node"] }
 
 # Language runtimes
-rust = "1.100.0"
+rust = "1.100.1"
 python = "3.15.2"
 node = "26.13.1"
 # denops and skkeleton need the deno executable. denops requires 2.3.0 or newer.
