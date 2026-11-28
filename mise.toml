@@ -62,7 +62,7 @@ python = "3.15.2"
 node = "26.13.1"
 # denops and skkeleton need the deno executable. denops requires 2.3.0 or newer.
 deno = "2.9.8"
-"github:pnpm/pnpm" = "12.23.0"
+"github:pnpm/pnpm" = "12.24.0"
 uv = "0.13.9"
 
 # Agent and application CLIs
